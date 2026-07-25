@@ -3,38 +3,55 @@
 declare(strict_types=1);
 
 /**
- * LiveViewBuilder Push
+ * LiveViewBuilder Push  —  eigenständiger WebSocket-Server.
  *
- * Kind-Instanz am WebSocketServer (IPSNetwork). Pusht Änderungen der im Builder
- * gebundenen Variablen per WebSocket an ALLE verbundenen Browser.
+ * Kind eines IPS *Server-Sockets* (I/O). Übernimmt WS-Handshake + Framing selbst und
+ * broadcastet Variablen-/Medien-Änderungen aus dem EIGENEN Event-Kontext (MessageSink) an
+ * alle verbundenen Browser. Damit entfällt die Puffer-Isolation des Community-WebSocketServers
+ * (dessen ForwardData-Broadcast bei Aufruf durch eine Fremd-Instanz die Clientliste leer sieht).
  *
- *  - Quelle der überwachten Variablen = <BasePath>/layouts.json (identisch zum LiveViewBuilder).
- *  - Versand per Server-BROADCAST (DataID {79827379-...}) -> kein IP-Tracking, keine
- *    "Unbekannter Client"-Meldungen.
- *  - Payload wie ?api=val:  {ts, values:{ "<id>": {v,f,id} }} -> Builder ordnet per d.id zu.
- *  - Startup-sicher: nur RegisterMessage/RegisterTimer/ConnectParent, KEIN IPS_ApplyChanges
- *    auf fremde Instanzen im Kernel-Start.
+ *  - Überwachte IDs = <BasePath>/layouts.json (identisch zum LiveViewBuilder).
+ *  - Clientliste in eigenem Buffer; in ReceiveData gepflegt, in MessageSink gelesen (gleiche Instanz).
+ *  - Payload wie ?api=val:  {ts, values:{ "<id>": {v,f,id} }}  bzw. {ts, media:[<id>]}.
  */
 class LiveViewBuilderPush extends IPSModule
 {
-    private const BROADCAST      = '{79827379-F36E-4ADA-8A95-5F8D1DC92FA9}'; // Server: an alle Clients senden (ForwardData-Broadcast)
-    private const WEBSOCKSERVER  = '{79827379-F36E-4ADA-8A95-5F8D1DC92FA9}'; // Kind-Verbindungs-Schnittstelle des IPSNetwork WebSocketServer (NICHT die Modul-GUID!)
+    private const IO = '{C8792760-65CF-4C53-B5C7-A30FCC84FEFE}'; // Server-Socket-Datenschnittstelle (Parent)
 
     public function Create()
     {
         parent::Create();
-        $this->RegisterPropertyString('BasePath', ''); // Datenordner = identisch zum LiveViewBuilder
-        $this->ConnectParent(self::WEBSOCKSERVER);
+        $this->RegisterPropertyString('BasePath', '');
+        $this->RegisterPropertyInteger('Port', 8082);
+        $this->ConnectParent(self::IO);
         $this->RegisterTimer('Sync', 0, 'LVBP_Sync($_IPS[\'TARGET\']);');
+        $this->SetBuffer('clients', json_encode([]));
     }
 
     public function ApplyChanges()
     {
         parent::ApplyChanges();
+        $this->SetBuffer('clients', json_encode([])); // Clients verbinden sich nach (Re)Start neu
+
+        // Parent-Server-Socket auf Port + offen zwingen (wie beim WebSocketServer)
+        $pid = IPS_GetInstance($this->InstanceID)['ConnectionID'];
+        if ($pid > 0) {
+            $port = $this->ReadPropertyInteger('Port');
+            $chg  = false;
+            if ((int) @IPS_GetProperty($pid, 'Port') !== $port) { IPS_SetProperty($pid, 'Port', $port); $chg = true; }
+            if (@IPS_GetProperty($pid, 'Open') !== true)       { IPS_SetProperty($pid, 'Open', true);   $chg = true; }
+            if ($chg) { @IPS_ApplyChanges($pid); }
+        }
+        $this->SetStatus(($pid > 0 && IPS_GetInstance($pid)['InstanceStatus'] === IS_ACTIVE) ? IS_ACTIVE : IS_INACTIVE);
+
+        if (IPS_GetKernelRunlevel() !== KR_READY) {
+            return;
+        }
         $this->syncRegistrations();
-        $this->SetTimerInterval('Sync', 300000); // alle 5 min layouts.json neu einlesen (neue Bindungen)
+        $this->SetTimerInterval('Sync', 300000); // alle 5 min layouts.json neu einlesen
     }
 
+    // ===== Broadcast-Quelle: Variablen-/Medien-Events (EIGENER Kontext -> Clientliste sichtbar) =====
     public function MessageSink($TimeStamp, $SenderID, $Message, $Data)
     {
         if ($Message === VM_UPDATE) {
@@ -45,10 +62,59 @@ class LiveViewBuilderPush extends IPSModule
             ]));
             return;
         }
-        if (defined('MM_UPDATE') && $Message === MM_UPDATE) {   // Kamera-/Medien-Schnappschuss aktualisiert -> Client neu laden lassen
+        if (defined('MM_UPDATE') && $Message === MM_UPDATE) {
             $this->broadcast(json_encode(['ts' => time(), 'media' => [(int) $SenderID]]));
             return;
         }
+    }
+
+    // ===== WS-Server: Daten vom Server-Socket (Browser-Clients) =====
+    public function ReceiveData($JSONString)
+    {
+        $d = json_decode($JSONString);
+        if (!is_object($d)) {
+            return '';
+        }
+        $ip   = (string) ($d->ClientIP ?? '');
+        $port = (int) ($d->ClientPort ?? 0);
+        $type = (int) ($d->Type ?? 0);
+        $key  = $ip . ':' . $port;
+
+        $clients = json_decode($this->GetBuffer('clients'), true);
+        if (!is_array($clients)) {
+            $clients = [];
+        }
+
+        if ($type === 1) { // TCP verbunden -> auf WS-Handshake warten
+            return '';
+        }
+        if ($type === 2) { // getrennt
+            if (isset($clients[$key])) {
+                unset($clients[$key]);
+                $this->SetBuffer('clients', json_encode($clients));
+            }
+            return '';
+        }
+
+        // type 0 = Daten
+        $buf = isset($d->Buffer) ? $this->u8d((string) $d->Buffer) : '';
+        if ($buf === '') {
+            return '';
+        }
+        if (stripos($buf, 'sec-websocket-key') !== false) { // Handshake-Anfrage
+            $this->sendHandshake($ip, $port, $buf);
+            $clients[$key] = ['ip' => $ip, 'port' => $port];
+            $this->SetBuffer('clients', json_encode($clients));
+            return '';
+        }
+        // WS-Frame vom Client -> nur Close-Frame beachten (Rest ignorieren, z. B. 'hello')
+        if ((ord($buf[0]) & 0x0F) === 0x8) {
+            if (isset($clients[$key])) {
+                unset($clients[$key]);
+                $this->SetBuffer('clients', json_encode($clients));
+            }
+        }
+        return '';
     }
 
     // Registrierungen aus layouts.json neu ziehen (Timer + manuell: LVBP_Sync(<id>)).
@@ -58,19 +124,72 @@ class LiveViewBuilderPush extends IPSModule
         return true;
     }
 
-    // Manuell testbar: LVBP_BroadcastText(<id>, 'text')
+    // Manuell/Skript testbar — ACHTUNG: nur aus Kernel-/Event-Kontext sinnvoll (Clientliste sichtbar).
     public function BroadcastText(string $Text): bool
     {
         $this->broadcast($Text);
         return true;
     }
 
+    // ===== intern =====
     private function broadcast(string $payload): void
     {
+        $clients = json_decode($this->GetBuffer('clients'), true);
+        if (!is_array($clients) || !$clients) {
+            return;
+        }
+        $frame = $this->wsEncode($payload);
+        foreach ($clients as $c) {
+            $this->sendRaw((string) $c['ip'], (int) $c['port'], $frame);
+        }
+    }
+
+    private function sendHandshake(string $ip, int $port, string $req): void
+    {
+        if (!preg_match('/Sec-WebSocket-Key:\s*(.+)\r\n/i', $req, $m)) {
+            return;
+        }
+        $accept = base64_encode(sha1(trim($m[1]) . '258EAFA5-E914-47DA-95CA-C5AB0DC85B11', true));
+        $resp = "HTTP/1.1 101 Switching Protocols\r\n"
+              . "Upgrade: websocket\r\n"
+              . "Connection: Upgrade\r\n"
+              . "Sec-WebSocket-Accept: " . $accept . "\r\n\r\n";
+        $this->sendRaw($ip, $port, $resp);
+    }
+
+    private function sendRaw(string $ip, int $port, string $data): void
+    {
         $this->SendDataToParent(json_encode([
-            'DataID' => self::BROADCAST,
-            'Buffer' => utf8_encode($payload), // WebSocketServer.ForwardData macht utf8_decode() -> hier muss encodiert werden (wie WebSocketClient)
+            'DataID'     => self::IO,
+            'Buffer'     => $this->u8e($data),
+            'ClientIP'   => $ip,
+            'ClientPort' => $port,
+            'Type'       => 0,
         ]));
+    }
+
+    private function wsEncode(string $payload): string
+    {
+        $len = strlen($payload);
+        $b   = chr(0x81); // FIN + Text
+        if ($len < 126) {
+            $b .= chr($len);
+        } elseif ($len < 65536) {
+            $b .= chr(126) . pack('n', $len);
+        } else {
+            $b .= chr(127) . pack('J', $len);
+        }
+        return $b . $payload;
+    }
+
+    // Byte-erhaltende ISO-8859-1 <-> UTF-8 Wandlung (wie der Server-Socket sie erwartet)
+    private function u8e(string $s): string
+    {
+        return function_exists('mb_convert_encoding') ? mb_convert_encoding($s, 'UTF-8', 'ISO-8859-1') : utf8_encode($s);
+    }
+    private function u8d(string $s): string
+    {
+        return function_exists('mb_convert_encoding') ? mb_convert_encoding($s, 'ISO-8859-1', 'UTF-8') : utf8_decode($s);
     }
 
     private function syncRegistrations(): void
@@ -99,7 +218,6 @@ class LiveViewBuilderPush extends IPSModule
             }
         }
 
-        // Variablen (Werte)
         foreach ($wantVar as $id => $_) {
             if (!isset($haveVar[$id]) && IPS_VariableExists($id)) {
                 $this->RegisterMessage($id, VM_UPDATE);
@@ -110,8 +228,6 @@ class LiveViewBuilderPush extends IPSModule
                 $this->UnregisterMessage($id, VM_UPDATE);
             }
         }
-
-        // Medien (Kamera-Schnappschüsse) -> Push bei MM_UPDATE
         if ($mmu !== -1) {
             foreach ($wantMedia as $id => $_) {
                 if (!isset($haveMedia[$id]) && IPS_MediaExists($id)) {
@@ -126,18 +242,9 @@ class LiveViewBuilderPush extends IPSModule
         }
     }
 
-    // Kamera-Medien-IDs (camera/campro) aus layouts.json
     private function mediaIDs(): array
     {
-        $bp = trim($this->ReadPropertyString('BasePath'));
-        if ($bp === '') {
-            return [];
-        }
-        $raw = @file_get_contents(rtrim($bp, '/') . '/layouts.json');
-        $j   = json_decode((string) $raw, true);
-        if (!is_array($j)) {
-            return [];
-        }
+        $j = $this->layoutJson();
         $ids = [];
         foreach (($j['views'] ?? []) as $vw) {
             foreach (($vw['widgets'] ?? []) as $w) {
@@ -150,21 +257,9 @@ class LiveViewBuilderPush extends IPSModule
         return array_keys($ids);
     }
 
-    // Alle im Builder gebundenen Variablen-IDs aus layouts.json (über alle Ansichten).
     private function layoutIDs(): array
     {
-        $bp = trim($this->ReadPropertyString('BasePath'));
-        if ($bp === '') {
-            return [];
-        }
-        $raw = @file_get_contents(rtrim($bp, '/') . '/layouts.json');
-        if ($raw === false) {
-            return [];
-        }
-        $j = json_decode($raw, true);
-        if (!is_array($j)) {
-            return [];
-        }
+        $j = $this->layoutJson();
         $ids = [];
         $add = function ($v) use (&$ids) {
             $v = (int) $v;
@@ -197,19 +292,34 @@ class LiveViewBuilderPush extends IPSModule
         return array_keys($ids);
     }
 
+    private function layoutJson(): array
+    {
+        $bp = trim($this->ReadPropertyString('BasePath'));
+        if ($bp === '') {
+            return [];
+        }
+        $raw = @file_get_contents(rtrim($bp, '/') . '/layouts.json');
+        if ($raw === false) {
+            return [];
+        }
+        $j = json_decode($raw, true);
+        return is_array($j) ? $j : [];
+    }
+
     public function GetConfigurationForm()
     {
         $bp = trim($this->ReadPropertyString('BasePath'));
         $n  = count($this->layoutIDs());
+        $m  = count($this->mediaIDs());
         return json_encode([
             'elements' => [
-                ['type' => 'Label', 'caption' => 'Sendet Änderungen der im Builder gebundenen Variablen per WebSocket an alle Clients (Broadcast). Nutzt dieselbe layouts.json wie der LiveViewBuilder.'],
-                ['type' => 'ValidationTextBox', 'name' => 'BasePath', 'caption' => 'Datenordner (identisch zum LiveViewBuilder, z. B. /var/lib/symcon/scripts/hausleitnerweg)'],
-                ['type' => 'Label', 'caption' => ($bp === '' ? '⚠ Bitte BasePath setzen (gleicher Ordner wie der Builder).' : ('Überwachte Variablen: ' . $n))],
+                ['type' => 'Label', 'caption' => 'Eigenständiger WebSocket-Server: pusht Änderungen der im Builder gebundenen Variablen + Kamera-Medien an alle Browser. Als I/O einen „Server Socket" (offener Port) darunter hängen.'],
+                ['type' => 'ValidationTextBox', 'name' => 'BasePath', 'caption' => 'Datenordner (identisch zum LiveViewBuilder)'],
+                ['type' => 'NumberSpinner', 'name' => 'Port', 'caption' => 'WebSocket-Port (erzwingt den Port am Server-Socket)'],
+                ['type' => 'Label', 'caption' => ($bp === '' ? '⚠ Bitte BasePath setzen.' : ('Überwacht: ' . $n . ' Variablen, ' . $m . ' Kamera-Medien.'))],
             ],
             'actions' => [
                 ['type' => 'Button', 'caption' => 'Registrierungen aktualisieren', 'onClick' => 'LVBP_Sync($id);'],
-                ['type' => 'Button', 'caption' => 'Test-Broadcast senden', 'onClick' => 'LVBP_BroadcastText($id, \'{"values":{}}\');'],
             ],
             'status' => [
                 ['code' => 102, 'icon' => 'active', 'caption' => 'Bereit'],
