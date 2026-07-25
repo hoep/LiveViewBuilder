@@ -8,8 +8,6 @@
  * Layouts liegen als Datei in $DATADIR/layouts.json (transparent, WS-lesbar, backup-bar).
  */
 
-$api = (string) ($_GET['api'] ?? '');
-
 // Modus aus dem Pfad:  /hook/run/<site> -> Laufzeit ; sonst Builder/Editor
 $LV_MODE = 'builder';
 $uriPath = (string) parse_url((string) ($_SERVER['REQUEST_URI'] ?? ''), PHP_URL_PATH);
