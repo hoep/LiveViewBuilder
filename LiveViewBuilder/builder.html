@@ -2484,7 +2484,7 @@
     state.widgets.forEach(function(w){e[sfSnap(w[pos])]=1;e[sfSnap(w[pos]+w[sz])]=1;});
     var pts=Object.keys(e).map(Number).sort(function(a,b){return a-b;}),T=[];
     for(i=0;i<pts.length-1;i++)T.push({d0:pts[i],size:pts[i+1]-pts[i],w:0});
-    var minT=Math.max(10,0.02*D);
+    var minT=Math.max(6,0.008*D); // kleinere Gaps zwischen eng benachbarten Widgets erhalten (sonst verschmelzen sie)
     for(i=T.length-1;i>0;i--)if(T[i].size<minT){T[i-1].size+=T[i].size;T.splice(i,1);}
     return T.length?T:[{d0:0,size:D,w:0}];
   }
@@ -2505,17 +2505,18 @@
     _scView=store.current;return _scCache={col:col,row:row,bands:sfBands()};
   }
   function sfDistribute(T,view,s0,c){
-    var base=0,left;T.forEach(function(t){t.px=t.size*s0;base+=t.px;});
-    var spare=view-base;left=spare;
-    if(spare>0){
-      var tot=0;T.forEach(function(t){t.wb=t.w*t.size;t.cap=false;if(t.w>0)tot+=t.wb;});
-      if(tot>0){
-        T.forEach(function(t){if(t.w>0){var want=spare*t.wb/tot,cap=t.px*(c.growCap-1),add=Math.min(want,cap);t.px+=add;left-=add;t.cap=(add>=cap-0.01);}});
-        var tot2=0;T.forEach(function(t){if(t.w>0&&!t.cap)tot2+=t.wb;});
-        if(tot2>0&&left>0.5){T.forEach(function(t){if(t.w>0&&!t.cap)t.px+=left*t.wb/tot2;});left=0;}
-      }
-      var cur=Math.max(0,left)/2;T.forEach(function(t){t.pos=cur;cur+=t.px;});
-    }else{var cur2=Math.max(0,spare/2);T.forEach(function(t){t.pos=cur2;cur2+=t.px;});}
+    // Uniform mit s0 skalieren -> Widget-Seitenverhältnisse bleiben exakt erhalten.
+    var base=0;T.forEach(function(t){t.px=t.size*s0;base+=t.px;});
+    var spare=view-base;
+    var gapPx=0;T.forEach(function(t){if(t.w<=0)gapPx+=t.px;}); // Summe der Zwischenraum-Spuren (ohne Widget)
+    if(spare>0.5&&gapPx>0.5){
+      // freien Platz proportional in die Zwischenräume geben -> Widgets rücken auseinander, keine Verzerrung
+      T.forEach(function(t){if(t.w<=0)t.px+=spare*(t.px/gapPx);});
+      var cur=0;T.forEach(function(t){t.pos=cur;cur+=t.px;});
+    }else{
+      // keine Zwischenräume (oder kein Platz) -> gleichmäßig zentrieren (Letterbox-Rand)
+      var cur2=Math.max(0,spare)/2;T.forEach(function(t){t.pos=cur2;cur2+=t.px;});
+    }
   }
   function sfCell(T,a,b){var x0=null,x1=null;T.forEach(function(t){if(t.d0>=a-0.5&&t.d0+t.size<=b+0.5){if(x0==null)x0=t.pos;x1=t.pos+t.px;}});if(x0==null){x0=T[0].pos;x1=T[0].pos+T[0].px;}return [x0,x1];}
   function sfAlignOff(box,content,anchor,axis){var s;if(axis==='x')s=anchor.indexOf('l')>=0?0:(anchor.indexOf('r')>=0?1:0.5);else s=anchor.indexOf('t')>=0?0:(anchor.indexOf('b')>=0?1:0.5);return (box-content)*s;}
