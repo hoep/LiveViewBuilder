@@ -520,8 +520,8 @@
       if(!j||!j.days){el.innerHTML='<div class="hwpempty">kein Wochenplan</div>';return;}
       var dn=['Mo','Di','Mi','Do','Fr','Sa','So'],h='';
       var _nw=new Date(),_nowPct=(_nw.getHours()*60+_nw.getMinutes())/1440*100,_today=(_nw.getDay()+6)%7;
-      for(var i=0;i<7;i++){var segs=(j.days[i]||[]).map(function(s){var col=(j.groups&&j.groups[s.group]&&j.groups[s.group].color)||'#3a4a52';return '<i style="top:'+(s.from/1440*100)+'%;height:'+((s.to-s.from)/1440*100)+'%;background:'+col+'"></i>';}).join('');
-        if(i===_today)segs+='<i class="wpnow" style="top:'+_nowPct+'%"></i>';
+      for(var i=0;i<7;i++){var segs=(j.days[i]||[]).map(function(s){var col=(j.groups&&j.groups[s.group]&&j.groups[s.group].color)||'#3a4a52';return '<i style="left:'+(s.from/1440*100)+'%;width:'+((s.to-s.from)/1440*100)+'%;background:'+col+'"></i>';}).join('');
+        if(i===_today)segs+='<i class="wpnow" style="left:'+_nowPct+'%"></i>';
         h+='<div class="hwpday'+(i===_today?' today':'')+'"><span>'+dn[i]+'</span><div class="hwpcol">'+segs+'</div></div>';}
       el.innerHTML=h;
       var tf=$('.w[data-id="'+w.id+'"] [data-role=wptimes]',canvas);if(tf){var tl=(j.days[_today]||[]).map(function(s){var hh=Math.floor(s.from/60),mm=s.from%60;return ('0'+hh).slice(-2)+':'+('0'+mm).slice(-2);}).join(' · ');tf.textContent=tl?('Heute: '+tl):'';}
