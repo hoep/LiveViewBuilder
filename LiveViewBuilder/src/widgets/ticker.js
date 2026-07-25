@@ -1,21 +1,64 @@
   // ===== Widget: Laufzeile (Ticker) — Alarm-/Meldungslaufband =====
-  // Jede Zeile ist entweder statischer Text ODER ein Live-Wert (Feld "vid" = VarID).
-  // Live-Werte laufen dank data-vid automatisch im Band mit (Profil-Formatierung inkl. Einheit).
+  // Jede Zeile ist entweder ein LAUFENDES WIDGET (Feld "wtype" gesetzt) oder statischer Text.
+  // Widget-Zeilen werden als echte Widget-Instanzen gerendert (widgetInner) und in _tickKids
+  // für Live-Updates registriert (gleicher Mechanismus wie Komponenten).
+  var _TICK_TYPES=[['value','Wert'],['kpi','KPI'],['delta','Delta'],['chip','Chip'],['icon','Icon'],['text','Text'],['switch','Schalter'],['tile','Kachel'],['bar','Balken']];
   defWidget('ticker',{
     label:'Laufzeile', paletteIcon:'wticker', size:[560,46],
-    defaults:function(w){w.label='Alarm';w.speed=46;w.items=[{sev:'warn',icon:'window',text:'2 Fenster offen',sub:'Bad OG · Küche EG'},{sev:'info',icon:'washer',text:'Waschmaschine läuft',sub:'Restzeit 0:42'},{sev:'warn',icon:'trash',text:'Restmüll morgen',sub:''},{sev:'ok',icon:'shield',text:'Alarm unscharf',sub:''}];},
+    defaults:function(w){w.label='Alarm';w.speed=46;w.items=[{sev:'warn',icon:'window',text:'2 Fenster offen',sub:'Bad OG · Küche EG'},{sev:'info',icon:'washer',text:'Waschmaschine läuft',sub:'Restzeit 0:42'},{sev:'ok',icon:'shield',text:'Alarm unscharf',sub:''}];},
     render:function(w){
-      var its=w.items||[],crit=its.filter(function(m){return (m.sev||'')==='crit';}).length,
-      itm=its.map(function(m){
-        var val=m.vid?'<b data-vid="'+esc(String(m.vid))+'">'+esc(m.val||'–')+'</b>':'';
+      var its=w.items||[],crit=its.filter(function(m){return !m.wtype&&(m.sev||'')==='crit';}).length;
+      var band=function(sfx){return its.map(function(m,i){
+        if(m.wtype&&WIDGETS[m.wtype]){                                  // --- laufendes Widget ---
+          var cfg={};for(var k in m)cfg[k]=m[k];cfg.id=w.id+'__t'+i+sfx;cfg.type=m.wtype;
+          var iw=parseInt(m.w)||170;_tickKids.push(cfg);
+          var inner;try{inner=widgetInner(cfg);}catch(e){inner='';}
+          return '<div class="w t-'+esc(m.wtype)+'" data-id="'+cfg.id+'" style="position:relative;flex:none;height:calc(100% - 12px);width:'+iw+'px;margin:0 5px">'
+            +'<div class="winner" style="position:absolute;inset:0">'+inner+'</div></div>';
+        }
+        var val=m.vid?'<b data-vid="'+esc(String(m.vid))+'">'+esc(m.val||'–')+'</b>':''; // --- statischer/Variablen-Text ---
         return '<span class="htm '+esc(m.sev||'info')+'"><span class="htdot"></span>'
           +(m.icon?'<span class="htic">'+iconSVG(m.icon)+'</span>':'')
           +(m.text?'<b>'+esc(m.text||'')+'</b>':'')
           +(val?(m.text?' ':'')+val:'')
           +(m.sub?' <small>'+esc(m.sub)+'</small>':'')+'</span>';
-      }).join('');
-      return '<div class="htick'+(crit===0?' ok':'')+'"><div class="htlead"><span class="htpulse"></span>'+esc(w.label||'Alarm')+'<span class="htcnt">'+crit+'</span></div><div class="httrack"><div class="htmove" style="animation-duration:'+(w.speed||46)+'s">'+itm+itm+'</div></div></div>';
+      }).join('');};
+      var itm=band(''),itm2=band('b');
+      return '<div class="htick'+(crit===0?' ok':'')+'"><div class="htlead"><span class="htpulse"></span>'+esc(w.label||'Alarm')+'<span class="htcnt">'+crit+'</span></div><div class="httrack"><div class="htmove" style="animation-duration:'+(w.speed||46)+'s">'+itm+itm2+'</div></div></div>';
     },
-    props:function(w){return row('Tempo (s)','<input id="pSpeed" type="number" min="8" value="'+(w.speed||46)+'">')+listEditor(w,'items','Zeilen: Schwere (crit/warn/ok/info) · Icon · Text · VarID (leer=statisch) · Zusatz',[{k:'sev',ph:'sev'},{k:'icon',ph:'icon'},{k:'text',ph:'Text'},{k:'vid',ph:'VarID'},{k:'sub',ph:'Zusatz'}]);},
-    wire:function(w){if($('#pSpeed'))$('#pSpeed').oninput=function(){w.speed=parseInt(this.value)||46;render();};}
+    props:function(w){
+      var rows=(w.items||[]).map(function(m,i){
+        var isW=!!m.wtype;
+        var typeSel='<select data-tk="wtype.'+i+'"><option value="">— Text —</option>'+_TICK_TYPES.map(function(t){return '<option value="'+t[0]+'"'+(m.wtype===t[0]?' selected':'')+'>'+t[1]+'</option>';}).join('')+'</select>';
+        var fields=isW
+          ? '<input data-tk="varId.'+i+'" value="'+esc(m.varId!=null?m.varId:'')+'" placeholder="VarID" style="width:64px">'
+            +'<input data-tk="label.'+i+'" value="'+esc(m.label||'')+'" placeholder="Label">'
+            +'<input data-tk="icon.'+i+'" value="'+esc(m.icon||'')+'" placeholder="Icon" style="width:64px">'
+            +'<input data-tk="w.'+i+'" value="'+esc(m.w||'')+'" placeholder="Breite" style="width:56px">'
+          : '<input data-tk="text.'+i+'" value="'+esc(m.text||'')+'" placeholder="Text">'
+            +'<input data-tk="vid.'+i+'" value="'+esc(m.vid||'')+'" placeholder="VarID" style="width:64px">'
+            +'<input data-tk="icon.'+i+'" value="'+esc(m.icon||'')+'" placeholder="Icon" style="width:64px">'
+            +'<input data-tk="sev.'+i+'" value="'+esc(m.sev||'')+'" placeholder="sev" style="width:52px">';
+        return '<div style="display:flex;gap:4px;margin-bottom:5px;flex-wrap:wrap;align-items:center">'+typeSel+fields+'<button class="btn" data-tkdel="'+i+'" style="padding:2px"><svg class="i"><use href="#ic-minus"/></svg></button></div>';
+      }).join('');
+      return row('Tempo (s)','<input id="pSpeed" type="number" min="8" value="'+(w.speed||46)+'">')
+        +'<div class="prop" style="margin-top:8px"><div style="font-size:11px;color:var(--muted);margin-bottom:5px">Elemente — Typ (— Text — = statisch) · dann Felder. Widget-Zeilen laufen live mit.</div>'+rows+'<button class="btn" data-tkadd><svg class="i"><use href="#ic-plus"/></svg> Element</button></div>';
+    },
+    wire:function(w){
+      if($('#pSpeed'))$('#pSpeed').oninput=function(){w.speed=parseInt(this.value)||46;render();};
+      $$('#props [data-tk]').forEach(function(inp){inp.oninput=inp.onchange=function(){
+        var pr=inp.dataset.tk.split('.'),k=pr[0],i=+pr[1];if(!w.items||!w.items[i])return;
+        var v=inp.value;
+        if(k==='varId'||k==='vid'||k==='w')v=(v===''?undefined:(parseInt(v)||0));
+        else v=(v===''?undefined:v);
+        w.items[i][k]=v;
+        if(k==='wtype'){ // Typwechsel: sinnvolle Standardfelder setzen + Editor neu zeichnen
+          if(v){if(w.items[i].varId==null)w.items[i].varId=0;}
+          render();renderProps();return;
+        }
+        render();
+      };});
+      $$('#props [data-tkdel]').forEach(function(b){b.onclick=function(){w.items.splice(+b.dataset.tkdel,1);render();renderProps();};});
+      var add=$('#props [data-tkadd]');if(add)add.onclick=function(){w.items=w.items||[];w.items.push({wtype:'value',varId:0,label:'Wert'});render();renderProps();};
+    }
   });
