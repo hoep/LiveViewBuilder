@@ -2705,6 +2705,7 @@ defWidget('calendar',{
   function _camFitWire(w){var s=$('#pCamFit');if(s)s.onchange=function(){w.camFit=this.value;render();};}
   function _camAspect(w){ // Modus "An Bild anpassen": Widget-Höhe folgt automatisch dem Seitenverhältnis des Kamerabilds
     if((w.camFit||'')!=='aspect')return;
+    if(typeof mode!=='undefined'&&mode!=='edit')return; // nur im Editor die Design-Höhe setzen; im Run macht SmartFit die Größe
     var el=$('.w[data-id="'+w.id+'"]',canvas);if(!el)return;
     var img=$('img[data-role=cam]',el);if(!img)return;
     var fn=function(){if(!img.naturalWidth||!img.naturalHeight)return;var nh=Math.round(w.w*img.naturalHeight/img.naturalWidth);if(nh>0&&Math.abs(nh-(w.h||0))>1){w.h=nh;applyGeom(w);commit();}};
