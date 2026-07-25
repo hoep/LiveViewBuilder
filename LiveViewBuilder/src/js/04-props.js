@@ -126,6 +126,7 @@
   // ---------- Hinzufügen ----------
   function addWidget(type,extra,px,py){
     var _wr=WIDGETS[type];
+    var sz=(_wr&&_wr.size)||[140,80];   // Default-Größe aus dem Widget-Registry (mit Fallback)
     var w={id:uid(),type:type,x:(px!=null?snap(Math.max(0,px)):snap(40)),y:(py!=null?snap(Math.max(0,py)):snap(40)),w:sz[0],h:sz[1],label:(type==='switch'?'Schalter':(type==='text'?'Text':(type==='powerflow'?'Haus':'Label')))};
     if(_wr&&_wr.defaults)_wr.defaults(w);
     if(type==='shape'){w.shape='rect';w.color='#1b2a30';}
