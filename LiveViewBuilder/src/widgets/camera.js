@@ -12,7 +12,7 @@
   }
   defWidget('camera',{
     label:'Kamera', paletteIcon:'camera', size:[260,160],
-    render:function(w){return '<div class="wcam"><img data-role="cam" alt="'+esc(w.label||'')+'" style="object-fit:'+_camFitCSS(w)+'" src="'+(w.mediaId?('?api=media&id='+w.mediaId):'')+'"><div class="wcamnm">'+esc(w.label||'')+'</div></div>';},
+    render:function(w){return '<div class="wcam"><img data-role="cam"'+(w.mediaId?' data-media="'+esc(String(w.mediaId))+'"':'')+' alt="'+esc(w.label||'')+'" style="object-fit:'+_camFitCSS(w)+'" src="'+(w.mediaId?('?api=media&id='+w.mediaId):'')+'"><div class="wcamnm">'+esc(w.label||'')+'</div></div>';},
     props:function(w){return _camFitSel(w)+row('Aktualisierung (s)','<input id="pCamRef" type="number" min="1" value="'+(w.refresh||15)+'">');},
     wire:function(w){_camFitWire(w);if($('#pCamRef'))$('#pCamRef').oninput=function(){w.refresh=parseInt(this.value)||15;};},
     mount:function(w){_camAspect(w);}
