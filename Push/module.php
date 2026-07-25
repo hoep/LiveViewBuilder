@@ -31,7 +31,12 @@ class LiveViewBuilderPush extends IPSModule
     public function ApplyChanges()
     {
         parent::ApplyChanges();
-        $this->SetBuffer('clients', json_encode([])); // Clients verbinden sich nach (Re)Start neu
+        $this->RegisterMessage(0, IPS_KERNELSTARTED); // nach Kernelstart erneut anwenden (Registrierungen erst bei KR_READY)
+        $this->SetBuffer('clients', json_encode([]));  // Clients verbinden sich nach (Re)Start neu
+
+        if (IPS_GetKernelRunlevel() !== KR_READY) {
+            return; // erst bei KR_READY konfigurieren (kein IPS_ApplyChanges auf Parent im Startup)
+        }
 
         // Parent-Server-Socket auf Port + offen zwingen (wie beim WebSocketServer)
         $pid = IPS_GetInstance($this->InstanceID)['ConnectionID'];
@@ -43,17 +48,18 @@ class LiveViewBuilderPush extends IPSModule
             if ($chg) { @IPS_ApplyChanges($pid); }
         }
         $this->SetStatus(($pid > 0 && IPS_GetInstance($pid)['InstanceStatus'] === IS_ACTIVE) ? IS_ACTIVE : IS_INACTIVE);
-
-        if (IPS_GetKernelRunlevel() !== KR_READY) {
-            return;
-        }
         $this->syncRegistrations();
-        $this->SetTimerInterval('Sync', 300000); // alle 5 min layouts.json neu einlesen
+        // Registrierungen greifen direkt nach dem Start nicht immer -> Sync gleich nochmal per Timer im normalen Laufzeitkontext
+        $this->SetTimerInterval('Sync', 4000);
     }
 
     // ===== Broadcast-Quelle: Variablen-/Medien-Events (EIGENER Kontext -> Clientliste sichtbar) =====
     public function MessageSink($TimeStamp, $SenderID, $Message, $Data)
     {
+        if ($Message === IPS_KERNELSTARTED) {
+            $this->ApplyChanges(); // jetzt ist KR_READY -> Registrierungen + Parent-Konfig
+            return;
+        }
         if ($Message === VM_UPDATE) {
             $id = (int) $SenderID;
             $this->broadcast(json_encode([
@@ -121,6 +127,7 @@ class LiveViewBuilderPush extends IPSModule
     public function Sync(): bool
     {
         $this->syncRegistrations();
+        $this->SetTimerInterval('Sync', 300000); // danach nur noch alle 5 min layouts.json neu einlesen
         return true;
     }
 
