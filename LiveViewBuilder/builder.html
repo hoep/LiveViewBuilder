@@ -1,5 +1,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Hausleitnerweg">
 <title>Hausleitnerweg — View-Builder</title>
 <style>
   :root{--bg:#0d1315;--surface:#141c1f;--surface-2:#1a2428;--tile:#131b1e;--line:#25333a;--line-soft:#1b262b;--text:#e7eef0;--muted:#8ba0a6;--faint:#63757b;--accent:#00cdab;--accent-2:#0a8f79;--ok:#39d08a;--warn:#f2b441;--crit:#f2685a;--info:#5ab6ff;--warm:#f2a03d;--ring:0 0 0 3px color-mix(in oklab,#00cdab 38%,transparent);--r:12px;--r-s:9px;--fu:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,system-ui,sans-serif;--fm:ui-monospace,"SF Mono",Menlo,Consolas,monospace;color-scheme:dark}
@@ -175,6 +179,7 @@
   /* Runtime-Modus (Vollbild-Anzeige einer View) */
   body.run .bar,body.run .side{display:none}
   body.run .stage{position:fixed;inset:0;padding:0;overflow:hidden;background:var(--bg)}
+  body.run.kiosk{overscroll-behavior:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none} /* Kiosk: kein Bounce/Textauswahl/Long-Press */
   body.run #canvas{border:0;border-radius:0;box-shadow:none;background:var(--bg)}
   body.run #canvas.grid{background-image:none}
   body.run .w{cursor:default}
@@ -2621,6 +2626,22 @@
     if(v&&store.views[v])switchView(v);
     document.body.classList.add('run');applyZoom();mode='preview';stage.classList.remove('edit');stage.classList.add('preview');
     canvas.classList.remove('grid');selClear();markSel();buildRunNav();fitCanvas();
+    initKiosk();
+  }
+  // ---------- Kiosk-Modus (nur Run): kein Zoom/Scroll/Kontextmenü, Auto-Vollbild beim ersten Tipp, Bildschirm wach ----
+  var _kioskDone=false,_wakeLock=null;
+  function _wakeReq(){if('wakeLock' in navigator){navigator.wakeLock.request('screen').then(function(s){_wakeLock=s;}).catch(function(){});}}
+  function goFullscreen(){var el=document.documentElement,r=el.requestFullscreen||el.webkitRequestFullscreen||el.mozRequestFullScreen;if(r){try{r.call(el);}catch(e){}}}
+  function initKiosk(){
+    if(_kioskDone)return;_kioskDone=true;
+    var vp=document.querySelector('meta[name=viewport]');if(vp)vp.setAttribute('content','width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover');
+    document.body.classList.add('kiosk');
+    document.addEventListener('contextmenu',function(e){e.preventDefault();}); // kein Rechtsklick/Long-Press-Menü
+    ['gesturestart','gesturechange','gestureend'].forEach(function(ev){document.addEventListener(ev,function(e){e.preventDefault();});}); // kein Pinch-Zoom (Safari)
+    var _lt=0;document.addEventListener('touchend',function(e){var n=Date.now();if(n-_lt<=350)e.preventDefault();_lt=n;},{passive:false}); // kein Doppeltipp-Zoom
+    var fs=function(){goFullscreen();document.removeEventListener('click',fs);document.removeEventListener('touchend',fs);}; // Vollbild bei erster Geste (Browser-Pflicht)
+    document.addEventListener('click',fs);document.addEventListener('touchend',fs);
+    _wakeReq();document.addEventListener('visibilitychange',function(){if(!document.hidden)_wakeReq();});
   }
   function buildRunNav(){
     var box=$('#runlist');if(!box)return;box.innerHTML='';

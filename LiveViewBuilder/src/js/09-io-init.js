@@ -263,6 +263,22 @@
     if(v&&store.views[v])switchView(v);
     document.body.classList.add('run');applyZoom();mode='preview';stage.classList.remove('edit');stage.classList.add('preview');
     canvas.classList.remove('grid');selClear();markSel();buildRunNav();fitCanvas();
+    initKiosk();
+  }
+  // ---------- Kiosk-Modus (nur Run): kein Zoom/Scroll/Kontextmenü, Auto-Vollbild beim ersten Tipp, Bildschirm wach ----
+  var _kioskDone=false,_wakeLock=null;
+  function _wakeReq(){if('wakeLock' in navigator){navigator.wakeLock.request('screen').then(function(s){_wakeLock=s;}).catch(function(){});}}
+  function goFullscreen(){var el=document.documentElement,r=el.requestFullscreen||el.webkitRequestFullscreen||el.mozRequestFullScreen;if(r){try{r.call(el);}catch(e){}}}
+  function initKiosk(){
+    if(_kioskDone)return;_kioskDone=true;
+    var vp=document.querySelector('meta[name=viewport]');if(vp)vp.setAttribute('content','width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover');
+    document.body.classList.add('kiosk');
+    document.addEventListener('contextmenu',function(e){e.preventDefault();}); // kein Rechtsklick/Long-Press-Menü
+    ['gesturestart','gesturechange','gestureend'].forEach(function(ev){document.addEventListener(ev,function(e){e.preventDefault();});}); // kein Pinch-Zoom (Safari)
+    var _lt=0;document.addEventListener('touchend',function(e){var n=Date.now();if(n-_lt<=350)e.preventDefault();_lt=n;},{passive:false}); // kein Doppeltipp-Zoom
+    var fs=function(){goFullscreen();document.removeEventListener('click',fs);document.removeEventListener('touchend',fs);}; // Vollbild bei erster Geste (Browser-Pflicht)
+    document.addEventListener('click',fs);document.addEventListener('touchend',fs);
+    _wakeReq();document.addEventListener('visibilitychange',function(){if(!document.hidden)_wakeReq();});
   }
   function buildRunNav(){
     var box=$('#runlist');if(!box)return;box.innerHTML='';
