@@ -1,0 +1,14 @@
+{
+    "id": "{6F8B0D21-3C5E-4A97-B2D4-0E1F8A3C2B66}",
+    "name": "LiveView Builder",
+    "type": 3,
+    "vendor": "",
+    "aliases": [
+        "LiveView Builder",
+        "Dashboard Builder"
+    ],
+    "parentRequirements": [],
+    "childRequirements": [],
+    "implemented": [],
+    "prefix": "LVB"
+}
