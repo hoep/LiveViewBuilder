@@ -17,8 +17,8 @@ declare(strict_types=1);
  */
 class LiveViewBuilderPush extends IPSModule
 {
-    private const BROADCAST      = '{79827379-F36E-4ADA-8A95-5F8D1DC92FA9}'; // Server: an alle Clients senden
-    private const WEBSOCKSERVER  = '{7869923C-6E1D-4E66-A0BD-627FAD1679C2}'; // IPSNetwork WebSocketServer
+    private const BROADCAST      = '{79827379-F36E-4ADA-8A95-5F8D1DC92FA9}'; // Server: an alle Clients senden (ForwardData-Broadcast)
+    private const WEBSOCKSERVER  = '{79827379-F36E-4ADA-8A95-5F8D1DC92FA9}'; // Kind-Verbindungs-Schnittstelle des IPSNetwork WebSocketServer (NICHT die Modul-GUID!)
 
     public function Create()
     {
@@ -69,7 +69,7 @@ class LiveViewBuilderPush extends IPSModule
     {
         $this->SendDataToParent(json_encode([
             'DataID' => self::BROADCAST,
-            'Buffer' => $payload,
+            'Buffer' => utf8_encode($payload), // WebSocketServer.ForwardData macht utf8_decode() -> hier muss encodiert werden (wie WebSocketClient)
         ]));
     }
 
