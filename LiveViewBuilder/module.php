@@ -175,9 +175,11 @@ class LiveViewBuilder extends IPSModule
     {
         $views  = $this->readViews();
         $hasUrl = $this->ReadPropertyString('BaseUrl') !== '';
+        $lib    = @json_decode((string) @file_get_contents(__DIR__ . '/../library.json'), true);
+        $bld    = is_array($lib) ? ($lib['build'] ?? '?') : '?';
 
         $elements = [
-            ['type' => 'Label', 'caption' => 'Onboarding: Instanz anlegen — die Hooks /hook/builder und /hook/run werden automatisch registriert (nach dem Speichern/Übernehmen).'],
+            ['type' => 'Label', 'caption' => 'LiveView Builder — Modul-Build: ' . $bld . '   ·   Instanz anlegen registriert /hook/builder + /hook/run automatisch.'],
             ['type' => 'ExpansionPanel', 'caption' => 'Einstellungen', 'items' => [
                 ['type' => 'ValidationTextBox', 'name' => 'Site', 'caption' => 'Site-Label (Pfad /hook/builder/<Site>)'],
                 ['type' => 'ValidationTextBox', 'name' => 'BaseUrl', 'caption' => 'Basis-URL (z. B. http://10.0.0.5:3777) — für klickbare Links'],
