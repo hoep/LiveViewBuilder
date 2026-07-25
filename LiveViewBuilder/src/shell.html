@@ -1,0 +1,223 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Hausleitnerweg — View-Builder</title>
+<style>
+{{STYLES}}
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <symbol viewBox="0 0 24 24" id="ic-undo"><path d="M9 14L4 9l5-5"/><path d="M4 9h11a6 6 0 010 12h-3"/></symbol>
+  <symbol viewBox="0 0 24 24" id="ic-redo"><path d="M15 14l5-5-5-5"/><path d="M20 9H9a6 6 0 000 12h3"/></symbol>
+  <symbol viewBox="0 0 24 24" id="ic-home"><path d="M4 11l8-7 8 7"/><path d="M6 10v10h12V10"/></symbol>
+  <symbol viewBox="0 0 24 24" id="ic-play"><path d="M7 5l12 7-12 7z"/></symbol>
+  <symbol viewBox="0 0 24 24" id="ic-download"><path d="M12 3v12"/><path d="M7 11l5 5 5-5"/><path d="M5 21h14"/></symbol>
+  <symbol viewBox="0 0 24 24" id="ic-plus"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol viewBox="0 0 24 24" id="ic-pencil"><path d="M4 20h4L18 10l-4-4L4 16z"/><path d="M13 7l4 4"/></symbol>
+  <symbol viewBox="0 0 24 24" id="ic-trash"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/><path d="M10 11v6M14 11v6"/></symbol>
+  <symbol viewBox="0 0 24 24" id="ic-menu"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+  <symbol viewBox="0 0 24 24" id="ic-minus"><path d="M6 12h12"/></symbol>
+  <symbol viewBox="0 0 24 24" id="ic-al-left"><path d="M4 4v16M7 8h11M7 12h14M7 16h8"/></symbol>
+  <symbol viewBox="0 0 24 24" id="ic-al-cx"><path d="M12 4v16M7 8h10M5 12h14M9 16h6"/></symbol>
+  <symbol viewBox="0 0 24 24" id="ic-al-right"><path d="M20 4v16M9 8h8M6 12h11M12 16h5"/></symbol>
+  <symbol viewBox="0 0 24 24" id="ic-al-top"><path d="M4 4h16M8 7v11M12 7v14M16 7v8"/></symbol>
+  <symbol viewBox="0 0 24 24" id="ic-al-cy"><path d="M4 12h16M8 7v10M12 5v14M16 9v6"/></symbol>
+  <symbol viewBox="0 0 24 24" id="ic-al-bottom"><path d="M4 20h16M8 6v8M12 3v11M16 12v5"/></symbol>
+  <symbol viewBox="0 0 24 24" id="ic-dist-h"><path d="M5 4v16M12 4v16M19 4v16"/></symbol>
+  <symbol viewBox="0 0 24 24" id="ic-dist-v"><path d="M4 5h16M4 12h16M4 19h16"/></symbol>
+  <symbol viewBox="0 0 24 24" id="ic-folder"><path d="M3 6h6l2 2h10v11H3z"/></symbol>
+  <symbol viewBox="0 0 24 24" id="ic-cube"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M4 7.5l8 4.5 8-4.5M12 12v9"/></symbol>
+  <symbol viewBox="0 0 24 24" id="ic-tag"><path d="M4 4h8l8 8-8 8-8-8z"/><circle cx="8.5" cy="8.5" r="1.3"/></symbol>
+  <symbol viewBox="0 0 24 24" id="ic-code"><path d="M9 8l-4 4 4 4M15 8l4 4-4 4"/></symbol>
+  <symbol viewBox="0 0 24 24" id="ic-image"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="10" r="1.6"/><path d="M21 16l-5-5-9 8"/></symbol>
+  <symbol viewBox="0 0 24 24" id="ic-dot"><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol viewBox="0 0 24 24" id="ic-chevron"><path d="M9 6l6 6-6 6"/></symbol>
+  <symbol viewBox="0 0 24 24" id="ic-chevup"><path d="M6 15l6-6 6 6"/></symbol>
+  <symbol viewBox="0 0 24 24" id="ic-chevdn"><path d="M6 9l6 6 6-6"/></symbol>
+  <symbol viewBox="0 0 24 24" id="ic-stop"><rect x="7" y="7" width="10" height="10" rx="1.5"/></symbol>
+  <symbol viewBox="0 0 24 24" id="ic-pause"><path d="M8 5v14M16 5v14"/></symbol>
+  <symbol viewBox="0 0 24 24" id="ic-grid"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></symbol>
+  <symbol viewBox="0 0 24 24" id="ic-eye"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol viewBox="0 0 24 24" id="ic-struct"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16M15 4v16M3 12h18"/></symbol>
+  <symbol viewBox="0 0 24 24" id="ic-save"><path d="M5 3h11l3 3v14a1 1 0 01-1 1H6a1 1 0 01-1-1z"/><path d="M8 3v5h7V3"/><rect x="8" y="13" width="8" height="6"/></symbol>
+  <symbol viewBox="0 0 24 24" id="ic-saveas"><path d="M5 3h9l3 3v6"/><path d="M8 3v5h6"/><path d="M17 15v7M13.5 18.5h7"/></symbol>
+  <symbol viewBox="0 0 24 24" id="ic-moon"><path d="M20.5 14.5A8.5 8.5 0 119.5 3.5a7 7 0 1011 11z"/></symbol>
+</defs></svg>
+
+<div class="bar">
+  <b>View-Builder</b><span class="muted" style="font-size:11px">Hausleitnerweg</span>
+  <div class="sep"></div>
+  <button class="btn on" id="gridBtn" title="Raster ein/aus (Snap am Raster)"><svg class="i"><use href="#ic-grid"/></svg></button>
+  <button class="btn" id="modeBtn" title="Vorschau: Widgets interaktiv testen (ohne Verschieben)"><svg class="i"><use href="#ic-eye"/></svg></button>
+  <button class="btn" id="structBtn" title="Struktur: erkanntes SmartFit-Raster einblenden"><svg class="i"><use href="#ic-struct"/></svg></button>
+  <button class="btn" id="blockBtn" title="Baustein: Auswahl (≥1 Element) als wiederverwendbaren Baustein speichern"><svg class="i"><use href="#ic-cube"/></svg></button>
+  <button class="btn" id="themeBtn" title="Dunkel/Hell umschalten"><svg class="i"><use href="#ic-moon"/></svg></button>
+  <div class="sep"></div>
+  <button class="btn" id="undoBtn" title="Rückgängig (Ctrl+Z)"><svg class="i"><use href="#ic-undo"/></svg></button>
+  <button class="btn" id="redoBtn" title="Wiederholen (Ctrl+Y)"><svg class="i"><use href="#ic-redo"/></svg></button>
+  <div class="sp"></div>
+  <select class="btn" id="viewSel" title="Ansicht"></select>
+  <button class="btn" id="newView" title="Neue Ansicht"><svg class="i"><use href="#ic-plus"/></svg></button>
+  <button class="btn" id="renView" title="Umbenennen"><svg class="i"><use href="#ic-pencil"/></svg></button>
+  <button class="btn" id="delView" title="Ansicht löschen"><svg class="i"><use href="#ic-trash"/></svg></button>
+  <button class="btn" id="homeBtn" title="Aktuelle Ansicht als Startseite (Kiosk-Default)"><svg class="i"><use href="#ic-home"/></svg></button>
+  <div class="sep"></div>
+  <span class="muted" style="font-size:11px">Canvas</span>
+  <input id="cvW" type="number" class="cvnum" title="Breite (px)">
+  <span class="muted">×</span>
+  <input id="cvH" type="number" class="cvnum" title="Höhe (px)">
+  <span class="muted" style="font-size:11px;margin-left:6px">Anpassung</span>
+  <select id="cvFit" class="cvnum" style="width:auto" title="Skalierung im Live-Modus: Letterbox = wie bisher, Auto = SmartFit (Track-Fill/Reflow), Track-Fill = immer füllen ohne Scroll, Reflow = Umbruch">
+    <option value="letterbox">Letterbox</option>
+    <option value="auto">Auto</option>
+    <option value="anchor">Track-Fill</option>
+    <option value="reflow">Reflow</option>
+  </select>
+  <div class="sep"></div>
+  <span class="muted" style="font-size:11px">Zoom</span>
+  <button class="btn" id="zoomOut" title="Verkleinern (Strg + −)"><svg class="i"><use href="#ic-minus"/></svg></button>
+  <button class="btn" id="zoomLbl" title="Klick: an Fenster anpassen · Strg+0 = 100% · Strg+Mausrad" style="min-width:50px;font-variant-numeric:tabular-nums">100%</button>
+  <button class="btn" id="zoomIn" title="Vergrößern (Strg + +)"><svg class="i"><use href="#ic-plus"/></svg></button>
+  <div class="sep"></div>
+  <button class="btn" id="liveBtn" title="Live: aktuelle Ansicht im Vollbild starten"><svg class="i"><use href="#ic-play"/></svg></button>
+  <button class="btn" id="importBtn" title="IPSView importieren: Seiten aus 29825.ipsView übernehmen"><svg class="i"><use href="#ic-download"/></svg></button>
+  <div class="sep"></div>
+  <select class="btn" id="layoutSel" title="Layout öffnen (Standard = live)" style="max-width:150px"></select>
+  <button class="btn pri" id="saveBtn" title="Speichern (ins geöffnete Layout)"><svg class="i"><use href="#ic-save"/></svg></button>
+  <button class="btn" id="saveAsBtn" title="Speichern unter … (neues benanntes Layout)"><svg class="i"><use href="#ic-saveas"/></svg></button>
+</div>
+
+<div class="main">
+  <div class="stage edit" id="stage">
+    <div id="cwrap"><div id="canvas"></div></div>
+  </div>
+  <div class="side">
+    <div class="sideresize" id="sideResize" title="Breite ziehen"></div>
+    <div class="tabs">
+      <div class="tab on" data-tab="vars">Variablen</div>
+      <div class="tab" data-tab="palette">Palette</div>
+      <div class="tab" data-tab="colors">Farben</div>
+      <div class="tab" data-tab="icons">Icons</div>
+      <div class="tab" data-tab="skins">Skins</div>
+      <div class="tab" data-tab="settings">Einstellungen</div>
+      <div class="tab" data-tab="props">Eigenschaften</div>
+    </div>
+    <div class="pane on" data-pane="vars">
+      <input class="search" id="search" placeholder="Suche: Name · Pfad · ID  (Enter)">
+      <div class="tree" id="tree"></div>
+    </div>
+    <div class="pane" data-pane="palette">
+      <div class="palette">
+        <div class="pgh">Grundelemente</div>
+        <div class="pitem" data-add="blank">Leer</div>
+        <div class="pitem" data-add="component">Komponente</div>
+        <div class="pitem" data-add="value">Wert</div>
+        <div class="pitem" data-add="text">Text</div>
+        <div class="pitem" data-add="icon">Icon</div>
+        <div class="pitem" data-add="line">Linie</div>
+        <div class="pgh">Steuerung</div>
+        <div class="pitem" data-add="switch">Schalter</div>
+        <div class="pitem" data-add="checkbox">Checkbox</div>
+        <div class="pitem" data-add="tile">Kachel</div>
+        <div class="pitem" data-add="button">Button</div>
+        <div class="pitem" data-add="slider">Slider</div>
+        <div class="pitem" data-add="rangebtn">Stepper</div>
+        <div class="pitem" data-add="rangeslider">RangeSlider</div>
+        <div class="pitem" data-add="circlerange">CircleRange</div>
+        <div class="pitem" data-add="colorwheel">Farbkreis</div>
+        <div class="pitem" data-add="cie">CIE-Picker</div>
+        <div class="pitem" data-add="rgbslider">RGB-Slider</div>
+        <div class="pitem" data-add="rgbbutton">RGB-Button</div>
+        <div class="pitem" data-add="rgbbox">RGB-Box</div>
+        <div class="pitem" data-add="marquee">Lauftext</div>
+        <div class="pitem" data-add="textbox">Eingabe</div>
+        <div class="pitem" data-add="flowline">Energiefluss-Linie</div>
+        <div class="pitem" data-add="thermostat">Thermostat</div>
+        <div class="pitem" data-add="cover">Rollo</div>
+        <div class="pitem" data-add="light">Licht</div>
+        <div class="pitem" data-add="alarm">Alarm</div>
+        <div class="pitem" data-add="media">Media</div>
+        <div class="pitem" data-add="vacuum">Vacuum</div>
+        <div class="pgh">Anzeige</div>
+        <div class="pitem" data-add="chip">Chip</div>
+        <div class="pitem" data-add="gauge">Gauge</div>
+        <div class="pitem" data-add="gaugepro">Gauge+</div>
+        <div class="pitem" data-add="bar">Balken</div>
+        <div class="pitem" data-add="room">Raum</div>
+        <div class="pitem" data-add="statuslist">Status-Liste</div>
+        <div class="pitem" data-add="devlist">Geräte-Liste</div>
+        <div class="pitem" data-add="ticker">Laufzeile</div>
+        <div class="pitem" data-add="tempbar">Temp-Säule</div>
+        <div class="pitem" data-add="statusgrid">Status-Grid</div>
+        <div class="pitem" data-add="meterlist">Metrik-Liste</div>
+        <div class="pitem" data-add="calc">Berechnung</div>
+        <div class="pitem" data-add="infolist">Info-Liste</div>
+        <div class="pitem" data-add="kpi">KPI</div>
+        <div class="pitem" data-add="delta">Delta</div>
+        <div class="pgh">Diagramme</div>
+        <div class="pitem" data-add="chart">Chart</div>
+        <div class="pitem" data-add="spark">Sparkline</div>
+        <div class="pitem" data-add="sankey">Sankey</div>
+        <div class="pitem" data-add="statetl">Zustands-Timeline</div>
+        <div class="pitem" data-add="table">Tabelle</div>
+        <div class="pitem" data-add="powerflow">Power-Flow</div>
+        <div class="pgh">Wetter &amp; Zeit</div>
+        <div class="pitem" data-add="weather">Wetter</div>
+        <div class="pitem" data-add="weatherpro">Wetter+</div>
+        <div class="pitem" data-add="windrose">Windrose</div>
+        <div class="pitem" data-add="raincard">Regenmenge</div>
+        <div class="pitem" data-add="sun">Sonne</div>
+        <div class="pitem" data-add="suncard">Sonnenbogen</div>
+        <div class="pitem" data-add="clock">Uhr</div>
+        <div class="pitem" data-add="timer">Timer</div>
+        <div class="pitem" data-add="calendar">Kalender</div>
+        <div class="pgh">Medien</div>
+        <div class="pitem" data-add="camera">Kamera</div>
+        <div class="pitem" data-add="campro">Kamera+</div>
+        <div class="pitem" data-add="html">HTML</div>
+        <div class="pitem" data-add="image">Bild</div>
+        <div class="pitem" data-add="statusimage">Status-Bild</div>
+        <div class="pitem" data-add="select">Auswahl</div>
+        <div class="pitem" data-add="shape">Form</div>
+        <div class="pitem" data-add="dial">Dial</div>
+        <div class="pitem" data-add="webview">WebView</div>
+        <div class="pitem" data-add="weekplan">Wochenplan</div>
+        <div class="pitem" data-add="eventctl">Ereignis</div>
+        <div class="pitem" data-add="objinfo">Objekt-Info</div>
+        <div class="pitem" data-add="skinswitch">Skin-Wechsler</div>
+        <div class="pgh">Bausteine (eigene)</div>
+        <div id="blocks" style="grid-column:1/-1;display:flex;flex-direction:column;gap:5px"></div>
+      </div>
+      <div class="hint">Element in die Canvas <b>ziehen</b> (oder anklicken). Danach frei platzieren &amp; per Ecke skalieren. Eine Variable im Reiter „Variablen" anklicken bindet sie an eine neue Wert-Kachel.</div>
+    </div>
+    <div class="pane" data-pane="colors">
+      <div class="hint">Klick = Textfarbe auf die Auswahl · Shift+Klick = Hintergrund. Erst Widgets auswählen.</div>
+      <div id="swatches" class="swatches"></div>
+      <div style="display:flex;gap:6px;margin-top:10px;align-items:center"><input id="newColor" type="color" value="#00cdab"><button class="btn" id="addColor" style="flex:1"><svg class="i"><use href="#ic-plus"/></svg>zur Palette</button></div>
+    </div>
+    <div class="pane" data-pane="icons">
+      <input class="search" id="iconSearch" placeholder="Icon suchen … (Name/Kategorie)">
+      <div class="hint">Klick weist das Icon der Auswahl zu (Wert/Schalter/Balken/Icon). Ohne Auswahl → neues Icon-Widget.</div>
+      <div id="iconLib"></div>
+    </div>
+    <div class="pane" data-pane="skins">
+      <div class="hint">Skin wählen, Dunkel/Hell umschalten, Farben &amp; Schriften anpassen. Eigene Skins per „Duplizieren". Gilt für alle Ansichten; wird mit „Speichern" gesichert.</div>
+      <div id="skinpanel"></div>
+    </div>
+    <div class="pane" data-pane="settings">
+      <div class="hint">Allgemeine Builder-Einstellungen. Gelten für diese Site; werden mit „Speichern" gesichert.</div>
+      <div id="setpanel"></div>
+    </div>
+    <div class="pane" data-pane="props">
+      <div id="props"><div class="hint">Kein Element ausgewählt. Auf der Canvas ein Element anklicken.</div></div>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+<div id="selbadge"></div>
+<div id="runnav"><button id="runmenu" title="Ansicht wechseln"><svg class="i"><use href="#ic-menu"/></svg></button><div id="runlist"></div></div>
+<div id="overlay"><div id="ovbackdrop"></div><div id="ovcard"><button id="ovclose" title="Schließen">&times;</button><div id="ovclip"><div id="ovcanvas"></div></div></div></div>
+
+<script src="?api=asset&name=echarts"></script>
+<script>
+{{APP}}
+</script>
