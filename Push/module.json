@@ -1,0 +1,18 @@
+{
+    "id": "{7B3E9F21-4C8A-4D6E-B1F5-9A0C2D3E4F60}",
+    "name": "LiveViewBuilder Push",
+    "type": 2,
+    "vendor": "",
+    "aliases": [
+        "LiveView Push",
+        "LiveViewBuilder WebSocket Push"
+    ],
+    "parentRequirements": [
+        "{714B71FB-3D11-41D1-AFAC-E06F1E983E09}"
+    ],
+    "childRequirements": [],
+    "implemented": [
+        "{8F1F6C32-B1AD-4B7F-8DFB-1244A96FCACF}"
+    ],
+    "prefix": "LVBP"
+}
