@@ -14,7 +14,7 @@
           :(w.type!=='text'&&w.type!=='calendar'&&w.type!=='clock'&&!(w.type==='html'&&w.htmlSrc==='custom')?row('Variable','<input id="pVar" value="'+(w.varId||'')+'" placeholder="ID"> <button class="btn" id="pPick" style="padding:6px 8px">wählen</button>'):''))
       +((w.type==='kpi'||w.type==='delta')?('<div class="pgh">Vergleich (Zeitversatz)</div>'
         +row('Aktiv','<input type="checkbox" id="pCmpOn"'+(w.cmpOn?' checked':'')+'>')
-        +(w.cmpOn?(row('Versatz',offSel('pCmpOff',w.cmpOff))+row('Anzeige','<select id="pCmpMode"><option value="pct"'+((w.cmpMode||'pct')==='pct'?' selected':'')+'>Prozent</option><option value="abs"'+(w.cmpMode==='abs'?' selected':'')+'>Absolut</option></select>')+row('Anstieg = schlecht','<input type="checkbox" id="pCmpInv"'+(w.cmpInvert?' checked':'')+'>')):'')
+        +(w.cmpOn?(row('Versatz',offSel('pCmpOff',w.cmpOff,true))+row('Anzeige','<select id="pCmpMode"><option value="pct"'+((w.cmpMode||'pct')==='pct'?' selected':'')+'>Prozent</option><option value="abs"'+(w.cmpMode==='abs'?' selected':'')+'>Absolut</option></select>')+row('Anstieg = schlecht','<input type="checkbox" id="pCmpInv"'+(w.cmpInvert?' checked':'')+'>')):'')
       ):'')
       +(FMT_TYPES.indexOf(w.type)>=0?row('Format','<select id="pFmt">'+fmtOpts(w.fmt)+'</select>'):'')
       +((w.type==='chart'||w.type==='spark')?row('Stunden','<input id="pHours" type="number" value="'+(w.hours||24)+'">'):'')

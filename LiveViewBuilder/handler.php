@@ -391,9 +391,10 @@ if ($api === 'history') {
 // ---- Zeitversatz-Vergleich, automatisch nach Logging-Typ (Standard/Zähler) ----
 if ($api === 'cmp') {
     header('Content-Type: application/json; charset=utf-8');
-    $id  = (int) ($_GET['id'] ?? 0);
-    $off = (int) ($_GET['off'] ?? 0);
-    if (!IPS_VariableExists($id) || $off <= 0) {
+    $id   = (int) ($_GET['id'] ?? 0);
+    $off  = (int) ($_GET['off'] ?? 0);
+    $last = (int) ($_GET['last'] ?? 0);
+    if (!IPS_VariableExists($id) || ($last !== 1 && $off <= 0)) {
         echo json_encode(['cur' => null, 'past' => null, 'type' => 0]);
         return;
     }
@@ -401,6 +402,13 @@ if ($api === 'cmp') {
     $ac  = $acs[0] ?? 0;
     if (!$ac) {
         echo json_encode(['cur' => null, 'past' => null, 'type' => 0]);
+        return;
+    }
+    if ($last === 1) { // Vergleich mit dem vorherigen geloggten Wert (die 2 jüngsten Einträge)
+        $r    = @AC_GetLoggedValues($ac, $id, 0, time(), 2);
+        $cur  = (is_array($r) && count($r) >= 1) ? $r[0]['Value'] : null;
+        $past = (is_array($r) && count($r) >= 2) ? $r[1]['Value'] : null;
+        echo json_encode(['type' => 0, 'cur' => $cur, 'past' => $past]);
         return;
     }
     $type  = function_exists('AC_GetAggregationType') ? (int) @AC_GetAggregationType($ac, $id) : 0;
