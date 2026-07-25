@@ -1,5 +1,6 @@
   function render(){
     disposeCharts();
+    _tickKids=[];   // verschachtelte Ticker-Widgets werden während des Render-Laufs neu gesammelt
     $$('.w',canvas).forEach(function(e){e.remove();});
     state.widgets.forEach(function(w){
       var d=document.createElement('div');d.className='w t-'+w.type+(sel[w.id]?' sel':'')+(w.anim?' anim-'+w.anim:'');d.dataset.id=w.id;
@@ -383,21 +384,34 @@
     });
   }
   setInterval(tick,1000);
+  // Relative Pfade (z. B. IPS-HTML mit ./preview/... ) gegen eine Basis auflösen -> absolute URLs, damit Bilder im Widget laden.
+  function _htmlAbs(u,base){if(u==null)return u;u=(''+u).trim();if(u===''||/^(https?:|data:|blob:|mailto:|tel:|javascript:|#)/i.test(u)||u.slice(0,2)==='//'||u.charAt(0)==='/')return u;try{return new URL(u,base).href;}catch(e){return u;}}
+  function _htmlBase(w,pd){var b=(w&&w.htmlBase||'').trim();if(b){if(!/^https?:/i.test(b))b=location.origin+(b.charAt(0)==='/'?'':'/')+b;return b.replace(/\/?$/,'/');}try{var bt=pd&&pd.querySelector('base[href]');if(bt)return new URL(bt.getAttribute('href'),location.origin+'/').href;}catch(e){}return location.origin+'/';} // Standard = Server-Wurzel (dort liegen /preview, /tile ...)
+  function _htmlRewriteUrls(root,base){try{
+    root.querySelectorAll('[src],[href],[poster],[data-src]').forEach(function(e){['src','href','poster','data-src'].forEach(function(a){if(e.hasAttribute(a)){var v=e.getAttribute(a),n=_htmlAbs(v,base);if(n!==v)e.setAttribute(a,n);}});});
+    root.querySelectorAll('[srcset]').forEach(function(e){e.setAttribute('srcset',e.getAttribute('srcset').split(',').map(function(p){var x=p.trim().split(/\s+/);if(x[0])x[0]=_htmlAbs(x[0],base);return x.join(' ');}).join(', '));});
+    var urlRe=/url\(\s*(['"]?)([^'")]+)\1\s*\)/gi,rep=function(m,q,u){return 'url('+q+_htmlAbs(u,base)+q+')';};
+    root.querySelectorAll('[style]').forEach(function(e){var st=e.getAttribute('style'),n=st.replace(urlRe,rep);if(n!==st)e.setAttribute('style',n);});
+    root.querySelectorAll('style').forEach(function(s){var t=s.textContent,n=t.replace(urlRe,rep);if(n!==t)s.textContent=n;});
+  }catch(e){}}
   function setHtmlContent(w,t){var host=$('.w[data-id="'+w.id+'"] [data-role=htmlhost]',canvas);if(!host)return;t=(t&&t.length)?t:'';
     var mode=w.htmlMode||'auto';if(mode==='auto')mode=/<script[\s>]/i.test(t)?'iframe':'shadow'; // JS -> iframe, sonst Shadow DOM
     host.innerHTML=''; // frischer Container (erlaubt Moduswechsel; Shadow lässt sich nicht wieder abnehmen)
     if(mode==='iframe'){
+      var base=_htmlBase(w,null);
       var f=document.createElement('iframe');
       f.setAttribute('sandbox','allow-same-origin allow-scripts allow-popups');
       f.style.cssText='width:100%;height:100%;border:0;background:transparent';
       f.onload=function(){try{var d=f.contentDocument;if(d&&d.body){d.documentElement.style.background='transparent';d.body.style.background='transparent';d.body.style.margin='0';}}catch(e){}applyHtmlScale(w);};
       host.appendChild(f);
-      f.srcdoc='<!doctype html><meta charset="utf-8"><style>html,body{margin:0;background:transparent!important}</style>'+t; // Scripts laufen; Transparenz best-effort
+      f.srcdoc='<!doctype html><meta charset="utf-8"><base href="'+base+'"><style>html,body{margin:0;background:transparent!important}</style>'+t; // <base> löst relative Pfade auf
       return;
     }
     // Voll-Dokumente (<html>/<head>/<body>) werden in Shadow-DOM-innerHTML verworfen -> per DOMParser Body+Head-Styles extrahieren
-    var headHtml='',bodyHtml=t;
-    try{var pd=new DOMParser().parseFromString(t,'text/html');if(pd){if(pd.head)headHtml=pd.head.innerHTML;if(pd.body&&pd.body.innerHTML.trim()!=='')bodyHtml=pd.body.innerHTML;}}catch(e){}
+    var headHtml='',bodyHtml=t,pd=null;
+    try{pd=new DOMParser().parseFromString(t,'text/html');}catch(e){}
+    var base=_htmlBase(w,pd);
+    if(pd){_htmlRewriteUrls(pd,base);if(pd.head)headHtml=pd.head.innerHTML;if(pd.body&&pd.body.innerHTML.trim()!=='')bodyHtml=pd.body.innerHTML;} // relative -> absolute (Shadow DOM ignoriert <base>, daher Rewrite)
     var c=document.createElement('div');c.setAttribute('data-role','shchild');c.style.cssText='width:100%;height:100%';
     host.appendChild(c);
     var sh=c.attachShadow({mode:'open'}); // Shadow DOM: transparent + style-isoliert (iOS-Weiß-Bug entfällt)
@@ -447,7 +461,7 @@
     else{sel={};sel[id]=true;selId=id;}
     markSel();try{renderProps();}catch(_e){console.error('renderProps',_e);}if(id!=null&&!additive)showTab('props'); // renderProps darf Auswahl/Drag nie blockieren
   }
-  function widget(id){var w=state.widgets.filter(function(x){return x.id===id;})[0];if(w)return w;if(_compKids&&_compKids.length){var ck=_compKids.filter(function(x){return x.id===id;})[0];if(ck)return ck;}if(_popup&&_popup.widgets)return _popup.widgets.filter(function(x){return x.id===id;})[0];return w;}
+  function widget(id){var w=state.widgets.filter(function(x){return x.id===id;})[0];if(w)return w;if(_compKids&&_compKids.length){var ck=_compKids.filter(function(x){return x.id===id;})[0];if(ck)return ck;}if(_tickKids&&_tickKids.length){var tk=_tickKids.filter(function(x){return x.id===id;})[0];if(tk)return tk;}if(_popup&&_popup.widgets)return _popup.widgets.filter(function(x){return x.id===id;})[0];return w;}
   // A1: Overlay/Popup — eine Ansicht als schwebendes Fenster über der aktuellen Ansicht
   var _popup=null;
   var _navStack=[]; // B3: Seiten-Verlauf für Zurück-Navigation
@@ -482,6 +496,7 @@
   function closePopup(){var ov=$('#overlay');if(ov)ov.classList.remove('open');var oc=$('#ovcanvas');if(oc)oc.innerHTML='';_popup=null;invalidateVidx();}
   // M3: Custom Controls — eine Ansicht als parametrierbare, wiederverwendbare Komponente (Master), Instanzen remappen IDs (Alias)
   var _compKids=[];
+  var _tickKids=[]; // Ticker-Laufband: darin laufende Widget-Instanzen (Live wie _compKids)
   var _regions={}; // B2: Slot-Name -> aktuell angezeigte Ansicht (Laufzeit)
   function setRegion(slot,view){if(!slot)return;_regions[slot]=view;render();}
   function expandComponent(w){

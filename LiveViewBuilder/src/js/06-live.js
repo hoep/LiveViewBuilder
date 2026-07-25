@@ -28,6 +28,7 @@
     _vidx={};
     state.widgets.forEach(function(w){_vidxOne(w,canvas);});
     if(_compKids&&_compKids.length)_compKids.forEach(function(w){_vidxOne(w,canvas);});
+    if(_tickKids&&_tickKids.length)_tickKids.forEach(function(w){_vidxOne(w,canvas);});
     if(_popup&&_popup.widgets){var _ov=$('#ovcanvas');if(_ov)_popup.widgets.forEach(function(w){_vidxOne(w,_ov);});}
   }
   function invalidateVidx(){_vidx=null;} // bei render()/Popup-Wechsel aufrufen — nächster poll/apply baut neu
@@ -67,12 +68,13 @@
 
   // ===== WebSocket-Push (deckt MAP-Variablen sofort; Poll bleibt für alle Bindungen) =====
   var WS_PORT="__LV_WSPORT__",_ws=null,_wsOK=false,_wsTries=0;
+  function refreshMedia(mid){var u='?api=media&id='+mid+'&t='+Date.now();$$('img[data-media="'+mid+'"]',canvas).forEach(function(e){e.src=u;});var ov=$('#ovcanvas');if(ov)$$('img[data-media="'+mid+'"]',ov).forEach(function(e){e.src=u;});} // Kamera bei MM_UPDATE-Push neu laden
   function wsConnect(){
     if(!WS_PORT)return;                       // leer -> reines Polling
     if(_wsTries>=5)return;                    // Server nicht verfügbar/lehnt ab -> aufgeben (kein Reconnect-Sturm/Log-Flut)
     try{_ws=new WebSocket('ws://'+location.hostname+':'+WS_PORT);}catch(e){return;}
     _ws.onopen=function(){try{_ws.send('hello');}catch(e){}};
-    _ws.onmessage=function(ev){_wsOK=true;_wsTries=0;startPV(5000);try{var j=JSON.parse(ev.data);if(j&&j.values){for(var k in j.values){var d=j.values[k];if(d&&d.id)applyVal(d.id,d);}}}catch(e){}}; // Zähler erst bei gültiger Nachricht zurücksetzen (Beweis, dass der Server uns akzeptiert)
+    _ws.onmessage=function(ev){_wsOK=true;_wsTries=0;startPV(5000);try{var j=JSON.parse(ev.data);if(j&&j.values){for(var k in j.values){var d=j.values[k];if(d&&d.id)applyVal(d.id,d);}}if(j&&j.media&&j.media.length)j.media.forEach(function(mid){refreshMedia(mid);});}catch(e){}}; // Werte + Kamera-Medien-Push
     _ws.onclose=function(){_wsOK=false;startPV(1200);_wsTries++;if(_wsTries<5)setTimeout(wsConnect,Math.min(60000,8000*_wsTries));}; // Backoff, max. 5 Versuche
     _ws.onerror=function(){try{_ws.close();}catch(e){}};
   }

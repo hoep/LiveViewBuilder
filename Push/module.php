@@ -37,15 +37,18 @@ class LiveViewBuilderPush extends IPSModule
 
     public function MessageSink($TimeStamp, $SenderID, $Message, $Data)
     {
-        if ($Message !== VM_UPDATE) {
+        if ($Message === VM_UPDATE) {
+            $id = (int) $SenderID;
+            $this->broadcast(json_encode([
+                'ts'     => time(),
+                'values' => [(string) $id => ['v' => GetValue($id), 'f' => @GetValueFormatted($id), 'id' => $id]],
+            ]));
             return;
         }
-        $id      = (int) $SenderID;
-        $payload = json_encode([
-            'ts'     => time(),
-            'values' => [(string) $id => ['v' => GetValue($id), 'f' => @GetValueFormatted($id), 'id' => $id]],
-        ]);
-        $this->broadcast($payload);
+        if (defined('MM_UPDATE') && $Message === MM_UPDATE) {   // Kamera-/Medien-Schnappschuss aktualisiert -> Client neu laden lassen
+            $this->broadcast(json_encode(['ts' => time(), 'media' => [(int) $SenderID]]));
+            return;
+        }
     }
 
     // Registrierungen aus layouts.json neu ziehen (Timer + manuell: LVBP_Sync(<id>)).
@@ -72,28 +75,79 @@ class LiveViewBuilderPush extends IPSModule
 
     private function syncRegistrations(): void
     {
-        $want = [];
+        $mmu = defined('MM_UPDATE') ? MM_UPDATE : -1;
+
+        $wantVar = [];
         foreach ($this->layoutIDs() as $id) {
-            $want[$id] = true;
+            $wantVar[$id] = true;
         }
-        $have = [];
+        $wantMedia = [];
+        foreach ($this->mediaIDs() as $id) {
+            $wantMedia[$id] = true;
+        }
+
+        $haveVar = [];
+        $haveMedia = [];
         foreach ($this->GetMessageList() as $senderID => $messageIDs) {
             foreach ($messageIDs as $messageID) {
                 if ($messageID === VM_UPDATE) {
-                    $have[(int) $senderID] = true;
+                    $haveVar[(int) $senderID] = true;
+                }
+                if ($mmu !== -1 && $messageID === $mmu) {
+                    $haveMedia[(int) $senderID] = true;
                 }
             }
         }
-        foreach ($want as $id => $_) {
-            if (!isset($have[$id]) && IPS_VariableExists($id)) {
+
+        // Variablen (Werte)
+        foreach ($wantVar as $id => $_) {
+            if (!isset($haveVar[$id]) && IPS_VariableExists($id)) {
                 $this->RegisterMessage($id, VM_UPDATE);
             }
         }
-        foreach ($have as $id => $_) {
-            if (!isset($want[$id])) {
+        foreach ($haveVar as $id => $_) {
+            if (!isset($wantVar[$id])) {
                 $this->UnregisterMessage($id, VM_UPDATE);
             }
         }
+
+        // Medien (Kamera-Schnappschüsse) -> Push bei MM_UPDATE
+        if ($mmu !== -1) {
+            foreach ($wantMedia as $id => $_) {
+                if (!isset($haveMedia[$id]) && IPS_MediaExists($id)) {
+                    $this->RegisterMessage($id, $mmu);
+                }
+            }
+            foreach ($haveMedia as $id => $_) {
+                if (!isset($wantMedia[$id])) {
+                    $this->UnregisterMessage($id, $mmu);
+                }
+            }
+        }
+    }
+
+    // Kamera-Medien-IDs (camera/campro) aus layouts.json
+    private function mediaIDs(): array
+    {
+        $bp = trim($this->ReadPropertyString('BasePath'));
+        if ($bp === '') {
+            return [];
+        }
+        $raw = @file_get_contents(rtrim($bp, '/') . '/layouts.json');
+        $j   = json_decode((string) $raw, true);
+        if (!is_array($j)) {
+            return [];
+        }
+        $ids = [];
+        foreach (($j['views'] ?? []) as $vw) {
+            foreach (($vw['widgets'] ?? []) as $w) {
+                $t = $w['type'] ?? '';
+                if (($t === 'camera' || $t === 'campro') && !empty($w['mediaId'])) {
+                    $ids[(int) $w['mediaId']] = true;
+                }
+            }
+        }
+        return array_keys($ids);
     }
 
     // Alle im Builder gebundenen Variablen-IDs aus layouts.json (über alle Ansichten).
