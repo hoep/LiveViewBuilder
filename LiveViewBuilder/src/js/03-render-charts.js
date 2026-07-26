@@ -2,10 +2,11 @@
     disposeCharts();
     _tickKids=[];   // verschachtelte Ticker-Widgets werden während des Render-Laufs neu gesammelt
     $$('.w',canvas).forEach(function(e){e.remove();});
+    var _refSet={};state.widgets.forEach(function(t){if(t.type==='ticker'&&t.items)t.items.forEach(function(m){if(m.ref)_refSet[m.ref]=1;});}); // von einer Laufzeile referenzierte Namen -> auf der Seite ausblenden
     state.widgets.forEach(function(w){
       var d=document.createElement('div');d.className='w t-'+w.type+(sel[w.id]?' sel':'')+(w.anim?' anim-'+w.anim:'');d.dataset.id=w.id;
       d.style.left=w.x+'px';d.style.top=w.y+'px';d.style.width=w.w+'px';d.style.height=w.h+'px';
-      if(w.hidden){if(mode==='edit')d.classList.add('run-hidden');else d.style.display='none';} // zur Laufzeit ausgeblendet (im Edit markiert sichtbar)
+      if(w.hidden||(w.name&&_refSet[w.name])){if(mode==='edit')d.classList.add('run-hidden');else d.style.display='none';} // ausgeblendet: manuell ODER weil in Laufzeile referenziert (im Edit markiert sichtbar)
       var _inner;try{_inner=widgetInner(w);}catch(_e){_inner='<div style="padding:6px;font-size:11px;color:var(--crit)">⚠ '+esc(w.type||'?')+'</div>';} // ein defektes Widget darf das Rendern nicht abbrechen
       d.innerHTML='<div class="winner">'+_inner+'</div><div class="rz" data-role="rz"></div>';
       if(w.type==='value'&&w.valfs){var v=$('.v',d);if(v)v.style.fontSize=w.valfs+'px';}
