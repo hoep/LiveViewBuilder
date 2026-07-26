@@ -478,6 +478,8 @@
   .hscarc{fill:none;stroke:var(--line);stroke-width:1.5;stroke-dasharray:3 4}
   .hschoriz{stroke:var(--line);stroke-width:1}
   .hscsun{fill:var(--warm);filter:drop-shadow(0 0 5px color-mix(in oklab,var(--warm) 70%,transparent))}
+  .hscarcn{opacity:.55;stroke-dasharray:2 5} /* Nachtkurve etwas dezenter */
+  .hscmoon path{fill:color-mix(in oklab,var(--info) 55%,var(--text));filter:drop-shadow(0 0 5px color-mix(in oklab,var(--info) 60%,transparent))}
   .hscrow{display:flex;align-items:center;justify-content:space-between;font-size:11px;font-family:var(--fm)}
   .hsct{display:flex;align-items:center;gap:5px}
   .hsct .scic{width:15px;height:15px;fill:none;stroke:var(--warm);stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
