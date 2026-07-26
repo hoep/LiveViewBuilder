@@ -11,7 +11,17 @@
     if($('#pClosePop'))$('#pClosePop').onchange=function(){w.closePopup=this.checked||undefined;commit();};
     if($('#pScriptId'))$('#pScriptId').oninput=function(){w.scriptId=parseInt(this.value)||undefined;commit();};
   }
+  var _rpBusy=false;
   function renderProps(){
+    if(_rpBusy)return;            // Re-Entrancy vermeiden: ein change/blur-Handler darf renderProps nicht mitten im innerHTML-Umbau erneut anstoßen
+    _rpBusy=true;
+    try{
+      var p0=$('#props'),ae=document.activeElement;
+      if(ae&&ae.blur&&p0&&p0.contains(ae))ae.blur();  // Blur JETZT auslösen (nicht mitten im innerHTML), sonst "node no longer a child"
+      _renderProps();
+    }finally{_rpBusy=false;}
+  }
+  function _renderProps(){
     var w=widget(selId),p=$('#props');
     if(!w){p.innerHTML='<div class="hint">Kein Element ausgewählt.</div>';return;}
     try{

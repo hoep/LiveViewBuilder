@@ -4,9 +4,12 @@
       try{
         var d=document.getElementById('__errbox');
         if(!d){d=document.createElement('div');d.id='__errbox';
-          d.style.cssText='position:fixed;left:0;right:0;top:0;z-index:2147483647;background:#b00020;color:#fff;font:12px/1.4 monospace;padding:10px 14px;white-space:pre-wrap;max-height:50vh;overflow:auto;box-shadow:0 2px 12px rgba(0,0,0,.5)';
+          d.style.cssText='position:fixed;left:0;right:0;bottom:0;z-index:2147483647;background:#b00020;color:#fff;font:12px/1.4 monospace;padding:22px 14px 10px;white-space:pre-wrap;max-height:40vh;overflow:auto;box-shadow:0 -2px 12px rgba(0,0,0,.5);cursor:pointer';
+          d.title='Klicken zum Schließen';
+          var x=document.createElement('div');x.textContent='× schließen';x.style.cssText='position:absolute;top:4px;right:12px;font-weight:bold;opacity:.85';d.appendChild(x);
+          d.addEventListener('click',function(){d.remove();});
           (document.body||document.documentElement).appendChild(d);}
-        d.textContent=(d.textContent?d.textContent+'\n\n':'')+msg;
+        var line=document.createElement('div');line.textContent=msg;d.appendChild(line);
       }catch(e){}
     }
     window.__diag=box;
