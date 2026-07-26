@@ -84,9 +84,13 @@
     var v1=$('[data-role=val]',el);if(v1&&sr)v1.textContent=_hhmmTxt(sr.f||sr.v);var v2=$('[data-role=val2]',el);if(v2&&ss)v2.textContent=_hhmmTxt(ss.f||ss.v);
     if(a==null||b==null||b<=a)return;
     var now=new Date(),nm=now.getHours()*60+now.getMinutes(),f=Math.max(0,Math.min(1,(nm-a)/(b-a)));
-    var mt=1-f,x=mt*mt*12+2*mt*f*100+f*f*188,y=mt*mt*82+2*mt*f*(-6)+f*f*82;
-    sun.setAttribute('cx',x.toFixed(1));sun.setAttribute('cy',y.toFixed(1));sun.style.opacity=(nm<a||nm>b)?0.25:1;
-    if(w.showTime){var nw=$('[data-role=now]',el);if(nw){nw.textContent=('0'+now.getHours()).slice(-2)+':'+('0'+now.getMinutes()).slice(-2);nw.style.left=(x/200*100).toFixed(1)+'%';nw.style.top=(y/96*100).toFixed(1)+'%';}} // Uhrzeit zentriert über der Sonne
+    var night=!!w.showNight,HY=night?64:82,cy=night?-4:-6,vbH=night?128:96,isDay=(nm>=a&&nm<=b);
+    var mt=1-f,x=mt*mt*12+2*mt*f*100+f*f*188,y=mt*mt*HY+2*mt*f*cy+f*f*HY;
+    sun.setAttribute('cx',x.toFixed(1));sun.setAttribute('cy',y.toFixed(1));sun.style.opacity=isDay?1:(night?0:0.25);
+    // Mond entlang der Nachtkurve (Untergang -> Aufgang), nur im Nachtmodus
+    var mx=x,my=y,moon=$('[data-role=moon]',el);
+    if(night&&moon){var nlen=(a+1440)-b,gn=(nm>=b)?(nm-b)/nlen:((nm<a)?(nm+1440-b)/nlen:0);gn=Math.max(0,Math.min(1,gn));var gt=1-gn;mx=gt*gt*188+2*gt*gn*100+gn*gn*12;my=gt*gt*HY+2*gt*gn*132+gn*gn*HY;moon.setAttribute('transform','translate('+mx.toFixed(1)+','+my.toFixed(1)+')');moon.style.opacity=isDay?0:1;}
+    if(w.showTime){var nw=$('[data-role=now]',el);if(nw){var px=isDay?x:mx,py=isDay?y:my;nw.textContent=('0'+now.getHours()).slice(-2)+':'+('0'+now.getMinutes()).slice(-2);nw.style.left=(px/200*100).toFixed(1)+'%';nw.style.top=(py/vbH*100).toFixed(1)+'%';}} // Uhrzeit über Sonne/Mond
     var len=$('[data-role=len]',el);if(len){var dl=b-a;len.textContent=Math.floor(dl/60)+' h '+('0'+(dl%60)).slice(-2)+' min';}
   }
   function disposeCharts(){for(var k in _ec){try{_ec[k].dispose();}catch(e){}}_ec={};}
