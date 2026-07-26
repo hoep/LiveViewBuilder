@@ -449,7 +449,8 @@
   .hmsge{font-size:12px;color:var(--muted);padding:6px 2px}
   .hmsgi{display:grid;grid-template-columns:auto auto 1fr;gap:7px;align-items:baseline;font-size:11.5px;padding:3px 6px;border-radius:6px;background:var(--surface-2)}
   .hmsgi.err{border-left:3px solid var(--crit)}.hmsgi.warn{border-left:3px solid var(--warn)}
-  .hmsgk{font-family:var(--fm);font-size:9.5px;font-weight:700}.hmsgi.err .hmsgk{color:var(--crit)}.hmsgi.warn .hmsgk{color:var(--warn)}
+  .hmsgk{font-family:var(--fm);font-size:9px;font-weight:700;letter-spacing:.4px;padding:1px 6px;border-radius:999px;color:#fff;align-self:center}
+  .hmsgi.err .hmsgk{background:var(--crit)}.hmsgi.warn .hmsgk{background:var(--warn)}
   .hmsgtime{font-family:var(--fm);font-size:10px;color:var(--faint)}
   .hmsgm{color:var(--text);white-space:normal;word-break:break-word}
   .hscarcwrap{position:relative;flex:1;min-height:0;display:flex}
