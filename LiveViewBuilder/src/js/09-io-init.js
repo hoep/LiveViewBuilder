@@ -264,7 +264,7 @@
     if(mob&&store.views[v]&&store.views[v].page&&store.views[v].page.mobileView&&store.views[store.views[v].page.mobileView])v=store.views[v].page.mobileView;
     if(v&&store.views[v])switchView(v);
     document.body.classList.add('run');applyZoom();mode='preview';stage.classList.remove('edit');stage.classList.add('preview');
-    canvas.classList.remove('grid');selClear();markSel();buildRunNav();fitCanvas();
+    canvas.classList.remove('grid');selClear();markSel();buildRunNav();document.body.classList.toggle('nohamb',!!bcfg().hideRunNav);fitCanvas();
     document.documentElement.classList.remove('run-boot'); // fertig positioniert -> Canvas einblenden (Flash weg)
     initKiosk();
   }
