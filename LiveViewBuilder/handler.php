@@ -354,6 +354,8 @@ if ($api === 'layout') {
             return;
         }
         file_put_contents($lf, $data);
+        $push = IPS_GetInstanceListByModuleID('{7B3E9F21-4C8A-4D6E-B1F5-9A0C2D3E4F60}')[0] ?? 0; // Registrierungen sofort neu ziehen (neu gebundene Variablen sofort per WS pushen)
+        if ($push && function_exists('LVBP_Sync')) { @LVBP_Sync($push); }
         echo json_encode(['ok' => true, 'bytes' => strlen($data)]);
         return;
     }

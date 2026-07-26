@@ -77,7 +77,7 @@
     if(_wsTries>=5)return;                    // Server nicht verfügbar/lehnt ab -> aufgeben (kein Reconnect-Sturm/Log-Flut)
     try{_ws=new WebSocket('ws://'+location.hostname+':'+WS_PORT);}catch(e){return;}
     _ws.onopen=function(){try{_ws.send('hello');}catch(e){}};
-    _ws.onmessage=function(ev){_wsOK=true;_wsTries=0;startPV(5000);try{var j=JSON.parse(ev.data);if(j&&j.reload&&RUN){location.reload();return;}if(j&&j.values){for(var k in j.values){var d=j.values[k];if(d&&d.id)applyVal(d.id,d);}}if(j&&j.media&&j.media.length)j.media.forEach(function(mid){refreshMedia(mid);});}catch(e){}}; // Werte + Kamera-Medien-Push
+    _ws.onmessage=function(ev){_wsOK=true;_wsTries=0;if(bcfg().noSafetyPoll)stopPV();else startPV(5000);try{var j=JSON.parse(ev.data);if(j&&j.reload&&RUN){location.reload();return;}if(j&&j.values){for(var k in j.values){var d=j.values[k];if(d&&d.id)applyVal(d.id,d);}}if(j&&j.media&&j.media.length)j.media.forEach(function(mid){refreshMedia(mid);});}catch(e){}}; // Werte + Kamera-Medien-Push
     _ws.onclose=function(){_wsOK=false;startPV(1200);_wsTries++;if(_wsTries<5)setTimeout(wsConnect,Math.min(60000,8000*_wsTries));}; // Backoff, max. 5 Versuche
     _ws.onerror=function(){try{_ws.close();}catch(e){}};
   }
