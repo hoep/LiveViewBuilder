@@ -480,6 +480,11 @@
   .hscsun{fill:var(--warm);filter:drop-shadow(0 0 5px color-mix(in oklab,var(--warm) 70%,transparent))}
   .hscarcn{opacity:.55;stroke-dasharray:2 5} /* Nachtkurve etwas dezenter */
   .hscmoon path{fill:color-mix(in oklab,var(--info) 55%,var(--text));filter:drop-shadow(0 0 5px color-mix(in oklab,var(--info) 60%,transparent))}
+  .hscfill{fill:var(--info)}                                   /* Tagesfläche bis zur Sonne */
+  .hscfilln{fill:color-mix(in oklab,var(--info) 28%,#000)}     /* dunkle Nachtfläche bis zum Mond */
+  .hscsun{transition:opacity .8s linear,cx .9s linear,cy .9s linear}
+  .hscmoon{transition:opacity .8s linear,transform .9s linear}
+  .hscfill,.hscfilln{transition:opacity .8s linear}
   .hscrow{display:flex;align-items:center;justify-content:space-between;font-size:11px;font-family:var(--fm)}
   .hsct{display:flex;align-items:center;gap:5px}
   .hsct .scic{width:15px;height:15px;fill:none;stroke:var(--warm);stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
