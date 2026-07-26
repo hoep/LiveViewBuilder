@@ -119,7 +119,9 @@
   .hsic{width:26px;height:26px;fill:none;stroke:var(--warm);stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;overflow:visible}
   .hstime{font-family:var(--fm);font-size:15px;font-weight:600}.hslbl{font-size:10px;color:var(--muted)}
   .hwf{height:100%;display:flex;flex-direction:column;gap:8px;padding:10px 12px;overflow:hidden}
-  .w.run-hidden{opacity:.4}.w.run-hidden .winner{outline:1px dashed var(--muted);outline-offset:-1px}
+  .w.ref-hidden{display:none} /* in Laufzeile referenziert: auf der Seite immer aus (Edit + Run) */
+  .w.run-hidden{opacity:.4}.w.run-hidden .winner{outline:1px dashed var(--muted);outline-offset:-1px} /* manuell versteckt: im Edit gestrichelt */
+  body.run .w.run-hidden{display:none} /* im Run komplett aus (robust, auch ohne Re-Render) */
   .hwf-cur{justify-content:center}
   .hwbig{display:flex;align-items:center;gap:16px}
   .hwbigico{width:60px;height:60px;flex:none;color:var(--warm)}.hwbigico svg{width:100%;height:100%}

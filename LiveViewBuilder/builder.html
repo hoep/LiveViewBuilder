@@ -128,7 +128,9 @@
   .hsic{width:26px;height:26px;fill:none;stroke:var(--warm);stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;overflow:visible}
   .hstime{font-family:var(--fm);font-size:15px;font-weight:600}.hslbl{font-size:10px;color:var(--muted)}
   .hwf{height:100%;display:flex;flex-direction:column;gap:8px;padding:10px 12px;overflow:hidden}
-  .w.run-hidden{opacity:.4}.w.run-hidden .winner{outline:1px dashed var(--muted);outline-offset:-1px}
+  .w.ref-hidden{display:none} /* in Laufzeile referenziert: auf der Seite immer aus (Edit + Run) */
+  .w.run-hidden{opacity:.4}.w.run-hidden .winner{outline:1px dashed var(--muted);outline-offset:-1px} /* manuell versteckt: im Edit gestrichelt */
+  body.run .w.run-hidden{display:none} /* im Run komplett aus (robust, auch ohne Re-Render) */
   .hwf-cur{justify-content:center}
   .hwbig{display:flex;align-items:center;gap:16px}
   .hwbigico{width:60px;height:60px;flex:none;color:var(--warm)}.hwbigico svg{width:100%;height:100%}
@@ -1190,7 +1192,8 @@
     state.widgets.forEach(function(w){
       var d=document.createElement('div');d.className='w t-'+w.type+(sel[w.id]?' sel':'')+(w.anim?' anim-'+w.anim:'');d.dataset.id=w.id;
       d.style.left=w.x+'px';d.style.top=w.y+'px';d.style.width=w.w+'px';d.style.height=w.h+'px';
-      if(w.hidden||(w.name&&_refSet[w.name])){if(mode==='edit')d.classList.add('run-hidden');else d.style.display='none';} // ausgeblendet: manuell ODER weil in Laufzeile referenziert (im Edit markiert sichtbar)
+      if(w.name&&_refSet[w.name])d.classList.add('ref-hidden'); // in Laufzeile referenziert -> immer aus (bearbeiten über die Laufzeile)
+      else if(w.hidden)d.classList.add('run-hidden'); // manuell versteckt -> im Run aus, im Edit gestrichelt sichtbar (CSS)
       var _inner;try{_inner=widgetInner(w);}catch(_e){_inner='<div style="padding:6px;font-size:11px;color:var(--crit)">⚠ '+esc(w.type||'?')+'</div>';} // ein defektes Widget darf das Rendern nicht abbrechen
       d.innerHTML='<div class="winner">'+_inner+'</div><div class="rz" data-role="rz"></div>';
       if(w.type==='value'&&w.valfs){var v=$('.v',d);if(v)v.style.fontSize=w.valfs+'px';}
@@ -2029,6 +2032,7 @@
       if(!e.shiftKey){selClear();markSel();renderProps();}
       e.preventDefault();return;
     }
+    if(el.dataset.refsrc){var _ow=widget(el.dataset.refsrc);if(_ow){select(_ow.id);e.preventDefault();return;}} // Laufzeilen-Kachel: referenziertes Original auswählen (kein Drag)
     var w=widget(el.dataset.id);
     if(e.target.dataset.role==='rz'){select(w.id);drag={mode:'rz',w:w,sx:e.clientX,sy:e.clientY,ow:w.w,oh:w.h};e.preventDefault();return;}
     if(e.shiftKey){select(w.id,true);}
@@ -4097,11 +4101,11 @@ defWidget('statuslist',{
   // Eine Zeile ist: (a) Referenz auf ein benanntes Widget (m.ref) · (b) inline-Widget (m.wtype) · (c) statischer/Variablen-Text.
   // Widget-Zeilen werden als echte Instanzen gerendert (widgetInner) und in _tickKids für Live-Updates registriert.
   var _TICK_TYPES=[['value','Wert'],['kpi','KPI'],['delta','Delta'],['chip','Chip'],['icon','Icon'],['text','Text'],['switch','Schalter'],['tile','Kachel'],['bar','Balken']];
-  function _tkBox(w,src,mw,i,sfx){ // rendert eine Widget-Instanz (Klon von src-Config) als Laufband-Kachel
+  function _tkBox(w,src,mw,i,sfx,srcId){ // rendert eine Widget-Instanz (Klon von src-Config) als Laufband-Kachel
     var cfg={};for(var k in src)cfg[k]=src[k];cfg.id=w.id+'__t'+i+sfx;cfg.type=src.type;delete cfg.x;delete cfg.y;
     var iw=parseInt(mw)||parseInt(src.w)||170;_tickKids.push(cfg);
     var inner;try{inner=widgetInner(cfg);}catch(e){inner='';}
-    return '<div class="w t-'+esc(src.type)+'" data-id="'+cfg.id+'" style="position:relative;flex:none;height:calc(100% - 4px);width:'+iw+'px;margin:0 5px;background:transparent;border:0"><div class="winner" style="position:absolute;inset:0">'+inner+'</div></div>';
+    return '<div class="w t-'+esc(src.type)+'" data-id="'+cfg.id+'"'+(srcId?' data-refsrc="'+srcId+'"':'')+' style="position:relative;flex:none;height:calc(100% - 4px);width:'+iw+'px;margin:0 5px;background:transparent;border:0"><div class="winner" style="position:absolute;inset:0">'+inner+'</div></div>';
   }
   defWidget('ticker',{
     label:'Laufzeile', paletteIcon:'wticker', size:[560,46],
@@ -4111,7 +4115,7 @@ defWidget('statuslist',{
       var band=function(sfx){return its.map(function(m,i){
         if(m.ref!=null){                                               // --- Referenz auf benanntes Widget ---
           var src=widgetByName(m.ref);
-          if(src)return _tkBox(w,src,m.w,i,sfx);
+          if(src)return _tkBox(w,src,m.w,i,sfx,src.id);
           return '<span class="htm warn"><span class="htdot"></span><b>? '+esc(m.ref||'(kein Widget)')+'</b></span>';
         }
         if(m.wtype&&WIDGETS[m.wtype]){                                 // --- inline-Widget ---
