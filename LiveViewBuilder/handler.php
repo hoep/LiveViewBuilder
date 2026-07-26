@@ -398,6 +398,48 @@ if ($api === 'history') {
 }
 
 // ---- Zeitversatz-Vergleich, automatisch nach Logging-Typ (Standard/Zähler) ----
+if ($api === 'agg') { // Min/Max/Avg (zeitgewichtet) einer geloggten Standardvariable ueber die aktuelle Periode
+    header('Content-Type: application/json; charset=utf-8');
+    $id    = (int) ($_GET['id'] ?? 0);
+    $stage = (string) ($_GET['stage'] ?? 'day'); // minute|hour|day|week|month|year
+    if (!IPS_VariableExists($id)) { echo json_encode(['min' => null, 'max' => null, 'avg' => null]); return; }
+    $acs = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}');
+    $ac  = $acs[0] ?? 0;
+    if (!$ac) { echo json_encode(['min' => null, 'max' => null, 'avg' => null]); return; }
+    $now = time();
+    $Y = (int) date('Y', $now); $mo = (int) date('n', $now); $d = (int) date('j', $now); $H = (int) date('G', $now); $mi = (int) date('i', $now);
+    switch ($stage) {
+        case 'minute': $pStart = mktime($H, $mi, 0, $mo, $d, $Y); break;
+        case 'hour':   $pStart = mktime($H, 0, 0, $mo, $d, $Y);  break;
+        case 'week':   $pStart = strtotime(date('Y-m-d', strtotime('monday this week', $now)) . ' 00:00:00'); break;
+        case 'month':  $pStart = mktime(0, 0, 0, $mo, 1, $Y); break;
+        case 'year':   $pStart = mktime(0, 0, 0, 1, 1, $Y);   break;
+        default:       $pStart = mktime(0, 0, 0, $mo, $d, $Y); break; // day
+    }
+    $rows = @AC_GetLoggedValues($ac, $id, $pStart, $now, 0);          // Werte in der Periode (neueste zuerst)
+    $bef  = @AC_GetLoggedValues($ac, $id, 0, $pStart, 1);             // letzter Wert vor Periodenstart
+    $startVal = (is_array($bef) && count($bef)) ? (float) $bef[0]['Value'] : null;
+    $pts = is_array($rows) ? array_reverse($rows) : [];              // aelteste zuerst
+    if ($startVal === null && count($pts)) { $startVal = (float) $pts[0]['Value']; }
+    $prevT = $pStart; $prevV = $startVal; $sum = 0.0; $min = null; $max = null;
+    $acc = function ($v, $t0, $t1) use (&$sum, &$min, &$max) {
+        if ($v === null) return;
+        $dur = $t1 - $t0; if ($dur < 0) $dur = 0;
+        $sum += $v * $dur;
+        $min = ($min === null) ? $v : min($min, $v);
+        $max = ($max === null) ? $v : max($max, $v);
+    };
+    foreach ($pts as $r) {
+        $t = (int) $r['TimeStamp']; if ($t < $pStart) $t = $pStart; if ($t > $now) $t = $now;
+        $acc($prevV, $prevT, $t);
+        $prevT = $t; $prevV = (float) $r['Value'];
+    }
+    $acc($prevV, $prevT, $now);
+    $total = $now - $pStart;
+    $avg = ($total > 0 && $min !== null) ? $sum / $total : $prevV;
+    echo json_encode(['min' => $min, 'max' => $max, 'avg' => $avg]);
+    return;
+}
 if ($api === 'cmp') {
     header('Content-Type: application/json; charset=utf-8');
     $id    = (int) ($_GET['id'] ?? 0);
