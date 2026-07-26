@@ -119,6 +119,11 @@
   .hsic{width:26px;height:26px;fill:none;stroke:var(--warm);stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;overflow:visible}
   .hstime{font-family:var(--fm);font-size:15px;font-weight:600}.hslbl{font-size:10px;color:var(--muted)}
   .hwf{height:100%;display:flex;flex-direction:column;gap:8px;padding:10px 12px;overflow:hidden}
+  .hwf-cur{justify-content:center}
+  .hwbig{display:flex;align-items:center;gap:16px}
+  .hwbigico{width:60px;height:60px;flex:none;color:var(--warm)}.hwbigico svg{width:100%;height:100%}
+  .hwbigt{font-family:var(--fm);font-size:40px;font-weight:600;line-height:1}
+  .hwbigsub{font-size:13px;color:var(--muted);margin-top:4px}.hwbigsub [data-role=sub]{color:var(--text)}
   .hwfcur{display:flex;align-items:center;gap:11px}.hwci{min-width:0}
   .hwfsub{font-size:11.5px;color:var(--muted)}.hwfsub [data-role=sub]{font-family:var(--fm);color:var(--text)}
   .hwfrow{display:flex;gap:6px;justify-content:space-between}
