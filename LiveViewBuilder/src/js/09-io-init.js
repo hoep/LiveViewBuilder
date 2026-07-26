@@ -214,22 +214,30 @@
   function reflowFit(vw,vh){
     var p=state.page,S=sfStructure(p),c=sfCfg(p),order=[],stretched=[];
     S.bands.forEach(function(b){order=order.concat(b);});
-    // Schmaler Bildschirm (Handy): variables Flow-Packing statt starrem Einspalter.
-    // Breite Widgets (>=50% der Designbreite) füllen die Zeile; kleine teilen sich Zeilen (2–3 nebeneinander).
+    // Schmaler Bildschirm (Handy): MASONRY mit Spans (wie Home Assistant).
+    // Feste Spaltenzahl (mind. 2 am Handy); breite Widgets spannen alle Spalten, kleine landen in der kürzesten Spalte.
     if(vw<560){
-      var M=8,G=8,AW=vw-2*M,halfW=(AW-G)/2,pw=p.w||1440;
-      var x=M,y=M,rowH=0;
+      var M=8,G=8,AW=vw-2*M,pw=p.w||1440;
+      var cols=Math.max(2,Math.min(4,Math.floor((AW+G)/208)));   // ~200px Zielspalte, 2–4 Spalten
+      var colW=(AW-(cols-1)*G)/cols,colH=[];for(var ci=0;ci<cols;ci++)colH.push(M);
+      var minCol=function(){var mi=0,i;for(i=1;i<cols;i++)if(colH[i]<colH[mi]-0.5)mi=i;return mi;};
+      var maxH=function(){var m=colH[0],i;for(i=1;i<cols;i++)if(colH[i]>m)m=colH[i];return m;};
       order.forEach(function(w){if(w.reflowHide)return;var el=sfEl(w);if(!el)return;var win=el.firstElementChild;if(!win)return;
-        var wide=(w.w/pw>=0.5)||(w.w>halfW*1.15);           // breit -> volle Zeile
-        var s=wide?(AW/w.w):Math.min(halfW/w.w,1.35);       // schmal: bis halbe Breite, moderat vergrößern
-        if(s>1.6)s=1.6;var bw=w.w*s,bh=w.h*s;
-        if(x>M&&x+bw>vw-M+0.5){x=M;y+=rowH+G;rowH=0;}        // Zeilenumbruch
-        if(sfClass(w)==='s'){win.style.transform='';win.style.width='';win.style.height='';stretched.push(w);}
-        else{win.style.width=w.w+'px';win.style.height=w.h+'px';win.style.transform='scale('+s+')';}
-        el.style.transform='none';el.style.left=x.toFixed(1)+'px';el.style.top=y.toFixed(1)+'px';el.style.width=bw.toFixed(1)+'px';el.style.height=bh.toFixed(1)+'px';
-        x+=bw+G;if(bh>rowH)rowH=bh;
+        var frac=w.w/pw,wide=(frac>=0.5)||(w.w>colW*1.6);
+        var span=wide?cols:Math.max(1,Math.min(cols,Math.round(frac*cols)));
+        var isS=(sfClass(w)==='s'),slotW=span*colW+(span-1)*G;
+        var s=isS?(slotW/w.w):Math.min(slotW/w.w,1.4);var bw=isS?slotW:w.w*s,bh=w.h*s;
+        var col,top;
+        if(span>=cols){col=0;top=maxH();}
+        else if(span===1){col=minCol();top=colH[col];}
+        else{var best=0,bestH=1e9,st,k;for(st=0;st<=cols-span;st++){var mh=0;for(k=0;k<span;k++)if(colH[st+k]>mh)mh=colH[st+k];if(mh<bestH){bestH=mh;best=st;}}col=best;top=bestH;}
+        var x=M+col*(colW+G)+(isS?0:Math.max(0,(slotW-bw)/2));
+        if(isS){win.style.transform='';win.style.width='';win.style.height='';stretched.push(w);}
+        else{win.style.width=w.w+'px';win.style.height=w.h+'px';win.style.transform='scale('+s.toFixed(4)+')';}
+        el.style.transform='none';el.style.left=x.toFixed(1)+'px';el.style.top=top.toFixed(1)+'px';el.style.width=bw.toFixed(1)+'px';el.style.height=bh.toFixed(1)+'px';
+        var bottom=top+bh+G,i2;if(span>=cols){for(i2=0;i2<cols;i2++)colH[i2]=bottom;}else for(i2=0;i2<span;i2++)colH[col+i2]=bottom;
       });
-      canvas.style.height=Math.max(vh,y+rowH+M)+'px';sfPropagate(stretched);return;
+      canvas.style.height=Math.max(vh,maxH()-G+M)+'px';sfPropagate(stretched);return;
     }
     // Sonst: höhen-optimierter Flow-Umbruch (moderates Portrait).
     var MM=14,maxW=1;order.forEach(function(w){if(w.w>maxW)maxW=w.w;});
