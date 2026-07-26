@@ -2845,45 +2845,34 @@
   function reflowFit(vw,vh){
     var p=state.page,S=sfStructure(p),c=sfCfg(p),order=[],stretched=[];
     S.bands.forEach(function(b){order=order.concat(b);});
-    // Schmaler Bildschirm (Handy): MASONRY mit Spans (wie Home Assistant).
-    // Feste Spaltenzahl (mind. 2 am Handy); breite Widgets spannen alle Spalten, kleine landen in der kürzesten Spalte.
-    if(vw<560){
-      var M=8,G=8,AW=vw-2*M,pw=p.w||1440;
-      var cols=Math.max(2,Math.min(4,Math.floor((AW+G)/208)));   // ~200px Zielspalte, 2–4 Spalten
-      var colW=(AW-(cols-1)*G)/cols,colH=[];for(var ci=0;ci<cols;ci++)colH.push(M);
-      var minCol=function(){var mi=0,i;for(i=1;i<cols;i++)if(colH[i]<colH[mi]-0.5)mi=i;return mi;};
-      var maxH=function(){var m=colH[0],i;for(i=1;i<cols;i++)if(colH[i]>m)m=colH[i];return m;};
-      order.forEach(function(w){if(w.reflowHide)return;var el=sfEl(w);if(!el)return;var win=el.firstElementChild;if(!win)return;
-        var frac=w.w/pw,wide=(frac>=0.5)||(w.w>colW*1.6);
-        var span=wide?cols:Math.max(1,Math.min(cols,Math.round(frac*cols)));
-        var isS=(sfClass(w)==='s'),slotW=span*colW+(span-1)*G;
-        var s=isS?(slotW/w.w):Math.min(slotW/w.w,1.4);var bw=isS?slotW:w.w*s,bh=w.h*s;
-        var col,top;
-        if(span>=cols){col=0;top=maxH();}
-        else if(span===1){col=minCol();top=colH[col];}
-        else{var best=0,bestH=1e9,st,k;for(st=0;st<=cols-span;st++){var mh=0;for(k=0;k<span;k++)if(colH[st+k]>mh)mh=colH[st+k];if(mh<bestH){bestH=mh;best=st;}}col=best;top=bestH;}
-        var x=M+col*(colW+G)+(isS?0:Math.max(0,(slotW-bw)/2));
-        if(isS){win.style.transform='';win.style.width='';win.style.height='';stretched.push(w);}
-        else{win.style.width=w.w+'px';win.style.height=w.h+'px';win.style.transform='scale('+s.toFixed(4)+')';}
-        el.style.transform='none';el.style.left=x.toFixed(1)+'px';el.style.top=top.toFixed(1)+'px';el.style.width=bw.toFixed(1)+'px';el.style.height=bh.toFixed(1)+'px';
-        var bottom=top+bh+G,i2;if(span>=cols){for(i2=0;i2<cols;i2++)colH[i2]=bottom;}else for(i2=0;i2<span;i2++)colH[col+i2]=bottom;
-      });
-      canvas.style.height=Math.max(vh,maxH()-G+M)+'px';sfPropagate(stretched);return;
-    }
-    // Sonst: höhen-optimierter Flow-Umbruch (moderates Portrait).
-    var MM=14,maxW=1;order.forEach(function(w){if(w.w>maxW)maxW=w.w;});
-    var sHi=Math.min(1.4,(vw-2*MM)/maxW);if(sHi<c.minScale)sHi=c.minScale;
-    var sR=c.minScale,step=(sHi-c.minScale)/16||1,s;
-    for(s=sHi;s>=c.minScale-1e-6;s-=step){if(sfFlowH(order,vw,MM,c.gap,s)<=vh){sR=s;break;}}
-    var x=MM,yy=MM,rowH=0;
+    // Flow-Packing nach echter Widget-Breite: so viele nebeneinander wie passen; nur zu breite Widgets bekommen negativen Zoom.
+    var M=8,G=8,AW=vw-2*M,i;
+    var items=[];
     order.forEach(function(w){if(w.reflowHide)return;var el=sfEl(w);if(!el)return;var win=el.firstElementChild;if(!win)return;
-      var ww=w.w*sR,wh=w.h*sR;if(x>MM&&x+ww>vw-MM){x=MM;yy+=rowH+c.gap;rowH=0;}
-      if(sfClass(w)==='s'){win.style.transform='';win.style.width='';win.style.height='';stretched.push(w);}
-      else{win.style.width=w.w+'px';win.style.height=w.h+'px';win.style.transform='scale('+sR+')';}
-      el.style.transform='none';el.style.left=x+'px';el.style.top=yy+'px';el.style.width=ww+'px';el.style.height=wh+'px';
-      x+=ww+c.gap;if(wh>rowH)rowH=wh;
+      var isS=(sfClass(w)==='s'),s=1,bw=w.w;
+      if(bw>AW){s=AW/w.w;bw=AW;}                       // breiter als der Bildschirm -> negativer Zoom bis volle Breite
+      items.push({w:w,el:el,win:win,isS:isS,s:s,bw:bw,bh:w.h*s});
     });
-    canvas.style.height=Math.max(vh,yy+rowH+MM)+'px';sfPropagate(stretched);
+    // Zeilen greedy füllen (maximale Anzahl nebeneinander)
+    var lines=[],cur=[],curW=0;
+    for(i=0;i<items.length;i++){var it=items[i],need=(cur.length?G:0)+it.bw;
+      if(cur.length&&curW+need>AW+0.5){lines.push(cur);cur=[];curW=0;need=it.bw;}
+      cur.push(it);curW+=need;}
+    if(cur.length)lines.push(cur);
+    // platzieren: Zeile horizontal zentriert, Widgets vertikal in der Zeile zentriert (keine Höhenlücken)
+    var y=M;
+    lines.forEach(function(line){
+      var lineW=0,rowH=0;line.forEach(function(it,k){lineW+=it.bw+(k?G:0);if(it.bh>rowH)rowH=it.bh;});
+      var x=M+Math.max(0,(AW-lineW)/2);
+      line.forEach(function(it){var w=it.w,el=it.el,win=it.win,ty=y+Math.max(0,(rowH-it.bh)/2);
+        if(it.isS){win.style.transform='';win.style.width='';win.style.height='';stretched.push(w);}
+        else{win.style.width=w.w+'px';win.style.height=w.h+'px';win.style.transform='scale('+it.s.toFixed(4)+')';}
+        el.style.transform='none';el.style.left=x.toFixed(1)+'px';el.style.top=ty.toFixed(1)+'px';el.style.width=it.bw.toFixed(1)+'px';el.style.height=it.bh.toFixed(1)+'px';
+        x+=it.bw+G;
+      });
+      y+=rowH+G;
+    });
+    canvas.style.height=Math.max(vh,y-G+M)+'px';sfPropagate(stretched);
   }
   function sfPropagate(list){requestAnimationFrame(function(){list.forEach(function(w){var e=_ec[w.id];if(e)e.resize();if(w.type==='html')applyHtmlScale(w);});});}
   // ---- Struktur-Overlay (zeigt erkanntes SmartFit-Raster im Editor) ----
