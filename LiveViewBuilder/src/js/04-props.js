@@ -16,7 +16,7 @@
     if(!w){p.innerHTML='<div class="hint">Kein Element ausgewählt.</div>';return;}
     try{
     var typeOpts=Object.keys(TYPES).map(function(t){return '<option value="'+t+'">'+TYPES[t]+'</option>';}).join('');
-    var lbl2={thermostat:'Ziel-Var',light:'Helligkeit',cover:'Stop-Var',weather:'Zusatz',weatherpro:'Zusatz/Gefühlt',sun:'Untergang',suncard:'Untergang',media:'Zustand',room:'Metrik 2',vacuum:'Batterie',chart:'Serie 2 (Var)'}[w.type];
+    var lbl2={thermostat:'Ziel-Var',light:'Helligkeit',cover:'Stop-Var',weather:'Vorhersage (JSON)',weatherpro:'Vorhersage (JSON)',sun:'Untergang',suncard:'Untergang',media:'Zustand',room:'Metrik 2',vacuum:'Batterie',chart:'Serie 2 (Var)'}[w.type];
     var lbl3={media:'Lautstärke',room:'Metrik 3',vacuum:'Start/Stop',chart:'Serie 3 (Var)',thermostat:'Modus/Profil-Var'}[w.type];
     p.innerHTML=(Object.keys(sel).length>=2?alignSection():'')
       +'<div class="prop">'

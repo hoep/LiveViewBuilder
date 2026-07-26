@@ -2,7 +2,7 @@
   // EINE String-Variable (JSON) liefert alle Daten. Erkannt werden: OpenWeatherMap (One-Call),
   // Tempest/WeatherFlow (better_forecast) und Open-Meteo (parallele Arrays). Auto-Erkennung oder manuell.
   var WWD=['So','Mo','Di','Mi','Do','Fr','Sa'];
-  function wDayLabel(offset){if(offset===0)return 'Heute';if(offset===1)return 'Morgen';var dt=new Date();dt.setDate(dt.getDate()+offset);return WWD[dt.getDay()];}
+  function wDayLabel(offset){if(offset===0)return 'Heute';var dt=new Date();dt.setDate(dt.getDate()+offset);return WWD[dt.getDay()];}
   function wCondIcon(txt){txt=(''+(txt||'')).toLowerCase();
     if(/gewitter|thunder|storm|blitz|lightning/.test(txt))return 'storm';
     if(/schnee|snow|graupel|hagel|hail|sleet|flocke|flurr/.test(txt))return 'snow';
@@ -24,37 +24,46 @@
     if(j.current_conditions||(j.forecast&&j.forecast.daily))return 'tempest';
     if(Array.isArray(j.daily)||Array.isArray(j.list)||(j.current&&j.current.weather))return 'owm';
     if((j.daily&&j.daily.time)||(j.current&&j.current.temperature_2m!=null)||j.hourly)return 'openmeteo';
+    if(j.temp!=null||j.temperature!=null)return 'flat'; // einfaches selbstgebautes JSON: {temp,humidity,wind,condition,icon}
     return null;
   }
+  var _msKmh=function(v){return (v==null)?null:v*3.6;}; // m/s -> km/h
   function parseWeatherJSON(raw,fmt){
     var j;try{j=(typeof raw==='string')?JSON.parse(raw):raw;}catch(e){return null;}
     if(!j||typeof j!=='object')return null;
     var f=(fmt&&fmt!=='auto')?fmt:wDetect(j);if(!f)return null;
     var cur=null,days=[];
     if(f==='owm'){
-      if(j.current){var cw=(j.current.weather&&j.current.weather[0])||{};cur={temp:j.current.temp,cond:cw.description||cw.main,icon:owmIcon(cw)};}
+      if(j.current){var cw=(j.current.weather&&j.current.weather[0])||{};cur={temp:j.current.temp,cond:cw.description||cw.main,icon:owmIcon(cw),humidity:j.current.humidity,wind:_msKmh(j.current.wind_speed)};}
       (j.daily||[]).forEach(function(d){var dw=(d.weather&&d.weather[0])||{};days.push({hi:d.temp&&d.temp.max,lo:d.temp&&d.temp.min,cond:dw.description||dw.main,icon:owmIcon(dw),pop:(d.pop!=null)?Math.round(d.pop*100):null});});
     } else if(f==='tempest'){
-      var cc=j.current_conditions;if(cc)cur={temp:cc.air_temperature,cond:cc.conditions,icon:tempestIcon(cc.icon)||wCondIcon(cc.conditions)};
+      var cc=j.current_conditions;if(cc)cur={temp:cc.air_temperature,cond:cc.conditions,icon:tempestIcon(cc.icon)||wCondIcon(cc.conditions),humidity:cc.relative_humidity,wind:_msKmh(cc.wind_avg)};
       var dl=(j.forecast&&j.forecast.daily)||[];dl.forEach(function(d){days.push({hi:d.air_temp_high,lo:d.air_temp_low,cond:d.conditions,icon:tempestIcon(d.icon)||wCondIcon(d.conditions),pop:(d.precip_probability!=null)?Math.round(d.precip_probability):null});});
     } else if(f==='openmeteo'){
-      if(j.current)cur={temp:j.current.temperature_2m,cond:wmoText(j.current.weather_code),icon:wmoIcon(j.current.weather_code)};
+      if(j.current)cur={temp:j.current.temperature_2m,cond:wmoText(j.current.weather_code),icon:wmoIcon(j.current.weather_code),humidity:j.current.relative_humidity_2m,wind:j.current.wind_speed_10m};
       var dd=j.daily;if(dd&&dd.time){for(var i=0;i<dd.time.length;i++){var wc=dd.weather_code&&dd.weather_code[i];days.push({hi:dd.temperature_2m_max&&dd.temperature_2m_max[i],lo:dd.temperature_2m_min&&dd.temperature_2m_min[i],cond:wmoText(wc),icon:wmoIcon(wc),pop:dd.precipitation_probability_max?dd.precipitation_probability_max[i]:null});}}
+    } else if(f==='flat'){
+      var t=(j.temp!=null?j.temp:j.temperature),cnd=(j.condition||j.conditions||j.description);
+      cur={temp:t,cond:cnd,icon:(j.icon?(tempestIcon(j.icon)||wCondIcon(j.icon)):wCondIcon(cnd)),humidity:(j.humidity!=null?j.humidity:j.relative_humidity),wind:(j.wind!=null?j.wind:(j.wind_speed!=null?j.wind_speed:j.windspeed))};
     }
     return {fmt:f,cur:cur,days:days};
   }
   function _wt(n,dec){if(n==null||n==='')return null;var v=parseFloat(n);if(isNaN(v))return null;return (dec?(Math.round(v*10)/10):Math.round(v));}
   function _wtxt(n,dec){var v=_wt(n,dec);return v==null?'–':String(v).replace('.',',');}
   // --- füllt das Widget aus der JSON-Variable ---
+  var _dropSVG='<svg class="hwmic" style="fill:currentColor;stroke:none" viewBox="0 0 24 24"><path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/></svg>';
   function applyWeather(w){
     var el=$('.w[data-id="'+w.id+'"]',canvas);if(!el)return;
-    var lv=w.varId&&_lastVals[w.varId];var data=lv?parseWeatherJSON(lv.v,w.wfmt):null;
-    var unit=(w.wunit!=null?w.wunit:'°'),cur=data&&data.cur;
+    var cl=w.varId&&_lastVals[w.varId],cData=cl?parseWeatherJSON(cl.v,w.wfmt):null;              // Aktuell = Variable
+    var fl=(w.varId2&&_lastVals[w.varId2])||cl,fData=fl?parseWeatherJSON(fl.v,w.wfmt):cData;       // Vorhersage = Variable2 (sonst dieselbe)
+    var unit=(w.wunit!=null?w.wunit:'°'),cur=cData&&cData.cur;
     var ci=el.querySelector('[data-role=cico]');if(ci)ci.innerHTML=iconSVG((cur&&cur.icon)||w.icon||'cloudsun');
     var ct=el.querySelector('[data-role=val]');if(ct)ct.textContent=(cur&&cur.temp!=null)?(_wtxt(cur.temp,1)+unit):'–';
-    var cs=el.querySelector('[data-role=sub]');if(cs)cs.textContent=(cur&&cur.cond)?cur.cond:(data?'':'keine/ungültige Daten');
+    var cs=el.querySelector('[data-role=sub]');if(cs)cs.textContent=(cur&&cur.cond)?cur.cond:(cData?'':'keine/ungültige Daten');
+    var hu=el.querySelector('[data-role=hum]');if(hu)hu.innerHTML=(cur&&cur.humidity!=null)?(_dropSVG+_wtxt(cur.humidity)+' %'):'';
+    var wi=el.querySelector('[data-role=wind]');if(wi)wi.innerHTML=(cur&&cur.wind!=null)?('<svg class="hwmic" style="fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24">'+((ICONS.wind||[])[1]||'')+'</svg>'+_wtxt(cur.wind)+' km/h'):'';
     if(w.type!=='weatherpro')return;
-    var days=(data&&data.days)||[],start=(w.fcStart!=null?w.fcStart:0),showPq=(w.showPq!==false);
+    var days=(fData&&fData.days)||[],start=(w.fcStart!=null?w.fcStart:0),showPq=(w.showPq!==false);
     // Skala fuer Temperaturbalken
     var his=[],los=[];days.forEach(function(d){var h=_wt(d.hi,1),l=_wt(d.lo,1);if(h!=null)his.push(h);if(l!=null)los.push(l);});
     var gmin=(w.gmin!=null&&w.gmin!=='')?parseFloat(w.gmin):(los.length?Math.min.apply(null,los)-1:-10);
@@ -85,7 +94,7 @@
   defWidget('weather',{
     label:'Wetter', paletteIcon:'cloudsun', size:[240,130],
     defaults:function(w){w.label='';w.wfmt='auto';},
-    render:function(w){return '<div class="hwf hwf-cur"><div class="hwbig"><div class="hwbigico" data-role="cico">'+iconSVG(w.icon||'cloudsun')+'</div><div class="hwbigci"><div class="hwbigt" data-role="val">–</div><div class="hwbigsub"><span data-role="sub"></span></div></div></div></div>';},
+    render:function(w){return '<div class="hwf hwf-cur"><div class="hwbig"><div class="hwbigico" data-role="cico">'+iconSVG(w.icon||'cloudsun')+'</div><div class="hwbigci"><div class="hwbigt" data-role="val">–</div><div class="hwbigsub"><span data-role="sub"></span></div><div class="hwmetrow"><span class="hwmet" data-role="wind"></span><span class="hwmet" data-role="hum"></span></div></div></div></div>';},
     props:function(w){return wJsonProps(w);},
     wire:function(w){wJsonWire(w);},
     mount:_wMount, live:_wLive
@@ -96,7 +105,7 @@
     label:'Wetter+', paletteIcon:'cloudsun', size:[340,220],
     defaults:function(w){w.label='';w.wfmt='auto';w.days=5;w.fcStart=0;w.showPq=true;w.tgrad=[{t:-5,color:'#4aa3ff'},{t:4,color:'#3bd6c6'},{t:14,color:'#39d08a'},{t:22,color:'#f2b441'},{t:32,color:'#f2685a'}];},
     render:function(w){var n=Math.max(1,Math.min(10,w.days||5));var slots='';for(var i=0;i<n;i++)slots+='<div class="hwp2day" data-i="'+i+'"><span class="d">–</span><span class="ic"></span><span class="lo">–</span><div class="trk"><i class="fill"></i></div><span class="hi">–</span><span class="pq"></span></div>';
-      return '<div class="hwp2"><div class="hwp2cur"><span class="hwp2ic" data-role="cico">'+iconSVG(w.icon||'cloudsun')+'</span><span class="hwp2ci"><span class="hwp2t" data-role="val">–</span><span class="hwp2sub">'+(w.label?esc(w.label)+' · ':'')+'<span data-role="sub"></span></span></span></div><div class="hwp2days">'+slots+'</div></div>';},
+      return '<div class="hwp2"><div class="hwp2cur"><span class="hwp2ic" data-role="cico">'+iconSVG(w.icon||'cloudsun')+'</span><span class="hwp2ci"><span class="hwp2t" data-role="val">–</span><span class="hwp2sub">'+(w.label?esc(w.label)+' · ':'')+'<span data-role="sub"></span></span><span class="hwmetrow"><span class="hwmet" data-role="wind"></span><span class="hwmet" data-role="hum"></span></span></span></div><div class="hwp2days">'+slots+'</div></div>';},
     props:function(w){return wJsonProps(w)
       +row('Vorhersage-Tage','<input id="pWDays" type="number" min="1" max="10" value="'+(w.days||5)+'">')
       +row('Erster Tag','<select id="pFcStart"><option value="0"'+((w.fcStart||0)===0?' selected':'')+'>Heute</option><option value="1"'+(w.fcStart===1?' selected':'')+'>Morgen</option></select>')
@@ -106,7 +115,10 @@
       if($('#pWDays'))$('#pWDays').oninput=function(){w.days=Math.max(1,Math.min(10,parseInt(this.value)||5));render();applyWeather(w);commit();};
       if($('#pFcStart'))$('#pFcStart').onchange=function(){w.fcStart=parseInt(this.value);render();applyWeather(w);commit();};
       if($('#pShowPq'))$('#pShowPq').onchange=function(){w.showPq=this.checked;render();applyWeather(w);commit();};
-      $$('#props [data-tg]').forEach(function(inp){inp.oninput=inp.onchange=function(){var pr=inp.getAttribute('data-tg').split('.'),k=pr[0],i=+pr[1];if(!w.tgrad||!w.tgrad[i])return;w.tgrad[i][k]=(k==='t')?(parseFloat(inp.value)||0):inp.value;applyWeather(w);commit();};});
+      $$('#props [data-tg]').forEach(function(inp){
+        inp.oninput=function(){var pr=inp.getAttribute('data-tg').split('.'),k=pr[0],i=+pr[1];if(!w.tgrad||!w.tgrad[i])return;w.tgrad[i][k]=(k==='t')?(parseFloat(inp.value)||0):inp.value;applyWeather(w);commit();};
+        inp.onchange=function(){if(inp.getAttribute('data-tg').split('.')[0]==='t'&&w.tgrad){w.tgrad.sort(function(a,b){return (a.t||0)-(b.t||0);});renderProps();applyWeather(w);commit();}}; // nach Temperatur einsortieren
+      });
       $$('#props [data-tgdel]').forEach(function(b){b.onclick=function(){w.tgrad.splice(+b.getAttribute('data-tgdel'),1);renderProps();applyWeather(w);commit();};});
       if($('#tgAdd'))$('#tgAdd').onclick=function(){if(!w.tgrad)w.tgrad=[];w.tgrad.push({t:20,color:'#f2b441'});renderProps();applyWeather(w);commit();};
       if($('#pGmin'))$('#pGmin').oninput=function(){w.gmin=this.value===''?undefined:parseFloat(this.value);applyWeather(w);commit();};
