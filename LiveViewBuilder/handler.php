@@ -200,6 +200,20 @@ if ($api === 'runscript') {
     return;
 }
 
+// ---- Veröffentlichen: einmaliger Reload-Push an alle Run-Clients (bewusst, NICHT an Autosave gekoppelt) ----
+if ($api === 'publish') {
+    header('Content-Type: application/json; charset=utf-8');
+    if (!hash_equals($TOKEN, (string) ($_GET['key'] ?? ''))) {
+        http_response_code(403);
+        echo json_encode(['error' => 'forbidden']);
+        return;
+    }
+    $push = IPS_GetInstanceListByModuleID('{7B3E9F21-4C8A-4D6E-B1F5-9A0C2D3E4F60}')[0] ?? 0;
+    $ok = ($push && function_exists('LVBP_BroadcastText')) ? (bool) @LVBP_BroadcastText($push, '{"reload":1}') : false;
+    echo json_encode(['ok' => $ok, 'push' => (int) $push]);
+    return;
+}
+
 // ---- Objekt-Metadaten:  ?api=objinfo&id=<objid> ----
 if ($api === 'objinfo') {
     header('Content-Type: application/json; charset=utf-8');

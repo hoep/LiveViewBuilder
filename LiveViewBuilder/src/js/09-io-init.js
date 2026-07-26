@@ -59,6 +59,7 @@
   function saveAs(){var nm=prompt('Layout speichern unter (Name):','Variante '+new Date().toLocaleDateString());if(!nm)return;var slug=nm.replace(/[^A-Za-z0-9_-]+/g,'-').replace(/^-+|-+$/g,'');if(!slug){toast('Ungültiger Name');return;}_target=slug;saveStore(false).then(function(){buildLayoutList();});}
   $('#saveBtn').onclick=function(){saveStore(false);};
   $('#saveAsBtn').onclick=saveAs;
+  if($('#publishBtn'))$('#publishBtn').onclick=function(){saveStore(false);fetch('?api=publish&key='+encodeURIComponent(TOKEN),{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){toast(j&&j.ok?'Veröffentlicht — Anzeigen werden neu geladen':'Gespeichert (kein Push-Ziel gefunden)');}).catch(function(){toast('Veröffentlichen fehlgeschlagen');});};
   $('#layoutSel').addEventListener('change',function(){_target=this.value;load();});
   function doImport(media){
     fetch('?api=import'+(media?('&media='+media):''),{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
