@@ -442,6 +442,16 @@
   .hwp2day .trk .fill{position:absolute;top:0;bottom:0;left:0;width:0;border-radius:3px;transition:all .4s}
   /* Sonnenbogen (suncard) */
   .hsc{position:absolute;inset:0;display:flex;flex-direction:column;padding:8px 12px;box-sizing:border-box}
+  /* Meldungen-Widget */
+  .hmsg{position:absolute;inset:0;display:flex;flex-direction:column;padding:8px 10px;box-sizing:border-box}
+  .hmsgt{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:5px}
+  .hmsgl{flex:1;min-height:0;overflow:auto;display:flex;flex-direction:column;gap:3px}
+  .hmsge{font-size:12px;color:var(--muted);padding:6px 2px}
+  .hmsgi{display:grid;grid-template-columns:auto auto 1fr;gap:7px;align-items:baseline;font-size:11.5px;padding:3px 6px;border-radius:6px;background:var(--surface-2)}
+  .hmsgi.err{border-left:3px solid var(--crit)}.hmsgi.warn{border-left:3px solid var(--warn)}
+  .hmsgk{font-family:var(--fm);font-size:9.5px;font-weight:700}.hmsgi.err .hmsgk{color:var(--crit)}.hmsgi.warn .hmsgk{color:var(--warn)}
+  .hmsgtime{font-family:var(--fm);font-size:10px;color:var(--faint)}
+  .hmsgm{color:var(--text);white-space:normal;word-break:break-word}
   .hscarcwrap{position:relative;flex:1;min-height:0;display:flex}
   .hscarcwrap .hscsvg{flex:1;height:100%}
   .hscnow{position:absolute;left:0;top:0;transform:translate(-50%,-150%);font-family:var(--fm);font-size:12px;font-weight:600;color:var(--warm);white-space:nowrap;pointer-events:none;text-shadow:0 1px 3px rgba(0,0,0,.5)}

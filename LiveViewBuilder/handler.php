@@ -83,6 +83,14 @@ if ($api === 'tree') {
     return;
 }
 
+// ---- IPS-Meldungen (Warnungen/Fehler) — Mitschnitt seit Kernel-Start ----
+if ($api === 'messages') {
+    header('Content-Type: application/json; charset=utf-8');
+    $buf = json_decode($this->GetBuffer('lvbmsgs'), true);
+    echo json_encode(['messages' => is_array($buf) ? array_reverse($buf) : []]);
+    return;
+}
+
 // ---- Live-Werte (Delta über since) ----
 if ($api === 'val') {
     header('Content-Type: application/json; charset=utf-8');
