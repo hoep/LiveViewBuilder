@@ -40,6 +40,7 @@
       +'<label class="skrow2"><span>Mobil-Ansicht für „'+esc(store.current||'')+'"</span><select id="stMobView"><option value="">(keine)</option>'+Object.keys(store.views||{}).map(function(n){return '<option'+((state.page&&state.page.mobileView)===n?' selected':'')+'>'+esc(n)+'</option>';}).join('')+'</select></label>'
       +'<div class="pgh">Live-Modus</div>'
       +'<label class="skrow2" style="flex-direction:row;align-items:center;gap:8px"><input type="checkbox" id="stHideNav"'+(c.hideRunNav?' checked':'')+'><span>Seitenumschalter (Hamburger) ausblenden</span></label>'
+      +'<label class="skrow2" style="flex-direction:row;align-items:center;gap:8px"><input type="checkbox" id="stNoFS"'+(c.noAutoFS?' checked':'')+'><span>Kein Auto-Vollbild beim ersten Klick</span></label>'
       +'<div class="pgh">Server (nur Info)</div>'
       +'<div class="hint" style="margin:4px 2px">Schreib-Token und WebSocket-Port werden serverseitig in <code>sites.php</code> / <code>hook.php</code> gesetzt — nicht im Builder.</div>';
     if($('#stAuto'))$('#stAuto').onchange=function(){bcfg().autosave=this.checked;commit();if(this.checked)scheduleSave();};
@@ -49,6 +50,7 @@
     $('#stH').oninput=function(){bcfg().defH=Math.max(240,parseInt(this.value)||900);commit();};
     $('#stFit').onchange=function(){bcfg().defFit=this.value;commit();};
     if($('#stHideNav'))$('#stHideNav').onchange=function(){bcfg().hideRunNav=this.checked||undefined;commit();if(document.body.classList.contains('run'))document.body.classList.toggle('nohamb',this.checked);toast('Seitenumschalter '+(this.checked?'ausgeblendet':'sichtbar'));};
+    if($('#stNoFS'))$('#stNoFS').onchange=function(){bcfg().noAutoFS=this.checked||undefined;commit();toast('Auto-Vollbild '+(this.checked?'aus':'an')+' (wirkt nach Reload)');};
     if($('#stMob'))$('#stMob').onchange=function(){bcfg().mobileOpt=this.checked;commit();};
     if($('#stMobW'))$('#stMobW').oninput=function(){bcfg().mobileW=Math.max(320,parseInt(this.value)||640);commit();};
     if($('#stMobHome'))$('#stMobHome').onchange=function(){store.homeMobile=this.value||undefined;commit();};
