@@ -22,6 +22,7 @@
       +'<div class="prop">'
       +row('Typ','<select id="pType">'+typeOpts+'</select>')
       +row('Label','<input id="pLabel" value="'+esc(w.label||'')+'">')
+      +row('Name','<input id="pName" value="'+esc(w.name||'')+'" placeholder="eindeutige Kennung (intern)">')
       +((w.type==='camera'||w.type==='image')?row('Media-ID','<input id="pMedia" value="'+(w.mediaId||'')+'" placeholder="Media-ID">')
           :(w.type==='line'||w.type==='shape')?row('Farbe','<input id="pColor" type="color" value="'+(w.color||'#00cdab')+'">')
           :(w.type!=='text'&&w.type!=='calendar'&&w.type!=='clock'&&!(w.type==='html'&&w.htmlSrc==='custom')?row('Variable','<input id="pVar" value="'+(w.varId||'')+'" placeholder="ID"> <button class="btn" id="pPick" style="padding:6px 8px">wählen</button>'):''))
@@ -42,6 +43,8 @@
       +((state.page.fit&&state.page.fit!=='letterbox')?respSection(w):'')
       +((w.type!=='button'&&w.type!=='tile')?popupSection(w):'')
       +(w.type!=='blank'?('<div class="pgh">Sichtbarkeit</div>'
+        +row('Zur Laufzeit','<input type="checkbox" id="pRunVis"'+(w.hidden?'':' checked')+'> <span style="font-size:11px;color:var(--muted)">im Betrieb anzeigen</span>')
+        +((w.type!=='ticker'&&state.widgets.some(function(x){return x.type==='ticker';}))?row('Laufzeile','<button class="btn" id="pToTicker" style="padding:5px 8px">→ in Laufzeile verschieben</button>'):'')
         +row('Steuer-Var','<input id="pVisVar" value="'+(w.visVar||'')+'" placeholder="ID (leer=immer)"> <button class="btn" id="pVisPick" style="padding:6px 8px">wählen</button>')
         +(w.visVar?(row('Zeigen wenn','<select id="pVisMode"><option value="truthy"'+((w.visMode||'truthy')==='truthy'?' selected':'')+'>wahr / ≠0</option><option value="eq"'+(w.visMode==='eq'?' selected':'')+'>= Wert</option><option value="ne"'+(w.visMode==='ne'?' selected':'')+'>≠ Wert</option><option value="ge"'+(w.visMode==='ge'?' selected':'')+'>≥ Wert</option><option value="le"'+(w.visMode==='le'?' selected':'')+'>≤ Wert</option></select>')+((w.visMode&&w.visMode!=='truthy')?row('Wert','<input id="pVisVal" value="'+esc(w.visVal!=null?w.visVal:'')+'">'):'')):'')):'')
       +(w.type!=='blank'?row('Animation','<select id="pAnim"><option value=""'+(!w.anim?' selected':'')+'>keine</option><option value="fade"'+(w.anim==='fade'?' selected':'')+'>Fade</option><option value="scale"'+(w.anim==='scale'?' selected':'')+'>Scale</option><option value="slide"'+(w.anim==='slide'?' selected':'')+'>SlideUp</option></select>'):'')
@@ -49,10 +52,10 @@
       +'<div class="xy">'+cell('X','pX',w.x)+cell('Y','pY',w.y)+cell('B','pW',w.w)+cell('H','pH',w.h)+'</div>'
       +'<button class="btn danger" id="pDel">Löschen</button>'
       +'</div>'
-      +((w.type==='weather'||w.type==='weatherpro')?fcEditor(w):'')
     $('#pType').value=w.type;
     $('#pType').onchange=function(){w.type=this.value;render();renderProps();};
     $('#pLabel').oninput=function(){w.label=this.value;render();};
+    if($('#pName'))$('#pName').onchange=function(){var nm=this.value.trim();if(nm&&namedWidgets(w.id).some(function(o){return o.name===nm;})){toast('Name bereits vergeben');this.value=w.name||'';return;}w.name=nm||undefined;commit();};
     if($('#pVar'))$('#pVar').onchange=function(){w.varId=parseInt(this.value)||0;delete _hist[w.id];render();renderProps();};
     if($('#pPick'))$('#pPick').onclick=function(){showTab('vars');toast('Variable im Baum anklicken — bindet an dieses Element');_bindTarget=w.id;};
     if($('#pMedia'))$('#pMedia').onchange=function(){w.mediaId=parseInt(this.value)||0;render();};
@@ -101,6 +104,8 @@
     $$('[data-fpick]',p).forEach(function(b){b.onclick=function(){showTab('vars');toast('Variable im Baum anklicken');_bindField={wid:w.id,path:b.dataset.fpick};};}); // generischer Feld-Pick (Pfad, z. B. fc.0.hi)
     $$('[data-fid]',p).forEach(function(inp){inp.onchange=function(){setPath(w,inp.dataset.fid,parseInt(inp.value)||0);render();renderProps();};});
     $$('[data-fclr]',p).forEach(function(b){b.onclick=function(){setPath(w,b.dataset.fclr,0);render();renderProps();};});
+    if($('#pRunVis'))$('#pRunVis').onchange=function(){w.hidden=this.checked?undefined:true;render();commit();};
+    if($('#pToTicker'))$('#pToTicker').onclick=function(){moveToTicker(w);};
     if($('#pVisVar'))$('#pVisVar').onchange=function(){w.visVar=parseInt(this.value)||undefined;render();renderProps();};
     if($('#pVisPick'))$('#pVisPick').onclick=function(){showTab('vars');_bindVis=w.id;};
     if($('#pVisMode'))$('#pVisMode').onchange=function(){w.visMode=this.value;render();renderProps();};
@@ -113,6 +118,13 @@
     }catch(_ep){console.error('renderProps('+(w&&w.type)+')',_ep);p.innerHTML='<div class="hint" style="color:var(--crit);font-size:12px;white-space:pre-wrap">Eigenschaften-Fehler bei „'+esc(w.type)+'":\n'+esc((_ep&&_ep.message)||String(_ep))+'</div>';} // Panel zeigt den Fehler direkt an
   }
   function row(l,html){return '<div class="prow"><label>'+l+'</label>'+html+'</div>';}
+  function moveToTicker(w){ // Widget benennen, in erste Laufzeile referenzieren, auf der Seite ausblenden
+    var tk=state.widgets.filter(function(x){return x.type==='ticker';})[0];
+    if(!tk){toast('Keine Laufzeile auf dieser Seite');return;}
+    if(!w.name){var base=(w.label||w.type||'widget').toString().replace(/\s+/g,'-').toLowerCase(),nm=base,n=2;while(namedWidgets(w.id).some(function(o){return o.name===nm;})){nm=base+'-'+(n++);}w.name=nm;}
+    tk.items=tk.items||[];if(!tk.items.some(function(m){return m.ref===w.name;}))tk.items.push({ref:w.name});
+    w.hidden=true;render();select(tk.id);toast('„'+w.name+'" in Laufzeile verschoben');commit();
+  }
   function fieldPick(w,path,label){var v=getPath(w,path)||''; // Variable an ein beliebiges Feld (Pfad) binden: Eingabe + wählen + entfernen
     return '<div class="prow"><label>'+label+'</label><input data-fid="'+path+'" value="'+(v||'')+'" placeholder="ID" style="width:60px"> <button class="btn" data-fpick="'+path+'" style="padding:5px 7px">wählen</button>'+(v?' <button class="btn" data-fclr="'+path+'" style="padding:5px 7px" title="entfernen">×</button>':'')+'</div>';}
   function cell(l,id,v){return '<div class="prow"><label style="width:18px">'+l+'</label><input id="'+id+'" type="number" value="'+v+'"></div>';}
