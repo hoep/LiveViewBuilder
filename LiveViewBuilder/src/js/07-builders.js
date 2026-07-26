@@ -18,7 +18,7 @@
   }
   // ---------- Einstellungen (Builder-Konfigurator) ----------
   function bcfg(){store.cfg=store.cfg||{};var c=store.cfg;if(c.gs==null)c.gs=8;if(c.gap==null)c.gap=12;if(c.defW==null)c.defW=1440;if(c.defH==null)c.defH=900;if(c.defFit==null)c.defFit='auto';if(c.autosave==null)c.autosave=true;if(c.mobileOpt==null)c.mobileOpt=true;if(c.mobileW==null)c.mobileW=640;return c;}
-  function isMobile(){var w=window.innerWidth||0;if(w<=(bcfg().mobileW||640))return true;try{if(window.matchMedia&&window.matchMedia('(pointer:coarse)').matches&&w<900&&window.innerHeight>window.innerWidth)return true;}catch(e){}return false;}
+  function isMobile(){var w=window.innerWidth||0,h=window.innerHeight||0;if(w<=(bcfg().mobileW||640))return true;try{if(window.matchMedia&&window.matchMedia('(pointer:coarse)').matches&&Math.min(w,h)<=820)return true;}catch(e){}return false;} // coarse-Pointer (Touch) in beiden Ausrichtungen -> mobil
   function buildSettings(){
     var box=$('#setpanel');if(!box)return;var c=bcfg();
     box.innerHTML=''
