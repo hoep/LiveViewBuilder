@@ -40,7 +40,7 @@
     $$('[data-vid="'+id+'"]',canvas).forEach(function(e){e.textContent=base;}); // generische Slots (Forecast etc.)
     $$('[data-viddot="'+id+'"]',canvas).forEach(function(e){e.classList.toggle('on',on);}); // Status-Dots / Bewegung
     $$('[data-vidbar="'+id+'"]',canvas).forEach(function(e){var nb=parseFloat(String(d.v).replace(',','.'));if(!isNaN(nb))e.style.width=Math.max(0,Math.min(100,nb))+'%';}); // Meter-Balken
-    function _apply1(w,root){
+    function _apply1(w,root){try{
       var el=$('.w[data-id="'+w.id+'"]',root);if(!el)return;
       var _vb=(w.suf||w.unit)?num:base; // Widget mit eigener Einheit/Suffix -> Zahl ohne Profil-Einheit (keine Doppelung)
       var _b=w.fmt?fmtVal(w,d,base):_vb;var txt=(w.pre||w.suf)?((w.pre||'')+_b+(w.suf||'')):_b; // Format + Präfix/Suffix
@@ -52,7 +52,7 @@
       if(w.varId!==id)return;
       var v=$('[data-role=val]',el);if(v)v.textContent=txt;
       var sw=$('[data-role=sw]',el);if(sw)sw.classList.toggle('on',on);
-    }
+    }catch(_e){if(window.console&&console.error)console.error('live '+(w&&w.type)+'#'+(w&&w.id),_e);}} // ein defektes Widget darf die Live-Schleife nicht abbrechen
     if(!_vidx)buildVidx();
     var _lst=_vidx[id];if(_lst)for(var _i=0;_i<_lst.length;_i++)_apply1(_lst[_i].w,_lst[_i].root); // nur Widgets, die diese ID binden
   }
