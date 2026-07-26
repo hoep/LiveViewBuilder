@@ -88,13 +88,22 @@ if ($api === 'val') {
     header('Content-Type: application/json; charset=utf-8');
     $ids   = array_filter(array_map('intval', explode(',', (string) ($_GET['ids'] ?? ''))));
     $since = (int) ($_GET['since'] ?? 0);
+    $sfx = function ($vid) { // Profil-Suffix (Einheit) der Variable
+        $vv = @IPS_GetVariable($vid);
+        if (!$vv) return '';
+        $pr = ($vv['VariableCustomProfile'] !== '') ? $vv['VariableCustomProfile'] : $vv['VariableProfile'];
+        if ($pr !== '' && IPS_VariableProfileExists($pr)) {
+            return (string) IPS_GetVariableProfile($pr)['Suffix'];
+        }
+        return '';
+    };
     $out   = [];
     foreach ($ids as $id) {
         if (IPS_VariableExists($id)) {
             if ($since > 0 && IPS_GetVariable($id)['VariableChanged'] < $since) {
                 continue;
             }
-            $out[$id] = ['v' => GetValue($id), 'f' => @GetValueFormatted($id)];
+            $out[$id] = ['v' => GetValue($id), 'f' => @GetValueFormatted($id), 'u' => $sfx($id)];
         }
     }
     echo json_encode(['ts' => time(), 'values' => $out]);

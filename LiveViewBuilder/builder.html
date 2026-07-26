@@ -2112,12 +2112,15 @@
   function applyVal(id,d){
     if(!id||!d)return;_lastVals[id]=d;
     var base=(d.f!==''&&d.f!=null)?d.f:d.v,on=(d.v===true||d.v===1||d.v==='1');
+    var _bs=String(base),_pu=(d.u!=null)?String(d.u):''; // Profil-Einheit vom Server
+    var num=(_pu!==''&&_bs.length>=_pu.length&&_bs.slice(-_pu.length)===_pu)?_bs.slice(0,-_pu.length).replace(/\s+$/,''):_bs; // Wert ohne Profil-Einheit
     $$('[data-vid="'+id+'"]',canvas).forEach(function(e){e.textContent=base;}); // generische Slots (Forecast etc.)
     $$('[data-viddot="'+id+'"]',canvas).forEach(function(e){e.classList.toggle('on',on);}); // Status-Dots / Bewegung
     $$('[data-vidbar="'+id+'"]',canvas).forEach(function(e){var nb=parseFloat(String(d.v).replace(',','.'));if(!isNaN(nb))e.style.width=Math.max(0,Math.min(100,nb))+'%';}); // Meter-Balken
     function _apply1(w,root){
       var el=$('.w[data-id="'+w.id+'"]',root);if(!el)return;
-      var _b=w.fmt?fmtVal(w,d,base):base;var txt=(w.pre||w.suf)?((w.pre||'')+_b+(w.suf||'')):_b; // Format + Präfix/Suffix
+      var _vb=(w.suf||w.unit)?num:base; // Widget mit eigener Einheit/Suffix -> Zahl ohne Profil-Einheit (keine Doppelung)
+      var _b=w.fmt?fmtVal(w,d,base):_vb;var txt=(w.pre||w.suf)?((w.pre||'')+_b+(w.suf||'')):_b; // Format + Präfix/Suffix
       if(w.icon&&AICONS[w.icon]&&w.varId===id){var _ai=$('svg[data-ai]',el);if(_ai)_ai.outerHTML=iconSVG(w.icon,d.v);} // adaptives Icon (0–100 % / Zustand)
       if(w.assocOn&&w.varId===id)applyAssoc(w,el,d.v); // Icon/Farbe aus Variablen-Assoziation
       if((w.type==='kpi'||w.type==='delta')&&w.cmpOn&&w.varId===id)computeCompare(w); // Zeitversatz-Vergleich
@@ -2182,14 +2185,19 @@
     };
     return d;
   }
+  function autoUnit(w,n){ // Profil-Einheit ins passende Feld vorausfüllen (nur wenn leer)
+    var su=(n&&n.suffix!=null)?String(n.suffix):'';if(!su)return;
+    if(w.type==='value'){if(!w.suf)w.suf=su;}
+    else if(w.type==='kpi'||w.type==='calc'){if(!w.unit)w.unit=su.replace(/^\s+/,'');}
+  }
   function bindVar(n){
     if(_bindObj){var wob=widget(_bindObj);if(wob){wob.objId=n.id;render();select(wob.id);fetchObjInfo(wob);toast('Objekt: '+n.name);}_bindObj=null;return;}
     if(_bindVis){var wvs=widget(_bindVis);if(wvs){wvs.visVar=n.id;render();select(wvs.id);toast('Sichtbarkeit: '+n.name);}_bindVis=null;return;}
     if(_bindTarget3){var w3=widget(_bindTarget3);if(w3){w3.varId3=n.id;render();select(w3.id);toast('Untergang: '+n.name);}_bindTarget3=null;return;}
     if(_bindTarget2){var w2=widget(_bindTarget2);if(w2){w2.varId2=n.id;render();select(w2.id);toast('Gebunden: '+n.name);}_bindTarget2=null;return;}
-    if(_bindTarget){var w=widget(_bindTarget);if(w){w.varId=n.id;if(!w.label||w.label==='Label')w.label=n.name;if(n.unit&&w.type==='value')w.unit=n.unit;render();select(w.id);toast('Gebunden: '+n.name);}_bindTarget=null;return;}
+    if(_bindTarget){var w=widget(_bindTarget);if(w){w.varId=n.id;if(!w.label||w.label==='Label')w.label=n.name;autoUnit(w,n);render();select(w.id);toast('Gebunden: '+n.name);}_bindTarget=null;return;}
     // sonst neue Wert-Kachel
-    addWidget('value',{varId:n.id,label:n.name,unit:n.unit||''});toast('Kachel + Variable: '+n.name);
+    var _nv={varId:n.id,label:n.name};if(n.suffix)_nv.suf=String(n.suffix);addWidget('value',_nv);toast('Kachel + Variable: '+n.name);
   }
   function loadTree(parent,box){fetch('?api=tree&parent='+parent,{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){box.innerHTML='';(j.nodes||[]).forEach(function(c){box.appendChild(nodeEl(c));});});}
   function doSearch(q){var box=$('#tree');q=(q||'').trim();
