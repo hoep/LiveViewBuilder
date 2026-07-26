@@ -35,8 +35,16 @@
   body.run.reflow .stage{overflow-y:auto;overflow-x:hidden}
   .stage.edit .w{cursor:move}
   .w.sel{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent),0 0 0 4px color-mix(in oklab,var(--accent) 22%,transparent)}
-  .w .rz{position:absolute;right:-1px;bottom:-1px;width:14px;height:14px;cursor:nwse-resize;background:var(--accent);border-radius:3px 0 var(--r-s) 0;display:none}
+  .w .rz{position:absolute;display:none;z-index:6;background:transparent}
   .stage.edit .w.sel .rz{display:block}
+  .w .rz-n{top:-4px;left:11px;right:11px;height:8px;cursor:ns-resize;border-radius:3px;background:color-mix(in oklab,var(--accent) 28%,transparent)}
+  .w .rz-s{bottom:-4px;left:11px;right:11px;height:8px;cursor:ns-resize;border-radius:3px;background:color-mix(in oklab,var(--accent) 28%,transparent)}
+  .w .rz-e{right:-4px;top:11px;bottom:11px;width:8px;cursor:ew-resize;border-radius:3px;background:color-mix(in oklab,var(--accent) 28%,transparent)}
+  .w .rz-w{left:-4px;top:11px;bottom:11px;width:8px;cursor:ew-resize;border-radius:3px;background:color-mix(in oklab,var(--accent) 28%,transparent)}
+  .w .rz-ne{top:-4px;right:-4px;width:11px;height:11px;cursor:nesw-resize;border-radius:3px;background:var(--accent)}
+  .w .rz-nw{top:-4px;left:-4px;width:11px;height:11px;cursor:nwse-resize;border-radius:3px;background:var(--accent)}
+  .w .rz-se{bottom:-4px;right:-4px;width:11px;height:11px;cursor:nwse-resize;border-radius:3px;background:var(--accent)}
+  .w .rz-sw{bottom:-4px;left:-4px;width:11px;height:11px;cursor:nesw-resize;border-radius:3px;background:var(--accent)}
   /* Widget-Innenleben */
   .wv{padding:9px 11px;height:100%;display:flex;flex-direction:column;justify-content:center;gap:3px}
   .wv .l{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -464,7 +472,7 @@
   #canvas{box-shadow:0 34px 90px -44px #000,0 0 0 1px var(--line)}
   .w{transition:box-shadow .12s}
   .w.sel{box-shadow:0 0 0 1.5px var(--accent),0 0 0 5px color-mix(in oklab,var(--accent) 17%,transparent),0 10px 24px -14px rgba(0,0,0,.55)}
-  .w .rz{width:12px;height:12px;right:-2px;bottom:-2px;border-radius:3px;box-shadow:0 0 0 2px var(--surface)}
+  .w .rz-ne,.w .rz-nw,.w .rz-se,.w .rz-sw{box-shadow:0 0 0 2px var(--surface)}
   .stage.edit .w:not(.sel):hover{box-shadow:0 0 0 1px color-mix(in oklab,var(--accent) 42%,var(--line))}
   .pane::-webkit-scrollbar,.stage::-webkit-scrollbar,.tree::-webkit-scrollbar,#iconLib::-webkit-scrollbar,.hlist::-webkit-scrollbar,.cagenda::-webkit-scrollbar{width:10px;height:10px}
   .pane::-webkit-scrollbar-thumb,.stage::-webkit-scrollbar-thumb,.tree::-webkit-scrollbar-thumb,#iconLib::-webkit-scrollbar-thumb,.hlist::-webkit-scrollbar-thumb,.cagenda::-webkit-scrollbar-thumb{background:var(--line);border-radius:7px;border:3px solid transparent;background-clip:content-box}
@@ -1206,7 +1214,7 @@
       if(w.name&&_refSet[w.name])d.classList.add('ref-hidden'); // in Laufzeile referenziert -> immer aus (bearbeiten über die Laufzeile)
       else if(w.hidden)d.classList.add('run-hidden'); // manuell versteckt -> im Run aus, im Edit gestrichelt sichtbar (CSS)
       var _inner;try{_inner=widgetInner(w);}catch(_e){_inner='<div style="padding:6px;font-size:11px;color:var(--crit)">⚠ '+esc(w.type||'?')+'</div>';} // ein defektes Widget darf das Rendern nicht abbrechen
-      d.innerHTML='<div class="winner">'+_inner+'</div><div class="rz" data-role="rz"></div>';
+      d.innerHTML='<div class="winner">'+_inner+'</div><div class="rz rz-n" data-rz="n"></div><div class="rz rz-s" data-rz="s"></div><div class="rz rz-e" data-rz="e"></div><div class="rz rz-w" data-rz="w"></div><div class="rz rz-ne" data-rz="ne"></div><div class="rz rz-nw" data-rz="nw"></div><div class="rz rz-se" data-rz="se"></div><div class="rz rz-sw" data-rz="sw"></div>';
       if(w.type==='value'&&w.valfs){var v=$('.v',d);if(v)v.style.fontSize=w.valfs+'px';}
       if(w.bg)d.style.background=w.bg;if(w.fg)d.style.color=w.fg;
       if(w.ff){d.style.setProperty('--w-ff',w.ff);d.classList.add('tw-ff');}if(w.fwt){d.style.setProperty('--w-fwt',w.fwt);d.classList.add('tw-fwt');}if(w.fsty){d.style.setProperty('--w-fsty',w.fsty);d.classList.add('tw-fsty');}if(w.fsz){d.style.setProperty('--w-fsz',w.fsz+'px');d.classList.add('tw-fsz');} // Typografie: auf innere Elemente erzwingen
@@ -2062,7 +2070,7 @@
     }
     if(el.dataset.refsrc){var _ow=widget(el.dataset.refsrc);if(_ow){select(_ow.id);e.preventDefault();return;}} // Laufzeilen-Kachel: referenziertes Original auswählen (kein Drag)
     var w=widget(el.dataset.id);
-    if(e.target.dataset.role==='rz'){select(w.id);drag={mode:'rz',w:w,sx:e.clientX,sy:e.clientY,ow:w.w,oh:w.h};e.preventDefault();return;}
+    var _rz=e.target.dataset.rz;if(_rz){select(w.id);drag={mode:'rz',dir:_rz,w:w,sx:e.clientX,sy:e.clientY,ox:w.x,oy:w.y,ow:w.w,oh:w.h};e.preventDefault();return;} // Resize von jeder Kante/Ecke
     if(e.shiftKey){select(w.id,true);}
     else if(!sel[w.id]){select(w.id);}
     else{selId=w.id;renderProps();}
@@ -2072,7 +2080,13 @@
   window.addEventListener('mousemove',function(e){
     if(marq){var r=canvas.getBoundingClientRect(),x=(e.clientX-r.left)/zoom,y=(e.clientY-r.top)/zoom,L=Math.min(x,marq.x0),T=Math.min(y,marq.y0),W=Math.abs(x-marq.x0),H=Math.abs(y-marq.y0);marq.el.style.left=L+'px';marq.el.style.top=T+'px';marq.el.style.width=W+'px';marq.el.style.height=H+'px';marq.rect={L:L,T:T,R:L+W,B:T+H};return;}
     if(!drag)return;var dx=(e.clientX-drag.sx)/zoom,dy=(e.clientY-drag.sy)/zoom;
-    if(drag.mode==='rz'){drag.w.w=snap(Math.max(40,drag.ow+dx));drag.w.h=snap(Math.max(28,drag.oh+dy));applyGeom(drag.w);badge(e,drag.w.w+' × '+drag.w.h+' px');return;}
+    if(drag.mode==='rz'){var dir=drag.dir||'se',nx=drag.ox,ny=drag.oy,nw=drag.ow,nh=drag.oh;
+      if(dir.indexOf('e')>=0)nw=drag.ow+dx; if(dir.indexOf('w')>=0)nw=drag.ow-dx;
+      if(dir.indexOf('s')>=0)nh=drag.oh+dy; if(dir.indexOf('n')>=0)nh=drag.oh-dy;
+      nw=snap(Math.max(40,nw));nh=snap(Math.max(28,nh));
+      if(dir.indexOf('w')>=0)nx=drag.ox+drag.ow-nw; // rechte Kante fix
+      if(dir.indexOf('n')>=0)ny=drag.oy+drag.oh-nh; // untere Kante fix
+      drag.w.x=Math.max(0,nx);drag.w.y=Math.max(0,ny);drag.w.w=nw;drag.w.h=nh;applyGeom(drag.w);badge(e,nw+' × '+nh+' px');return;}
     var g=snapAlign(drag.items,dx,dy);
     drag.items.forEach(function(it){it.w.x=Math.max(0,it.ox+g.dx);it.w.y=Math.max(0,it.oy+g.dy);applyGeom(it.w);});
     badge(e,Math.round(drag.items[0].w.x)+' , '+Math.round(drag.items[0].w.y));
