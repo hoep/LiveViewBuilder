@@ -111,7 +111,7 @@
   function autoUnit(w,n){ // Profil-Einheit ins passende Feld vorausfüllen (nur wenn leer)
     var su=(n&&n.suffix!=null)?String(n.suffix):'';if(!su)return;
     if(w.type==='value'){if(!w.suf)w.suf=su;}
-    else if(w.type==='kpi'||w.type==='calc'||w.type==='cval'){if(!w.unit)w.unit=su.replace(/^\s+/,'');}
+    else if(w.type==='kpi'||w.type==='calc'||w.type==='cval'||w.type==='sval'){if(!w.unit)w.unit=su.replace(/^\s+/,'');}
   }
   function bindVar(n){
     if(_bindObj){var wob=widget(_bindObj);if(wob){wob.objId=n.id;render();select(wob.id);fetchObjInfo(wob);toast('Objekt: '+n.name);}_bindObj=null;return;}

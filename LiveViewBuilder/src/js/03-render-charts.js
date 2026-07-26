@@ -291,6 +291,26 @@
     });
   }
   function refreshCVal(w){delete _cmpData[w.id];render();computeCounterVal(w);}
+  var _aggData={}; // widgetId -> {min,max,avg,stage,fetched}
+  function ensureAgg(w,cb){
+    if(!w.varId){cb(null);return;}
+    var stage=cmpStage(w),c=_aggData[w.id],now=Date.now();
+    if(c&&c.stage===stage&&(now-c.fetched)<25000){cb(c);return;}
+    fetch('?api=agg&id='+w.varId+'&stage='+stage,{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
+      _aggData[w.id]={min:(j&&j.min!=null)?parseFloat(j.min):null,max:(j&&j.max!=null)?parseFloat(j.max):null,avg:(j&&j.avg!=null)?parseFloat(j.avg):null,stage:stage,fetched:now};cb(_aggData[w.id]);
+    }).catch(function(){cb(null);});
+  }
+  function _fmtStat(n,unit){if(n==null)return '–';var a=Math.abs(n),dd=a>=100?0:(a>=10?1:2);return n.toFixed(dd).replace('.',',')+(unit?' '+unit:'');}
+  function aggParts(w){var ps=[];if(w.statMin)ps.push('min');if(w.statAvg||(!w.statMin&&!w.statMax&&!w.statAvg))ps.push('avg');if(w.statMax)ps.push('max');return ps;} // Standard: Ø
+  function computeAggVal(w){
+    ensureAgg(w,function(p){
+      var el=$('.w[data-id="'+w.id+'"]',canvas);if(!el)return;var v=el.querySelector('[data-role=val]');if(!v)return;
+      var LBL={min:'Min',avg:'Ø',max:'Max'},ps=aggParts(w),u=w.unit||'';
+      if(ps.length===1){v.textContent=_fmtStat(p?p[ps[0]]:null,u);}
+      else{v.innerHTML=ps.map(function(k){return '<span style="opacity:.55;font-size:.68em;letter-spacing:.02em">'+LBL[k]+'</span> '+esc(_fmtStat(p?p[k]:null,u));}).join(' <span style="opacity:.3">·</span> ');}
+    });
+  }
+  function refreshAggVal(w){delete _aggData[w.id];render();computeAggVal(w);}
   // ===== Thermostat (erweiterte Karte) =====
   function thermMode(w){
     if(!w.varId3)return null;var lv=_lastVals[w.varId3];if(!lv)return {raw:null,name:'',isOff:false,isCool:false,isHeat:true};
