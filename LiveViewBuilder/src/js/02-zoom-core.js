@@ -12,7 +12,7 @@
   function snap(n){return gridOn?Math.round(n/GS)*GS:Math.round(n);}
   function uid(){return 'w'+(seq++);}
 
-  function setCanvas(){canvas.style.width=state.page.w+'px';canvas.style.height=state.page.h+'px';canvas.style.setProperty('--gs',GS+'px');var wi=$('#cvW'),hi=$('#cvH');if(wi)wi.value=state.page.w;if(hi)hi.value=state.page.h;var ff=$('#cvFit');if(ff)ff.value=state.page.fit||'letterbox';applyZoom();}
+  function setCanvas(){canvas.style.width=state.page.w+'px';canvas.style.height=state.page.h+'px';canvas.style.setProperty('--gs',GS+'px');var wi=$('#cvW'),hi=$('#cvH');if(wi)wi.value=state.page.w;if(hi)hi.value=state.page.h;var ff=$('#cvFit');if(ff)ff.value=state.page.fit||'letterbox';var fr=$('#cvFrame');if(fr)fr.checked=!state.page.noframe;applyZoom();}
 
   function widgetInner(w){
     var _wr=WIDGETS[w.type];if(_wr&&_wr.render){var _h=_wr.render(w);if(_h!=null)return _h;}
