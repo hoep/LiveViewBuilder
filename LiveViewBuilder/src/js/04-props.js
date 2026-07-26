@@ -242,6 +242,7 @@
       if(!e.shiftKey){selClear();markSel();renderProps();}
       e.preventDefault();return;
     }
+    if(el.dataset.refsrc){var _ow=widget(el.dataset.refsrc);if(_ow){select(_ow.id);e.preventDefault();return;}} // Laufzeilen-Kachel: referenziertes Original auswählen (kein Drag)
     var w=widget(el.dataset.id);
     if(e.target.dataset.role==='rz'){select(w.id);drag={mode:'rz',w:w,sx:e.clientX,sy:e.clientY,ow:w.w,oh:w.h};e.preventDefault();return;}
     if(e.shiftKey){select(w.id,true);}

@@ -2,11 +2,11 @@
   // Eine Zeile ist: (a) Referenz auf ein benanntes Widget (m.ref) · (b) inline-Widget (m.wtype) · (c) statischer/Variablen-Text.
   // Widget-Zeilen werden als echte Instanzen gerendert (widgetInner) und in _tickKids für Live-Updates registriert.
   var _TICK_TYPES=[['value','Wert'],['kpi','KPI'],['delta','Delta'],['chip','Chip'],['icon','Icon'],['text','Text'],['switch','Schalter'],['tile','Kachel'],['bar','Balken']];
-  function _tkBox(w,src,mw,i,sfx){ // rendert eine Widget-Instanz (Klon von src-Config) als Laufband-Kachel
+  function _tkBox(w,src,mw,i,sfx,srcId){ // rendert eine Widget-Instanz (Klon von src-Config) als Laufband-Kachel
     var cfg={};for(var k in src)cfg[k]=src[k];cfg.id=w.id+'__t'+i+sfx;cfg.type=src.type;delete cfg.x;delete cfg.y;
     var iw=parseInt(mw)||parseInt(src.w)||170;_tickKids.push(cfg);
     var inner;try{inner=widgetInner(cfg);}catch(e){inner='';}
-    return '<div class="w t-'+esc(src.type)+'" data-id="'+cfg.id+'" style="position:relative;flex:none;height:calc(100% - 4px);width:'+iw+'px;margin:0 5px;background:transparent;border:0"><div class="winner" style="position:absolute;inset:0">'+inner+'</div></div>';
+    return '<div class="w t-'+esc(src.type)+'" data-id="'+cfg.id+'"'+(srcId?' data-refsrc="'+srcId+'"':'')+' style="position:relative;flex:none;height:calc(100% - 4px);width:'+iw+'px;margin:0 5px;background:transparent;border:0"><div class="winner" style="position:absolute;inset:0">'+inner+'</div></div>';
   }
   defWidget('ticker',{
     label:'Laufzeile', paletteIcon:'wticker', size:[560,46],
@@ -16,7 +16,7 @@
       var band=function(sfx){return its.map(function(m,i){
         if(m.ref!=null){                                               // --- Referenz auf benanntes Widget ---
           var src=widgetByName(m.ref);
-          if(src)return _tkBox(w,src,m.w,i,sfx);
+          if(src)return _tkBox(w,src,m.w,i,sfx,src.id);
           return '<span class="htm warn"><span class="htdot"></span><b>? '+esc(m.ref||'(kein Widget)')+'</b></span>';
         }
         if(m.wtype&&WIDGETS[m.wtype]){                                 // --- inline-Widget ---
