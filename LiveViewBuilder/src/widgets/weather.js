@@ -37,6 +37,20 @@
     if(/wind/.test(txt))return 'wind';
     return 'cloudsun';
   }
+  // EN->DE Übersetzung der Zustandstexte (Tempest/OWM liefern Englisch). Deutsche Texte bleiben unverändert.
+  var WTR={
+    'clear':'Klar','clear sky':'Klarer Himmel','sunny':'Sonnig','fair':'Heiter','mostly clear':'Überwiegend klar','mostly sunny':'Überwiegend sonnig',
+    'partly cloudy':'Teilweise bewölkt','partly sunny':'Teilweise sonnig','mostly cloudy':'Überwiegend bewölkt','cloudy':'Bewölkt','overcast':'Bedeckt','overcast clouds':'Bedeckt',
+    'few clouds':'Leicht bewölkt','scattered clouds':'Vereinzelte Wolken','broken clouds':'Aufgelockerte Bewölkung',
+    'foggy':'Neblig','fog':'Nebel','mist':'Dunst','haze':'Dunst','windy':'Windig','breezy':'Windig',
+    'rain':'Regen','rain possible':'Regen möglich','rain likely':'Regen wahrscheinlich','light rain':'Leichter Regen','very light rain':'Sehr leichter Regen','moderate rain':'Mäßiger Regen','heavy rain':'Starker Regen',
+    'drizzle':'Niesel','light drizzle':'Leichter Niesel','shower rain':'Regenschauer','rain shower':'Regenschauer','showers':'Schauer',
+    'snow':'Schnee','snow possible':'Schnee möglich','snow likely':'Schnee wahrscheinlich','light snow':'Leichter Schnee','heavy snow':'Starker Schnee','flurries':'Schneegestöber',
+    'sleet':'Graupel','hail':'Hagel','wintry mix':'Schneeregen','wintry mix possible':'Schneeregen möglich','wintry mix likely':'Schneeregen wahrscheinlich',
+    'thunderstorm':'Gewitter','thunderstorms':'Gewitter','thunderstorm possible':'Gewitter möglich','thunderstorms possible':'Gewitter möglich','thunderstorm likely':'Gewitter wahrscheinlich','thunderstorms likely':'Gewitter wahrscheinlich','thundershower':'Gewitterschauer','thunderstorms with rain':'Gewitter mit Regen'
+  };
+  var WTRW=[[/thunderstorms?/gi,'Gewitter'],[/possible/gi,'möglich'],[/likely/gi,'wahrscheinlich'],[/partly/gi,'teils'],[/mostly/gi,'überwiegend'],[/overcast/gi,'bedeckt'],[/cloudy/gi,'bewölkt'],[/clouds/gi,'Wolken'],[/cloud/gi,'Wolke'],[/clear sky/gi,'klarer Himmel'],[/clear/gi,'klar'],[/sunny/gi,'sonnig'],[/showers?/gi,'Schauer'],[/drizzle/gi,'Niesel'],[/freezing rain/gi,'gefrierender Regen'],[/rain/gi,'Regen'],[/snow/gi,'Schnee'],[/sleet/gi,'Graupel'],[/hail/gi,'Hagel'],[/foggy/gi,'neblig'],[/fog/gi,'Nebel'],[/mist|haze/gi,'Dunst'],[/windy|breezy/gi,'windig'],[/light/gi,'leichter'],[/heavy/gi,'starker'],[/moderate/gi,'mäßiger'],[/very/gi,'sehr'],[/scattered/gi,'vereinzelte'],[/broken/gi,'aufgelockerte'],[/few/gi,'wenige']];
+  function wTrans(t){if(t==null||t==='')return t;var k=String(t).trim().toLowerCase();if(WTR[k])return WTR[k];var s=String(t),hit=false;WTRW.forEach(function(p){if(p[0].test(s)){s=s.replace(p[0],p[1]);hit=true;}});return hit?s:t;}
   // --- Icon-Mapper je API ---
   function owmIcon(wobj){wobj=wobj||{};var id=+wobj.id;if(id){if(id>=200&&id<300)return 'storm';if(id>=300&&id<600)return 'rain';if(id>=600&&id<700)return 'snow';if(id>=700&&id<800)return 'fog';if(id===800)return 'sun';if(id===801||id===802)return 'cloudsun';if(id>802)return 'cloud';}return wCondIcon(wobj.description||wobj.main||'');}
   function tempestIcon(ic){if(!ic)return null;ic=(''+ic).toLowerCase();if(/thunder|lightning/.test(ic))return 'storm';if(/snow|sleet/.test(ic))return 'snow';if(/rain|drizzle|pour/.test(ic))return 'rain';if(/fog/.test(ic))return 'fog';if(/wind/.test(ic))return 'wind';if(/partly|mostly-clear|possibly/.test(ic))return 'cloudsun';if(/cloud/.test(ic))return 'cloud';if(/clear|sunny/.test(ic))return 'sun';return null;}
@@ -99,7 +113,7 @@
     var wind=(w.vWind&&_ln(w.vWind)!=null)?_ln(w.vWind):(cur?cur.wind:null);
     var ci=el.querySelector('[data-role=cico]');if(ci)ci.innerHTML=iconSVG(icon);
     var ct=el.querySelector('[data-role=val]');if(ct)ct.textContent=(temp!=null)?(_wtxt(temp,1)+unit):'–';
-    var cs=el.querySelector('[data-role=sub]');if(cs)cs.textContent=(condTxt)?condTxt:((cData||condHasVar)?'':'keine/ungültige Daten');
+    var cs=el.querySelector('[data-role=sub]');if(cs)cs.textContent=(condTxt)?wTrans(condTxt):((cData||condHasVar)?'':'keine/ungültige Daten');
     var hu=el.querySelector('[data-role=hum]');if(hu)hu.innerHTML=(hum!=null)?(_dropSVG+_wtxt(hum)+' %'):'';
     var wi=el.querySelector('[data-role=wind]');if(wi)wi.innerHTML=(wind!=null)?('<svg class="hwmic" style="fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24">'+((ICONS.wind||[])[1]||'')+'</svg>'+_wtxt(wind)+' km/h'):'';
     if(w.type!=='weatherpro')return;
