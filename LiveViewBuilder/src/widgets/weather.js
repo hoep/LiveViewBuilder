@@ -57,11 +57,19 @@
     var cl=w.varId&&_lastVals[w.varId],cData=cl?parseWeatherJSON(cl.v,w.wfmt):null;              // Aktuell = Variable
     var fl=(w.varId2&&_lastVals[w.varId2])||cl,fData=fl?parseWeatherJSON(fl.v,w.wfmt):cData;       // Vorhersage = Variable2 (sonst dieselbe)
     var unit=(w.wunit!=null?w.wunit:'°'),cur=cData&&cData.cur;
-    var ci=el.querySelector('[data-role=cico]');if(ci)ci.innerHTML=iconSVG((cur&&cur.icon)||w.icon||'cloudsun');
-    var ct=el.querySelector('[data-role=val]');if(ct)ct.textContent=(cur&&cur.temp!=null)?(_wtxt(cur.temp,1)+unit):'–';
-    var cs=el.querySelector('[data-role=sub]');if(cs)cs.textContent=(cur&&cur.cond)?cur.cond:(cData?'':'keine/ungültige Daten');
-    var hu=el.querySelector('[data-role=hum]');if(hu)hu.innerHTML=(cur&&cur.humidity!=null)?(_dropSVG+_wtxt(cur.humidity)+' %'):'';
-    var wi=el.querySelector('[data-role=wind]');if(wi)wi.innerHTML=(cur&&cur.wind!=null)?('<svg class="hwmic" style="fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24">'+((ICONS.wind||[])[1]||'')+'</svg>'+_wtxt(cur.wind)+' km/h'):'';
+    // je aktuellem Wert optional eine Variable; sonst Fallback aufs JSON
+    var _ln=function(id){var lv=id&&_lastVals[id];if(!lv)return null;var n=parseFloat(String(lv.v).replace(',','.'));return isNaN(n)?null:n;};
+    var _lt=function(id){var lv=id&&_lastVals[id];if(!lv)return null;return (lv.f!=null&&lv.f!=='')?lv.f:String(lv.v);};
+    var temp=(w.vTemp&&_ln(w.vTemp)!=null)?_ln(w.vTemp):(cur?cur.temp:null);
+    var condHasVar=(w.vCond&&_lt(w.vCond)!=null),condTxt=condHasVar?_lt(w.vCond):(cur?cur.cond:null);
+    var icon=condHasVar?wCondIcon(condTxt):((cur&&cur.icon)||w.icon||'cloudsun');
+    var hum=(w.vHum&&_ln(w.vHum)!=null)?_ln(w.vHum):(cur?cur.humidity:null);
+    var wind=(w.vWind&&_ln(w.vWind)!=null)?_ln(w.vWind):(cur?cur.wind:null);
+    var ci=el.querySelector('[data-role=cico]');if(ci)ci.innerHTML=iconSVG(icon);
+    var ct=el.querySelector('[data-role=val]');if(ct)ct.textContent=(temp!=null)?(_wtxt(temp,1)+unit):'–';
+    var cs=el.querySelector('[data-role=sub]');if(cs)cs.textContent=(condTxt)?condTxt:((cData||condHasVar)?'':'keine/ungültige Daten');
+    var hu=el.querySelector('[data-role=hum]');if(hu)hu.innerHTML=(hum!=null)?(_dropSVG+_wtxt(hum)+' %'):'';
+    var wi=el.querySelector('[data-role=wind]');if(wi)wi.innerHTML=(wind!=null)?('<svg class="hwmic" style="fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24">'+((ICONS.wind||[])[1]||'')+'</svg>'+_wtxt(wind)+' km/h'):'';
     if(w.type!=='weatherpro')return;
     var days=(fData&&fData.days)||[],start=(w.fcStart!=null?w.fcStart:0),showPq=(w.showPq!==false);
     // Skala fuer Temperaturbalken
@@ -74,14 +82,17 @@
       var icEl=row.querySelector('.ic');if(icEl)icEl.innerHTML=iconSVG((d&&d.icon)||'cloudsun');
       var loEl=row.querySelector('.lo');if(loEl)loEl.textContent=d?_wtxt(d.lo):'–';
       var hiEl=row.querySelector('.hi');if(hiEl)hiEl.textContent=d?_wtxt(d.hi):'–';
-      var pqEl=row.querySelector('.pq');if(pqEl)pqEl.textContent=(showPq&&d&&d.pop!=null&&d.pop>0)?(d.pop+'%'):'';
+      var pqEl=row.querySelector('.pq');if(pqEl)pqEl.innerHTML=(showPq&&d&&d.pop!=null&&d.pop>0)?('<svg class="hwpqi" viewBox="0 0 24 24"><path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/></svg>'+d.pop+'%'):'';
       var fill=row.querySelector('.fill');if(fill){var h=d?_wt(d.hi,1):null,l=d?_wt(d.lo,1):null;if(h==null||l==null){fill.style.width='0';}else{var lp=(l-gmin)/(gmax-gmin)*100,hp=(h-gmin)/(gmax-gmin)*100;fill.style.left=Math.max(0,Math.min(100,lp))+'%';fill.style.width=Math.max(3,Math.min(100,hp)-Math.max(0,lp))+'%';fill.style.background='linear-gradient(90deg,'+tColor(l,w.tgrad)+','+tColor(h,w.tgrad)+')';}}
     });
   }
   function wJsonProps(w){ // gemeinsame Props: Format, Einheit + Hinweis auf die JSON-Variable
     return '<div class="hint" style="font-size:11px;color:var(--muted)">„Variable" oben = <b>eine String-Variable mit JSON</b> (OpenWeatherMap, Tempest oder Open-Meteo).</div>'
       +row('Format','<select id="pWFmt"><option value="auto"'+((w.wfmt||'auto')==='auto'?' selected':'')+'>Automatisch erkennen</option><option value="owm"'+(w.wfmt==='owm'?' selected':'')+'>OpenWeatherMap</option><option value="tempest"'+(w.wfmt==='tempest'?' selected':'')+'>Tempest / WeatherFlow</option><option value="openmeteo"'+(w.wfmt==='openmeteo'?' selected':'')+'>Open-Meteo</option></select>')
-      +row('Temp-Einheit','<input id="pWUnit" value="'+esc(w.wunit!=null?w.wunit:'°')+'" style="width:60px" placeholder="°">');
+      +row('Temp-Einheit','<input id="pWUnit" value="'+esc(w.wunit!=null?w.wunit:'°')+'" style="width:60px" placeholder="°">')
+      +'<div class="pgh">Aktuelle Werte (optional als Variable)</div>'
+      +fieldPick(w,'vTemp','Temperatur')+fieldPick(w,'vCond','Zustand')+fieldPick(w,'vHum','Feuchte %')+fieldPick(w,'vWind','Wind km/h')
+      +'<div class="hint" style="font-size:11px;color:var(--muted)">Leer = Wert aus dem JSON. Zustand-Variable liefert Text → Icon automatisch.</div>';
   }
   function wJsonWire(w){
     if($('#pWFmt'))$('#pWFmt').onchange=function(){w.wfmt=this.value;render();commit();};
