@@ -128,6 +128,7 @@
   .hsic{width:26px;height:26px;fill:none;stroke:var(--warm);stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;overflow:visible}
   .hstime{font-family:var(--fm);font-size:15px;font-weight:600}.hslbl{font-size:10px;color:var(--muted)}
   .hwf{height:100%;display:flex;flex-direction:column;gap:8px;padding:10px 12px;overflow:hidden}
+  .w.no-frame{background:transparent;border-color:transparent} /* Kachel-Rahmen/Hintergrund aus */
   .w.ref-hidden{display:none} /* in Laufzeile referenziert: auf der Seite immer aus (Edit + Run) */
   .w.run-hidden{opacity:.4}.w.run-hidden .winner{outline:1px dashed var(--muted);outline-offset:-1px} /* manuell versteckt: im Edit gestrichelt */
   body.run .w.run-hidden{display:none} /* im Run komplett aus (robust, auch ohne Re-Render) */
@@ -623,6 +624,7 @@
     <option value="anchor">Track-Fill</option>
     <option value="reflow">Reflow</option>
   </select>
+  <label class="muted" style="font-size:11px;margin-left:8px;display:inline-flex;align-items:center;gap:4px" title="Standard für diese Ansicht: Kachel-Rahmen/Hintergrund"><input id="cvFrame" type="checkbox"> Rahmen</label>
   <div class="sep"></div>
   <span class="muted" style="font-size:11px">Zoom</span>
   <button class="btn" id="zoomOut" title="Verkleinern (Strg + −)"><svg class="i"><use href="#ic-minus"/></svg></button>
@@ -1173,7 +1175,7 @@
   function snap(n){return gridOn?Math.round(n/GS)*GS:Math.round(n);}
   function uid(){return 'w'+(seq++);}
 
-  function setCanvas(){canvas.style.width=state.page.w+'px';canvas.style.height=state.page.h+'px';canvas.style.setProperty('--gs',GS+'px');var wi=$('#cvW'),hi=$('#cvH');if(wi)wi.value=state.page.w;if(hi)hi.value=state.page.h;var ff=$('#cvFit');if(ff)ff.value=state.page.fit||'letterbox';applyZoom();}
+  function setCanvas(){canvas.style.width=state.page.w+'px';canvas.style.height=state.page.h+'px';canvas.style.setProperty('--gs',GS+'px');var wi=$('#cvW'),hi=$('#cvH');if(wi)wi.value=state.page.w;if(hi)hi.value=state.page.h;var ff=$('#cvFit');if(ff)ff.value=state.page.fit||'letterbox';var fr=$('#cvFrame');if(fr)fr.checked=!state.page.noframe;applyZoom();}
 
   function widgetInner(w){
     var _wr=WIDGETS[w.type];if(_wr&&_wr.render){var _h=_wr.render(w);if(_h!=null)return _h;}
@@ -1192,6 +1194,7 @@
     state.widgets.forEach(function(w){
       var d=document.createElement('div');d.className='w t-'+w.type+(sel[w.id]?' sel':'')+(w.anim?' anim-'+w.anim:'');d.dataset.id=w.id;
       d.style.left=w.x+'px';d.style.top=w.y+'px';d.style.width=w.w+'px';d.style.height=w.h+'px';
+      var _frameOn=(w.frame!=null)?w.frame:!state.page.noframe;if(!_frameOn)d.classList.add('no-frame'); // Kachel-Rahmen: Widget-Override sonst Ansicht-Standard
       if(w.name&&_refSet[w.name])d.classList.add('ref-hidden'); // in Laufzeile referenziert -> immer aus (bearbeiten über die Laufzeile)
       else if(w.hidden)d.classList.add('run-hidden'); // manuell versteckt -> im Run aus, im Edit gestrichelt sichtbar (CSS)
       var _inner;try{_inner=widgetInner(w);}catch(_e){_inner='<div style="padding:6px;font-size:11px;color:var(--crit)">⚠ '+esc(w.type||'?')+'</div>';} // ein defektes Widget darf das Rendern nicht abbrechen
@@ -1827,6 +1830,7 @@
       +(lbl2?row(lbl2,'<input id="pVar2" value="'+(w.varId2||'')+'" placeholder="ID"> <button class="btn" id="pPick2" style="padding:6px 8px">wählen</button>'):'')
       +(lbl3?row(lbl3,'<input id="pVar3" value="'+(w.varId3||'')+'" placeholder="ID"> <button class="btn" id="pPick3" style="padding:6px 8px">wählen</button>'):'')
       +(w.type!=='line'?row('Farben','<input id="pFg" type="color" value="'+(w.fg||'#e7eef0')+'" title="Textfarbe"> <input id="pBg" type="color" value="'+(w.bg||'#141c1f')+'" title="Hintergrund"> <button class="btn" id="pClr" style="padding:5px 8px" title="Farben zurücksetzen"><svg class="i"><use href="#ic-minus"/></svg></button>'):'')
+      +(w.type!=='line'&&w.type!=='shape'?row('Rahmen','<select id="pFrame"><option value=""'+(w.frame==null?' selected':'')+'>Ansicht-Standard</option><option value="1"'+(w.frame===true?' selected':'')+'>An</option><option value="0"'+(w.frame===false?' selected':'')+'>Aus</option></select>'):'')
       +(['icon','value','switch','bar','tile','button','light','chip','room','kpi'].indexOf(w.type)>=0?row('Icon','<span style="width:20px;height:20px;display:inline-flex;align-items:center;color:var(--accent)">'+(w.icon?iconSVG(w.icon):'')+'</span> <button class="btn" id="pIcon" style="padding:5px 8px">wählen</button>'+(w.icon?' <button class="btn" id="pIconX" style="padding:5px 8px" title="Icon entfernen"><svg class="i"><use href="#ic-minus"/></svg></button>':'')):'')
       +(['icon','value','switch','bar','tile','button','light','chip','room','kpi'].indexOf(w.type)>=0&&w.varId?'<div id="assocBox" class="assocbox"></div>':'')
       +(function(){try{return (WIDGETS[w.type]&&WIDGETS[w.type].props)?WIDGETS[w.type].props(w):'';}catch(_e){console.error('props('+w.type+')',_e);return '<div class="hint" style="color:var(--crit);font-size:11px">Eigenschaften-Fehler bei „'+esc(w.type)+'" — siehe Konsole</div>';}})()
@@ -1853,6 +1857,7 @@
     if($('#pFg'))$('#pFg').oninput=function(){w.fg=this.value;render();};
     if($('#pBg'))$('#pBg').oninput=function(){w.bg=this.value;render();};
     if($('#pClr'))$('#pClr').onclick=function(){delete w.fg;delete w.bg;render();renderProps();};
+    if($('#pFrame'))$('#pFrame').onchange=function(){w.frame=(this.value===''?undefined:(this.value==='1'));render();commit();};
     if($('#pIcon'))$('#pIcon').onclick=function(){_assocPick=null;showTab('icons');toast('Icon links wählen — wird der Auswahl zugewiesen');};
     if($('#assocBox'))renderAssoc(w);
     if($('#pIconX'))$('#pIconX').onclick=function(){delete w.icon;render();renderProps();};
@@ -2506,6 +2511,7 @@
   $('#zoomLbl').onclick=function(){setZoom(Math.abs(zoom-1)<1e-4?fitZoom():1);};
   stage.addEventListener('wheel',function(e){if(!(e.ctrlKey||e.metaKey)||document.body.classList.contains('run'))return;e.preventDefault();var r=canvas.getBoundingClientRect(),cx=(e.clientX-r.left)/zoom,cy=(e.clientY-r.top)/zoom,z0=zoom;setZoom(zoom*(e.deltaY<0?1.1:1/1.1));var sc=zoom/z0;stage.scrollLeft+=cx*(sc-1)*z0;stage.scrollTop+=cy*(sc-1)*z0;},{passive:false});
   $('#cvFit').addEventListener('change',function(){state.page.fit=this.value;invalidateSC();commit();renderProps();drawStructure();if(document.body.classList.contains('run'))fitCanvas();toast('Anpassung: '+this.value+(document.body.classList.contains('run')?'':' — im Live-Modus sichtbar'));});
+  if($('#cvFrame'))$('#cvFrame').addEventListener('change',function(){state.page.noframe=this.checked?undefined:true;render();commit();toast('Kachel-Rahmen (Ansicht): '+(this.checked?'an':'aus'));});
   $('#structBtn').addEventListener('click',function(){_showStruct=!_showStruct;this.classList.toggle('on',_showStruct);drawStructure();});
   $('#themeBtn').addEventListener('click',function(){store.theme=(store.theme==='light'?'dark':'light');applySkin();buildSkins();commit();});
   (function(){var sr=$('#sideResize'),side=$('.side'),sd=null;if(!sr||!side)return;
