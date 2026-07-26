@@ -391,10 +391,10 @@ if ($api === 'history') {
 // ---- Zeitversatz-Vergleich, automatisch nach Logging-Typ (Standard/Zähler) ----
 if ($api === 'cmp') {
     header('Content-Type: application/json; charset=utf-8');
-    $id   = (int) ($_GET['id'] ?? 0);
-    $off  = (int) ($_GET['off'] ?? 0);
-    $last = (int) ($_GET['last'] ?? 0);
-    if (!IPS_VariableExists($id) || ($last !== 1 && $off <= 0)) {
+    $id    = (int) ($_GET['id'] ?? 0);
+    $stage = (string) ($_GET['stage'] ?? 'day');     // minute|hour|day|week|month|year
+    $kind  = (string) ($_GET['kind'] ?? 'standard'); // standard|counter
+    if (!IPS_VariableExists($id)) {
         echo json_encode(['cur' => null, 'past' => null, 'type' => 0]);
         return;
     }
@@ -404,33 +404,49 @@ if ($api === 'cmp') {
         echo json_encode(['cur' => null, 'past' => null, 'type' => 0]);
         return;
     }
-    if ($last === 1) { // Vergleich mit dem vorherigen geloggten Wert (die 2 jüngsten Einträge)
-        $r    = @AC_GetLoggedValues($ac, $id, 0, time(), 2);
-        $cur  = (is_array($r) && count($r) >= 1) ? $r[0]['Value'] : null;
-        $past = (is_array($r) && count($r) >= 2) ? $r[1]['Value'] : null;
-        echo json_encode(['type' => 0, 'cur' => $cur, 'past' => $past]);
+    $now = time();
+    $Y = (int) date('Y', $now); $mo = (int) date('n', $now); $d = (int) date('j', $now); $H = (int) date('G', $now); $mi = (int) date('i', $now);
+    // Start der aktuellen Periode (kalendergenau, lokale Zeit)
+    switch ($stage) {
+        case 'minute': $pStart = mktime($H, $mi, 0, $mo, $d, $Y); break;
+        case 'hour':   $pStart = mktime($H, 0, 0, $mo, $d, $Y);  break;
+        case 'week':   $pStart = strtotime(date('Y-m-d', strtotime('monday this week', $now)) . ' 00:00:00'); break;
+        case 'month':  $pStart = mktime(0, 0, 0, $mo, 1, $Y); break;
+        case 'year':   $pStart = mktime(0, 0, 0, 1, 1, $Y);   break;
+        default:       $pStart = mktime(0, 0, 0, $mo, $d, $Y); break; // day
+    }
+    // Start der Vorperiode
+    switch ($stage) {
+        case 'minute': $prevStart = $pStart - 60; break;
+        case 'hour':   $prevStart = $pStart - 3600; break;
+        case 'week':   $prevStart = strtotime('-1 week', $pStart); break;
+        case 'month':  $prevStart = strtotime('-1 month', $pStart); break;
+        case 'year':   $prevStart = strtotime('-1 year', $pStart); break;
+        default:       $prevStart = strtotime('-1 day', $pStart); break;
+    }
+    $prevSame = $prevStart + ($now - $pStart); // gleiches Zeitfenster in der Vorperiode
+
+    $lvl = ($stage === 'month') ? 1 : (($stage === 'year') ? 2 : 0); // Aggregationsstufe fuer Rohwert-Fallback
+    $valAt = function ($t) use ($ac, $id, $lvl, $now) {
+        if ($t > $now) $t = $now;
+        $r = @AC_GetLoggedValues($ac, $id, 0, $t, 1); // letzter geloggter Wert <= t
+        if (is_array($r) && count($r)) return (float) $r[0]['Value'];
+        $a = @AC_GetAggregatedValues($ac, $id, $lvl, $t - 3 * 86400, $t, 1); // Fallback (Rohwerte evtl. gepurged)
+        return (is_array($a) && count($a)) ? (float) $a[0]['Avg'] : null;
+    };
+
+    if ($kind === 'counter') {
+        $vn = $valAt($now); $vps = $valAt($pStart);
+        $cur  = ($vn !== null && $vps !== null) ? ($vn - $vps) : null;      // Verbrauch in der aktuellen Periode
+        $vp1 = $valAt($prevSame); $vp0 = $valAt($prevStart);
+        $past = ($vp1 !== null && $vp0 !== null) ? ($vp1 - $vp0) : null;    // Verbrauch Vorperiode (gleiches Fenster)
+        echo json_encode(['type' => 1, 'cur' => $cur, 'past' => $past]);
         return;
     }
-    // Vergleich: aktueller Wert vs. Wert zum EXAKT gleichen Zeitpunkt in der Vorperiode
-    // (gestern/letzte Woche/... zur selben Uhrzeit). Beispiel: heute 07:35 = 6,7 kWh -> Vergleich = gestern 07:35.
-    $now = time();
-    // Aggregationsstufe für den Fallback aus dem Versatz ableiten: <=1h->Stunde(0), <=1d->Stunde(0), <=1w->Tag(1), <=1m->Tag(1), sonst Woche(2)
-    $lvl = ($off <= 86400) ? 0 : (($off <= 2592000) ? 1 : 2);
-    $valAt = function ($t) use ($ac, $id, $lvl) {
-        $r = @AC_GetLoggedValues($ac, $id, 0, $t, 1); // letzter geloggter Wert <= t  == Wert zu genau diesem Zeitpunkt
-        if (is_array($r) && count($r)) {
-            return $r[0]['Value'];
-        }
-        // Rohwerte evtl. gepurged (bei -Woche/-Monat/-Jahr): nächstgelegenen aggregierten Wert nehmen
-        $a = @AC_GetAggregatedValues($ac, $id, $lvl, $t - 2 * 86400, $t, 1);
-        return (is_array($a) && count($a)) ? $a[0]['Avg'] : null;
-    };
-    $cur = @GetValue($id); // aktueller Live-Wert
-    if (!is_numeric($cur)) {
-        $cur = $valAt($now);
-    }
-    $past = $valAt($now - $off);
-    echo json_encode(['type' => 0, 'cur' => is_numeric($cur) ? $cur : null, 'past' => $past]);
+    $cn   = @GetValue($id);
+    $cur  = is_numeric($cn) ? (float) $cn : $valAt($now); // aktueller Wert
+    $past = $valAt($prevSame);                            // Wert zum selben Zeitpunkt der Vorperiode
+    echo json_encode(['type' => 0, 'cur' => $cur, 'past' => $past]);
     return;
 }
 
