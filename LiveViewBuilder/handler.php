@@ -83,11 +83,33 @@ if ($api === 'tree') {
     return;
 }
 
-// ---- IPS-Meldungen (Warnungen/Fehler) — Mitschnitt seit Kernel-Start ----
+// ---- IPS-Meldungen aus dem Logfile (ohne DEBUG), neueste zuerst ----
 if ($api === 'messages') {
     header('Content-Type: application/json; charset=utf-8');
-    $buf = json_decode($this->GetBuffer('lvbmsgs'), true);
-    echo json_encode(['messages' => is_array($buf) ? array_reverse($buf) : []]);
+    $path = '/var/log/symcon/logfile.log';
+    if (!@is_readable($path)) {
+        $g = @glob('/var/log/symcon/logfile*.log');
+        if ($g) { usort($g, function ($a, $b) { return filemtime($b) - filemtime($a); }); $path = $g[0]; }
+    }
+    $max = (int) ($_GET['n'] ?? 60); if ($max < 1) $max = 60; if ($max > 200) $max = 200;
+    $out = [];
+    $fp = @fopen($path, 'rb');
+    if ($fp) {
+        $st = @fstat($fp); $size = $st ? $st['size'] : 0;
+        $chunk = min($size, 600000); $data = '';
+        if ($chunk > 0) { fseek($fp, -$chunk, SEEK_END); $data = fread($fp, $chunk); }
+        fclose($fp);
+        $lines = explode("\n", $data);
+        for ($i = count($lines) - 1; $i >= 0 && count($out) < $max; $i--) {
+            $ln = rtrim($lines[$i]); if ($ln === '') continue;
+            $p = explode(' | ', $ln, 5);
+            if (count($p) < 5) continue;
+            $sev = trim($p[2]);
+            if ($sev === '' || $sev === 'DEBUG') continue;
+            $out[] = ['t' => trim($p[0]), 'sev' => $sev, 'src' => trim($p[3]), 'm' => mb_substr(trim($p[4]), 0, 300)];
+        }
+    }
+    echo json_encode(['messages' => $out, 'file' => basename($path)]);
     return;
 }
 
