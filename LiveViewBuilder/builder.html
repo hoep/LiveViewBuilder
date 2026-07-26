@@ -84,6 +84,10 @@
   .htbadge{width:40px;height:40px;flex:none;border-radius:11px;background:color-mix(in oklab,var(--accent) 16%,var(--surface-2));color:var(--accent);display:flex;align-items:center;justify-content:center;padding:8px;transition:.15s}
   .htbadge.on{background:var(--accent);color:#04201b}
   .httext{min-width:0}.htname{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.htstate{font-size:12px;color:var(--muted);font-family:var(--fm)}
+  .htile-icon{padding:0;gap:0;justify-content:center}
+  .htico{width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:var(--accent);padding:6%;box-sizing:border-box;border-radius:var(--r-s);transition:.15s}
+  .htico.on{color:var(--accent);background:color-mix(in oklab,var(--accent) 16%,transparent)}
+  .htico svg{width:100%;height:100%}
   .stage.preview .htile,.stage.preview .hbtn{cursor:pointer}
   .hbtn{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:10px}
   .hbicon{width:44px;height:44px;border-radius:12px;background:color-mix(in oklab,var(--accent) 16%,var(--surface-2));color:var(--accent);display:flex;align-items:center;justify-content:center;padding:9px;transition:.15s}
@@ -1884,7 +1888,7 @@
       +(['icon','value','switch','bar','tile','button','light','chip','room','kpi'].indexOf(w.type)>=0&&w.varId?'<div id="assocBox" class="assocbox"></div>':'')
       +(function(){try{return (WIDGETS[w.type]&&WIDGETS[w.type].props)?WIDGETS[w.type].props(w):'';}catch(_e){console.error('props('+w.type+')',_e);return '<div class="hint" style="color:var(--crit);font-size:11px">Eigenschaften-Fehler bei „'+esc(w.type)+'" — siehe Konsole</div>';}})()
       +((state.page.fit&&state.page.fit!=='letterbox')?respSection(w):'')
-      +((w.type!=='button'&&w.type!=='tile')?popupSection(w):'')
+      +popupSection(w)
       +(w.type!=='blank'?('<div class="pgh">Sichtbarkeit</div>'
         +row('Zur Laufzeit','<input type="checkbox" id="pRunVis"'+(w.hidden?'':' checked')+'> <span style="font-size:11px;color:var(--muted)">im Betrieb anzeigen</span>')
         +(w.type!=='ticker'?(function(){var inT=w.name&&state.widgets.some(function(t){return t.type==='ticker'&&t.items&&t.items.some(function(m){return m.ref===w.name;});});if(inT)return row('Laufzeile','<button class="btn" id="pFromTicker" style="padding:5px 8px">← aus Laufzeile holen</button>');if(state.widgets.some(function(x){return x.type==='ticker';}))return row('Laufzeile','<button class="btn" id="pToTicker" style="padding:5px 8px">→ in Laufzeile verschieben</button>');return '';})():'')
@@ -1963,7 +1967,7 @@
     if($('#pZFront'))$('#pZFront').onclick=function(){var i=state.widgets.indexOf(w);if(i>=0){state.widgets.splice(i,1);state.widgets.push(w);}render();select(w.id);commit();};
     if($('#pZBack'))$('#pZBack').onclick=function(){var i=state.widgets.indexOf(w);if(i>=0){state.widgets.splice(i,1);state.widgets.unshift(w);}render();select(w.id);commit();};
     try{if(WIDGETS[w.type]&&WIDGETS[w.type].wire)WIDGETS[w.type].wire(w);}catch(_e){console.error('wire('+w.type+')',_e);} // ein defekter wire-Hook darf die Auswahl nicht blockieren
-    if(w.type!=='button'&&w.type!=='tile')popupWire(w); // universelle Popup/Interaktion-Verdrahtung
+    popupWire(w); // universelle Popup/Interaktion-Verdrahtung (auch Kachel/Button)
     }catch(_ep){console.error('renderProps('+(w&&w.type)+')',_ep);p.innerHTML='<div class="hint" style="color:var(--crit);font-size:12px;white-space:pre-wrap">Eigenschaften-Fehler bei „'+esc(w.type)+'":\n'+esc((_ep&&_ep.message)||String(_ep))+'</div>';} // Panel zeigt den Fehler direkt an
   }
   function row(l,html){return '<div class="prow"><label>'+l+'</label>'+html+'</div>';}
@@ -3517,10 +3521,15 @@ defWidget('meterlist',{
     var el=$('.w[data-id="'+w.id+'"]',canvas);if(!el)return;var box=$('[data-role=msgl]',el);if(!box)return;
     var f=_msgFilter(w);
     fetch('?api=messages&n=120',{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
-      var msgs=((j&&j.messages)||[]).filter(function(m){return f[m.sev];}).slice(0,w.max||25);
+      var msgs=((j&&j.messages)||[]).filter(function(m){return f[m.sev];}).slice(0,w.max||25).reverse(); // chronologisch: neueste unten
+      var sig=msgs.map(function(m){return m.t+m.m;}).join('|');
+      if(box._sig===sig)return; // nichts Neues -> NICHT neu zeichnen (kein Scroll-Ruckeln)
+      var wasBottom=(box._sig===undefined)||(box.scrollTop+box.clientHeight>=box.scrollHeight-6);
+      box._sig=sig;
       if(!msgs.length){box.innerHTML='<div class="hmsge">Keine Meldungen</div>';return;}
       box.innerHTML=msgs.map(function(m){var c=_SEVCLR[m.sev]||'#8a97a0',tm=(m.t||'').slice(-8);
         return '<div class="hmsgi"><span class="hmsgdot" style="background:'+c+'"></span><span class="hmsgsev" style="color:'+c+'">'+esc(m.sev||'')+'</span><span class="hmsgtime">'+esc(tm)+'</span><span class="hmsgsrc">'+esc(m.src||'')+'</span><span class="hmsgm">'+esc(m.m||'')+'</span></div>';}).join('');
+      if(!w.noAuto&&wasBottom)box.scrollTop=box.scrollHeight; // neuen Meldungen folgen, nur wenn man unten ist
     }).catch(function(){box.innerHTML='<div class="hmsge" style="color:var(--crit)">Log nicht lesbar</div>';});
   }
   defWidget('msglog',{
@@ -3530,7 +3539,7 @@ defWidget('meterlist',{
     props:function(w){return '<div class="pgh">Standard-Filter (Builder)</div>'
       +'<div style="display:flex;flex-wrap:wrap;gap:6px 12px">'+_SEVS.map(function(s){return '<label style="display:inline-flex;align-items:center;gap:4px;font-size:11px"><input type="checkbox" data-sev="'+s+'"'+(_sevDef(w,s)?' checked':'')+'> <span style="color:'+_SEVCLR[s]+';font-weight:600">'+s+'</span></label>';}).join('')+'</div>'
       +'<div class="hint" style="font-size:11px;color:var(--muted)">Im Live-Modus per Tipp auf die Pills umschaltbar (je Gerät gespeichert).</div>'
-      +row('Auto-Scroll','<input type="checkbox" id="pMsgAuto"'+(w.noAuto?'':' checked')+'>')
+      +row('Neuen folgen','<input type="checkbox" id="pMsgAuto"'+(w.noAuto?'':' checked')+'> <span style="font-size:11px;color:var(--muted)">bei neuen Meldungen ans Ende scrollen (Tail)</span>')
       +row('Max. Einträge','<input id="pMsgN" type="number" min="1" max="120" value="'+(w.max||25)+'">');},
     wire:function(w){
       $$('#props [data-sev]').forEach(function(cb){cb.onchange=function(){if(!w.sev){w.sev={};_SEVS.forEach(function(s){w.sev[s]=_sevDef(w,s)?1:0;});}w.sev[cb.getAttribute('data-sev')]=cb.checked?1:0;render();fetchMsgs(w);commit();};});
@@ -3544,17 +3553,6 @@ defWidget('meterlist',{
       chip.classList.toggle('off',!f[s]);fetchMsgs(w);return true;}
   });
   setInterval(function(){if(typeof state==='undefined'||!state.widgets)return;state.widgets.forEach(function(w){if(w.type==='msglog')fetchMsgs(w);});},15000);
-  // Bei Berührung/Klick auf die Liste Auto-Scroll kurz pausieren
-  function _msgTouch(e){var b=e.target&&e.target.closest&&e.target.closest('[data-role=msgl]');if(b)b._touch=Date.now();}
-  document.addEventListener('touchstart',_msgTouch,{passive:true});document.addEventListener('mousedown',_msgTouch,true);
-  // Auto-Scroll durch die Liste (pausiert bei Hover/Berührung), loopt am Ende
-  setInterval(function(){if(typeof state==='undefined'||!state.widgets)return;var now=Date.now();
-    state.widgets.forEach(function(w){if(w.type!=='msglog'||w.noAuto)return;var el=$('.w[data-id="'+w.id+'"]',canvas);if(!el)return;var b=$('[data-role=msgl]',el);if(!b)return;
-      if(b.scrollHeight-b.clientHeight<=2)return; if(b._touch&&now-b._touch<5000)return; try{if(b.matches(':hover'))return;}catch(_){}
-      if(b.scrollTop+b.clientHeight>=b.scrollHeight-1){b._pause=(b._pause||0)+1;if(b._pause>25){b._pause=0;b.scrollTop=0;}} // am Ende kurz halten, dann hoch
-      else{b._pause=0;b.scrollTop+=1;}
-    });
-  },70);
   // ===== Widget: Objekt-Info (objinfo) — Metadaten eines IPS-Objekts =====
   defWidget('objinfo',{
     label:'Objekt-Info', paletteIcon:'info', size:[230,60],
@@ -4328,9 +4326,11 @@ defWidget('statuslist',{
   // ===== Widget: Kachel (Tile) — Icon-Badge mit Name/Status, Zustands-Styling =====
   defWidget('tile',{
     label:'Kachel', paletteIcon:'wtile', size:[190,64],
-    render:function(w){return '<div class="htile"><div class="htbadge" data-role="badge">'+iconSVG(w.icon||'bulb')+'</div><div class="httext"><div class="htname">'+esc(w.label||'')+'</div><div class="htstate" data-role="val">–</div></div></div>';},
-    props:function(w){return btnStateProps(w);},
-    wire:function(w){btnStateWire(w);},
+    render:function(w){
+      if(w.iconOnly)return '<div class="htile htile-icon"><div class="htico" data-role="badge">'+iconSVG(w.icon||'bulb')+'</div></div>'; // nur Icon, füllt die Kachel
+      return '<div class="htile"><div class="htbadge" data-role="badge">'+iconSVG(w.icon||'bulb')+'</div><div class="httext"><div class="htname">'+esc(w.label||'')+'</div><div class="htstate" data-role="val">–</div></div></div>';},
+    props:function(w){return row('Nur Icon','<input type="checkbox" id="pTileIcon"'+(w.iconOnly?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">Icon füllt die Kachel (für Popup-Buttons)</span>')+btnStateProps(w);},
+    wire:function(w){if($('#pTileIcon'))$('#pTileIcon').onchange=function(){w.iconOnly=this.checked||undefined;render();renderProps();commit();};btnStateWire(w);},
     live:function(w,el,id,d,base,txt,on){var b=$('[data-role=badge]',el);if(b)b.classList.toggle('on',on);var tv=$('[data-role=val]',el);if(tv)tv.textContent=txt;applyBtnState(w,el,on);}
   });
   // ===== Widget: Timer — Countdown mit Fortschrittsbalken =====

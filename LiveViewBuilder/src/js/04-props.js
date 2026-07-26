@@ -48,7 +48,7 @@
       +(['icon','value','switch','bar','tile','button','light','chip','room','kpi'].indexOf(w.type)>=0&&w.varId?'<div id="assocBox" class="assocbox"></div>':'')
       +(function(){try{return (WIDGETS[w.type]&&WIDGETS[w.type].props)?WIDGETS[w.type].props(w):'';}catch(_e){console.error('props('+w.type+')',_e);return '<div class="hint" style="color:var(--crit);font-size:11px">Eigenschaften-Fehler bei „'+esc(w.type)+'" — siehe Konsole</div>';}})()
       +((state.page.fit&&state.page.fit!=='letterbox')?respSection(w):'')
-      +((w.type!=='button'&&w.type!=='tile')?popupSection(w):'')
+      +popupSection(w)
       +(w.type!=='blank'?('<div class="pgh">Sichtbarkeit</div>'
         +row('Zur Laufzeit','<input type="checkbox" id="pRunVis"'+(w.hidden?'':' checked')+'> <span style="font-size:11px;color:var(--muted)">im Betrieb anzeigen</span>')
         +(w.type!=='ticker'?(function(){var inT=w.name&&state.widgets.some(function(t){return t.type==='ticker'&&t.items&&t.items.some(function(m){return m.ref===w.name;});});if(inT)return row('Laufzeile','<button class="btn" id="pFromTicker" style="padding:5px 8px">← aus Laufzeile holen</button>');if(state.widgets.some(function(x){return x.type==='ticker';}))return row('Laufzeile','<button class="btn" id="pToTicker" style="padding:5px 8px">→ in Laufzeile verschieben</button>');return '';})():'')
@@ -127,7 +127,7 @@
     if($('#pZFront'))$('#pZFront').onclick=function(){var i=state.widgets.indexOf(w);if(i>=0){state.widgets.splice(i,1);state.widgets.push(w);}render();select(w.id);commit();};
     if($('#pZBack'))$('#pZBack').onclick=function(){var i=state.widgets.indexOf(w);if(i>=0){state.widgets.splice(i,1);state.widgets.unshift(w);}render();select(w.id);commit();};
     try{if(WIDGETS[w.type]&&WIDGETS[w.type].wire)WIDGETS[w.type].wire(w);}catch(_e){console.error('wire('+w.type+')',_e);} // ein defekter wire-Hook darf die Auswahl nicht blockieren
-    if(w.type!=='button'&&w.type!=='tile')popupWire(w); // universelle Popup/Interaktion-Verdrahtung
+    popupWire(w); // universelle Popup/Interaktion-Verdrahtung (auch Kachel/Button)
     }catch(_ep){console.error('renderProps('+(w&&w.type)+')',_ep);p.innerHTML='<div class="hint" style="color:var(--crit);font-size:12px;white-space:pre-wrap">Eigenschaften-Fehler bei „'+esc(w.type)+'":\n'+esc((_ep&&_ep.message)||String(_ep))+'</div>';} // Panel zeigt den Fehler direkt an
   }
   function row(l,html){return '<div class="prow"><label>'+l+'</label>'+html+'</div>';}
