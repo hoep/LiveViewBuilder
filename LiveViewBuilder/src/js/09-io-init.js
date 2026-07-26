@@ -271,7 +271,7 @@
   // ---------- Kiosk-Modus (nur Run): kein Zoom/Scroll/Kontextmenü, Auto-Vollbild beim ersten Tipp, Bildschirm wach ----
   var _kioskDone=false,_wakeLock=null;
   function _wakeReq(){if('wakeLock' in navigator){navigator.wakeLock.request('screen').then(function(s){_wakeLock=s;}).catch(function(){});}}
-  function goFullscreen(){var el=document.documentElement,r=el.requestFullscreen||el.webkitRequestFullscreen||el.mozRequestFullScreen;if(r){try{r.call(el);}catch(e){}}}
+  function goFullscreen(){var el=document.documentElement,r=el.requestFullscreen||el.webkitRequestFullscreen||el.mozRequestFullScreen;if(r){try{var p=r.call(el);if(p&&p.catch)p.catch(function(){});}catch(e){}}} // Promise-Rejection abfangen (sonst rote PROMISE-FEHLER-Box)
   function initKiosk(){
     if(_kioskDone)return;_kioskDone=true;
     var vp=document.querySelector('meta[name=viewport]');if(vp)vp.setAttribute('content','width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover');
