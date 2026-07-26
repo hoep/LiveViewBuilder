@@ -2537,6 +2537,10 @@
   }
   // Icon-Bibliothek
   // ===== Assoziationen (Variablenprofil: Wert -> Name/Icon/Farbe) =====
+  // Semantische Skin-Farben (passen sich beim Reskinning/Theme automatisch an)
+  var _SEVC=[['var(--text)','Standard'],['var(--ok)','OK'],['var(--warn)','Warnung'],['var(--crit)','Fehler'],['var(--accent)','Akzent'],['var(--info)','Info']];
+  function _sevOpts(cur){return _SEVC.map(function(o){return '<option value="'+o[0]+'"'+(cur===o[0]?' selected':'')+'>'+o[1]+'</option>';}).join('');}
+  function _skinColor(c){if(!c)return '';var s=(''+c).trim();if(/^var\(/.test(s))return s;var m={text:'--text',standard:'--text',ok:'--ok',gruen:'--ok','grün':'--ok',warn:'--warn',warnung:'--warn',alert:'--warn',crit:'--crit',fehler:'--crit',error:'--crit',accent:'--accent',akzent:'--accent',info:'--info'};var k=s.toLowerCase();return m[k]?('var('+m[k]+')'):s;} // Stichwort -> Skin-Var, sonst unverändert
   var _assocData={};   // varId -> {assocs:[{v,name,icon,color}], picon}
   var _assocPick=null; // {wid,key} während Icon-Auswahl für eine Assoziation
   var SYMICON={Battery:'battery',Light:'bulb',Lightbulb:'bulb',Bulb:'bulb',LightbulbActive:'bulb',
@@ -2574,17 +2578,15 @@
     loadAssoc(w.varId,function(d){var cur=$('#assocBox');if(cur!==box)return;
       if(!d||!d.assocs.length){box.innerHTML='<div class="prow"><label>Assoziationen</label><span class="hint" style="font-size:11px">Profil hat keine Assoziationen</span></div>';return;}
       var head='<div class="prow"><label>Assoziationen</label><label style="font-size:12px;display:flex;gap:6px;align-items:center;cursor:pointer"><input type="checkbox" id="pAssocOn"'+(w.assocOn?' checked':'')+'> Icons &amp; Farben nutzen</label></div>';
-      var rows=d.assocs.map(function(a){var key=String(a.v),rr=assocResolved(w,a),col=rr.color;
-        return '<div class="arow"><span class="aic" style="color:'+(col||'var(--accent)')+'">'+(rr.icon?iconSVG(rr.icon):'')+'</span>'
-          +'<input type="color" class="aswc" data-akey="'+esc(key)+'" value="'+esc(col||'#888888')+'" title="Farbe für Icon + Text">'
+      var rows=d.assocs.map(function(a){var key=String(a.v),rr=assocResolved(w,a),ov=(w.assocMap&&w.assocMap[key])||{};
+        return '<div class="arow"><span class="aic" style="color:'+(rr.color||'var(--accent)')+'">'+(rr.icon?iconSVG(rr.icon):'')+'</span>'
           +'<span class="anm">'+esc(a.name||key)+'</span><span class="aval">'+esc(key)+'</span>'
-          +'<button class="btn aibtn" data-akey="'+esc(key)+'" style="padding:3px 7px;font-size:11px">Icon</button>'
-          +'<button class="btn acclr" data-akey="'+esc(key)+'" style="padding:3px 6px;font-size:11px" title="Farbe zurücksetzen">×</button></div>';}).join('');
+          +'<select class="asev" data-akey="'+esc(key)+'" title="Farbe (Skin, passt sich dem Theme an)"><option value="">Profil</option>'+_sevOpts(ov.color)+'</select>'
+          +'<button class="btn aibtn" data-akey="'+esc(key)+'" style="padding:3px 7px;font-size:11px">Icon</button></div>';}).join('');
       box.innerHTML=head+'<div class="alist'+(w.assocOn?'':' off')+'">'+rows+'</div>';
       if($('#pAssocOn'))$('#pAssocOn').onchange=function(){w.assocOn=this.checked;if(!w.assocMap)w.assocMap={};if(this.checked&&!w.icon){var pic=symToIcon((_assocData[w.varId]||{}).picon);if(pic)w.icon=pic;}render();renderProps();refreshAssocLive(w);};
       $$('.aibtn',box).forEach(function(b){b.onclick=function(){_assocPick={wid:w.id,key:b.getAttribute('data-akey')};showTab('icons');toast('Icon für Status „'+b.getAttribute('data-akey')+'" links wählen');};});
-      $$('.aswc',box).forEach(function(inp){inp.oninput=function(){var k=inp.getAttribute('data-akey');if(!w.assocMap)w.assocMap={};if(!w.assocMap[k])w.assocMap[k]={};w.assocMap[k].color=inp.value;w.assocOn=true;var ar=inp.closest('.arow');if(ar){var ai=ar.querySelector('.aic');if(ai)ai.style.color=inp.value;}refreshAssocLive(w);commit();};}); // Farbe (Icon+Text) überschreiben
-      $$('.acclr',box).forEach(function(b){b.onclick=function(){var k=b.getAttribute('data-akey');if(w.assocMap&&w.assocMap[k])delete w.assocMap[k].color;render();renderProps();refreshAssocLive(w);commit();};}); // Farb-Override entfernen
+      $$('.asev',box).forEach(function(sel){sel.onchange=function(){var k=sel.getAttribute('data-akey');if(!w.assocMap)w.assocMap={};if(!w.assocMap[k])w.assocMap[k]={};if(sel.value)w.assocMap[k].color=sel.value;else delete w.assocMap[k].color;w.assocOn=true;render();renderProps();refreshAssocLive(w);commit();};}); // Skin-Farbe (Icon+Text), passt sich dem Theme an
     });}
   function assignIcon(id){
     if(_assocPick){var wa=widget(_assocPick.wid);if(wa){if(!wa.assocMap)wa.assocMap={};if(!wa.assocMap[_assocPick.key])wa.assocMap[_assocPick.key]={};wa.assocMap[_assocPick.key].icon=id;wa.assocOn=true;render();select(wa.id);renderProps();refreshAssocLive(wa);toast('Status-Icon: '+id);}_assocPick=null;return;}
@@ -2898,17 +2900,19 @@
     var m=(w.amap||[]).filter(function(e){return _assocEq(e.v,v);})[0];
     var a=(!m)?assocFor(w,v):null,rr=a?assocResolved(w,a):null;
     var icon=(m&&m.icon)||(rr&&rr.icon)||w.icon||'';
-    var color=(m&&m.color)||(rr&&rr.color)||'';
+    // NUR Skin-Farben (passt sich dem Theme an): manuelle/semantische Auswahl sonst Standard-Textfarbe
+    var ovc=(m&&m.color)||(a&&w.assocMap&&w.assocMap[String(a.v)]?w.assocMap[String(a.v)].color:'');
+    var color=_skinColor(ovc)||'var(--text)';
     var text=(m&&m.text!=null&&m.text!=='')?m.text:((d&&d.f!=null&&d.f!=='')?d.f:((a&&a.name!=null)?a.name:(d?String(d.v):'–')));
-    var ic=el.querySelector('[data-role=aico]');if(ic){ic.innerHTML=icon?iconSVG(icon,v):'';ic.style.color=color||'var(--accent)';}
-    var tx=el.querySelector('[data-role=atx]');if(tx){tx.textContent=(text==null||text==='')?'–':text;tx.style.color=color||'';}
+    var ic=el.querySelector('[data-role=aico]');if(ic){ic.innerHTML=icon?iconSVG(icon,v):'';ic.style.color=color;}
+    var tx=el.querySelector('[data-role=atx]');if(tx){tx.textContent=(text==null||text==='')?'–':text;tx.style.color=color;}
   }
   defWidget('assoc',{
     label:'Zustand', paletteIcon:'toggleon', size:[130,120],
     defaults:function(w){w.assocShow='both';},
     render:function(w){var s=w.assocShow||'both';return '<div class="hassoc'+(s==='both'?'':' one')+'"><span class="hassocic" data-role="aico"'+(s==='text'?' style="display:none"':'')+'>'+(w.icon?iconSVG(w.icon):'')+'</span><span class="hassoctx" data-role="atx"'+(s==='icon'?' style="display:none"':'')+'>'+esc(w.label||'–')+'</span></div>';},
     props:function(w){return row('Anzeige','<select id="pAsShow"><option value="both"'+((w.assocShow||'both')==='both'?' selected':'')+'>Icon + Text</option><option value="icon"'+(w.assocShow==='icon'?' selected':'')+'>Nur Icon</option><option value="text"'+(w.assocShow==='text'?' selected':'')+'>Nur Text</option></select>')
-      +listEditor(w,'amap','Manuell: Wert · Icon · Text · Farbe',[{k:'v',ph:'true/0/…'},{k:'icon',ph:'z.B. winopen'},{k:'text',ph:'Text'},{k:'color',ph:'#hex'}])
+      +listEditor(w,'amap','Manuell: Wert · Icon · Text · Farbe',[{k:'v',ph:'true/0/…'},{k:'icon',ph:'z.B. winopen'},{k:'text',ph:'Text'},{k:'color',ph:'ok/warn/crit/text'}])
       +'<div class="hint" style="font-size:11px;color:var(--muted)">Leer = Profil-Assoziationen der Variable (Icons/Farben unten zuweisbar). Icons z. B. winopen/winclosed/wintilt, blindopen/blindclosed, lighton/lightoff.</div>';},
     wire:function(w){if($('#pAsShow'))$('#pAsShow').onchange=function(){w.assocShow=this.value;render();refreshAssocLive(w);commit();};},
     mount:function(w){if(w.varId)loadAssoc(w.varId,function(){_assocWid(w);});else _assocWid(w);},
