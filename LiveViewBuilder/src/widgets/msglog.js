@@ -4,8 +4,8 @@
     fetch('?api=messages',{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
       var msgs=(j&&j.messages)||[];if(w.onlyErr)msgs=msgs.filter(function(m){return m.k==='ERROR';});msgs=msgs.slice(0,w.max||20);
       if(!msgs.length){box.innerHTML='<div class="hmsge">Keine Warnungen/Fehler</div>';return;}
-      box.innerHTML=msgs.map(function(m){var d=new Date((m.t||0)*1000),tm=('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2);
-        return '<div class="hmsgi '+(m.k==='ERROR'?'err':'warn')+'"><span class="hmsgk">'+esc(m.k||'')+'</span><span class="hmsgtime">'+tm+'</span><span class="hmsgm">'+esc(m.m||'')+'</span></div>';}).join('');
+      box.innerHTML=msgs.map(function(m){var d=new Date((m.t||0)*1000),tm=('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2);var sev=(m.k==='ERROR')?'FEHLER':'WARNUNG';
+        return '<div class="hmsgi '+(m.k==='ERROR'?'err':'warn')+'"><span class="hmsgk">'+sev+'</span><span class="hmsgtime">'+tm+'</span><span class="hmsgm">'+esc(m.m||'')+'</span></div>';}).join('');
     }).catch(function(){box.innerHTML='<div class="hmsge" style="color:var(--crit)">Meldungen nicht abrufbar</div>';});
   }
   defWidget('msglog',{
