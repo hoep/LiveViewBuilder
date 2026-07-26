@@ -48,7 +48,7 @@
   // O1: Long-Press an button/tile -> Popup
   document.addEventListener('pointerdown',function(e){
     if(mode==='edit')return;var el=e.target.closest('.w');if(!el)return;var w=widget(el.dataset.id);
-    if(!w||(w.type!=='tile'&&w.type!=='button')||!w.longPopup)return;
+    if(!w||!w.longPopup)return; // Lang-Druck-Popup jetzt für JEDES Widget
     _lpFired=false;if(_lpTimer)clearTimeout(_lpTimer);
     _lpTimer=setTimeout(function(){_lpFired=true;openPopup(w.longPopup,_aliasMap(w));},550);
   },true);
