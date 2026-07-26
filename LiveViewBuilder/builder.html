@@ -2805,7 +2805,7 @@
   function fitCanvas(){
     if(!document.body.classList.contains('run'))return;
     var p=state.page,mode=effFit(p),vw=window.innerWidth,vh=window.innerHeight;
-    if(bcfg().mobileOpt!==false&&isMobile())mode='reflow'; // Mobil ("Auto-Reflow"): immer gestapelter Reflow statt Letterbox/SmartFit
+    if(bcfg().mobileOpt!==false&&isMobile()&&mode!=='reflow')mode='auto'; // Mobil: automatisch — Hochformat->Reflow (stapeln), Querformat->SmartFit (skaliert)
     if(mode==='letterbox'||!p||p.w<=0||p.h<=0||vw<8||vh<8||!state.widgets.length){document.body.classList.remove('reflow');return letterboxFit();}
     var m=(mode==='auto')?sfPick(vw,vh,p):mode;
     canvas.style.transform='none';canvas.style.transformOrigin='top left';canvas.style.left='0';canvas.style.top='0';canvas.style.width=vw+'px';
