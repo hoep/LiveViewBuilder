@@ -211,9 +211,19 @@
 
   // Reflow = hoehen-optimierter Flow-Umbruch: waehlt die groesste Skala, bei der ALLES auf einen Screen passt
   function sfFlowH(order,vw,M,gap,s){var x=M,y=M,rowH=0;order.forEach(function(w){if(w.reflowHide)return;var ww=w.w*s,wh=w.h*s;if(x>M&&x+ww>vw-M){x=M;y+=rowH+gap;rowH=0;}x+=ww+gap;if(wh>rowH)rowH=wh;});return y+rowH+M;}
+  // Overlay = Widget, das im Design großflächig (>=70%) INNERHALB eines deutlich größeren Widgets liegt.
+  // Solche gestapelten Overlays werden im Reflow übersprungen (sonst leere Zeile = Lücke).
+  function _reflowOverlay(w,all){
+    var wa=w.w*w.h;if(wa<=0)return false;var i,b,ba,ix,iy;
+    for(i=0;i<all.length;i++){b=all[i];if(b===w)continue;ba=b.w*b.h;if(ba<wa*1.6)continue;
+      ix=Math.min(w.x+w.w,b.x+b.w)-Math.max(w.x,b.x);iy=Math.min(w.y+w.h,b.y+b.h)-Math.max(w.y,b.y);
+      if(ix>0&&iy>0&&ix*iy>=wa*0.7)return true;}
+    return false;
+  }
   function reflowFit(vw,vh){
-    var p=state.page,S=sfStructure(p),c=sfCfg(p),order=[],stretched=[];
+    var p=state.page,S=sfStructure(p),c=sfCfg(p),order=[],stretched=[],ALL=state.widgets;
     S.bands.forEach(function(b){order=order.concat(b);});
+    order=order.filter(function(w){return !w.reflowHide&&!_reflowOverlay(w,ALL);}); // Overlays/ausgeblendete raus
     // Flow-Packing nach echter Widget-Breite: so viele nebeneinander wie passen; nur zu breite Widgets bekommen negativen Zoom.
     var M=8,G=8,AW=vw-2*M,i;
     var items=[];
