@@ -2453,7 +2453,7 @@
   // ---------- Ansichten (Views) ----------
   function refreshViewSel(){var s=$('#viewSel');if(!s)return;s.innerHTML='';Object.keys(store.views).forEach(function(n){var o=document.createElement('option');o.value=n;o.textContent=n+(n===store.home?'  · Start':'');if(n===store.current)o.selected=true;s.appendChild(o);});}
   function reseq(){seq=1;state.widgets.forEach(function(w){var n=parseInt(String(w.id||'w0').replace('w',''))||0;if(n>=seq)seq=n+1;});}
-  function switchView(name){if(!store.views[name])return;store.current=name;state=store.views[name];if(!state.page)state.page={w:1440,h:900};if(!state.widgets)state.widgets=[];selId=null;sel={};reseq();refreshViewSel();setCanvas();invalidateSC();_scMode='';document.body.classList.remove('reflow');restoring=true;render();restoring=false;renderProps();resetHist();}
+  function switchView(name){if(!store.views[name])return;store.current=name;state=store.views[name];if(!state.page)state.page={w:1440,h:900};if(!state.widgets)state.widgets=[];selId=null;sel={};reseq();refreshViewSel();setCanvas();invalidateSC();_scMode='';document.body.classList.remove('reflow');restoring=true;render();restoring=false;renderProps();resetHist();_pvSince=0;pollVals();} // Sofort-Poll: Werte erscheinen ohne 1,2 s Verzögerung
   function newView(){var n=prompt('Name der neuen Ansicht:','Ansicht '+(Object.keys(store.views).length+1));if(!n)return;if(store.views[n]){toast('Name existiert bereits');return;}store.views[n]={page:{w:bcfg().defW,h:bcfg().defH,fit:bcfg().defFit},widgets:[]};switchView(n);toast('Ansicht angelegt: '+n);}
   function renameView(){var old=store.current;if(!old)return;var n=prompt('Ansicht umbenennen:',old);if(!n||n===old)return;if(store.views[n]){toast('Name existiert bereits');return;}store.views[n]=store.views[old];delete store.views[old];store.current=n;refreshViewSel();toast('Umbenannt');}
   function deleteView(){var n=store.current;if(!n)return;if(!confirm('Ansicht „'+n+'" wirklich löschen?'))return;delete store.views[n];var keys=Object.keys(store.views);if(!keys.length){store.views['Ansicht 1']={page:{w:1440,h:900},widgets:[]};keys=['Ansicht 1'];}switchView(keys[0]);toast('Gelöscht');}
@@ -3132,6 +3132,7 @@ defWidget('chip',{
     render:function(w){return '<div class="hdelta t-'+(w.tone||'ok')+'" data-role="delroot"><div class="hdmain"><span data-role="arrow">'+(w.dir==='dn'?'▼':(w.dir==='flat'?'→':'▲'))+'</span> <span data-role="val">'+esc(w.text||'')+'</span></div>'+((w.label||w.cmpOn)?'<div class="hdcap" data-role="cap">'+esc(w.label||'')+'</div>':'')+'</div>';},
     props:function(w){return (w.type==='delta'?(row('Text','<input id="pText" value="'+esc(w.text||'')+'" placeholder="+6 %"'+(w.cmpOn?' disabled':'')+'>')+(w.cmpOn?'':row('Richtung',dirSel('pDir',w.dir))+row('Farbe',selOf('pTone',w.tone,['ok','crit','warn','muted'])))):'');},
     wire:function(w){if($('#pText'))$('#pText').oninput=function(){w.text=this.value;render();};if($('#pTone'))$('#pTone').onchange=function(){w.tone=this.value;render();};},
+    mount:function(w){if(w.cmpOn)computeCompare(w);}, // Vergleich sofort nach Render berechnen
     live:function(w,el,id,d,base,txt,on){if(w.cmpOn)computeCompare(w);return true;} // Delta zeigt den Vergleich, nicht den Rohwert
   });
 // devlist — Geräte-Liste
@@ -3304,6 +3305,7 @@ defWidget('gaugepro',{
     render:function(w){return '<div class="hkpi"><span class="hkbi">'+iconSVG(w.icon||'home')+'</span><div class="hkm"><div class="hkl">'+esc(w.label||'')+'</div><div class="hkn"><span data-role="val">–</span>'+(w.unit?'<small> '+esc(w.unit)+'</small>':'')+'</div>'+(w.cmpOn?'<div class="hks" data-role="cmp">…</div>':(w.delta?'<div class="hks '+(w.dir==='dn'?'dn':(w.dir==='up'?'up':''))+'">'+(w.dir==='dn'?'▼ ':(w.dir==='up'?'▲ ':''))+esc(w.delta)+'</div>':''))+'</div></div>';},
     props:function(w){return (w.type==='kpi'?(row('Einheit','<input id="pUnit" value="'+esc(w.unit||'')+'">')+(w.cmpOn?'':row('Delta-Text','<input id="pDelta" value="'+esc(w.delta||'')+'">')+row('Richtung',dirSel('pDir',w.dir)))):'');},
     wire:function(w){if($('#pUnit'))$('#pUnit').oninput=function(){w.unit=this.value;render();};if($('#pDelta'))$('#pDelta').oninput=function(){w.delta=this.value;render();};},
+    mount:function(w){if(w.cmpOn)computeCompare(w);}, // Vergleich sofort nach Render berechnen (nicht auf ersten Poll warten)
     live:function(w,el,id,d,base,txt,on){
       if(w.cmpOn){computeCompare(w);if(!w.cmpCounter){var v=el.querySelector('[data-role=val]');if(v)v.textContent=txt;}return true;} // Zähler: Hauptwert kommt aus computeCompare (Perioden-Verbrauch)
       var v=el.querySelector('[data-role=val]');if(v)v.textContent=txt;return true;
