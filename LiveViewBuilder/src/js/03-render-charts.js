@@ -256,7 +256,7 @@
   }
   function ensureCmp(w,cb){
     if(!w.varId){cb(null);return;}
-    var stage=cmpStage(w),kind=(w.cmpCounter?'counter':'standard');
+    var stage=cmpStage(w),kind=((w.cmpCounter||w.type==='cval')?'counter':'standard');
     var c=_cmpData[w.id],now=Date.now();
     if(c&&c.stage===stage&&c.kind===kind&&(now-c.fetched)<25000){cb(c);return;}
     fetch('?api=cmp&id='+w.varId+'&stage='+stage+'&kind='+kind,{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
@@ -280,6 +280,17 @@
     });
   }
   function refreshCompare(w){delete _cmpData[w.id];render();computeCompare(w);}
+  function computeCounterVal(w){ // Zählerwert-Widget: Verbrauch der gewählten Periode als reiner Wert
+    ensureCmp(w,function(p){
+      var el=$('.w[data-id="'+w.id+'"]',canvas);if(!el)return;
+      var v=el.querySelector('[data-role=val]');if(!v)return;
+      var cur=p?p.cur:null;
+      if(cur==null){v.textContent='–';return;}
+      var a=Math.abs(cur),dd=a>=100?0:(a>=10?1:(a>=1?2:3));
+      v.textContent=cur.toFixed(dd).replace('.',',')+(w.unit?' '+w.unit:'');
+    });
+  }
+  function refreshCVal(w){delete _cmpData[w.id];render();computeCounterVal(w);}
   // ===== Thermostat (erweiterte Karte) =====
   function thermMode(w){
     if(!w.varId3)return null;var lv=_lastVals[w.varId3];if(!lv)return {raw:null,name:'',isOff:false,isCool:false,isHeat:true};
