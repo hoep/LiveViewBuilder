@@ -12,7 +12,7 @@
     var tx=el.querySelector('[data-role=atx]');if(tx){tx.textContent=(text==null||text==='')?'–':text;tx.style.color=color||'';}
   }
   defWidget('assoc',{
-    label:'Zustand', paletteIcon:'wchip', size:[130,120],
+    label:'Zustand', paletteIcon:'toggleon', size:[130,120],
     defaults:function(w){w.assocShow='both';},
     render:function(w){var s=w.assocShow||'both';return '<div class="hassoc'+(s==='both'?'':' one')+'"><span class="hassocic" data-role="aico"'+(s==='text'?' style="display:none"':'')+'>'+(w.icon?iconSVG(w.icon):'')+'</span><span class="hassoctx" data-role="atx"'+(s==='icon'?' style="display:none"':'')+'>'+esc(w.label||'–')+'</span></div>';},
     props:function(w){return row('Anzeige','<select id="pAsShow"><option value="both"'+((w.assocShow||'both')==='both'?' selected':'')+'>Icon + Text</option><option value="icon"'+(w.assocShow==='icon'?' selected':'')+'>Nur Icon</option><option value="text"'+(w.assocShow==='text'?' selected':'')+'>Nur Text</option></select>')
