@@ -31,6 +31,7 @@
   $('#zoomLbl').onclick=function(){setZoom(Math.abs(zoom-1)<1e-4?fitZoom():1);};
   stage.addEventListener('wheel',function(e){if(!(e.ctrlKey||e.metaKey)||document.body.classList.contains('run'))return;e.preventDefault();var r=canvas.getBoundingClientRect(),cx=(e.clientX-r.left)/zoom,cy=(e.clientY-r.top)/zoom,z0=zoom;setZoom(zoom*(e.deltaY<0?1.1:1/1.1));var sc=zoom/z0;stage.scrollLeft+=cx*(sc-1)*z0;stage.scrollTop+=cy*(sc-1)*z0;},{passive:false});
   $('#cvFit').addEventListener('change',function(){state.page.fit=this.value;invalidateSC();commit();renderProps();drawStructure();if(document.body.classList.contains('run'))fitCanvas();toast('Anpassung: '+this.value+(document.body.classList.contains('run')?'':' — im Live-Modus sichtbar'));});
+  if($('#cvFrame'))$('#cvFrame').addEventListener('change',function(){state.page.noframe=this.checked?undefined:true;render();commit();toast('Kachel-Rahmen (Ansicht): '+(this.checked?'an':'aus'));});
   $('#structBtn').addEventListener('click',function(){_showStruct=!_showStruct;this.classList.toggle('on',_showStruct);drawStructure();});
   $('#themeBtn').addEventListener('click',function(){store.theme=(store.theme==='light'?'dark':'light');applySkin();buildSkins();commit();});
   (function(){var sr=$('#sideResize'),side=$('.side'),sd=null;if(!sr||!side)return;
