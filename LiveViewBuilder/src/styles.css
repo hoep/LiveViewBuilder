@@ -292,7 +292,7 @@
   .htick .httrack::before,.htick .httrack::after{content:"";position:absolute;top:0;bottom:0;width:1.6em;z-index:2;pointer-events:none}
   .htick .httrack::before{left:0;background:linear-gradient(90deg,var(--surface-2),transparent)}
   .htick .httrack::after{right:0;background:linear-gradient(270deg,var(--surface-2),transparent)}
-  .htick .htmove{display:inline-flex;align-items:center;white-space:nowrap;flex:none;animation:htmarq linear infinite}
+  .htick .htmove{display:inline-flex;align-items:center;height:100%;white-space:nowrap;flex:none;animation:htmarq linear infinite}
   .htick:hover .htmove{animation-play-state:paused}
   .htick .htm{display:inline-flex;align-items:center;gap:.6em;font-size:clamp(9px,34cqh,14px);color:var(--text);padding:0 0}
   .htick .htm .htic{width:1.25em;height:1.25em;flex:none;display:inline-flex;color:var(--muted)}
