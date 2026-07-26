@@ -23,7 +23,7 @@
       if(w.type==='camera'||w.type==='campro')refreshCam(w);
       if(w.type==='html'){if(w.htmlSrc==='custom')setHtmlContent(w,w.html||'');else fetchHtml(w);}
       if(w.type==='weekplan')fetchWeekplan(w);
-      if(w.type==='weatherpro')refreshWeatherPro(w);if(w.type==='suncard')refreshSun(w);
+      if(w.type==='suncard')refreshSun(w); // weatherpro füllt sich über seinen mount-Hook (applyWeather)
       if(w.type==='calendar')fetchCalEvents(w);
       if(w.type==='eventctl')fetchEvent(w);
       if(w.type==='objinfo')fetchObjInfo(w);
