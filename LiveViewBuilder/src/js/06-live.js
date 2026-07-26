@@ -215,6 +215,8 @@
     rs.setProperty('--ring','0 0 0 3px color-mix(in oklab,'+(toks.accent||'#00cdab')+' 38%,transparent)');
     document.documentElement.setAttribute('data-theme',th);rs.colorScheme=th;
     updateSkinSwitches();
+    // HTML-Inhalte neu rendern -> Skin-Enforcer zieht Schrift/Farben ans neue Theme nach (Shadow/iframe rechnen Farben beim Rendern)
+    try{var _re=function(w){if(w&&w.type==='html'){if(w.htmlSrc==='custom')setHtmlContent(w,w.html||'');else fetchHtml(w);}};if(typeof state!=='undefined'&&state.widgets)state.widgets.forEach(_re);if(typeof _tickKids!=='undefined'&&_tickKids)_tickKids.forEach(_re);}catch(e){}
   }
   function updateSkinSwitches(){$$('.hskwb').forEach(function(b){b.classList.toggle('on',b.getAttribute('data-skw')===(store.theme||'dark'));});$$('[data-role=skwsel]',canvas).forEach(function(s){s.value=store.skin||'Standard';});}
   function editSkinToken(k,val){var a=store.skin;if(BUILTIN[a]||!store.skins||!store.skins[a])return;var th=(store.theme==='light'?'light':'dark');store.skins[a][th]=store.skins[a][th]||{};store.skins[a][th][k]=val;applySkin();commit();}
