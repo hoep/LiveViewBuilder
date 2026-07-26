@@ -2526,7 +2526,7 @@
   }
   // ---------- Einstellungen (Builder-Konfigurator) ----------
   function bcfg(){store.cfg=store.cfg||{};var c=store.cfg;if(c.gs==null)c.gs=8;if(c.gap==null)c.gap=12;if(c.defW==null)c.defW=1440;if(c.defH==null)c.defH=900;if(c.defFit==null)c.defFit='auto';if(c.autosave==null)c.autosave=true;if(c.mobileOpt==null)c.mobileOpt=true;if(c.mobileW==null)c.mobileW=640;return c;}
-  function isMobile(){var w=window.innerWidth||0;if(w<=(bcfg().mobileW||640))return true;try{if(window.matchMedia&&window.matchMedia('(pointer:coarse)').matches&&w<900&&window.innerHeight>window.innerWidth)return true;}catch(e){}return false;}
+  function isMobile(){var w=window.innerWidth||0,h=window.innerHeight||0;if(w<=(bcfg().mobileW||640))return true;try{if(window.matchMedia&&window.matchMedia('(pointer:coarse)').matches&&Math.min(w,h)<=820)return true;}catch(e){}return false;} // coarse-Pointer (Touch) in beiden Ausrichtungen -> mobil
   function buildSettings(){
     var box=$('#setpanel');if(!box)return;var c=bcfg();
     box.innerHTML=''
@@ -2805,7 +2805,7 @@
   function fitCanvas(){
     if(!document.body.classList.contains('run'))return;
     var p=state.page,mode=effFit(p),vw=window.innerWidth,vh=window.innerHeight;
-    if(bcfg().mobileOpt!==false&&isMobile()&&mode!=='reflow')mode='auto'; // Mobil: nie Letterbox -> SmartFit/Reflow
+    if(bcfg().mobileOpt!==false&&isMobile())mode='reflow'; // Mobil ("Auto-Reflow"): immer gestapelter Reflow statt Letterbox/SmartFit
     if(mode==='letterbox'||!p||p.w<=0||p.h<=0||vw<8||vh<8||!state.widgets.length){document.body.classList.remove('reflow');return letterboxFit();}
     var m=(mode==='auto')?sfPick(vw,vh,p):mode;
     canvas.style.transform='none';canvas.style.transformOrigin='top left';canvas.style.left='0';canvas.style.top='0';canvas.style.width=vw+'px';
