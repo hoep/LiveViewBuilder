@@ -297,7 +297,7 @@
       var v=el.querySelector('[data-role=val]');if(!v)return;
       var cur=p?p.cur:null;
       if(cur==null){v.textContent='–';return;}
-      var a=Math.abs(cur),dd=a>=100?0:(a>=10?1:(a>=1?2:3));
+      var a=Math.abs(cur),dd=(w.dec!=null)?w.dec:(a>=100?0:(a>=10?1:(a>=1?2:3)));
       v.textContent=cur.toFixed(dd).replace('.',',')+(w.unit?' '+w.unit:'');
     });
   }
@@ -311,14 +311,14 @@
       _aggData[w.id]={min:(j&&j.min!=null)?parseFloat(j.min):null,max:(j&&j.max!=null)?parseFloat(j.max):null,avg:(j&&j.avg!=null)?parseFloat(j.avg):null,stage:stage,fetched:now};cb(_aggData[w.id]);
     }).catch(function(){cb(null);});
   }
-  function _fmtStat(n,unit){if(n==null)return '–';var a=Math.abs(n),dd=a>=100?0:(a>=10?1:2);return n.toFixed(dd).replace('.',',')+(unit?' '+unit:'');}
+  function _fmtStat(n,unit,dec){if(n==null)return '–';var a=Math.abs(n),dd=(dec!=null)?dec:(a>=100?0:(a>=10?1:2));return n.toFixed(dd).replace('.',',')+(unit?' '+unit:'');}
   function aggParts(w){var ps=[];if(w.statMin)ps.push('min');if(w.statAvg||(!w.statMin&&!w.statMax&&!w.statAvg))ps.push('avg');if(w.statMax)ps.push('max');return ps;} // Standard: Ø
   function computeAggVal(w){
     ensureAgg(w,function(p){
       var el=$('.w[data-id="'+w.id+'"]',canvas);if(!el)return;var v=el.querySelector('[data-role=val]');if(!v)return;
       var LBL={min:'Min',avg:'Ø',max:'Max'},ps=aggParts(w),u=w.unit||'';
-      if(ps.length===1){v.textContent=_fmtStat(p?p[ps[0]]:null,u);}
-      else{v.innerHTML=ps.map(function(k){return '<span style="opacity:.55;font-size:.68em;letter-spacing:.02em">'+LBL[k]+'</span> '+esc(_fmtStat(p?p[k]:null,u));}).join(' <span style="opacity:.3">·</span> ');}
+      if(ps.length===1){v.textContent=_fmtStat(p?p[ps[0]]:null,u,w.dec);}
+      else{v.innerHTML=ps.map(function(k){return '<span style="opacity:.55;font-size:.68em;letter-spacing:.02em">'+LBL[k]+'</span> '+esc(_fmtStat(p?p[k]:null,u,w.dec));}).join(' <span style="opacity:.3">·</span> ');}
     });
   }
   function refreshAggVal(w){delete _aggData[w.id];render();computeAggVal(w);}

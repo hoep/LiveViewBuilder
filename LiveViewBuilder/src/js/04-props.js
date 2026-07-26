@@ -31,6 +31,7 @@
         +(w.cmpOn?(row('Aggregationsstufe',stageSel('pCmpStage',cmpStage(w)))+row('Zählervariable','<input type="checkbox" id="pCmpCnt"'+(w.cmpCounter?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">Verbrauch je Periode</span>')+row('Anzeige','<select id="pCmpMode"><option value="pct"'+((w.cmpMode||'pct')==='pct'?' selected':'')+'>Prozent</option><option value="abs"'+(w.cmpMode==='abs'?' selected':'')+'>Absolut</option></select>')+row('Anstieg = schlecht','<input type="checkbox" id="pCmpInv"'+(w.cmpInvert?' checked':'')+'>')):'')
       ):'')
       +(FMT_TYPES.indexOf(w.type)>=0?row('Format','<select id="pFmt">'+fmtOpts(w.fmt)+'</select>'):'')
+      +(['value','kpi','bar','gauge','gaugepro','tempbar','dial','chip','cval','sval','delta','room','meterlist'].indexOf(w.type)>=0?row('Nachkommastellen','<input id="pDec" type="number" min="0" max="6" value="'+(w.dec!=null?w.dec:'')+'" placeholder="Standard">'):'')
       +((w.type==='chart'||w.type==='spark')?row('Stunden','<input id="pHours" type="number" value="'+(w.hours||24)+'">'):'')
       +(['bar','gauge','slider','thermostat','gaugepro','timer','tempbar','dial'].indexOf(w.type)>=0?(row('Min','<input id="pMin" type="number" value="'+(w.min!=null?w.min:0)+'">')+row('Max','<input id="pMax" type="number" value="'+(w.max!=null?w.max:100)+'">')):'')
       +((w.type==='slider'||w.type==='thermostat'||w.type==='dial')?row('Schritt','<input id="pStep" type="number" step="0.1" value="'+(w.step||1)+'">'):'')
@@ -86,6 +87,7 @@
     if($('#pRHide'))$('#pRHide').onchange=function(){w.reflowHide=this.checked||undefined;commit();};
     $$('#pAnchor .anbtn').forEach(function(bt){bt.onclick=function(){w.anchor=bt.dataset.an;commit();renderProps();};});
     if($('#pFmt'))$('#pFmt').onchange=function(){w.fmt=this.value==='auto'?undefined:this.value;render();if(w.varId&&_lastVals[w.varId])applyVal(w.varId,_lastVals[w.varId]);};
+    if($('#pDec'))$('#pDec').oninput=function(){w.dec=this.value===''?undefined:Math.max(0,Math.min(6,parseInt(this.value)||0));render();if(w.type==='cval')computeCounterVal(w);else if(w.type==='sval')computeAggVal(w);else if(w.varId&&_lastVals[w.varId])applyVal(w.varId,_lastVals[w.varId]);commit();};
     if($('#pDir'))$('#pDir').onchange=function(){w.dir=this.value;render();};
     if($('#pCmpOn'))$('#pCmpOn').onchange=function(){w.cmpOn=this.checked;delete _hist[w.id];delete _cmpData[w.id];renderProps();if(w.type==='chart'||w.type==='spark'){if(w.cmpOn)fetchHist(w);else if(_ec[w.id])renderChartData(w);commit();}else{refreshCompare(w);commit();}};
     if($('#pCmpOff'))$('#pCmpOff').onchange=function(){w.cmpOff=this.value;delete _hist[w.id];delete _cmpData[w.id];if(w.type==='chart'||w.type==='spark')fetchHist(w);else refreshCompare(w);commit();};
