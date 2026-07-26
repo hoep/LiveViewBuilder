@@ -419,13 +419,16 @@
   }
   function tick(){
     var now=new Date();function p(n){return String(n).padStart(2,'0');}
-    state.widgets.forEach(function(w){
+    function _one(w){
       if(w.type==='suncard'){refreshSun(w);return;}
       if(w.type!=='clock'&&w.type!=='timer')return;
       var el=$('.w[data-id="'+w.id+'"]',canvas);if(!el)return;
       if(w.type==='clock'){var t=$('[data-role=time]',el);if(t)t.textContent=p(now.getHours())+':'+p(now.getMinutes());var dt=$('[data-role=date]',el);if(dt)dt.textContent=['So','Mo','Di','Mi','Do','Fr','Sa'][now.getDay()]+', '+now.getDate()+'.'+(now.getMonth()+1)+'.';}
       else{var d=_lastVals[w.varId];if(!d)return;var v=parseFloat(d.v);if(isNaN(v))return;var rem=v>1e9?Math.max(0,v-Math.floor(now.getTime()/1000)):Math.max(0,v);var mm=Math.floor(rem/60),ss=Math.floor(rem%60),tt=$('[data-role=time]',el);if(tt)tt.textContent=(mm>=60?Math.floor(mm/60)+':'+p(mm%60):p(mm))+':'+p(ss);var tot=w.max||3600,bar=$('[data-role=bar]',el);if(bar)bar.style.width=Math.max(0,Math.min(100,rem/tot*100))+'%';}
-    });
+    }
+    state.widgets.forEach(_one);
+    if(_compKids&&_compKids.length)_compKids.forEach(_one); // Uhr/Timer/Sonne in Komponenten
+    if(_tickKids&&_tickKids.length)_tickKids.forEach(_one); // ... und in der Laufzeile
   }
   setInterval(tick,1000);
   // Relative Pfade (z. B. IPS-HTML mit ./preview/... ) gegen eine Basis auflösen -> absolute URLs, damit Bilder im Widget laden.
