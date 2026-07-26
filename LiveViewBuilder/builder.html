@@ -4,6 +4,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Hausleitnerweg">
+<script>if(("__LV_RUN__"==="1")||/[?&]run=1/.test(location.search)||/\/hook\/run(\/|$|\?)/.test(location.pathname)){document.documentElement.classList.add('run-boot');setTimeout(function(){document.documentElement.classList.remove('run-boot');},4000);}</script>
 <title>Hausleitnerweg — View-Builder</title>
 <style>
   :root{--bg:#0d1315;--surface:#141c1f;--surface-2:#1a2428;--tile:#131b1e;--line:#25333a;--line-soft:#1b262b;--text:#e7eef0;--muted:#8ba0a6;--faint:#63757b;--accent:#00cdab;--accent-2:#0a8f79;--ok:#39d08a;--warn:#f2b441;--crit:#f2685a;--info:#5ab6ff;--warm:#f2a03d;--ring:0 0 0 3px color-mix(in oklab,#00cdab 38%,transparent);--r:12px;--r-s:9px;--fu:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,system-ui,sans-serif;--fm:ui-monospace,"SF Mono",Menlo,Consolas,monospace;color-scheme:dark}
@@ -180,6 +181,11 @@
   body.run .bar,body.run .side{display:none}
   body.run .stage{position:fixed;inset:0;padding:0;overflow:hidden;background:var(--bg)}
   body.run.kiosk{overscroll-behavior:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none} /* Kiosk: kein Bounce/Textauswahl/Long-Press */
+  /* run-boot: ab dem ersten Frame die Builder-Oberflaeche verstecken (kein Flash vor enterRun) */
+  html.run-boot .bar,html.run-boot .side{display:none!important}
+  html.run-boot .stage{position:fixed;inset:0;padding:0;overflow:hidden;background:var(--bg)}
+  html.run-boot #canvas{visibility:hidden}
+  html.run-boot{background:var(--bg)}
   body.run #canvas{border:0;border-radius:0;box-shadow:none;background:var(--bg)}
   body.run #canvas.grid{background-image:none}
   body.run .w{cursor:default}
@@ -2644,6 +2650,7 @@
     if(v&&store.views[v])switchView(v);
     document.body.classList.add('run');applyZoom();mode='preview';stage.classList.remove('edit');stage.classList.add('preview');
     canvas.classList.remove('grid');selClear();markSel();buildRunNav();fitCanvas();
+    document.documentElement.classList.remove('run-boot'); // fertig positioniert -> Canvas einblenden (Flash weg)
     initKiosk();
   }
   // ---------- Kiosk-Modus (nur Run): kein Zoom/Scroll/Kontextmenü, Auto-Vollbild beim ersten Tipp, Bildschirm wach ----

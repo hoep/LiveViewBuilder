@@ -263,6 +263,7 @@
     if(v&&store.views[v])switchView(v);
     document.body.classList.add('run');applyZoom();mode='preview';stage.classList.remove('edit');stage.classList.add('preview');
     canvas.classList.remove('grid');selClear();markSel();buildRunNav();fitCanvas();
+    document.documentElement.classList.remove('run-boot'); // fertig positioniert -> Canvas einblenden (Flash weg)
     initKiosk();
   }
   // ---------- Kiosk-Modus (nur Run): kein Zoom/Scroll/Kontextmenü, Auto-Vollbild beim ersten Tipp, Bildschirm wach ----
