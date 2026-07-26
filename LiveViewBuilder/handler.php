@@ -99,7 +99,7 @@ if ($api === 'val') {
     };
     $out   = [];
     foreach ($ids as $id) {
-        if (IPS_VariableExists($id)) {
+        if (@IPS_VariableExists($id)) {
             if ($since > 0 && IPS_GetVariable($id)['VariableChanged'] < $since) {
                 continue;
             }
@@ -114,7 +114,7 @@ if ($api === 'val') {
 if ($api === 'assoc') {
     header('Content-Type: application/json; charset=utf-8');
     $id = (int) ($_GET['id'] ?? 0);
-    if ($id <= 0 || !IPS_VariableExists($id)) {
+    if ($id <= 0 || !@IPS_VariableExists($id)) {
         echo json_encode(['error' => 'no variable']);
         return;
     }
@@ -210,7 +210,7 @@ if ($api === 'objinfo') {
     }
     $o   = IPS_GetObject($id);
     $res = ['id' => $id, 'name' => $o['ObjectName'], 'type' => $o['ObjectType']];
-    if (IPS_VariableExists($id)) {
+    if (@IPS_VariableExists($id)) {
         $v = IPS_GetVariable($id);
         $res['updated'] = (int) $v['VariableUpdated'];
         $res['changed'] = (int) $v['VariableChanged'];
@@ -229,7 +229,7 @@ if ($api === 'objinfo') {
 if ($api === 'tabledata') {
     header('Content-Type: application/json; charset=utf-8');
     $id = (int) ($_GET['id'] ?? 0);
-    if ($id <= 0 || !IPS_VariableExists($id)) {
+    if ($id <= 0 || !@IPS_VariableExists($id)) {
         echo json_encode(['rows' => [], 'error' => 'no variable']);
         return;
     }
@@ -279,7 +279,7 @@ if ($api === 'setvar') {
     }
     $id  = (int) ($_GET['id'] ?? 0);
     $raw = (string) ($_GET['value'] ?? '');
-    if ($id <= 0 || !IPS_VariableExists($id)) {
+    if ($id <= 0 || !@IPS_VariableExists($id)) {
         http_response_code(404);
         echo json_encode(['error' => 'no variable']);
         return;
@@ -351,7 +351,7 @@ if ($api === 'layout') {
 // ---- Variablen-HTML (für das HTML-Widget) ----
 if ($api === 'html') {
     $id = (int) ($_GET['id'] ?? 0);
-    if (!IPS_VariableExists($id)) {
+    if (!@IPS_VariableExists($id)) {
         http_response_code(404);
         echo '';
         return;
@@ -367,7 +367,7 @@ if ($api === 'history') {
     header('Content-Type: application/json; charset=utf-8');
     $id = (int) ($_GET['id'] ?? 0);
     $h  = max(1, (int) ($_GET['h'] ?? 24));
-    if (!IPS_VariableExists($id)) {
+    if (!@IPS_VariableExists($id)) {
         echo json_encode(['data' => []]);
         return;
     }
@@ -402,7 +402,7 @@ if ($api === 'agg') { // Min/Max/Avg (zeitgewichtet) einer geloggten Standardvar
     header('Content-Type: application/json; charset=utf-8');
     $id    = (int) ($_GET['id'] ?? 0);
     $stage = (string) ($_GET['stage'] ?? 'day'); // minute|hour|day|week|month|year
-    if (!IPS_VariableExists($id)) { echo json_encode(['min' => null, 'max' => null, 'avg' => null]); return; }
+    if (!@IPS_VariableExists($id)) { echo json_encode(['min' => null, 'max' => null, 'avg' => null]); return; }
     $acs = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}');
     $ac  = $acs[0] ?? 0;
     if (!$ac) { echo json_encode(['min' => null, 'max' => null, 'avg' => null]); return; }
@@ -445,7 +445,7 @@ if ($api === 'cmp') {
     $id    = (int) ($_GET['id'] ?? 0);
     $stage = (string) ($_GET['stage'] ?? 'day');     // minute|hour|day|week|month|year
     $kind  = (string) ($_GET['kind'] ?? 'standard'); // standard|counter
-    if (!IPS_VariableExists($id)) {
+    if (!@IPS_VariableExists($id)) {
         echo json_encode(['cur' => null, 'past' => null, 'type' => 0]);
         return;
     }
