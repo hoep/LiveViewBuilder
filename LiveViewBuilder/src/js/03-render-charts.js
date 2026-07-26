@@ -30,6 +30,7 @@
       if(w.type==='objinfo')fetchObjInfo(w);
       if(w.visVar&&mode!=='edit'&&_lastVals[w.visVar]){var _ve=$('.w[data-id="'+w.id+'"]',canvas);if(_ve)_ve.style.display=evalVis(w,_lastVals[w.visVar])?'':'none';}
       if(w.type==='thermostat'){buildThermModes(w);updateTherm(w);}
+      if((w.assocOn||w.type==='assoc')&&w.varId)loadAssoc(w.varId,function(){if(_lastVals[w.varId])applyVal(w.varId,_lastVals[w.varId]);}); // Profil-Assoziationen auch im Run laden (sonst keine Farben/Icons)
       var _mwr=WIDGETS[w.type];if(_mwr&&_mwr.mount)_mwr.mount(w); // Registry-Post-Render-Hook (z.B. Canvas zeichnen)
       }catch(_e){} // ein defektes Widget darf Init/Interaktion der anderen nicht blockieren
     });
