@@ -78,9 +78,9 @@
     var v1=$('[data-role=val]',el);if(v1&&sr)v1.textContent=_hhmmTxt(sr.f||sr.v);var v2=$('[data-role=val2]',el);if(v2&&ss)v2.textContent=_hhmmTxt(ss.f||ss.v);
     if(a==null||b==null||b<=a)return;
     var now=new Date(),nm=now.getHours()*60+now.getMinutes(),f=Math.max(0,Math.min(1,(nm-a)/(b-a)));
-    if(w.showTime){var nw=$('[data-role=now]',el);if(nw)nw.textContent=('0'+now.getHours()).slice(-2)+':'+('0'+now.getMinutes()).slice(-2);}
     var mt=1-f,x=mt*mt*12+2*mt*f*100+f*f*188,y=mt*mt*82+2*mt*f*(-6)+f*f*82;
     sun.setAttribute('cx',x.toFixed(1));sun.setAttribute('cy',y.toFixed(1));sun.style.opacity=(nm<a||nm>b)?0.25:1;
+    if(w.showTime){var nw=$('[data-role=now]',el);if(nw){nw.textContent=('0'+now.getHours()).slice(-2)+':'+('0'+now.getMinutes()).slice(-2);nw.style.left=(x/200*100).toFixed(1)+'%';nw.style.top=(y/96*100).toFixed(1)+'%';}} // Uhrzeit zentriert über der Sonne
     var len=$('[data-role=len]',el);if(len){var dl=b-a;len.textContent=Math.floor(dl/60)+' h '+('0'+(dl%60)).slice(-2)+' min';}
   }
   function disposeCharts(){for(var k in _ec){try{_ec[k].dispose();}catch(e){}}_ec={};}
