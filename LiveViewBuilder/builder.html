@@ -2252,7 +2252,7 @@
   var _pvSince=0,_pvT=null;
   // C1: nutzt das Widget diese Variablen-ID als Daten-Bindung? (spiegelt pollVals, ohne visVar)
   function widgetDataId(w,id){
-    if(w.varId===id||w.varId2===id||w.varId3===id||w.condVar===id||w.vTemp===id||w.vCond===id||w.vHum===id||w.vWind===id)return true;
+    if(w.varId===id||w.varId2===id||w.varId3===id||w.condVar===id||w.vTemp===id||w.vCond===id||w.vHum===id||w.vWind===id||w.vRain===id)return true;
     var A=['items','links','rows','src','snk','fc'],i,j,o;
     for(i=0;i<A.length;i++){var a=w[A[i]];if(a)for(j=0;j<a.length;j++){o=a[j];if(o&&(o.vid===id||o.hi===id||o.lo===id||o.pq===id||o.cond===id))return true;}}
     return false;
@@ -2272,7 +2272,7 @@
   var _vidx=null;
   function _vidxAdd(id,w,root){if(!id)return;(_vidx[id]=_vidx[id]||[]).push({w:w,root:root});}
   function _vidxOne(w,root){
-    _vidxAdd(w.varId,w,root);_vidxAdd(w.varId2,w,root);_vidxAdd(w.varId3,w,root);_vidxAdd(w.visVar,w,root);_vidxAdd(w.condVar,w,root);_vidxAdd(w.vTemp,w,root);_vidxAdd(w.vCond,w,root);_vidxAdd(w.vHum,w,root);_vidxAdd(w.vWind,w,root);
+    _vidxAdd(w.varId,w,root);_vidxAdd(w.varId2,w,root);_vidxAdd(w.varId3,w,root);_vidxAdd(w.visVar,w,root);_vidxAdd(w.condVar,w,root);_vidxAdd(w.vTemp,w,root);_vidxAdd(w.vCond,w,root);_vidxAdd(w.vHum,w,root);_vidxAdd(w.vWind,w,root);_vidxAdd(w.vRain,w,root);
     if(w.fc)w.fc.forEach(function(r){_vidxAdd(r.hi,w,root);_vidxAdd(r.lo,w,root);_vidxAdd(r.pq,w,root);_vidxAdd(r.cond,w,root);});
     ['links','src','snk','items','rows'].forEach(function(k){if(w[k])w[k].forEach(function(o){if(o)_vidxAdd(o.vid,w,root);});});
   }
@@ -4539,9 +4539,11 @@ defWidget('statuslist',{
     // je aktuellem Wert optional eine Variable; sonst Fallback aufs JSON
     var _ln=function(id){var lv=id&&_lastVals[id];if(!lv)return null;var n=parseFloat(String(lv.v).replace(',','.'));return isNaN(n)?null:n;};
     var _lt=function(id){var lv=id&&_lastVals[id];if(!lv)return null;return (lv.f!=null&&lv.f!=='')?lv.f:String(lv.v);};
+    var _lb=function(id){var lv=id&&_lastVals[id];if(!lv)return false;var v=lv.v;if(v===true||v===1)return true;if(v===false||v===0||v==null)return false;var s=String(v).trim().toLowerCase();if(/^(true|1|on|ja|yes|regen|rain)$/.test(s))return true;var n=parseFloat(s.replace(',','.'));return !isNaN(n)&&n>0;};
     var temp=(w.vTemp&&_ln(w.vTemp)!=null)?_ln(w.vTemp):(cur?cur.temp:null);
     var condHasVar=(w.vCond&&_lt(w.vCond)!=null),condTxt=condHasVar?_lt(w.vCond):(cur?cur.cond:null);
     var icon=condHasVar?wCondIcon(condTxt):((cur&&cur.icon)||w.icon||'cloudsun');
+    if(w.vRain&&_lb(w.vRain)){icon='rain';if(!condHasVar)condTxt='Regen';}   // Regen-Variable true -> Aktuell auf Regen erzwingen
     var hum=(w.vHum&&_ln(w.vHum)!=null)?_ln(w.vHum):(cur?cur.humidity:null);
     var wind=(w.vWind&&_ln(w.vWind)!=null)?_ln(w.vWind):(cur?cur.wind:null);
     var ci=el.querySelector('[data-role=cico]');if(ci)ci.innerHTML=iconSVG(icon);
@@ -4570,8 +4572,8 @@ defWidget('statuslist',{
       +row('Format','<select id="pWFmt"><option value="auto"'+((w.wfmt||'auto')==='auto'?' selected':'')+'>Automatisch erkennen</option><option value="owm"'+(w.wfmt==='owm'?' selected':'')+'>OpenWeatherMap</option><option value="tempest"'+(w.wfmt==='tempest'?' selected':'')+'>Tempest / WeatherFlow</option><option value="openmeteo"'+(w.wfmt==='openmeteo'?' selected':'')+'>Open-Meteo</option></select>')
       +row('Temp-Einheit','<input id="pWUnit" value="'+esc(w.wunit!=null?w.wunit:'°')+'" style="width:60px" placeholder="°">')
       +'<div class="pgh">Aktuelle Werte (optional als Variable)</div>'
-      +fieldPick(w,'vTemp','Temperatur')+fieldPick(w,'vCond','Zustand')+fieldPick(w,'vHum','Feuchte %')+fieldPick(w,'vWind','Wind km/h')
-      +'<div class="hint" style="font-size:11px;color:var(--muted)">Leer = Wert aus dem JSON. Zustand-Variable liefert Text → Icon automatisch.</div>';
+      +fieldPick(w,'vTemp','Temperatur')+fieldPick(w,'vCond','Zustand')+fieldPick(w,'vHum','Feuchte %')+fieldPick(w,'vWind','Wind km/h')+fieldPick(w,'vRain','Regen (bool)')
+      +'<div class="hint" style="font-size:11px;color:var(--muted)">Leer = Wert aus dem JSON. Zustand-Variable liefert Text → Icon automatisch. <b>Regen</b>: ist die Variable wahr (true/1/&gt;0), wird die aktuelle Anzeige auf Regen gesetzt.</div>';
   }
   function wJsonWire(w){
     if($('#pWFmt'))$('#pWFmt').onchange=function(){w.wfmt=this.value;render();commit();};
