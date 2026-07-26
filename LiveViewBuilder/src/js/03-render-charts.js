@@ -13,6 +13,7 @@
       d.innerHTML='<div class="winner">'+_inner+'</div><div class="rz" data-role="rz"></div>';
       if(w.type==='value'&&w.valfs){var v=$('.v',d);if(v)v.style.fontSize=w.valfs+'px';}
       if(w.bg)d.style.background=w.bg;if(w.fg)d.style.color=w.fg;
+      if(w.ff)d.style.fontFamily=w.ff;if(w.fwt)d.style.fontWeight=w.fwt;if(w.fsty)d.style.fontStyle=w.fsty;if(w.fsz)d.style.fontSize=w.fsz+'px'; // Typografie
       canvas.appendChild(d);
     });
     // ECharts- und Kamera-Widgets aktivieren (je Widget abgesichert)
