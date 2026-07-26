@@ -1,21 +1,23 @@
+  function _hasTextSel(){var ae=document.activeElement;if(ae&&(ae.tagName==='INPUT'||ae.tagName==='TEXTAREA')&&ae.selectionStart!=null&&ae.selectionStart!==ae.selectionEnd)return true;var s=window.getSelection&&window.getSelection();return !!(s&&String(s).length);} // aktive Textauswahl?
+  function _inTextField(){var ae=document.activeElement,tn=((ae&&ae.tagName)||'').toLowerCase();return tn==='input'||tn==='textarea';}
+  function _clone(id){return JSON.parse(JSON.stringify(widget(id)));}
   document.addEventListener('keydown',function(e){
+    var ctrl=e.ctrlKey||e.metaKey,k=(e.key||'').toLowerCase(),ids=Object.keys(sel);
+    // Widget-Copy/Cut/Paste ZUERST (funktioniert auch bei Fokus auf Select/Body/nach Seitenwechsel); Textfeld/Textauswahl bleibt normales Text-Copy
+    if(ctrl&&k==='c'&&!_hasTextSel()){if(ids.length){clip=ids.map(_clone);toast(clip.length+' kopiert');e.preventDefault();}return;}
+    if(ctrl&&k==='x'&&!_hasTextSel()){if(ids.length){clip=ids.map(_clone);state.widgets=state.widgets.filter(function(w){return !sel[w.id];});selClear();render();renderProps();commit();e.preventDefault();}return;}
+    if(ctrl&&k==='v'&&!_inTextField()){if(clip&&clip.length){addCopies(clip);e.preventDefault();}return;}
     var tn=((e.target&&e.target.tagName)||'').toLowerCase();if(tn==='input'||tn==='select'||tn==='textarea')return;
-    var ids=Object.keys(sel),ctrl=e.ctrlKey||e.metaKey;
     if(e.key==='Delete'||e.key==='Backspace'){if(ids.length){state.widgets=state.widgets.filter(function(w){return !sel[w.id];});selClear();render();renderProps();e.preventDefault();}}
-    else if(ctrl&&e.key.toLowerCase()==='d'){e.preventDefault();addCopies(ids.map(widget));}
-    else if(ctrl&&e.key.toLowerCase()==='z'){e.preventDefault();if(e.shiftKey)redo();else undo();}
-    else if(ctrl&&e.key.toLowerCase()==='y'){e.preventDefault();redo();}
+    else if(ctrl&&k==='d'){e.preventDefault();addCopies(ids.map(widget));}
+    else if(ctrl&&k==='z'){e.preventDefault();if(e.shiftKey)redo();else undo();}
+    else if(ctrl&&k==='y'){e.preventDefault();redo();}
     else if(ctrl&&(e.key==='+'||e.key==='=')){e.preventDefault();setZoom(zoom*1.15);}
     else if(ctrl&&(e.key==='-'||e.key==='_')){e.preventDefault();setZoom(zoom/1.15);}
     else if(ctrl&&e.key==='0'){e.preventDefault();setZoom(1);}
     else if(ctrl&&e.key==='9'){e.preventDefault();setZoom(fitZoom());}
     else if(e.key.indexOf('Arrow')===0&&ids.length){var dd=e.shiftKey?GS:1,ddx=e.key==='ArrowLeft'?-dd:e.key==='ArrowRight'?dd:0,ddy=e.key==='ArrowUp'?-dd:e.key==='ArrowDown'?dd:0;ids.forEach(function(id){var w=widget(id);w.x=Math.max(0,w.x+ddx);w.y=Math.max(0,w.y+ddy);applyGeom(w);});e.preventDefault();commit();}
   });
-  // Kopieren/Einfügen über die nativen Events (zuverlässig auf Mac Cmd+C/V, unabhängig vom Fokus)
-  function _inField(){var ae=document.activeElement,tn=((ae&&ae.tagName)||'').toLowerCase();if(tn==='input'||tn==='select'||tn==='textarea')return true;var s=window.getSelection&&window.getSelection();return !!(s&&String(s).length);} // in Textfeld oder Textauswahl -> normales Copy
-  document.addEventListener('copy',function(e){if(typeof mode!=='undefined'&&mode!=='edit')return;if(_inField())return;var ids=Object.keys(sel);if(!ids.length)return;clip=ids.map(function(id){return JSON.parse(JSON.stringify(widget(id)));});if(clip.length)toast(clip.length+' kopiert');});
-  document.addEventListener('cut',function(e){if(typeof mode!=='undefined'&&mode!=='edit')return;if(_inField())return;var ids=Object.keys(sel);if(!ids.length)return;clip=ids.map(function(id){return JSON.parse(JSON.stringify(widget(id)));});state.widgets=state.widgets.filter(function(w){return !sel[w.id];});selClear();render();renderProps();commit();e.preventDefault();});
-  document.addEventListener('paste',function(e){if(typeof mode!=='undefined'&&mode!=='edit')return;if(_inField())return;if(clip&&clip.length){e.preventDefault();addCopies(clip);}});
 
   // Vorschau/Runtime: interaktive Widgets schreiben
   var _lpTimer=null,_lpFired=false;
