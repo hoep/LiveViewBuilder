@@ -120,6 +120,11 @@
   .hstime{font-family:var(--fm);font-size:15px;font-weight:600}.hslbl{font-size:10px;color:var(--muted)}
   .hwf{height:100%;display:flex;flex-direction:column;gap:8px;padding:10px 12px;overflow:hidden}
   .w.no-frame{background:transparent;border-color:transparent} /* Kachel-Rahmen/Hintergrund aus */
+  /* Typografie erzwingen (auch auf Elemente mit eigener Schrift wie Uhr/KPI) */
+  .w.tw-ff,.w.tw-ff *{font-family:var(--w-ff)!important}
+  .w.tw-fwt,.w.tw-fwt *{font-weight:var(--w-fwt)!important}
+  .w.tw-fsty,.w.tw-fsty *{font-style:var(--w-fsty)!important}
+  .w.tw-fsz,.w.tw-fsz *{font-size:var(--w-fsz)!important}
   .w.ref-hidden{display:none} /* in Laufzeile referenziert: auf der Seite immer aus (Edit + Run) */
   .w.run-hidden{opacity:.4}.w.run-hidden .winner{outline:1px dashed var(--muted);outline-offset:-1px} /* manuell versteckt: im Edit gestrichelt */
   body.run .w.run-hidden{display:none} /* im Run komplett aus (robust, auch ohne Re-Render) */
