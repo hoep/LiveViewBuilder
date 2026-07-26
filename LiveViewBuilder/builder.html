@@ -1217,6 +1217,12 @@
   // Zeitversatz-Vergleich (Delta/KPI + Charts)
   var OFFS={'1h':3600,'1d':86400,'1w':604800,'1m':2592000,'1y':31536000};
   var OFFLBL={'1h':'letzte Stunde','1d':'gestern','1w':'letzte Woche','1m':'letzter Monat','1y':'letztes Jahr','last':'letztem Wert'};
+  // KPI/Delta-Zeitversatz: Aggregationsstufe (Periode) + Vergleich mit der Vorperiode
+  var STAGES=[['minute','minütlich'],['hour','stündlich'],['day','täglich'],['week','wöchentlich'],['month','monatlich'],['year','jährlich']];
+  var STAGELBL={minute:'Minute davor',hour:'Stunde davor',day:'gestern',week:'letzte Woche',month:'letzter Monat',year:'letztes Jahr'};
+  var STAGECUR={minute:'letzte Minute',hour:'diese Stunde',day:'heute',week:'diese Woche',month:'dieser Monat',year:'dieses Jahr'};
+  function cmpStage(w){return w.cmpStage||({'1h':'hour','1d':'day','1w':'week','1m':'month','1y':'year','last':'day'}[w.cmpOff])||'day';}
+  function stageSel(id,cur){cur=cur||'day';return '<select id="'+id+'">'+STAGES.map(function(s){return '<option value="'+s[0]+'"'+(s[0]===cur?' selected':'')+'>'+s[1]+'</option>';}).join('')+'</select>';}
   var _cmpData={}; // widgetId -> {cur,past,type,fetched}
   function darken(hex,amt){hex=String(hex||'#888888').replace('#','');if(hex.length===3)hex=hex.split('').map(function(c){return c+c;}).join('');var r=parseInt(hex.substr(0,2),16),g=parseInt(hex.substr(2,2),16),b=parseInt(hex.substr(4,2),16);function d(x){return Math.max(0,Math.min(255,Math.round(x*(1-amt))));}return '#'+[d(r),d(g),d(b)].map(function(x){return ('0'+x.toString(16)).slice(-2);}).join('');}
   function fmtDelta(n,sign){if(n==null||isNaN(n))return '–';var a=Math.abs(n),s=a>=100?Math.round(n):Math.round(n*10)/10;return (sign&&n>0?'+':'')+String(s).replace('.',',');}
@@ -1426,12 +1432,11 @@
   }
   function ensureCmp(w,cb){
     if(!w.varId){cb(null);return;}
-    var isLast=(w.cmpOff==='last'),off=isLast?0:OFFS[w.cmpOff||'1d'];
-    if(!isLast&&!off){cb(null);return;}
+    var stage=cmpStage(w),kind=(w.cmpCounter?'counter':'standard');
     var c=_cmpData[w.id],now=Date.now();
-    if(c&&(now-c.fetched)<120000){cb(c);return;}
-    fetch('?api=cmp&id='+w.varId+(isLast?'&last=1':'&off='+off),{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
-      _cmpData[w.id]={cur:(j&&j.cur!=null)?parseFloat(j.cur):null,past:(j&&j.past!=null)?parseFloat(j.past):null,type:(j&&j.type)||0,fetched:now};cb(_cmpData[w.id]);
+    if(c&&c.stage===stage&&c.kind===kind&&(now-c.fetched)<25000){cb(c);return;}
+    fetch('?api=cmp&id='+w.varId+'&stage='+stage+'&kind='+kind,{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
+      _cmpData[w.id]={cur:(j&&j.cur!=null)?parseFloat(j.cur):null,past:(j&&j.past!=null)?parseFloat(j.past):null,type:(j&&j.type)||0,stage:stage,kind:kind,fetched:now};cb(_cmpData[w.id]);
     }).catch(function(){cb(null);});
   }
   function computeCompare(w){
@@ -1442,8 +1447,10 @@
       var dir=!ok?'flat':(Math.abs(diff)<1e-9?'flat':(diff>0?'up':'dn'));
       var tone=(dir==='flat')?'muted':(((dir==='up')!==!!w.cmpInvert)?'ok':'crit');
       var arrow=dir==='up'?'▲':(dir==='dn'?'▼':'→');
+      var counter=(p&&p.type===1);
       var val=!ok?'–':((w.cmpMode==='abs')?fmtDelta(diff,true)+(w.unit?' '+w.unit:''):fmtDelta(pct,true)+' %');
-      var cnt=(p&&p.type===1);var cap=cnt?('ggü. Vorperiode ('+OFFLBL[w.cmpOff||'1d']+')'):('ggü. '+OFFLBL[w.cmpOff||'1d']);
+      var cap='ggü. '+(STAGELBL[cmpStage(w)]||'gestern');
+      if(counter&&cur!=null&&w.type==='kpi'){var mv=el.querySelector('[data-role=val]');if(mv)mv.textContent=fmtDelta(cur,false);} // Zähler: Hauptwert = Verbrauch aktuelle Periode
       if(w.type==='kpi'){var s=el.querySelector('[data-role=cmp]');if(s){s.className='hks '+(tone==='ok'?'up':(tone==='crit'?'dn':''));s.textContent=arrow+' '+val+' '+cap;}}
       else if(w.type==='delta'){var root=el.querySelector('[data-role=delroot]');if(root)root.className='hdelta t-'+tone;var ar=el.querySelector('[data-role=arrow]');if(ar)ar.textContent=arrow;var vv=el.querySelector('[data-role=val]');if(vv)vv.textContent=val;var cc=el.querySelector('[data-role=cap]');if(cc)cc.textContent=(w.label?w.label+' · ':'')+cap;}
     });
@@ -1764,7 +1771,7 @@
           :(w.type!=='text'&&w.type!=='calendar'&&w.type!=='clock'&&!(w.type==='html'&&w.htmlSrc==='custom')?row('Variable','<input id="pVar" value="'+(w.varId||'')+'" placeholder="ID"> <button class="btn" id="pPick" style="padding:6px 8px">wählen</button>'):''))
       +((w.type==='kpi'||w.type==='delta')?('<div class="pgh">Vergleich (Zeitversatz)</div>'
         +row('Aktiv','<input type="checkbox" id="pCmpOn"'+(w.cmpOn?' checked':'')+'>')
-        +(w.cmpOn?(row('Vergleich mit',offSel('pCmpOff',w.cmpOff,true))+row('Anzeige','<select id="pCmpMode"><option value="pct"'+((w.cmpMode||'pct')==='pct'?' selected':'')+'>Prozent</option><option value="abs"'+(w.cmpMode==='abs'?' selected':'')+'>Absolut</option></select>')+row('Anstieg = schlecht','<input type="checkbox" id="pCmpInv"'+(w.cmpInvert?' checked':'')+'>')):'')
+        +(w.cmpOn?(row('Aggregationsstufe',stageSel('pCmpStage',cmpStage(w)))+row('Zählervariable','<input type="checkbox" id="pCmpCnt"'+(w.cmpCounter?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">Verbrauch je Periode</span>')+row('Anzeige','<select id="pCmpMode"><option value="pct"'+((w.cmpMode||'pct')==='pct'?' selected':'')+'>Prozent</option><option value="abs"'+(w.cmpMode==='abs'?' selected':'')+'>Absolut</option></select>')+row('Anstieg = schlecht','<input type="checkbox" id="pCmpInv"'+(w.cmpInvert?' checked':'')+'>')):'')
       ):'')
       +(FMT_TYPES.indexOf(w.type)>=0?row('Format','<select id="pFmt">'+fmtOpts(w.fmt)+'</select>'):'')
       +((w.type==='chart'||w.type==='spark')?row('Stunden','<input id="pHours" type="number" value="'+(w.hours||24)+'">'):'')
@@ -1814,6 +1821,8 @@
     if($('#pCmpShade'))$('#pCmpShade').oninput=function(){w.cmpShade=Math.max(0,Math.min(90,parseInt(this.value)||0));if(_ec[w.id])renderChartData(w);commit();};
     if($('#pCmpMode'))$('#pCmpMode').onchange=function(){w.cmpMode=this.value;refreshCompare(w);commit();};
     if($('#pCmpInv'))$('#pCmpInv').onchange=function(){w.cmpInvert=this.checked;computeCompare(w);commit();};
+    if($('#pCmpStage'))$('#pCmpStage').onchange=function(){w.cmpStage=this.value;delete _cmpData[w.id];refreshCompare(w);commit();};
+    if($('#pCmpCnt'))$('#pCmpCnt').onchange=function(){w.cmpCounter=this.checked||undefined;delete _cmpData[w.id];refreshCompare(w);commit();};
     if($('#pHours'))$('#pHours').onchange=function(){w.hours=parseInt(this.value)||24;delete _hist[w.id];fetchHist(w);};
     if($('#pMin'))$('#pMin').oninput=function(){var v=parseFloat(this.value);w.min=isNaN(v)?0:v;render();};
     if($('#pMax'))$('#pMax').oninput=function(){var v=parseFloat(this.value);w.max=isNaN(v)?100:v;render();};
@@ -3061,7 +3070,8 @@ defWidget('chip',{
     defaults:function(w){w.tone='ok';w.dir='up';w.text='+6 %';w.label='Autarkie';},
     render:function(w){return '<div class="hdelta t-'+(w.tone||'ok')+'" data-role="delroot"><div class="hdmain"><span data-role="arrow">'+(w.dir==='dn'?'▼':(w.dir==='flat'?'→':'▲'))+'</span> <span data-role="val">'+esc(w.text||'')+'</span></div>'+((w.label||w.cmpOn)?'<div class="hdcap" data-role="cap">'+esc(w.label||'')+'</div>':'')+'</div>';},
     props:function(w){return (w.type==='delta'?(row('Text','<input id="pText" value="'+esc(w.text||'')+'" placeholder="+6 %"'+(w.cmpOn?' disabled':'')+'>')+(w.cmpOn?'':row('Richtung',dirSel('pDir',w.dir))+row('Farbe',selOf('pTone',w.tone,['ok','crit','warn','muted'])))):'');},
-    wire:function(w){if($('#pText'))$('#pText').oninput=function(){w.text=this.value;render();};if($('#pTone'))$('#pTone').onchange=function(){w.tone=this.value;render();};}
+    wire:function(w){if($('#pText'))$('#pText').oninput=function(){w.text=this.value;render();};if($('#pTone'))$('#pTone').onchange=function(){w.tone=this.value;render();};},
+    live:function(w,el,id,d,base,txt,on){if(w.cmpOn)computeCompare(w);return true;} // Delta zeigt den Vergleich, nicht den Rohwert
   });
 // devlist — Geräte-Liste
 defWidget('devlist',{
@@ -3232,7 +3242,11 @@ defWidget('gaugepro',{
     defaults:function(w){w.label='Autarkie';w.unit='%';w.icon='home';w.dir='up';w.delta='+6 % ggü. gestern';},
     render:function(w){return '<div class="hkpi"><span class="hkbi">'+iconSVG(w.icon||'home')+'</span><div class="hkm"><div class="hkl">'+esc(w.label||'')+'</div><div class="hkn"><span data-role="val">–</span>'+(w.unit?'<small> '+esc(w.unit)+'</small>':'')+'</div>'+(w.cmpOn?'<div class="hks" data-role="cmp">…</div>':(w.delta?'<div class="hks '+(w.dir==='dn'?'dn':(w.dir==='up'?'up':''))+'">'+(w.dir==='dn'?'▼ ':(w.dir==='up'?'▲ ':''))+esc(w.delta)+'</div>':''))+'</div></div>';},
     props:function(w){return (w.type==='kpi'?(row('Einheit','<input id="pUnit" value="'+esc(w.unit||'')+'">')+(w.cmpOn?'':row('Delta-Text','<input id="pDelta" value="'+esc(w.delta||'')+'">')+row('Richtung',dirSel('pDir',w.dir)))):'');},
-    wire:function(w){if($('#pUnit'))$('#pUnit').oninput=function(){w.unit=this.value;render();};if($('#pDelta'))$('#pDelta').oninput=function(){w.delta=this.value;render();};}
+    wire:function(w){if($('#pUnit'))$('#pUnit').oninput=function(){w.unit=this.value;render();};if($('#pDelta'))$('#pDelta').oninput=function(){w.delta=this.value;render();};},
+    live:function(w,el,id,d,base,txt,on){
+      if(w.cmpOn){computeCompare(w);if(!w.cmpCounter){var v=el.querySelector('[data-role=val]');if(v)v.textContent=txt;}return true;} // Zähler: Hauptwert kommt aus computeCompare (Perioden-Verbrauch)
+      var v=el.querySelector('[data-role=val]');if(v)v.textContent=txt;return true;
+    }
   });
   // ===== Widget: Licht (Light) — Badge mit Ein/Aus, Name, Status und Helligkeits-Slider =====
   defWidget('light',{

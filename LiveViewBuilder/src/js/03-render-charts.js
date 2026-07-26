@@ -41,6 +41,12 @@
   // Zeitversatz-Vergleich (Delta/KPI + Charts)
   var OFFS={'1h':3600,'1d':86400,'1w':604800,'1m':2592000,'1y':31536000};
   var OFFLBL={'1h':'letzte Stunde','1d':'gestern','1w':'letzte Woche','1m':'letzter Monat','1y':'letztes Jahr','last':'letztem Wert'};
+  // KPI/Delta-Zeitversatz: Aggregationsstufe (Periode) + Vergleich mit der Vorperiode
+  var STAGES=[['minute','minütlich'],['hour','stündlich'],['day','täglich'],['week','wöchentlich'],['month','monatlich'],['year','jährlich']];
+  var STAGELBL={minute:'Minute davor',hour:'Stunde davor',day:'gestern',week:'letzte Woche',month:'letzter Monat',year:'letztes Jahr'};
+  var STAGECUR={minute:'letzte Minute',hour:'diese Stunde',day:'heute',week:'diese Woche',month:'dieser Monat',year:'dieses Jahr'};
+  function cmpStage(w){return w.cmpStage||({'1h':'hour','1d':'day','1w':'week','1m':'month','1y':'year','last':'day'}[w.cmpOff])||'day';}
+  function stageSel(id,cur){cur=cur||'day';return '<select id="'+id+'">'+STAGES.map(function(s){return '<option value="'+s[0]+'"'+(s[0]===cur?' selected':'')+'>'+s[1]+'</option>';}).join('')+'</select>';}
   var _cmpData={}; // widgetId -> {cur,past,type,fetched}
   function darken(hex,amt){hex=String(hex||'#888888').replace('#','');if(hex.length===3)hex=hex.split('').map(function(c){return c+c;}).join('');var r=parseInt(hex.substr(0,2),16),g=parseInt(hex.substr(2,2),16),b=parseInt(hex.substr(4,2),16);function d(x){return Math.max(0,Math.min(255,Math.round(x*(1-amt))));}return '#'+[d(r),d(g),d(b)].map(function(x){return ('0'+x.toString(16)).slice(-2);}).join('');}
   function fmtDelta(n,sign){if(n==null||isNaN(n))return '–';var a=Math.abs(n),s=a>=100?Math.round(n):Math.round(n*10)/10;return (sign&&n>0?'+':'')+String(s).replace('.',',');}
@@ -250,12 +256,11 @@
   }
   function ensureCmp(w,cb){
     if(!w.varId){cb(null);return;}
-    var isLast=(w.cmpOff==='last'),off=isLast?0:OFFS[w.cmpOff||'1d'];
-    if(!isLast&&!off){cb(null);return;}
+    var stage=cmpStage(w),kind=(w.cmpCounter?'counter':'standard');
     var c=_cmpData[w.id],now=Date.now();
-    if(c&&(now-c.fetched)<120000){cb(c);return;}
-    fetch('?api=cmp&id='+w.varId+(isLast?'&last=1':'&off='+off),{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
-      _cmpData[w.id]={cur:(j&&j.cur!=null)?parseFloat(j.cur):null,past:(j&&j.past!=null)?parseFloat(j.past):null,type:(j&&j.type)||0,fetched:now};cb(_cmpData[w.id]);
+    if(c&&c.stage===stage&&c.kind===kind&&(now-c.fetched)<25000){cb(c);return;}
+    fetch('?api=cmp&id='+w.varId+'&stage='+stage+'&kind='+kind,{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
+      _cmpData[w.id]={cur:(j&&j.cur!=null)?parseFloat(j.cur):null,past:(j&&j.past!=null)?parseFloat(j.past):null,type:(j&&j.type)||0,stage:stage,kind:kind,fetched:now};cb(_cmpData[w.id]);
     }).catch(function(){cb(null);});
   }
   function computeCompare(w){
@@ -266,8 +271,10 @@
       var dir=!ok?'flat':(Math.abs(diff)<1e-9?'flat':(diff>0?'up':'dn'));
       var tone=(dir==='flat')?'muted':(((dir==='up')!==!!w.cmpInvert)?'ok':'crit');
       var arrow=dir==='up'?'▲':(dir==='dn'?'▼':'→');
+      var counter=(p&&p.type===1);
       var val=!ok?'–':((w.cmpMode==='abs')?fmtDelta(diff,true)+(w.unit?' '+w.unit:''):fmtDelta(pct,true)+' %');
-      var cnt=(p&&p.type===1);var cap=cnt?('ggü. Vorperiode ('+OFFLBL[w.cmpOff||'1d']+')'):('ggü. '+OFFLBL[w.cmpOff||'1d']);
+      var cap='ggü. '+(STAGELBL[cmpStage(w)]||'gestern');
+      if(counter&&cur!=null&&w.type==='kpi'){var mv=el.querySelector('[data-role=val]');if(mv)mv.textContent=fmtDelta(cur,false);} // Zähler: Hauptwert = Verbrauch aktuelle Periode
       if(w.type==='kpi'){var s=el.querySelector('[data-role=cmp]');if(s){s.className='hks '+(tone==='ok'?'up':(tone==='crit'?'dn':''));s.textContent=arrow+' '+val+' '+cap;}}
       else if(w.type==='delta'){var root=el.querySelector('[data-role=delroot]');if(root)root.className='hdelta t-'+tone;var ar=el.querySelector('[data-role=arrow]');if(ar)ar.textContent=arrow;var vv=el.querySelector('[data-role=val]');if(vv)vv.textContent=val;var cc=el.querySelector('[data-role=cap]');if(cc)cc.textContent=(w.label?w.label+' · ':'')+cap;}
     });
