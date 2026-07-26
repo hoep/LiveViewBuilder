@@ -83,7 +83,9 @@
         w.items[i][k]=v;
         render();
       };});
-      $$('#props [data-tkdel]').forEach(function(b){b.onclick=function(){w.items.splice(+b.dataset.tkdel,1);render();renderProps();};});
+      $$('#props [data-tkdel]').forEach(function(b){b.onclick=function(){var it=w.items[+b.dataset.tkdel];w.items.splice(+b.dataset.tkdel,1);
+        if(it&&it.ref){var cnt=0;state.widgets.forEach(function(t){if(t.type==='ticker'&&t.items)t.items.forEach(function(m){if(m.ref===it.ref)cnt++;});});if(cnt===0){var tw=state.widgets.filter(function(x){return x.name===it.ref;})[0];if(tw&&tw.hidden)tw.hidden=undefined;}} // Referenz entfernt -> Widget wieder sichtbar
+        render();renderProps();commit();};});
       var add=$('#props [data-tkadd]');if(add)add.onclick=function(){w.items=w.items||[];w.items.push({ref:''});render();renderProps();};
     }
   });
