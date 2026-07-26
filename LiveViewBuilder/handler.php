@@ -411,23 +411,25 @@ if ($api === 'cmp') {
         echo json_encode(['type' => 0, 'cur' => $cur, 'past' => $past]);
         return;
     }
-    $type  = function_exists('AC_GetAggregationType') ? (int) @AC_GetAggregationType($ac, $id) : 0;
-    $now   = time();
-    $valAt = function ($t) use ($ac, $id) {
-        $r = @AC_GetLoggedValues($ac, $id, 0, $t, 1);
-        return (is_array($r) && count($r)) ? $r[0]['Value'] : null;
+    // Aggregierter Vergleich: gleiche Periode (heute/diese Stunde/Woche/Monat/Jahr) vs. eine Periode zuvor.
+    $agg = strtolower((string) ($_GET['agg'] ?? 'avg')); // avg | sum | max | min
+    $now = time();
+    // Aggregationsstufe aus dem Zeitversatz ableiten: 1h->Stunde(0), 1d->Tag(1), 1w->Woche(2), 1m->Monat(3), 1y->Jahr(4)
+    $level = ($off <= 3600) ? 0 : (($off <= 86400) ? 1 : (($off <= 604800) ? 2 : (($off <= 2592000) ? 3 : 4)));
+    $pick = function ($b) use ($agg) {
+        if (!is_array($b)) {
+            return null;
+        }
+        if ($agg === 'sum') return $b['Sum'] ?? null;
+        if ($agg === 'max') return $b['Max'] ?? null;
+        if ($agg === 'min') return $b['Min'] ?? null;
+        return $b['Avg'] ?? null; // Mittelwert (Standard)
     };
-    if ($type === 1) {
-        $a = $valAt($now);
-        $b = $valAt($now - $off);
-        $c = $valAt($now - 2 * $off);
-        $cur  = ($a !== null && $b !== null) ? $a - $b : null;
-        $past = ($b !== null && $c !== null) ? $b - $c : null;
-    } else {
-        $cur  = $valAt($now);
-        $past = $valAt($now - $off);
-    }
-    echo json_encode(['type' => $type, 'cur' => $cur, 'past' => $past]);
+    $rows = @AC_GetAggregatedValues($ac, $id, $level, $now - 2 * $off - 120, $now + 60, 4);
+    // neueste zuerst: [0] = aktuelle Periode, [1] = eine Periode zuvor
+    $cur  = (is_array($rows) && isset($rows[0])) ? $pick($rows[0]) : null;
+    $past = (is_array($rows) && isset($rows[1])) ? $pick($rows[1]) : null;
+    echo json_encode(['type' => 0, 'cur' => $cur, 'past' => $past, 'level' => $level, 'agg' => $agg]);
     return;
 }
 

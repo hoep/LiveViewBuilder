@@ -44,7 +44,9 @@
     });}
   function assignIcon(id){
     if(_assocPick){var wa=widget(_assocPick.wid);if(wa){if(!wa.assocMap)wa.assocMap={};if(!wa.assocMap[_assocPick.key])wa.assocMap[_assocPick.key]={};wa.assocMap[_assocPick.key].icon=id;wa.assocOn=true;render();select(wa.id);renderProps();refreshAssocLive(wa);toast('Status-Icon: '+id);}_assocPick=null;return;}
-    var targets=Object.keys(sel).map(widget).filter(function(w){return w&&['icon','value','switch','bar'].indexOf(w.type)>=0;});
-    if(targets.length){targets.forEach(function(w){w.icon=id;});render();toast('Icon: '+id);}
+    var ICONABLE=['icon','value','switch','bar','tile','button','light','chip','weather','weatherpro','room','kpi']; // wie die Icon-Zeile in renderProps
+    var ids=Object.keys(sel);if(!ids.length&&selId)ids=[selId];
+    var targets=ids.map(widget).filter(function(w){return w&&ICONABLE.indexOf(w.type)>=0;});
+    if(targets.length){targets.forEach(function(w){w.icon=id;});render();renderProps();toast('Icon: '+id);}
     else{addWidget('icon',{icon:id});toast('Icon-Widget: '+id);}
   }
