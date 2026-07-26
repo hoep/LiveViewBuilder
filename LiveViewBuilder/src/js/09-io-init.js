@@ -214,18 +214,22 @@
   function reflowFit(vw,vh){
     var p=state.page,S=sfStructure(p),c=sfCfg(p),order=[],stretched=[];
     S.bands.forEach(function(b){order=order.concat(b);});
-    // Schmaler Bildschirm (Handy): EINSPALTER — jede Kachel füllt die Breite, vertikal scrollen.
+    // Schmaler Bildschirm (Handy): variables Flow-Packing statt starrem Einspalter.
+    // Breite Widgets (>=50% der Designbreite) füllen die Zeile; kleine teilen sich Zeilen (2–3 nebeneinander).
     if(vw<560){
-      var M=10,colW=vw-2*M,y=M;
+      var M=8,G=8,AW=vw-2*M,halfW=(AW-G)/2,pw=p.w||1440;
+      var x=M,y=M,rowH=0;
       order.forEach(function(w){if(w.reflowHide)return;var el=sfEl(w);if(!el)return;var win=el.firstElementChild;if(!win)return;
-        var s=Math.min(1.6,colW/w.w);                 // breite verkleinern, kleine moderat vergrößern
-        var bw=w.w*s,bh=w.h*s,x=M+Math.max(0,(colW-bw)/2);
+        var wide=(w.w/pw>=0.5)||(w.w>halfW*1.15);           // breit -> volle Zeile
+        var s=wide?(AW/w.w):Math.min(halfW/w.w,1.35);       // schmal: bis halbe Breite, moderat vergrößern
+        if(s>1.6)s=1.6;var bw=w.w*s,bh=w.h*s;
+        if(x>M&&x+bw>vw-M+0.5){x=M;y+=rowH+G;rowH=0;}        // Zeilenumbruch
         if(sfClass(w)==='s'){win.style.transform='';win.style.width='';win.style.height='';stretched.push(w);}
         else{win.style.width=w.w+'px';win.style.height=w.h+'px';win.style.transform='scale('+s+')';}
-        el.style.transform='none';el.style.left=x+'px';el.style.top=y+'px';el.style.width=bw+'px';el.style.height=bh+'px';
-        y+=bh+M;
+        el.style.transform='none';el.style.left=x.toFixed(1)+'px';el.style.top=y.toFixed(1)+'px';el.style.width=bw.toFixed(1)+'px';el.style.height=bh.toFixed(1)+'px';
+        x+=bw+G;if(bh>rowH)rowH=bh;
       });
-      canvas.style.height=Math.max(vh,y+M)+'px';sfPropagate(stretched);return;
+      canvas.style.height=Math.max(vh,y+rowH+M)+'px';sfPropagate(stretched);return;
     }
     // Sonst: höhen-optimierter Flow-Umbruch (moderates Portrait).
     var MM=14,maxW=1;order.forEach(function(w){if(w.w>maxW)maxW=w.w;});
