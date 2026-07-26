@@ -1,6 +1,6 @@
   // C1: nutzt das Widget diese Variablen-ID als Daten-Bindung? (spiegelt pollVals, ohne visVar)
   function widgetDataId(w,id){
-    if(w.varId===id||w.varId2===id||w.varId3===id||w.condVar===id)return true;
+    if(w.varId===id||w.varId2===id||w.varId3===id||w.condVar===id||w.vTemp===id||w.vCond===id||w.vHum===id||w.vWind===id)return true;
     var A=['items','links','rows','src','snk','fc'],i,j,o;
     for(i=0;i<A.length;i++){var a=w[A[i]];if(a)for(j=0;j<a.length;j++){o=a[j];if(o&&(o.vid===id||o.hi===id||o.lo===id||o.pq===id||o.cond===id))return true;}}
     return false;
@@ -20,7 +20,7 @@
   var _vidx=null;
   function _vidxAdd(id,w,root){if(!id)return;(_vidx[id]=_vidx[id]||[]).push({w:w,root:root});}
   function _vidxOne(w,root){
-    _vidxAdd(w.varId,w,root);_vidxAdd(w.varId2,w,root);_vidxAdd(w.varId3,w,root);_vidxAdd(w.visVar,w,root);_vidxAdd(w.condVar,w,root);
+    _vidxAdd(w.varId,w,root);_vidxAdd(w.varId2,w,root);_vidxAdd(w.varId3,w,root);_vidxAdd(w.visVar,w,root);_vidxAdd(w.condVar,w,root);_vidxAdd(w.vTemp,w,root);_vidxAdd(w.vCond,w,root);_vidxAdd(w.vHum,w,root);_vidxAdd(w.vWind,w,root);
     if(w.fc)w.fc.forEach(function(r){_vidxAdd(r.hi,w,root);_vidxAdd(r.lo,w,root);_vidxAdd(r.pq,w,root);_vidxAdd(r.cond,w,root);});
     ['links','src','snk','items','rows'].forEach(function(k){if(w[k])w[k].forEach(function(o){if(o)_vidxAdd(o.vid,w,root);});});
   }

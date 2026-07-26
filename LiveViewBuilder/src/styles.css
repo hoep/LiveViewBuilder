@@ -448,7 +448,8 @@
   .hwp2day .ic{width:18px;height:18px;color:var(--warm);display:inline-flex}
   .hwp2day .lo{font-family:var(--fm);color:var(--faint);text-align:right}
   .hwp2day .hi{font-family:var(--fm);font-weight:600;text-align:right}
-  .hwp2day .pq{font-size:9.5px;color:var(--info);text-align:right}
+  .hwp2day .pq{font-size:9.5px;color:var(--info);text-align:right;white-space:nowrap}
+  .hwpqi{width:9px;height:9px;fill:currentColor;stroke:none;display:inline-block;vertical-align:-1px;margin-right:1px}
   .hwp2day .trk{position:relative;height:6px;border-radius:3px;background:var(--surface-2)}
   .hwp2day .trk .fill{position:absolute;top:0;bottom:0;left:0;width:0;border-radius:3px;transition:all .4s}
   /* Sonnenbogen (suncard) */
