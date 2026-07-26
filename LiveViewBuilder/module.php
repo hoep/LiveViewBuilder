@@ -32,6 +32,8 @@ class LiveViewBuilder extends IPSModule
         $this->RegisterAttributeString('Token', '');        // Schreib-Token (auto)
         $this->RegisterAttributeString('ImportStatus', ''); // letzter Import-Status (für Formularanzeige)
         $this->RegisterMessage(0, IPS_KERNELMESSAGE);       // KR_READY abfangen -> Hooks nach dem Boot registrieren
+        $this->RegisterMessage(0, 10204);                   // KL_WARNING -> Meldungs-Mitschnitt
+        $this->RegisterMessage(0, 10205);                   // KL_ERROR   -> Meldungs-Mitschnitt
     }
 
     public function ApplyChanges()
@@ -57,6 +59,15 @@ class LiveViewBuilder extends IPSModule
     {
         if ($Message === IPS_KERNELMESSAGE && $Data[0] === KR_READY) {
             $this->registerHooks(['/hook/builder', '/hook/run']);
+            return;
+        }
+        if ($Message === 10204 || $Message === 10205) { // KL_WARNING / KL_ERROR mitschneiden
+            $buf = json_decode($this->GetBuffer('lvbmsgs'), true);
+            if (!is_array($buf)) { $buf = []; }
+            $txt = is_array($Data) ? implode(' | ', array_map('strval', $Data)) : (string) $Data;
+            $buf[] = ['t' => $TimeStamp, 'k' => ($Message === 10205 ? 'ERROR' : 'WARN'), 'm' => mb_substr(trim($txt), 0, 300)];
+            if (count($buf) > 150) { $buf = array_slice($buf, -150); }
+            $this->SetBuffer('lvbmsgs', json_encode($buf));
         }
     }
 
