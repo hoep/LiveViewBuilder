@@ -256,7 +256,7 @@
     }
     if(el.dataset.refsrc){var _ow=widget(el.dataset.refsrc);if(_ow){select(_ow.id);e.preventDefault();return;}} // Laufzeilen-Kachel: referenziertes Original auswählen (kein Drag)
     var w=widget(el.dataset.id);
-    if(e.target.dataset.role==='rz'){select(w.id);drag={mode:'rz',w:w,sx:e.clientX,sy:e.clientY,ow:w.w,oh:w.h};e.preventDefault();return;}
+    var _rz=e.target.dataset.rz;if(_rz){select(w.id);drag={mode:'rz',dir:_rz,w:w,sx:e.clientX,sy:e.clientY,ox:w.x,oy:w.y,ow:w.w,oh:w.h};e.preventDefault();return;} // Resize von jeder Kante/Ecke
     if(e.shiftKey){select(w.id,true);}
     else if(!sel[w.id]){select(w.id);}
     else{selId=w.id;renderProps();}
@@ -266,7 +266,13 @@
   window.addEventListener('mousemove',function(e){
     if(marq){var r=canvas.getBoundingClientRect(),x=(e.clientX-r.left)/zoom,y=(e.clientY-r.top)/zoom,L=Math.min(x,marq.x0),T=Math.min(y,marq.y0),W=Math.abs(x-marq.x0),H=Math.abs(y-marq.y0);marq.el.style.left=L+'px';marq.el.style.top=T+'px';marq.el.style.width=W+'px';marq.el.style.height=H+'px';marq.rect={L:L,T:T,R:L+W,B:T+H};return;}
     if(!drag)return;var dx=(e.clientX-drag.sx)/zoom,dy=(e.clientY-drag.sy)/zoom;
-    if(drag.mode==='rz'){drag.w.w=snap(Math.max(40,drag.ow+dx));drag.w.h=snap(Math.max(28,drag.oh+dy));applyGeom(drag.w);badge(e,drag.w.w+' × '+drag.w.h+' px');return;}
+    if(drag.mode==='rz'){var dir=drag.dir||'se',nx=drag.ox,ny=drag.oy,nw=drag.ow,nh=drag.oh;
+      if(dir.indexOf('e')>=0)nw=drag.ow+dx; if(dir.indexOf('w')>=0)nw=drag.ow-dx;
+      if(dir.indexOf('s')>=0)nh=drag.oh+dy; if(dir.indexOf('n')>=0)nh=drag.oh-dy;
+      nw=snap(Math.max(40,nw));nh=snap(Math.max(28,nh));
+      if(dir.indexOf('w')>=0)nx=drag.ox+drag.ow-nw; // rechte Kante fix
+      if(dir.indexOf('n')>=0)ny=drag.oy+drag.oh-nh; // untere Kante fix
+      drag.w.x=Math.max(0,nx);drag.w.y=Math.max(0,ny);drag.w.w=nw;drag.w.h=nh;applyGeom(drag.w);badge(e,nw+' × '+nh+' px');return;}
     var g=snapAlign(drag.items,dx,dy);
     drag.items.forEach(function(it){it.w.x=Math.max(0,it.ox+g.dx);it.w.y=Math.max(0,it.oy+g.dy);applyGeom(it.w);});
     badge(e,Math.round(drag.items[0].w.x)+' , '+Math.round(drag.items[0].w.y));
