@@ -6,7 +6,13 @@
     var cfg={};for(var k in src)cfg[k]=src[k];cfg.id=w.id+'__t'+i+sfx;cfg.type=src.type;delete cfg.x;delete cfg.y;
     var iw=parseInt(mw)||parseInt(src.w)||170;_tickKids.push(cfg);
     var inner;try{inner=widgetInner(cfg);}catch(e){inner='';}
-    return '<div class="w t-'+esc(src.type)+'" data-id="'+cfg.id+'"'+(srcId?' data-refsrc="'+srcId+'"':'')+' style="position:relative;flex:none;height:calc(100% - 4px);width:'+iw+'px;margin:0 5px;background:transparent;border:0"><div class="winner" style="position:absolute;inset:0">'+inner+'</div></div>';
+    var cls='',sty='position:relative;flex:none;height:calc(100% - 4px);width:'+iw+'px;margin:0 5px;background:transparent;border:0'; // Typografie/Farbe des Originals uebernehmen
+    if(cfg.fg)sty+=';color:'+cfg.fg;
+    if(cfg.ff){cls+=' tw-ff';sty+=';--w-ff:'+cfg.ff;}
+    if(cfg.fwt){cls+=' tw-fwt';sty+=';--w-fwt:'+cfg.fwt;}
+    if(cfg.fsty){cls+=' tw-fsty';sty+=';--w-fsty:'+cfg.fsty;}
+    if(cfg.fsz){cls+=' tw-fsz';sty+=';--w-fsz:'+cfg.fsz+'px';}
+    return '<div class="w t-'+esc(src.type)+cls+'" data-id="'+cfg.id+'"'+(srcId?' data-refsrc="'+srcId+'"':'')+' style="'+sty+'"><div class="winner" style="position:absolute;inset:0">'+inner+'</div></div>';
   }
   defWidget('ticker',{
     label:'Laufzeile', paletteIcon:'wticker', size:[560,46],
