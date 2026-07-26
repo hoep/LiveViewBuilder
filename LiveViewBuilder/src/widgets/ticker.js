@@ -6,7 +6,7 @@
     var cfg={};for(var k in src)cfg[k]=src[k];cfg.id=w.id+'__t'+i+sfx;cfg.type=src.type;delete cfg.x;delete cfg.y;
     var iw=parseInt(mw)||parseInt(src.w)||170;_tickKids.push(cfg);
     var inner;try{inner=widgetInner(cfg);}catch(e){inner='';}
-    return '<div class="w t-'+esc(src.type)+'" data-id="'+cfg.id+'" style="position:relative;flex:none;height:calc(100% - 12px);width:'+iw+'px;margin:0 5px"><div class="winner" style="position:absolute;inset:0">'+inner+'</div></div>';
+    return '<div class="w t-'+esc(src.type)+'" data-id="'+cfg.id+'" style="position:relative;flex:none;height:calc(100% - 4px);width:'+iw+'px;margin:0 5px;background:transparent;border:0"><div class="winner" style="position:absolute;inset:0">'+inner+'</div></div>';
   }
   defWidget('ticker',{
     label:'Laufzeile', paletteIcon:'wticker', size:[560,46],
