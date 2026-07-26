@@ -34,6 +34,10 @@
       }catch(_e){} // ein defektes Widget darf Init/Interaktion der anderen nicht blockieren
     });
     _compKids=[];state.widgets.forEach(function(w){if(w.type==='component')expandComponent(w);}); // M3: Komponenten-Instanzen expandieren
+    // mount-Hooks auch für Klone (Laufband/Komponenten) + Werte aus Cache spiegeln -> Status-Bild/Wetter/cval usw. erscheinen sofort, nicht erst bei Wertänderung
+    function _mountKid(w){try{var _mw=WIDGETS[w.type];if(_mw&&_mw.mount)_mw.mount(w);}catch(e){}}
+    if(_compKids&&_compKids.length)_compKids.forEach(_mountKid);
+    if(_tickKids&&_tickKids.length)_tickKids.forEach(_mountKid);
     var eh=$('#emptyhint');if(!eh){eh=document.createElement('div');eh.id='emptyhint';eh.textContent='Element aus der Palette hierher ziehen — oder eine Variable im Baum anklicken';canvas.appendChild(eh);}eh.style.display=state.widgets.length?'none':'flex';
     invalidateVidx();_pvSince=0;pollVals();commit();tick();drawStructure();
   }
