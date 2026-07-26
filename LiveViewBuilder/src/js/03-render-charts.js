@@ -40,7 +40,7 @@
   function gradFill(hex){return {type:'linear',x:0,y:0,x2:0,y2:1,colorStops:[{offset:0,color:accA(.34,hex)},{offset:1,color:accA(0,hex)}]};}
   // Zeitversatz-Vergleich (Delta/KPI + Charts)
   var OFFS={'1h':3600,'1d':86400,'1w':604800,'1m':2592000,'1y':31536000};
-  var OFFLBL={'1h':'1 Stunde','1d':'1 Tag','1w':'1 Woche','1m':'1 Monat','1y':'1 Jahr','last':'letztem Wert'};
+  var OFFLBL={'1h':'letzte Stunde','1d':'gestern','1w':'letzte Woche','1m':'letzter Monat','1y':'letztes Jahr','last':'letztem Wert'};
   var _cmpData={}; // widgetId -> {cur,past,type,fetched}
   function darken(hex,amt){hex=String(hex||'#888888').replace('#','');if(hex.length===3)hex=hex.split('').map(function(c){return c+c;}).join('');var r=parseInt(hex.substr(0,2),16),g=parseInt(hex.substr(2,2),16),b=parseInt(hex.substr(4,2),16);function d(x){return Math.max(0,Math.min(255,Math.round(x*(1-amt))));}return '#'+[d(r),d(g),d(b)].map(function(x){return ('0'+x.toString(16)).slice(-2);}).join('');}
   function fmtDelta(n,sign){if(n==null||isNaN(n))return '–';var a=Math.abs(n),s=a>=100?Math.round(n):Math.round(n*10)/10;return (sign&&n>0?'+':'')+String(s).replace('.',',');}
@@ -254,7 +254,7 @@
     if(!isLast&&!off){cb(null);return;}
     var c=_cmpData[w.id],now=Date.now();
     if(c&&(now-c.fetched)<120000){cb(c);return;}
-    fetch('?api=cmp&id='+w.varId+(isLast?'&last=1':'&off='+off+'&agg='+(w.cmpAgg||'avg')),{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
+    fetch('?api=cmp&id='+w.varId+(isLast?'&last=1':'&off='+off),{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
       _cmpData[w.id]={cur:(j&&j.cur!=null)?parseFloat(j.cur):null,past:(j&&j.past!=null)?parseFloat(j.past):null,type:(j&&j.type)||0,fetched:now};cb(_cmpData[w.id]);
     }).catch(function(){cb(null);});
   }
