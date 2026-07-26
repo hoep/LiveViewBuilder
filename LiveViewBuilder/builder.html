@@ -267,6 +267,9 @@
   .arow .anm{flex:1;font-size:12px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .arow .aval{font-size:10px;color:var(--faint);font-family:var(--fm);flex:none}
   .arow .aibtn{flex:none}
+  .arow .aswc{width:22px;height:22px;flex:none;padding:0;border:1px solid var(--line);border-radius:5px;background:transparent;cursor:pointer}
+  .arow .aswc::-webkit-color-swatch-wrapper{padding:2px}.arow .aswc::-webkit-color-swatch{border:0;border-radius:3px}
+  .arow .acclr{flex:none}
   .prow input,.prow select{flex:1;padding:6px 8px;border-radius:7px;border:1px solid var(--line);background:var(--bg);color:var(--text);font-size:12px;min-width:0}
   .xy{display:grid;grid-template-columns:1fr 1fr;gap:6px}
   .palette{display:grid;grid-template-columns:1fr 1fr;gap:8px}
@@ -2571,10 +2574,16 @@
       if(!d||!d.assocs.length){box.innerHTML='<div class="prow"><label>Assoziationen</label><span class="hint" style="font-size:11px">Profil hat keine Assoziationen</span></div>';return;}
       var head='<div class="prow"><label>Assoziationen</label><label style="font-size:12px;display:flex;gap:6px;align-items:center;cursor:pointer"><input type="checkbox" id="pAssocOn"'+(w.assocOn?' checked':'')+'> Icons &amp; Farben nutzen</label></div>';
       var rows=d.assocs.map(function(a){var key=String(a.v),rr=assocResolved(w,a),col=rr.color;
-        return '<div class="arow"><span class="aic" style="color:'+(col||'var(--accent)')+'">'+(rr.icon?iconSVG(rr.icon):'')+'</span>'+(col?'<span class="asw" style="background:'+esc(col)+'"></span>':'<span class="asw none"></span>')+'<span class="anm">'+esc(a.name||key)+'</span><span class="aval">'+esc(key)+'</span><button class="btn aibtn" data-akey="'+esc(key)+'" style="padding:3px 7px;font-size:11px">Icon</button></div>';}).join('');
+        return '<div class="arow"><span class="aic" style="color:'+(col||'var(--accent)')+'">'+(rr.icon?iconSVG(rr.icon):'')+'</span>'
+          +'<input type="color" class="aswc" data-akey="'+esc(key)+'" value="'+esc(col||'#888888')+'" title="Farbe für Icon + Text">'
+          +'<span class="anm">'+esc(a.name||key)+'</span><span class="aval">'+esc(key)+'</span>'
+          +'<button class="btn aibtn" data-akey="'+esc(key)+'" style="padding:3px 7px;font-size:11px">Icon</button>'
+          +'<button class="btn acclr" data-akey="'+esc(key)+'" style="padding:3px 6px;font-size:11px" title="Farbe zurücksetzen">×</button></div>';}).join('');
       box.innerHTML=head+'<div class="alist'+(w.assocOn?'':' off')+'">'+rows+'</div>';
       if($('#pAssocOn'))$('#pAssocOn').onchange=function(){w.assocOn=this.checked;if(!w.assocMap)w.assocMap={};if(this.checked&&!w.icon){var pic=symToIcon((_assocData[w.varId]||{}).picon);if(pic)w.icon=pic;}render();renderProps();refreshAssocLive(w);};
       $$('.aibtn',box).forEach(function(b){b.onclick=function(){_assocPick={wid:w.id,key:b.getAttribute('data-akey')};showTab('icons');toast('Icon für Status „'+b.getAttribute('data-akey')+'" links wählen');};});
+      $$('.aswc',box).forEach(function(inp){inp.oninput=function(){var k=inp.getAttribute('data-akey');if(!w.assocMap)w.assocMap={};if(!w.assocMap[k])w.assocMap[k]={};w.assocMap[k].color=inp.value;w.assocOn=true;var ar=inp.closest('.arow');if(ar){var ai=ar.querySelector('.aic');if(ai)ai.style.color=inp.value;}refreshAssocLive(w);commit();};}); // Farbe (Icon+Text) überschreiben
+      $$('.acclr',box).forEach(function(b){b.onclick=function(){var k=b.getAttribute('data-akey');if(w.assocMap&&w.assocMap[k])delete w.assocMap[k].color;render();renderProps();refreshAssocLive(w);commit();};}); // Farb-Override entfernen
     });}
   function assignIcon(id){
     if(_assocPick){var wa=widget(_assocPick.wid);if(wa){if(!wa.assocMap)wa.assocMap={};if(!wa.assocMap[_assocPick.key])wa.assocMap[_assocPick.key]={};wa.assocMap[_assocPick.key].icon=id;wa.assocOn=true;render();select(wa.id);renderProps();refreshAssocLive(wa);toast('Status-Icon: '+id);}_assocPick=null;return;}
