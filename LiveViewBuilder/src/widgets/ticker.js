@@ -24,7 +24,8 @@
           +(m.sub?' <small>'+esc(m.sub)+'</small>':'')+'</span>';
       }).join('');};
       var itm=band(''),itm2=band('b');
-      return '<div class="htick'+(crit===0?' ok':'')+'"><div class="htlead"><span class="htpulse"></span>'+esc(w.label||'Alarm')+'<span class="htcnt">'+crit+'</span></div><div class="httrack"><div class="htmove" style="animation-duration:'+(w.speed||46)+'s">'+itm+itm2+'</div></div></div>';
+      var lead=w.hideLead?'':'<div class="htlead"><span class="htpulse"></span>'+esc(w.label||'Alarm')+(w.hideCount?'':'<span class="htcnt">'+crit+'</span>')+'</div>';
+      return '<div class="htick'+(crit===0?' ok':'')+'">'+lead+'<div class="httrack"><div class="htmove" style="animation-duration:'+(w.speed||46)+'s">'+itm+itm2+'</div></div></div>';
     },
     props:function(w){
       var rows=(w.items||[]).map(function(m,i){
@@ -42,10 +43,14 @@
         return '<div style="display:flex;gap:4px;margin-bottom:5px;flex-wrap:wrap;align-items:center">'+typeSel+fields+'<button class="btn" data-tkdel="'+i+'" style="padding:2px"><svg class="i"><use href="#ic-minus"/></svg></button></div>';
       }).join('');
       return row('Tempo (s)','<input id="pSpeed" type="number" min="8" value="'+(w.speed||46)+'">')
+        +row('Titel anzeigen','<input type="checkbox" id="pTkLead"'+(w.hideLead?'':' checked')+'>')
+        +(w.hideLead?'':row('Anzahl-Badge','<input type="checkbox" id="pTkCount"'+(w.hideCount?'':' checked')+'>'))
         +'<div class="prop" style="margin-top:8px"><div style="font-size:11px;color:var(--muted);margin-bottom:5px">Elemente — Typ (— Text — = statisch) · dann Felder. Widget-Zeilen laufen live mit.</div>'+rows+'<button class="btn" data-tkadd><svg class="i"><use href="#ic-plus"/></svg> Element</button></div>';
     },
     wire:function(w){
       if($('#pSpeed'))$('#pSpeed').oninput=function(){w.speed=parseInt(this.value)||46;render();};
+      if($('#pTkLead'))$('#pTkLead').onchange=function(){w.hideLead=this.checked?undefined:true;render();renderProps();commit();};
+      if($('#pTkCount'))$('#pTkCount').onchange=function(){w.hideCount=this.checked?undefined:true;render();commit();};
       $$('#props [data-tk]').forEach(function(inp){inp.oninput=inp.onchange=function(){
         var pr=inp.dataset.tk.split('.'),k=pr[0],i=+pr[1];if(!w.items||!w.items[i])return;
         var v=inp.value;
