@@ -98,6 +98,9 @@
     $$('[data-le]',p).forEach(function(inp){inp.oninput=function(){var pr=inp.dataset.le.split('.'),key=pr[0],i=+pr[1],k=pr[2];if(!w[key]||!w[key][i])return;w[key][i][k]=(k==='vid')?(parseInt(inp.value)||0):inp.value;render();};});
     $$('[data-ledel]',p).forEach(function(b){b.onclick=function(){var pr=b.dataset.ledel.split('.');w[pr[0]].splice(+pr[1],1);render();renderProps();};});
     $$('[data-leadd]',p).forEach(function(b){b.onclick=function(){var key=b.dataset.leadd;if(!w[key])w[key]=[];w[key].push(key==='links'?{from:'',to:'',vid:0}:{label:'',vid:0});render();renderProps();};});
+    $$('[data-fpick]',p).forEach(function(b){b.onclick=function(){showTab('vars');toast('Variable im Baum anklicken');_bindField={wid:w.id,path:b.dataset.fpick};};}); // generischer Feld-Pick (Pfad, z. B. fc.0.hi)
+    $$('[data-fid]',p).forEach(function(inp){inp.onchange=function(){setPath(w,inp.dataset.fid,parseInt(inp.value)||0);render();renderProps();};});
+    $$('[data-fclr]',p).forEach(function(b){b.onclick=function(){setPath(w,b.dataset.fclr,0);render();renderProps();};});
     if($('#pVisVar'))$('#pVisVar').onchange=function(){w.visVar=parseInt(this.value)||undefined;render();renderProps();};
     if($('#pVisPick'))$('#pVisPick').onclick=function(){showTab('vars');_bindVis=w.id;};
     if($('#pVisMode'))$('#pVisMode').onchange=function(){w.visMode=this.value;render();renderProps();};
@@ -110,6 +113,8 @@
     }catch(_ep){console.error('renderProps('+(w&&w.type)+')',_ep);p.innerHTML='<div class="hint" style="color:var(--crit);font-size:12px;white-space:pre-wrap">Eigenschaften-Fehler bei „'+esc(w.type)+'":\n'+esc((_ep&&_ep.message)||String(_ep))+'</div>';} // Panel zeigt den Fehler direkt an
   }
   function row(l,html){return '<div class="prow"><label>'+l+'</label>'+html+'</div>';}
+  function fieldPick(w,path,label){var v=getPath(w,path)||''; // Variable an ein beliebiges Feld (Pfad) binden: Eingabe + wählen + entfernen
+    return '<div class="prow"><label>'+label+'</label><input data-fid="'+path+'" value="'+(v||'')+'" placeholder="ID" style="width:60px"> <button class="btn" data-fpick="'+path+'" style="padding:5px 7px">wählen</button>'+(v?' <button class="btn" data-fclr="'+path+'" style="padding:5px 7px" title="entfernen">×</button>':'')+'</div>';}
   function cell(l,id,v){return '<div class="prow"><label style="width:18px">'+l+'</label><input id="'+id+'" type="number" value="'+v+'"></div>';}
   function tgradEditor(w){
     var arr=w.tgrad||[];
