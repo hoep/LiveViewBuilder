@@ -1,8 +1,8 @@
   // C1: nutzt das Widget diese Variablen-ID als Daten-Bindung? (spiegelt pollVals, ohne visVar)
   function widgetDataId(w,id){
-    if(w.varId===id||w.varId2===id||w.varId3===id)return true;
+    if(w.varId===id||w.varId2===id||w.varId3===id||w.condVar===id)return true;
     var A=['items','links','rows','src','snk','fc'],i,j,o;
-    for(i=0;i<A.length;i++){var a=w[A[i]];if(a)for(j=0;j<a.length;j++){o=a[j];if(o&&(o.vid===id||o.hi===id||o.lo===id||o.pq===id))return true;}}
+    for(i=0;i<A.length;i++){var a=w[A[i]];if(a)for(j=0;j<a.length;j++){o=a[j];if(o&&(o.vid===id||o.hi===id||o.lo===id||o.pq===id||o.cond===id))return true;}}
     return false;
   }
   // C1: Sichtbarkeits-Bedingung auswerten
@@ -20,8 +20,8 @@
   var _vidx=null;
   function _vidxAdd(id,w,root){if(!id)return;(_vidx[id]=_vidx[id]||[]).push({w:w,root:root});}
   function _vidxOne(w,root){
-    _vidxAdd(w.varId,w,root);_vidxAdd(w.varId2,w,root);_vidxAdd(w.varId3,w,root);_vidxAdd(w.visVar,w,root);
-    if(w.fc)w.fc.forEach(function(r){_vidxAdd(r.hi,w,root);_vidxAdd(r.lo,w,root);_vidxAdd(r.pq,w,root);});
+    _vidxAdd(w.varId,w,root);_vidxAdd(w.varId2,w,root);_vidxAdd(w.varId3,w,root);_vidxAdd(w.visVar,w,root);_vidxAdd(w.condVar,w,root);
+    if(w.fc)w.fc.forEach(function(r){_vidxAdd(r.hi,w,root);_vidxAdd(r.lo,w,root);_vidxAdd(r.pq,w,root);_vidxAdd(r.cond,w,root);});
     ['links','src','snk','items','rows'].forEach(function(k){if(w[k])w[k].forEach(function(o){if(o)_vidxAdd(o.vid,w,root);});});
   }
   function buildVidx(){
@@ -85,7 +85,9 @@
   function setVar(id,val){fetch('?api=setvar&id='+id+'&value='+encodeURIComponent(val)+'&key='+encodeURIComponent(TOKEN),{cache:'no-store'}).then(function(){setTimeout(pollVals,250);});}
 
   // ---------- Variablen-Baum ----------
-  var _bindTarget=null,_bindTarget2=null,_bindTarget3=null,_bindVis=null,_bindObj=null;
+  var _bindTarget=null,_bindTarget2=null,_bindTarget3=null,_bindVis=null,_bindObj=null,_bindField=null;
+  function setPath(obj,path,val){var p=path.split('.'),o=obj,i;for(i=0;i<p.length-1;i++){var k=p[i];if(o[k]==null)o[k]=(/^\d+$/.test(p[i+1]))?[]:{};o=o[k];}o[p[p.length-1]]=val;}
+  function getPath(obj,path){var p=path.split('.'),o=obj,i;for(i=0;i<p.length;i++){if(o==null)return undefined;o=o[p[i]];}return o;}
   function iconFor(t){var id=t===0?'ic-folder':t===1?'ic-cube':t===2?'ic-tag':t===3?'ic-code':t===5?'ic-image':'ic-dot';return '<svg class="i"><use href="#'+id+'"/></svg>';}
   function nodeEl(n){
     var d=document.createElement('div');d.className='node'+(n.type===2?' var':'');
@@ -114,6 +116,7 @@
     else if(w.type==='kpi'||w.type==='calc'||w.type==='cval'||w.type==='sval'){if(!w.unit)w.unit=su.replace(/^\s+/,'');}
   }
   function bindVar(n){
+    if(_bindField){var wfd=widget(_bindField.wid);if(wfd){setPath(wfd,_bindField.path,n.id);render();select(wfd.id);toast('Gebunden: '+n.name);}_bindField=null;return;}
     if(_bindObj){var wob=widget(_bindObj);if(wob){wob.objId=n.id;render();select(wob.id);fetchObjInfo(wob);toast('Objekt: '+n.name);}_bindObj=null;return;}
     if(_bindVis){var wvs=widget(_bindVis);if(wvs){wvs.visVar=n.id;render();select(wvs.id);toast('Sichtbarkeit: '+n.name);}_bindVis=null;return;}
     if(_bindTarget3){var w3=widget(_bindTarget3);if(w3){w3.varId3=n.id;render();select(w3.id);toast('Untergang: '+n.name);}_bindTarget3=null;return;}

@@ -707,7 +707,6 @@
         <div class="pitem" data-add="powerflow">Power-Flow</div>
         <div class="pgh">Wetter &amp; Zeit</div>
         <div class="pitem" data-add="weather">Wetter</div>
-        <div class="pitem" data-add="weatherpro">Wetter+</div>
         <div class="pitem" data-add="windrose">Windrose</div>
         <div class="pitem" data-add="raincard">Regenmenge</div>
         <div class="pitem" data-add="sun">Sonne</div>
@@ -1875,6 +1874,9 @@
     $$('[data-le]',p).forEach(function(inp){inp.oninput=function(){var pr=inp.dataset.le.split('.'),key=pr[0],i=+pr[1],k=pr[2];if(!w[key]||!w[key][i])return;w[key][i][k]=(k==='vid')?(parseInt(inp.value)||0):inp.value;render();};});
     $$('[data-ledel]',p).forEach(function(b){b.onclick=function(){var pr=b.dataset.ledel.split('.');w[pr[0]].splice(+pr[1],1);render();renderProps();};});
     $$('[data-leadd]',p).forEach(function(b){b.onclick=function(){var key=b.dataset.leadd;if(!w[key])w[key]=[];w[key].push(key==='links'?{from:'',to:'',vid:0}:{label:'',vid:0});render();renderProps();};});
+    $$('[data-fpick]',p).forEach(function(b){b.onclick=function(){showTab('vars');toast('Variable im Baum anklicken');_bindField={wid:w.id,path:b.dataset.fpick};};}); // generischer Feld-Pick (Pfad, z. B. fc.0.hi)
+    $$('[data-fid]',p).forEach(function(inp){inp.onchange=function(){setPath(w,inp.dataset.fid,parseInt(inp.value)||0);render();renderProps();};});
+    $$('[data-fclr]',p).forEach(function(b){b.onclick=function(){setPath(w,b.dataset.fclr,0);render();renderProps();};});
     if($('#pVisVar'))$('#pVisVar').onchange=function(){w.visVar=parseInt(this.value)||undefined;render();renderProps();};
     if($('#pVisPick'))$('#pVisPick').onclick=function(){showTab('vars');_bindVis=w.id;};
     if($('#pVisMode'))$('#pVisMode').onchange=function(){w.visMode=this.value;render();renderProps();};
@@ -1887,6 +1889,8 @@
     }catch(_ep){console.error('renderProps('+(w&&w.type)+')',_ep);p.innerHTML='<div class="hint" style="color:var(--crit);font-size:12px;white-space:pre-wrap">Eigenschaften-Fehler bei „'+esc(w.type)+'":\n'+esc((_ep&&_ep.message)||String(_ep))+'</div>';} // Panel zeigt den Fehler direkt an
   }
   function row(l,html){return '<div class="prow"><label>'+l+'</label>'+html+'</div>';}
+  function fieldPick(w,path,label){var v=getPath(w,path)||''; // Variable an ein beliebiges Feld (Pfad) binden: Eingabe + wählen + entfernen
+    return '<div class="prow"><label>'+label+'</label><input data-fid="'+path+'" value="'+(v||'')+'" placeholder="ID" style="width:60px"> <button class="btn" data-fpick="'+path+'" style="padding:5px 7px">wählen</button>'+(v?' <button class="btn" data-fclr="'+path+'" style="padding:5px 7px" title="entfernen">×</button>':'')+'</div>';}
   function cell(l,id,v){return '<div class="prow"><label style="width:18px">'+l+'</label><input id="'+id+'" type="number" value="'+v+'"></div>';}
   function tgradEditor(w){
     var arr=w.tgrad||[];
@@ -2110,9 +2114,9 @@
   var _pvSince=0,_pvT=null;
   // C1: nutzt das Widget diese Variablen-ID als Daten-Bindung? (spiegelt pollVals, ohne visVar)
   function widgetDataId(w,id){
-    if(w.varId===id||w.varId2===id||w.varId3===id)return true;
+    if(w.varId===id||w.varId2===id||w.varId3===id||w.condVar===id)return true;
     var A=['items','links','rows','src','snk','fc'],i,j,o;
-    for(i=0;i<A.length;i++){var a=w[A[i]];if(a)for(j=0;j<a.length;j++){o=a[j];if(o&&(o.vid===id||o.hi===id||o.lo===id||o.pq===id))return true;}}
+    for(i=0;i<A.length;i++){var a=w[A[i]];if(a)for(j=0;j<a.length;j++){o=a[j];if(o&&(o.vid===id||o.hi===id||o.lo===id||o.pq===id||o.cond===id))return true;}}
     return false;
   }
   // C1: Sichtbarkeits-Bedingung auswerten
@@ -2130,8 +2134,8 @@
   var _vidx=null;
   function _vidxAdd(id,w,root){if(!id)return;(_vidx[id]=_vidx[id]||[]).push({w:w,root:root});}
   function _vidxOne(w,root){
-    _vidxAdd(w.varId,w,root);_vidxAdd(w.varId2,w,root);_vidxAdd(w.varId3,w,root);_vidxAdd(w.visVar,w,root);
-    if(w.fc)w.fc.forEach(function(r){_vidxAdd(r.hi,w,root);_vidxAdd(r.lo,w,root);_vidxAdd(r.pq,w,root);});
+    _vidxAdd(w.varId,w,root);_vidxAdd(w.varId2,w,root);_vidxAdd(w.varId3,w,root);_vidxAdd(w.visVar,w,root);_vidxAdd(w.condVar,w,root);
+    if(w.fc)w.fc.forEach(function(r){_vidxAdd(r.hi,w,root);_vidxAdd(r.lo,w,root);_vidxAdd(r.pq,w,root);_vidxAdd(r.cond,w,root);});
     ['links','src','snk','items','rows'].forEach(function(k){if(w[k])w[k].forEach(function(o){if(o)_vidxAdd(o.vid,w,root);});});
   }
   function buildVidx(){
@@ -2195,7 +2199,9 @@
   function setVar(id,val){fetch('?api=setvar&id='+id+'&value='+encodeURIComponent(val)+'&key='+encodeURIComponent(TOKEN),{cache:'no-store'}).then(function(){setTimeout(pollVals,250);});}
 
   // ---------- Variablen-Baum ----------
-  var _bindTarget=null,_bindTarget2=null,_bindTarget3=null,_bindVis=null,_bindObj=null;
+  var _bindTarget=null,_bindTarget2=null,_bindTarget3=null,_bindVis=null,_bindObj=null,_bindField=null;
+  function setPath(obj,path,val){var p=path.split('.'),o=obj,i;for(i=0;i<p.length-1;i++){var k=p[i];if(o[k]==null)o[k]=(/^\d+$/.test(p[i+1]))?[]:{};o=o[k];}o[p[p.length-1]]=val;}
+  function getPath(obj,path){var p=path.split('.'),o=obj,i;for(i=0;i<p.length;i++){if(o==null)return undefined;o=o[p[i]];}return o;}
   function iconFor(t){var id=t===0?'ic-folder':t===1?'ic-cube':t===2?'ic-tag':t===3?'ic-code':t===5?'ic-image':'ic-dot';return '<svg class="i"><use href="#'+id+'"/></svg>';}
   function nodeEl(n){
     var d=document.createElement('div');d.className='node'+(n.type===2?' var':'');
@@ -2224,6 +2230,7 @@
     else if(w.type==='kpi'||w.type==='calc'||w.type==='cval'||w.type==='sval'){if(!w.unit)w.unit=su.replace(/^\s+/,'');}
   }
   function bindVar(n){
+    if(_bindField){var wfd=widget(_bindField.wid);if(wfd){setPath(wfd,_bindField.path,n.id);render();select(wfd.id);toast('Gebunden: '+n.name);}_bindField=null;return;}
     if(_bindObj){var wob=widget(_bindObj);if(wob){wob.objId=n.id;render();select(wob.id);fetchObjInfo(wob);toast('Objekt: '+n.name);}_bindObj=null;return;}
     if(_bindVis){var wvs=widget(_bindVis);if(wvs){wvs.visVar=n.id;render();select(wvs.id);toast('Sichtbarkeit: '+n.name);}_bindVis=null;return;}
     if(_bindTarget3){var w3=widget(_bindTarget3);if(w3){w3.varId3=n.id;render();select(w3.id);toast('Untergang: '+n.name);}_bindTarget3=null;return;}
@@ -4153,36 +4160,78 @@ defWidget('statuslist',{
       else v.style.color='';
       if(w.vassoc&&w.vassoc.length){var vs=w.vassoc.filter(function(a){return String(a.v)===String(d.v);})[0];if(vs){if(vs.text!=null&&vs.text!=='')v.textContent=(w.pre||'')+vs.text+(w.suf||'');if(vs.color)v.style.color=vs.color;}}}
   });
-  // ===== Widget: Wetter (Weather) — aktuelle Temperatur mit Forecast-Tagen =====
+  // ===== Widget: Wetter (weather) — vereinheitlicht: Standard/Erweitert, alle Werte aus Variablen =====
+  var WWD=['So','Mo','Di','Mi','Do','Fr','Sa'];
+  function wDayLabel(offset){if(offset===0)return 'Heute';if(offset===1)return 'Morgen';var dt=new Date();dt.setDate(dt.getDate()+offset);return WWD[dt.getDay()];}
+  function wCondIcon(txt){txt=(''+(txt||'')).toLowerCase();
+    if(/gewitter|thunder|storm|blitz/.test(txt))return 'storm';
+    if(/schnee|snow|graupel|hagel|hail|sleet|flocke/.test(txt))return 'snow';
+    if(/regen|rain|schauer|shower|niesel|drizzle|nass/.test(txt))return 'rain';
+    if(/nebel|fog|dunst|mist|haze/.test(txt))return 'fog';
+    if(/(klar|clear|sonnig|sunny|wolkenlos)/.test(txt)&&!/wolk|cloud|bedeckt/.test(txt))return 'sun';
+    if(/heiter|teilweise|partly|aufgelockert|gering|leicht bew/.test(txt))return 'cloudsun';
+    if(/bedeckt|bew(ö|oe)lkt|overcast|cloud|wolk|tr(ü|ue)b/.test(txt))return 'cloud';
+    return 'cloudsun';
+  }
+  function wIconOf(w,condId,fallback){var lv=condId&&_lastVals[condId];var t=lv?(lv.f||lv.v):null;if(t!=null&&t!=='')return wCondIcon(t);return fallback||w.icon||'cloudsun';}
+  function wFcSvg(id){return '<svg class="hwfic" viewBox="0 0 24 24">'+(((ICONS[id]||[])[1])||'')+'</svg>';}
+  function updateWeatherIcons(w,el){var ext=(w.wmode==='extended');
+    var ci=el.querySelector('[data-role=cico]');if(ci)ci.innerHTML=iconSVG(wIconOf(w,w.condVar,w.icon));
+    (w.fc||[]).forEach(function(r,i){var fi=el.querySelector('[data-role=fico][data-i="'+i+'"]');if(!fi)return;var id=wIconOf(w,r.cond,r.ic);fi.innerHTML=ext?iconSVG(id):wFcSvg(id);});
+  }
+  function weatherRender(w){
+    var ext=(w.wmode==='extended'),start=(w.fcStart!=null?w.fcStart:1),showPq=(w.showPq!==false),subId=(w.condVar||w.varId2);
+    var cur='<div class="'+(ext?'hwp2cur':'hwfcur')+'">'
+      +'<'+(ext?'span':'div')+' class="'+(ext?'hwp2ic':'hwicon')+'" data-role="cico">'+iconSVG(wIconOf(w,w.condVar,w.icon))+'</'+(ext?'span':'div')+'>'
+      +'<'+(ext?'span':'div')+' class="'+(ext?'hwp2ci':'hwci')+'"><'+(ext?'span':'div')+' class="'+(ext?'hwp2t':'hwtemp')+'"'+(w.varId?' data-vid="'+w.varId+'"':'')+'>–</'+(ext?'span':'div')+'>'
+      +'<'+(ext?'span':'div')+' class="'+(ext?'hwp2sub':'hwfsub')+'">'+(w.label?esc(w.label)+' · ':'')+'<span data-role="sub"'+(subId?' data-vid="'+subId+'"':'')+'></span></'+(ext?'span':'div')+'></'+(ext?'span':'div')+'></div>';
+    var slots=(w.fc||[]).map(function(r,i){var dl=wDayLabel(start+i);
+      if(ext)return '<div class="hwp2day"><span class="d">'+esc(dl)+'</span><span class="ic" data-role="fico" data-i="'+i+'">'+iconSVG(wIconOf(w,r.cond,r.ic))+'</span><span class="lo"'+(r.lo?' data-vid="'+r.lo+'"':'')+'>–</span><div class="trk"><i class="fill"></i></div><span class="hi"'+(r.hi?' data-vid="'+r.hi+'"':'')+'>–</span><span class="pq"'+(showPq&&r.pq?' data-vid="'+r.pq+'"':'')+'></span></div>';
+      return '<div class="hwfslot"><div class="hwfd">'+esc(dl)+'</div><span data-role="fico" data-i="'+i+'">'+wFcSvg(wIconOf(w,r.cond,r.ic))+'</span><div class="hwfhi"'+(r.hi?' data-vid="'+r.hi+'"':'')+'>–</div><div class="hwflo"'+(r.lo?' data-vid="'+r.lo+'"':'')+'>–</div>'+(showPq&&r.pq?'<div class="hwfpq" data-vid="'+r.pq+'">–</div>':'')+'</div>';
+    }).join('');
+    if(ext)return '<div class="hwp2">'+cur+'<div class="hwp2days">'+slots+'</div></div>';
+    return '<div class="hwf">'+cur+(slots?'<div class="hwfrow">'+slots+'</div>':'')+'</div>';
+  }
+  function weatherProps(w){
+    var ext=(w.wmode==='extended'),start=(w.fcStart!=null?w.fcStart:1),showPq=(w.showPq!==false);
+    var h=row('Anzeige','<select id="pWMode"><option value="standard"'+(!ext?' selected':'')+'>Standard</option><option value="extended"'+(ext?' selected':'')+'>Erweitert</option></select>');
+    h+='<div class="pgh">Aktuell</div>'+fieldPick(w,'condVar','Zustand (Var)');
+    h+='<div class="pgh">Vorhersage</div>'
+      +row('Erster Tag','<select id="pFcStart"><option value="0"'+(start===0?' selected':'')+'>Heute</option><option value="1"'+(start===1?' selected':'')+'>Morgen</option></select>')
+      +row('Niederschlag','<input type="checkbox" id="pShowPq"'+(showPq?' checked':'')+'>');
+    (w.fc||[]).forEach(function(r,i){
+      h+='<div class="pgh" style="display:flex;justify-content:space-between;align-items:center">'+esc(wDayLabel(start+i))+' <button class="btn" data-fcrm="'+i+'" style="padding:2px 6px" title="Tag entfernen">×</button></div>'
+        +fieldPick(w,'fc.'+i+'.hi','Max')+fieldPick(w,'fc.'+i+'.lo','Min')+fieldPick(w,'fc.'+i+'.cond','Zustand')+(showPq?fieldPick(w,'fc.'+i+'.pq','Regen'):'');
+    });
+    h+='<button class="btn" id="pFcAdd" style="margin-top:4px"><svg class="i"><use href="#ic-plus"/></svg>Tag</button>';
+    if(ext)h+='<div class="pgh">Temperaturbalken</div>'+tgradEditor(w)+row('Skala Min/Max','<input id="pGmin" type="number" style="width:60px" value="'+(w.gmin!=null?w.gmin:'')+'" placeholder="auto"> <input id="pGmax" type="number" style="width:60px" value="'+(w.gmax!=null?w.gmax:'')+'" placeholder="auto">');
+    return h;
+  }
+  function weatherWire(w){
+    if($('#pWMode'))$('#pWMode').onchange=function(){w.wmode=this.value;if(w.wmode==='extended'&&!w.tgrad)w.tgrad=[{t:-5,color:'#4aa3ff'},{t:4,color:'#3bd6c6'},{t:14,color:'#39d08a'},{t:22,color:'#f2b441'},{t:32,color:'#f2685a'}];render();renderProps();commit();};
+    if($('#pFcStart'))$('#pFcStart').onchange=function(){w.fcStart=parseInt(this.value);render();renderProps();commit();};
+    if($('#pShowPq'))$('#pShowPq').onchange=function(){w.showPq=this.checked;render();renderProps();commit();};
+    if($('#pFcAdd'))$('#pFcAdd').onclick=function(){if(!w.fc)w.fc=[];w.fc.push({hi:0,lo:0,cond:0,pq:0});render();renderProps();commit();};
+    $$('#props [data-fcrm]').forEach(function(b){b.onclick=function(){w.fc.splice(+b.getAttribute('data-fcrm'),1);render();renderProps();commit();};});
+    $$('#props [data-tg]').forEach(function(inp){inp.oninput=inp.onchange=function(){var pr=inp.getAttribute('data-tg').split('.'),k=pr[0],i=+pr[1];if(!w.tgrad||!w.tgrad[i])return;w.tgrad[i][k]=(k==='t')?(parseFloat(inp.value)||0):inp.value;refreshWeatherPro(w);commit();};});
+    $$('#props [data-tgdel]').forEach(function(b){b.onclick=function(){w.tgrad.splice(+b.getAttribute('data-tgdel'),1);renderProps();refreshWeatherPro(w);commit();};});
+    if($('#tgAdd'))$('#tgAdd').onclick=function(){if(!w.tgrad)w.tgrad=[];w.tgrad.push({t:20,color:'#f2b441'});renderProps();refreshWeatherPro(w);commit();};
+    if($('#pGmin'))$('#pGmin').oninput=function(){w.gmin=this.value===''?undefined:parseFloat(this.value);refreshWeatherPro(w);commit();};
+    if($('#pGmax'))$('#pGmax').oninput=function(){w.gmax=this.value===''?undefined:parseFloat(this.value);refreshWeatherPro(w);commit();};
+  }
+  function weatherMount(w){var el=$('.w[data-id="'+w.id+'"]',canvas);if(el)updateWeatherIcons(w,el);if(w.wmode==='extended')refreshWeatherPro(w);}
+  function weatherLive(w,el,id,d,base,txt,on){updateWeatherIcons(w,el);if(w.wmode==='extended')refreshWeatherPro(w);return true;} // Werte laufen über data-vid; hier nur Icons + Balken
+  function _wDefFc(){return [{hi:0,lo:0,cond:0,pq:0},{hi:0,lo:0,cond:0,pq:0},{hi:0,lo:0,cond:0,pq:0},{hi:0,lo:0,cond:0,pq:0},{hi:0,lo:0,cond:0,pq:0}];}
   defWidget('weather',{
-    label:'Wetter', paletteIcon:'cloudsun', size:[320,140],
-    defaults:function(w){w.fc=[{d:'Mo',ic:'cloudsun',hi:0,lo:0,pq:0},{d:'Di',ic:'cloudsun',hi:0,lo:0,pq:0},{d:'Mi',ic:'sun',hi:0,lo:0,pq:0},{d:'Do',ic:'rain',hi:0,lo:0,pq:0},{d:'Fr',ic:'cloudsun',hi:0,lo:0,pq:0}];},
-    render:function(w){
-      var _slots=(w.fc||[]).map(function(r){var ci=ICONS[r.ic||'cloudsun'];return '<div class="hwfslot"><div class="hwfd">'+esc(r.d||'')+'</div><svg class="hwfic" viewBox="0 0 24 24">'+(ci?ci[1]:'')+'</svg><div class="hwfhi"'+(r.hi?' data-vid="'+r.hi+'"':'')+'>–</div><div class="hwflo"'+(r.lo?' data-vid="'+r.lo+'"':'')+'>–</div>'+(r.pq?'<div class="hwfpq" data-vid="'+r.pq+'">–</div>':'')+'</div>';}).join('');
-      return '<div class="hwf"><div class="hwfcur"><div class="hwicon">'+iconSVG(w.icon||'cloudsun')+'</div><div class="hwci"><div class="hwtemp" data-role="val">–</div><div class="hwfsub">'+(w.label?esc(w.label)+' ':'')+'<span data-role="sub"></span></div></div></div>'+(_slots?'<div class="hwfrow">'+_slots+'</div>':'')+'</div>';
-    },
-    live:function(w,el,id,d,base,txt,on){
-      if(w.varId===id){var wt=$('.hwtemp',el);if(wt)wt.textContent=txt;}
-      if(w.varId2===id){var ws=$('[data-role=sub]',el);if(ws)ws.textContent=txt;}
-    }
+    label:'Wetter', paletteIcon:'cloudsun', size:[340,200],
+    defaults:function(w){w.wmode='standard';w.icon='cloudsun';w.label='Wetter';w.fcStart=1;w.showPq=true;w.fc=_wDefFc();},
+    render:weatherRender, props:weatherProps, wire:weatherWire, mount:weatherMount, live:weatherLive
   });
-  // ===== Widget: weatherpro — Wetter+ =====
+  // Rückwärtskompatibel: alte "weatherpro"-Widgets rendern als Wetter im Modus Erweitert
   defWidget('weatherpro',{
     label:'Wetter+', paletteIcon:'cloudsun', size:[340,220],
-    defaults:function(w){w.label='Wetter';w.icon='cloudsun';w.fc=[{d:'Mo',ic:'cloudsun',hi:0,lo:0,pq:0},{d:'Di',ic:'sun',hi:0,lo:0,pq:0},{d:'Mi',ic:'cloud',hi:0,lo:0,pq:0},{d:'Do',ic:'rain',hi:0,lo:0,pq:0},{d:'Fr',ic:'cloudsun',hi:0,lo:0,pq:0}];w.tgrad=[{t:-5,color:'#4aa3ff'},{t:4,color:'#3bd6c6'},{t:14,color:'#39d08a'},{t:22,color:'#f2b441'},{t:32,color:'#f2685a'}];},
-    render:function(w){
-      var _d2=(w.fc||[]).map(function(r){return '<div class="hwp2day"><span class="d">'+esc(r.d||'')+'</span><span class="ic">'+iconSVG(r.ic||'cloudsun')+'</span><span class="lo"'+(r.lo?' data-vid="'+r.lo+'"':'')+'>–</span><div class="trk"><i class="fill"></i></div><span class="hi"'+(r.hi?' data-vid="'+r.hi+'"':'')+'>–</span><span class="pq"'+(r.pq?' data-vid="'+r.pq+'"':'')+'></span></div>';}).join('');
-      return '<div class="hwp2"><div class="hwp2cur"><span class="hwp2ic">'+iconSVG(w.icon||'cloudsun')+'</span><span class="hwp2ci"><span class="hwp2t" data-role="val">–</span><span class="hwp2sub">'+(w.label?esc(w.label)+' · ':'')+'<span data-role="sub"></span></span></span></div><div class="hwp2days">'+_d2+'</div></div>';
-    },
-    props:function(w){return (w.type==='weatherpro'?(tgradEditor(w)+row('Skala Min/Max','<input id="pGmin" type="number" style="width:60px" value="'+(w.gmin!=null?w.gmin:'')+'" placeholder="auto"> <input id="pGmax" type="number" style="width:60px" value="'+(w.gmax!=null?w.gmax:'')+'" placeholder="auto">')):'');},
-    wire:function(w){
-      $$('#props [data-tg]').forEach(function(inp){inp.oninput=inp.onchange=function(){var pr=inp.getAttribute('data-tg').split('.'),k=pr[0],i=+pr[1];if(!w.tgrad||!w.tgrad[i])return;w.tgrad[i][k]=(k==='t')?(parseFloat(inp.value)||0):inp.value;if(_ec[w.id])refreshWeatherPro(w);commit();};});
-      $$('#props [data-tgdel]').forEach(function(b){b.onclick=function(){w.tgrad.splice(+b.getAttribute('data-tgdel'),1);renderProps();refreshWeatherPro(w);commit();};});
-      if($('#tgAdd'))$('#tgAdd').onclick=function(){if(!w.tgrad)w.tgrad=[];w.tgrad.push({t:20,color:'#f2b441'});renderProps();refreshWeatherPro(w);commit();};
-      if($('#pGmin'))$('#pGmin').oninput=function(){w.gmin=this.value===''?undefined:parseFloat(this.value);refreshWeatherPro(w);commit();};
-      if($('#pGmax'))$('#pGmax').oninput=function(){w.gmax=this.value===''?undefined:parseFloat(this.value);refreshWeatherPro(w);commit();};
-    },
-    live:function(w,el,id,d,base,txt,on){if(w.varId===id){var w2t=$('.hwp2t',el);if(w2t)w2t.textContent=txt;}if(w.varId2===id){var w2s=$('[data-role=sub]',el);if(w2s)w2s.textContent=txt;}refreshWeatherPro(w);}
+    defaults:function(w){w.wmode='extended';w.icon='cloudsun';w.label='Wetter';w.fcStart=1;w.showPq=true;w.fc=_wDefFc();w.tgrad=[{t:-5,color:'#4aa3ff'},{t:4,color:'#3bd6c6'},{t:14,color:'#39d08a'},{t:22,color:'#f2b441'},{t:32,color:'#f2685a'}];},
+    render:function(w){if(!w.wmode)w.wmode='extended';return weatherRender(w);}, props:weatherProps, wire:weatherWire, mount:weatherMount, live:weatherLive
   });
 // webview widget
 defWidget('webview',{
