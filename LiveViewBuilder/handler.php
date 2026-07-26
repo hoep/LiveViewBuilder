@@ -106,7 +106,7 @@ if ($api === 'val') {
             $out[$id] = ['v' => GetValue($id), 'f' => @GetValueFormatted($id), 'u' => $sfx($id)];
         }
     }
-    echo json_encode(['ts' => time(), 'values' => $out]);
+    echo json_encode(['ts' => time(), 'values' => $out, 'lv' => (int) @filemtime($DATADIR . '/layouts.json')]);
     return;
 }
 
