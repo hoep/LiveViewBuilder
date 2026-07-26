@@ -219,7 +219,7 @@
     if(gx!==null)drawGuide('v',gx);if(gy!==null)drawGuide('h',gy);
     return {dx:fdx,dy:fdy};
   }
-  function addCopies(src){if(!src.length)return;var copies=src.map(function(w){var c=JSON.parse(JSON.stringify(w));c.id=uid();c.x=(c.x||0)+16;c.y=(c.y||0)+16;return c;});copies.forEach(function(c){state.widgets.push(c);});sel={};copies.forEach(function(c){sel[c.id]=true;});selId=copies.slice(-1)[0].id;render();renderProps();}
+  function addCopies(src){if(!src.length)return;var copies=src.map(function(w){var c=JSON.parse(JSON.stringify(w));c.id=uid();c.x=(c.x||0)+16;c.y=(c.y||0)+16;delete c.name;delete c.hidden;return c;});copies.forEach(function(c){state.widgets.push(c);});sel={};copies.forEach(function(c){sel[c.id]=true;});selId=copies.slice(-1)[0].id;render();renderProps();commit();}
   // Ausrichten / Verteilen (auf die aktuelle Mehrfachauswahl)
   function selWidgets(){return Object.keys(sel).map(widget).filter(Boolean);}
   function alignSel(kind){
