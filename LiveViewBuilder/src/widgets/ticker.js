@@ -52,6 +52,7 @@
             +'<input data-tk="w.'+i+'" value="'+esc(m.w||'')+'" placeholder="Breite" style="width:56px">';
         } else {
           fields='<input data-tk="text.'+i+'" value="'+esc(m.text||'')+'" placeholder="Text">'
+            +'<input data-tk="sub.'+i+'" value="'+esc(m.sub||'')+'" placeholder="Zusatz">'
             +'<input data-tk="vid.'+i+'" value="'+esc(m.vid||'')+'" placeholder="VarID" style="width:64px">'
             +'<input data-tk="icon.'+i+'" value="'+esc(m.icon||'')+'" placeholder="Icon" style="width:64px">'
             +'<input data-tk="sev.'+i+'" value="'+esc(m.sev||'')+'" placeholder="sev" style="width:52px">';
