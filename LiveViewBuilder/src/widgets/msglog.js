@@ -23,10 +23,12 @@
     render:function(w){return '<div class="hmsg"><div class="hmsgtop"><span class="hmsgt">'+esc(w.label||'Meldungen')+'</span><span class="hmsgchips">'+_chips(w)+'</span></div><div class="hmsgl" data-role="msgl"><div class="hmsge">…</div></div></div>';},
     props:function(w){return '<div class="pgh">Standard-Filter (Builder)</div>'
       +'<div style="display:flex;flex-wrap:wrap;gap:6px 12px">'+_SEVS.map(function(s){return '<label style="display:inline-flex;align-items:center;gap:4px;font-size:11px"><input type="checkbox" data-sev="'+s+'"'+(_sevDef(w,s)?' checked':'')+'> <span style="color:'+_SEVCLR[s]+';font-weight:600">'+s+'</span></label>';}).join('')+'</div>'
-      +'<div class="hint" style="font-size:11px;color:var(--muted)">Im Live-Modus per Klick auf die Chips umschaltbar (je Gerät gespeichert).</div>'
+      +'<div class="hint" style="font-size:11px;color:var(--muted)">Im Live-Modus per Tipp auf die Pills umschaltbar (je Gerät gespeichert).</div>'
+      +row('Auto-Scroll','<input type="checkbox" id="pMsgAuto"'+(w.noAuto?'':' checked')+'>')
       +row('Max. Einträge','<input id="pMsgN" type="number" min="1" max="120" value="'+(w.max||25)+'">');},
     wire:function(w){
       $$('#props [data-sev]').forEach(function(cb){cb.onchange=function(){if(!w.sev){w.sev={};_SEVS.forEach(function(s){w.sev[s]=_sevDef(w,s)?1:0;});}w.sev[cb.getAttribute('data-sev')]=cb.checked?1:0;render();fetchMsgs(w);commit();};});
+      if($('#pMsgAuto'))$('#pMsgAuto').onchange=function(){w.noAuto=this.checked?undefined:true;commit();};
       if($('#pMsgN'))$('#pMsgN').oninput=function(){w.max=parseInt(this.value)||25;render();fetchMsgs(w);commit();};
     },
     mount:function(w){fetchMsgs(w);},
@@ -36,3 +38,14 @@
       chip.classList.toggle('off',!f[s]);fetchMsgs(w);return true;}
   });
   setInterval(function(){if(typeof state==='undefined'||!state.widgets)return;state.widgets.forEach(function(w){if(w.type==='msglog')fetchMsgs(w);});},15000);
+  // Bei Berührung/Klick auf die Liste Auto-Scroll kurz pausieren
+  function _msgTouch(e){var b=e.target&&e.target.closest&&e.target.closest('[data-role=msgl]');if(b)b._touch=Date.now();}
+  document.addEventListener('touchstart',_msgTouch,{passive:true});document.addEventListener('mousedown',_msgTouch,true);
+  // Auto-Scroll durch die Liste (pausiert bei Hover/Berührung), loopt am Ende
+  setInterval(function(){if(typeof state==='undefined'||!state.widgets)return;var now=Date.now();
+    state.widgets.forEach(function(w){if(w.type!=='msglog'||w.noAuto)return;var el=$('.w[data-id="'+w.id+'"]',canvas);if(!el)return;var b=$('[data-role=msgl]',el);if(!b)return;
+      if(b.scrollHeight-b.clientHeight<=2)return; if(b._touch&&now-b._touch<5000)return; try{if(b.matches(':hover'))return;}catch(_){}
+      if(b.scrollTop+b.clientHeight>=b.scrollHeight-1){b._pause=(b._pause||0)+1;if(b._pause>25){b._pause=0;b.scrollTop=0;}} // am Ende kurz halten, dann hoch
+      else{b._pause=0;b.scrollTop+=1;}
+    });
+  },70);
