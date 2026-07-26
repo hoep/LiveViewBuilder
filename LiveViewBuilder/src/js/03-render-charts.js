@@ -254,7 +254,7 @@
     if(!isLast&&!off){cb(null);return;}
     var c=_cmpData[w.id],now=Date.now();
     if(c&&(now-c.fetched)<120000){cb(c);return;}
-    fetch('?api=cmp&id='+w.varId+(isLast?'&last=1':'&off='+off),{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
+    fetch('?api=cmp&id='+w.varId+(isLast?'&last=1':'&off='+off+'&agg='+(w.cmpAgg||'avg')),{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
       _cmpData[w.id]={cur:(j&&j.cur!=null)?parseFloat(j.cur):null,past:(j&&j.past!=null)?parseFloat(j.past):null,type:(j&&j.type)||0,fetched:now};cb(_cmpData[w.id]);
     }).catch(function(){cb(null);});
   }
