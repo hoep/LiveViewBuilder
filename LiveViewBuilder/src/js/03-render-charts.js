@@ -84,13 +84,20 @@
     var v1=$('[data-role=val]',el);if(v1&&sr)v1.textContent=_hhmmTxt(sr.f||sr.v);var v2=$('[data-role=val2]',el);if(v2&&ss)v2.textContent=_hhmmTxt(ss.f||ss.v);
     if(a==null||b==null||b<=a)return;
     var now=new Date(),nm=now.getHours()*60+now.getMinutes(),f=Math.max(0,Math.min(1,(nm-a)/(b-a)));
-    var night=!!w.showNight,HY=night?64:82,cy=night?-4:-6,vbH=night?128:96,isDay=(nm>=a&&nm<=b);
+    var night=!!w.showNight,HY=night?64:82,cy=night?-4:-6,vbH=night?128:96;
+    var _ss=function(t){t=Math.max(0,Math.min(1,t));return t*t*(3-2*t);};       // Smoothstep
+    var TW=45,dayAmt=Math.max(0,Math.min(_ss((nm-(a-TW))/(2*TW)),_ss(((b+TW)-nm)/(2*TW)))); // 1=Tag, 0=Nacht, weicher Dämmerungsübergang (±45 min)
+    var leadDay=dayAmt>=0.5;
     var mt=1-f,x=mt*mt*12+2*mt*f*100+f*f*188,y=mt*mt*HY+2*mt*f*cy+f*f*HY;
-    sun.setAttribute('cx',x.toFixed(1));sun.setAttribute('cy',y.toFixed(1));sun.style.opacity=isDay?1:(night?0:0.25);
+    sun.setAttribute('cx',x.toFixed(1));sun.setAttribute('cy',y.toFixed(1));sun.style.opacity=(night?dayAmt:Math.max(0.25,dayAmt)).toFixed(2);
     // Mond entlang der Nachtkurve (Untergang -> Aufgang), nur im Nachtmodus
-    var mx=x,my=y,moon=$('[data-role=moon]',el);
-    if(night&&moon){var nlen=(a+1440)-b,gn=(nm>=b)?(nm-b)/nlen:((nm<a)?(nm+1440-b)/nlen:0);gn=Math.max(0,Math.min(1,gn));var gt=1-gn;mx=gt*gt*188+2*gt*gn*100+gn*gn*12;my=gt*gt*HY+2*gt*gn*132+gn*gn*HY;moon.setAttribute('transform','translate('+mx.toFixed(1)+','+my.toFixed(1)+')');moon.style.opacity=isDay?0:1;}
-    if(w.showTime){var nw=$('[data-role=now]',el);if(nw){var px=isDay?x:mx,py=isDay?y:my;nw.textContent=('0'+now.getHours()).slice(-2)+':'+('0'+now.getMinutes()).slice(-2);nw.style.left=(px/200*100).toFixed(1)+'%';nw.style.top=(py/vbH*100).toFixed(1)+'%';}} // Uhrzeit über Sonne/Mond
+    var mx=x,my=y,gnv=0,moon=$('[data-role=moon]',el);
+    if(night){var nlen=(a+1440)-b;gnv=(nm>=b)?(nm-b)/nlen:((nm<a)?(nm+1440-b)/nlen:0);gnv=Math.max(0,Math.min(1,gnv));var gt=1-gnv;mx=gt*gt*188+2*gt*gnv*100+gnv*gnv*12;my=gt*gt*HY+2*gt*gnv*132+gnv*gnv*HY;if(moon){moon.setAttribute('transform','translate('+mx.toFixed(1)+','+my.toFixed(1)+')');moon.style.opacity=(1-dayAmt).toFixed(2);}}
+    // Füllfläche bis Sonne/Mond (Teil-Bezier -> auf Horizont -> zurück)
+    var _qp=function(x0,x1,y1,x2,t){var cx=x0+(x1-x0)*t,cyy=HY+(y1-HY)*t,mt2=1-t,ex=mt2*mt2*x0+2*mt2*t*x1+t*t*x2,ey=mt2*mt2*HY+2*mt2*t*y1+t*t*HY;return 'M'+x0+' '+HY+' Q'+cx.toFixed(1)+' '+cyy.toFixed(1)+' '+ex.toFixed(1)+' '+ey.toFixed(1)+' L'+ex.toFixed(1)+' '+HY+' Z';};
+    var fill=$('[data-role=fill]',el);if(fill){fill.setAttribute('d',_qp(12,100,cy,188,f));fill.style.opacity=(dayAmt*0.30).toFixed(3);}
+    var filln=$('[data-role=filln]',el);if(filln){filln.setAttribute('d',_qp(188,100,132,12,gnv));filln.style.opacity=((1-dayAmt)*0.55).toFixed(3);}
+    if(w.showTime){var nw=$('[data-role=now]',el);if(nw){var px=leadDay?x:mx,py=leadDay?y:my;nw.textContent=('0'+now.getHours()).slice(-2)+':'+('0'+now.getMinutes()).slice(-2);nw.style.left=(px/200*100).toFixed(1)+'%';nw.style.top=(py/vbH*100).toFixed(1)+'%';}} // Uhrzeit über Sonne/Mond
     var len=$('[data-role=len]',el);if(len){var dl=b-a;len.textContent=Math.floor(dl/60)+' h '+('0'+(dl%60)).slice(-2)+' min';}
   }
   function disposeCharts(){for(var k in _ec){try{_ec[k].dispose();}catch(e){}}_ec={};}
