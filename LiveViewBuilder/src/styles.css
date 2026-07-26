@@ -425,6 +425,7 @@
   .hwp2day .trk .fill{position:absolute;top:0;bottom:0;left:0;width:0;border-radius:3px;transition:all .4s}
   /* Sonnenbogen (suncard) */
   .hsc{position:absolute;inset:0;display:flex;flex-direction:column;padding:8px 12px;box-sizing:border-box}
+  .hscnow{position:absolute;top:6px;left:0;right:0;text-align:center;font-family:var(--fm);font-size:13px;font-weight:600;color:var(--warm);pointer-events:none}
   .hscsvg{flex:1;width:100%;min-height:0;overflow:visible}
   .hscarc{fill:none;stroke:var(--line);stroke-width:1.5;stroke-dasharray:3 4}
   .hschoriz{stroke:var(--line);stroke-width:1}

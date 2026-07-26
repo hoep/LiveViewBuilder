@@ -434,6 +434,7 @@
   .hwp2day .trk .fill{position:absolute;top:0;bottom:0;left:0;width:0;border-radius:3px;transition:all .4s}
   /* Sonnenbogen (suncard) */
   .hsc{position:absolute;inset:0;display:flex;flex-direction:column;padding:8px 12px;box-sizing:border-box}
+  .hscnow{position:absolute;top:6px;left:0;right:0;text-align:center;font-family:var(--fm);font-size:13px;font-weight:600;color:var(--warm);pointer-events:none}
   .hscsvg{flex:1;width:100%;min-height:0;overflow:visible}
   .hscarc{fill:none;stroke:var(--line);stroke-width:1.5;stroke-dasharray:3 4}
   .hschoriz{stroke:var(--line);stroke-width:1}
@@ -1267,6 +1268,7 @@
     var v1=$('[data-role=val]',el);if(v1&&sr)v1.textContent=_hhmmTxt(sr.f||sr.v);var v2=$('[data-role=val2]',el);if(v2&&ss)v2.textContent=_hhmmTxt(ss.f||ss.v);
     if(a==null||b==null||b<=a)return;
     var now=new Date(),nm=now.getHours()*60+now.getMinutes(),f=Math.max(0,Math.min(1,(nm-a)/(b-a)));
+    if(w.showTime){var nw=$('[data-role=now]',el);if(nw)nw.textContent=('0'+now.getHours()).slice(-2)+':'+('0'+now.getMinutes()).slice(-2);}
     var mt=1-f,x=mt*mt*12+2*mt*f*100+f*f*188,y=mt*mt*82+2*mt*f*(-6)+f*f*82;
     sun.setAttribute('cx',x.toFixed(1));sun.setAttribute('cy',y.toFixed(1));sun.style.opacity=(nm<a||nm>b)?0.25:1;
     var len=$('[data-role=len]',el);if(len){var dl=b-a;len.textContent=Math.floor(dl/60)+' h '+('0'+(dl%60)).slice(-2)+' min';}
@@ -3950,7 +3952,9 @@ defWidget('statuslist',{
   defWidget('suncard',{
     label:'Sonnenbogen', paletteIcon:'sunrise', size:[280,150],
     defaults:function(w){w.label='Sonne';},
-    render:function(w){return '<div class="hsc"><svg class="hscsvg" viewBox="0 0 200 96" preserveAspectRatio="none"><path class="hscarc" d="M12 82 Q100 -6 188 82"/><line class="hschoriz" x1="0" y1="82" x2="200" y2="82"/><circle class="hscsun" data-role="sun" cx="12" cy="82" r="7"/></svg><div class="hscrow"><span class="hsct"><svg class="scic" viewBox="0 0 24 24">'+ICONS.sunrise[1]+'</svg><span data-role="val">–</span></span><span class="hsclen" data-role="len"></span><span class="hsct"><svg class="scic" viewBox="0 0 24 24">'+ICONS.sunset[1]+'</svg><span data-role="val2">–</span></span></div></div>';},
+    render:function(w){return '<div class="hsc">'+(w.showTime?'<div class="hscnow" data-role="now"></div>':'')+'<svg class="hscsvg" viewBox="0 0 200 96" preserveAspectRatio="none"><path class="hscarc" d="M12 82 Q100 -6 188 82"/><line class="hschoriz" x1="0" y1="82" x2="200" y2="82"/><circle class="hscsun" data-role="sun" cx="12" cy="82" r="7"/></svg><div class="hscrow"><span class="hsct"><svg class="scic" viewBox="0 0 24 24">'+ICONS.sunrise[1]+'</svg><span data-role="val">–</span></span><span class="hsclen" data-role="len"></span><span class="hsct"><svg class="scic" viewBox="0 0 24 24">'+ICONS.sunset[1]+'</svg><span data-role="val2">–</span></span></div></div>';},
+    props:function(w){return row('Uhrzeit anzeigen','<input type="checkbox" id="pSunTime"'+(w.showTime?' checked':'')+'>');},
+    wire:function(w){if($('#pSunTime'))$('#pSunTime').onchange=function(){w.showTime=this.checked||undefined;render();commit();};},
     live:function(w,el,id,d,base,txt,on){refreshSun(w);return;}
   });
   // ===== Widget: Statistikwert (sval) — Min/Max/Ø einer geloggten Standardvariable ueber eine Periode =====
@@ -4170,6 +4174,7 @@ defWidget('statuslist',{
             +'<input data-tk="w.'+i+'" value="'+esc(m.w||'')+'" placeholder="Breite" style="width:56px">';
         } else {
           fields='<input data-tk="text.'+i+'" value="'+esc(m.text||'')+'" placeholder="Text">'
+            +'<input data-tk="sub.'+i+'" value="'+esc(m.sub||'')+'" placeholder="Zusatz">'
             +'<input data-tk="vid.'+i+'" value="'+esc(m.vid||'')+'" placeholder="VarID" style="width:64px">'
             +'<input data-tk="icon.'+i+'" value="'+esc(m.icon||'')+'" placeholder="Icon" style="width:64px">'
             +'<input data-tk="sev.'+i+'" value="'+esc(m.sev||'')+'" placeholder="sev" style="width:52px">';
