@@ -89,7 +89,7 @@
     var moon=$('[data-role=moon]',el),fill=$('[data-role=fill]',el),filln=$('[data-role=filln]',el),nw=$('[data-role=now]',el);
     // Gegenskalierung, damit Sonne/Mond trotz preserveAspectRatio="none" rund bleiben (bei jedem Seitenverhältnis)
     var _vbH=w.showNight?128:96,_svg=el.querySelector('.hscsvg'),kR=1;
-    if(_svg&&_svg.offsetWidth>0&&_svg.offsetHeight>0)kR=(_svg.offsetWidth/200)/(_svg.offsetHeight/_vbH);
+    if(_svg){var _r=_svg.getBoundingClientRect();if(_r.width>0&&_r.height>0)kR=(_r.width/200)/(_r.height/_vbH);} // SVG hat in Safari kein offsetWidth -> getBoundingClientRect
     if(!(kR>0.05&&kR<20))kR=1;
     if(w.showNight){
       // Durchgehende 24h-Sinuskurve: x = Zeit (0..24h), Horizont mittig. Tag = Bogen über der Linie, Nacht = zwei Halbbögen darunter.
