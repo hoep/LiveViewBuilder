@@ -274,8 +274,11 @@
       ws.forEach(function(w,i){if(i>0&&i<ws.length-1)w.y=Math.round(d0+st*i-w.h/2);});}
     render();renderProps();
   }
-  function groupSel(){var ws=selWidgets();if(ws.length<2){toast('Mind. 2 Elemente wählen');return;}var gid='g'+uid();ws.forEach(function(w){w.group=gid;});renderProps();commit();toast(ws.length+' gruppiert');}
-  function ungroupSel(){var ws=selWidgets(),n=0;ws.forEach(function(w){if(w.group){delete w.group;n++;}});if(n){renderProps();commit();toast('Gruppierung aufgehoben');}}
+  function groupSel(){var ws=selWidgets();if(ws.length<2){toast('Mind. 2 Elemente wählen');return;}
+    var gid='g'+uid();ws.forEach(function(w){w.group=gid;delete w.gmaster;});
+    var mId=Object.keys(sel)[0],mw=mId?widget(mId):ws[0];if(mw)mw.gmaster=true; // erstes gewähltes = Master
+    render();renderProps();commit();toast(ws.length+' gruppiert (Master: '+((mw&&(mw.name||mw.label))||mw&&mw.type||'?')+')');}
+  function ungroupSel(){var ws=selWidgets(),n=0;ws.forEach(function(w){if(w.group){delete w.group;delete w.gmaster;n++;}});if(n){render();renderProps();commit();toast('Gruppierung aufgehoben');}}
   function alignSection(){
     var b=function(a,ic,ti){return '<button class="btn" data-al="'+a+'" title="'+ti+'" style="padding:6px;flex:1"><svg class="i"><use href="#ic-'+ic+'"/></svg></button>';};
     return '<div class="prop" style="margin-bottom:10px"><div style="font-size:11px;color:var(--muted);margin-bottom:4px">Ausrichten &amp; Verteilen ('+Object.keys(sel).length+')</div>'
