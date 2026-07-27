@@ -3033,7 +3033,7 @@
       el.style.background=sc||'var(--crit)';el.style.borderColor=sc||'var(--crit)';el.classList.add('assoc-col');
       S('--asc-chip','rgba(255,255,255,.20)');S('--asc-ic','#fff');S('--asc-val','#fff');S('--asc-lab','rgba(255,255,255,.85)');
       S('--asc-barw','clamp(4px,4cqmin,6px)');S('--asc-bar','rgba(255,255,255,.9)');
-      if(pill){if(nav){pill.className='hassoc-pill chev';pill.innerHTML=_chevSVG('#fff');}else{pill.className='hassoc-pill';pill.textContent='';}}
+      if(pill){if(pillTxt){pill.className='hassoc-pill';pill.textContent=pillTxt;S('--asc-pill','rgba(255,255,255,.22)');S('--asc-pilltx','#fff');}else if(nav){pill.className='hassoc-pill chev';pill.innerHTML=_chevSVG('#fff');}else{pill.className='hassoc-pill';pill.textContent='';}}
     }else if(soft){                                           // aktiv: getönter Hintergrund + kräftige farbige linke Kante + Pille
       el.style.background='color-mix(in oklab,'+sc+' 13%,var(--surface))';el.style.borderColor='color-mix(in oklab,'+sc+' 45%,var(--line))';el.classList.add('assoc-col');
       S('--asc-chip','color-mix(in oklab,'+sc+' 22%,transparent)');S('--asc-ic',sc);S('--asc-val',sc);S('--asc-lab','color-mix(in oklab,'+sc+' 60%,var(--muted))');
