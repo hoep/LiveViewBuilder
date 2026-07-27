@@ -13,6 +13,9 @@
     if(rg){if(isNaN(n))return false;var a=num(rg[1]),b=num(rg[2]);return n>=Math.min(a,b)&&n<=Math.max(a,b);}
     return _assocEq(pat,v);
   }
+  // Kontrasttext (weiß/dunkel) für eine (auch als var(--x) angegebene) Farbe via YIQ-Helligkeit
+  var _ascProbe;
+  function _contrastText(col){try{if(!_ascProbe){_ascProbe=document.createElement('span');_ascProbe.style.cssText='position:absolute;left:-9999px;top:-9999px';document.body.appendChild(_ascProbe);}_ascProbe.style.color='#7f7f7f';_ascProbe.style.color=col;var m=getComputedStyle(_ascProbe).color.match(/(\d+)\D+(\d+)\D+(\d+)/);if(!m)return '#ffffff';var yiq=(+m[1]*299+ +m[2]*587+ +m[3]*114)/1000;return yiq>=150?'#141414':'#ffffff';}catch(e){return '#ffffff';}}
   function _assocWid(w){var el=$('.w[data-id="'+w.id+'"]',canvas);if(!el)return;
     var d=w.varId&&_lastVals[w.varId],v=d?d.v:null;
     var m=(w.amap||[]).filter(function(e){return _assocEq(e.v,v);})[0]      // exakter Treffer zuerst
@@ -27,7 +30,7 @@
     var vEl=el.querySelector('[data-role=aval]');if(vEl)vEl.textContent=(value==null||value==='')?'–':value;
     var lEl=el.querySelector('[data-role=alabel]');
     if(strong){                                               // Karte in Skin-Farbe + Kontrasttext, Leiste in Kontrastfarbe
-      var lum=_lum(sc),txt=(lum!=null&&lum>0.55)?'#141414':'#ffffff';
+      var txt=_contrastText(sc);
       el.style.background=sc;el.style.borderColor=sc;el.classList.add('assoc-col');
       el.style.setProperty('--asc-bar',txt);
       if(icEl)icEl.style.color=txt;if(vEl)vEl.style.color=txt;if(lEl)lEl.style.color=txt;
