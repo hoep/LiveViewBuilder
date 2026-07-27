@@ -209,6 +209,7 @@
   .w.t-line{background:transparent;border-color:transparent}
   .w [data-role=html]{font-size:12px}
   .marquee{position:absolute;border:1px solid var(--accent);background:color-mix(in oklab,var(--accent) 14%,transparent);z-index:50;pointer-events:none}
+  .groupbox{position:absolute;border:1.5px dashed var(--accent);border-radius:7px;z-index:6;pointer-events:none;opacity:.75}
   .guide{position:absolute;background:var(--accent);z-index:60;pointer-events:none;opacity:.9}
   .guide.v{width:1px}.guide.h{height:1px}
   /* Runtime-Modus (Vollbild-Anzeige einer View) */

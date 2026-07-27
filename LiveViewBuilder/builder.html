@@ -218,6 +218,7 @@
   .w.t-line{background:transparent;border-color:transparent}
   .w [data-role=html]{font-size:12px}
   .marquee{position:absolute;border:1px solid var(--accent);background:color-mix(in oklab,var(--accent) 14%,transparent);z-index:50;pointer-events:none}
+  .groupbox{position:absolute;border:1.5px dashed var(--accent);border-radius:7px;z-index:6;pointer-events:none;opacity:.75}
   .guide{position:absolute;background:var(--accent);z-index:60;pointer-events:none;opacity:.9}
   .guide.v{width:1px}.guide.h{height:1px}
   /* Runtime-Modus (Vollbild-Anzeige einer View) */
@@ -1813,7 +1814,15 @@
   function undo(){if(hpos>0){hpos--;applyHist();}}
   function redo(){if(hpos<hist.length-1){hpos++;applyHist();}}
   function selClear(){sel={};selId=null;}
-  function markSel(){$$('.w',canvas).forEach(function(e){e.classList.toggle('sel',!!sel[e.dataset.id]);});}
+  function updateGroupBoxes(){ // gestrichelter Rahmen um ausgewählte Gruppe(n)
+    $$('.groupbox',canvas).forEach(function(e){e.remove();});
+    if(mode!=='edit')return;
+    var groups={};Object.keys(sel).forEach(function(id){var w=widget(id);if(w&&w.group)groups[w.group]=1;});
+    for(var g in groups){var mem=state.widgets.filter(function(x){return x.group===g;});if(mem.length<2)continue;
+      var bx=1e9,by=1e9,bR=-1e9,bB=-1e9;mem.forEach(function(m){if(m.x<bx)bx=m.x;if(m.y<by)by=m.y;if(m.x+m.w>bR)bR=m.x+m.w;if(m.y+m.h>bB)bB=m.y+m.h;});
+      var pad=5,d=document.createElement('div');d.className='groupbox';d.style.left=(bx-pad)+'px';d.style.top=(by-pad)+'px';d.style.width=(bR-bx+2*pad)+'px';d.style.height=(bB-by+2*pad)+'px';canvas.appendChild(d);}
+  }
+  function markSel(){$$('.w',canvas).forEach(function(e){e.classList.toggle('sel',!!sel[e.dataset.id]);});updateGroupBoxes();}
   function select(id,additive){
     if(id==null){selClear();}
     else if(additive){if(sel[id]){delete sel[id];if(selId===id)selId=Object.keys(sel)[0]||null;}else{sel[id]=true;selId=id;}}
@@ -2237,6 +2246,7 @@
       drag.w.x=Math.max(0,nx);drag.w.y=Math.max(0,ny);drag.w.w=Math.round(nw);drag.w.h=Math.round(nh);applyGeom(drag.w);badge(e,Math.round(nw)+' × '+Math.round(nh)+' px');return;}
     var g=snapAlign(drag.items,dx,dy,e.altKey);
     drag.items.forEach(function(it){it.w.x=Math.max(0,it.ox+g.dx);it.w.y=Math.max(0,it.oy+g.dy);applyGeom(it.w);});
+    updateGroupBoxes(); // Gruppenrahmen mitführen
     badge(e,Math.round(drag.items[0].w.x)+' , '+Math.round(drag.items[0].w.y));
   });
   function badge(e,txt){var b=$('#selbadge');b.textContent=txt;b.style.left=(e.clientX+16)+'px';b.style.top=(e.clientY+16)+'px';b.style.display='block';}
