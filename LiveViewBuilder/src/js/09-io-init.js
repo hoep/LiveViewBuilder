@@ -230,8 +230,8 @@
     order.forEach(function(w){
       if(w.group){ if(seen[w.group])return; seen[w.group]=1;
         var mem=order.filter(function(x){return x.group===w.group;});
-        if(mem.length>1){var bx=1e9,by=1e9,bR=-1e9,bB=-1e9;mem.forEach(function(m){if(m.x<bx)bx=m.x;if(m.y<by)by=m.y;if(m.x+m.w>bR)bR=m.x+m.w;if(m.y+m.h>bB)bB=m.y+m.h;});
-          units.push({grp:1,mem:mem,x0:bx,y0:by,gw:bR-bx,gh:bB-by});return;}
+        if(mem.length>1){var mst=mem.filter(function(m){return m.gmaster;})[0]||mem[0];
+          units.push({grp:1,mem:mem,x0:mst.x,y0:mst.y,gw:mst.w,gh:mst.h});return;} // Slot = Master-Groesse; Kinder duerfen ueberlappen
       }
       units.push({grp:0,w:w,gw:w.w,gh:w.h});
     });
