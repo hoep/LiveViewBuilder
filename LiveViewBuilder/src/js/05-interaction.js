@@ -10,6 +10,7 @@
     if((e.key==='Delete'||e.key==='Backspace')&&!_inTextField()){if(ids.length){state.widgets=state.widgets.filter(function(w){return !sel[w.id];});selClear();render();renderProps();commit();e.preventDefault();}return;} // löschen auch bei Fokus auf Select/Body (nach Seitenwechsel)
     if(e.key.indexOf('Arrow')===0&&ids.length&&!_inTextField()){var dd0=e.shiftKey?GS:1,dx0=e.key==='ArrowLeft'?-dd0:e.key==='ArrowRight'?dd0:0,dy0=e.key==='ArrowUp'?-dd0:e.key==='ArrowDown'?dd0:0;ids.forEach(function(id){var w=widget(id);w.x=Math.max(0,w.x+dx0);w.y=Math.max(0,w.y+dy0);applyGeom(w);});e.preventDefault();commit();return;} // verschieben auch bei Select/Body-Fokus
     var tn=((e.target&&e.target.tagName)||'').toLowerCase();if(tn==='input'||tn==='select'||tn==='textarea')return;
+    if(ctrl&&k==='g'){e.preventDefault();if(e.shiftKey)ungroupSel();else groupSel();return;}
     if(ctrl&&k==='d'){e.preventDefault();addCopies(ids.map(widget));}
     else if(ctrl&&k==='z'){e.preventDefault();if(e.shiftKey)redo();else undo();}
     else if(ctrl&&k==='y'){e.preventDefault();redo();}

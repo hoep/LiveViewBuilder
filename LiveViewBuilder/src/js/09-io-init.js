@@ -224,30 +224,36 @@
     var p=state.page,S=sfStructure(p),c=sfCfg(p),order=[],stretched=[],ALL=state.widgets;
     S.bands.forEach(function(b){order=order.concat(b);});
     order=order.filter(function(w){return !w.reflowHide&&!_reflowOverlay(w,ALL);}); // Overlays/ausgeblendete raus
-    // Flow-Packing nach echter Widget-Breite: so viele nebeneinander wie passen; nur zu breite Widgets bekommen negativen Zoom.
+    // Flow-Packing nach echter Breite. Gruppen zählen als EIN Block (Bounding-Box), bleiben also zusammen.
     var M=8,G=8,AW=vw-2*M,i;
-    var items=[];
-    order.forEach(function(w){if(w.reflowHide)return;var el=sfEl(w);if(!el)return;var win=el.firstElementChild;if(!win)return;
-      var isS=(sfClass(w)==='s'),s=1,bw=w.w;
-      if(bw>AW){s=AW/w.w;bw=AW;}                       // breiter als der Bildschirm -> negativer Zoom bis volle Breite
-      items.push({w:w,el:el,win:win,isS:isS,s:s,bw:bw,bh:w.h*s});
+    var seen={},units=[];
+    order.forEach(function(w){
+      if(w.group){ if(seen[w.group])return; seen[w.group]=1;
+        var mem=order.filter(function(x){return x.group===w.group;});
+        if(mem.length>1){var bx=1e9,by=1e9,bR=-1e9,bB=-1e9;mem.forEach(function(m){if(m.x<bx)bx=m.x;if(m.y<by)by=m.y;if(m.x+m.w>bR)bR=m.x+m.w;if(m.y+m.h>bB)bB=m.y+m.h;});
+          units.push({grp:1,mem:mem,x0:bx,y0:by,gw:bR-bx,gh:bB-by});return;}
+      }
+      units.push({grp:0,w:w,gw:w.w,gh:w.h});
     });
+    units.forEach(function(u){var s=1,bw=u.gw;if(bw>AW){s=AW/u.gw;bw=AW;}u.s=s;u.bw=bw;u.bh=u.gh*s;}); // zu breite Einheit -> negativer Zoom
     // Zeilen greedy füllen (maximale Anzahl nebeneinander)
     var lines=[],cur=[],curW=0;
-    for(i=0;i<items.length;i++){var it=items[i],need=(cur.length?G:0)+it.bw;
-      if(cur.length&&curW+need>AW+0.5){lines.push(cur);cur=[];curW=0;need=it.bw;}
-      cur.push(it);curW+=need;}
+    for(i=0;i<units.length;i++){var u=units[i],need=(cur.length?G:0)+u.bw;
+      if(cur.length&&curW+need>AW+0.5){lines.push(cur);cur=[];curW=0;need=u.bw;}
+      cur.push(u);curW+=need;}
     if(cur.length)lines.push(cur);
-    // platzieren: Zeile horizontal zentriert, Widgets vertikal in der Zeile zentriert (keine Höhenlücken)
+    var placeW=function(w,px,py,s){var el=sfEl(w);if(!el)return;var win=el.firstElementChild;if(!win)return;var isS=(sfClass(w)==='s');
+      if(isS){win.style.transform='';win.style.width='';win.style.height='';stretched.push(w);}else{win.style.width=w.w+'px';win.style.height=w.h+'px';win.style.transform='scale('+s.toFixed(4)+')';}
+      el.style.transform='none';el.style.left=px.toFixed(1)+'px';el.style.top=py.toFixed(1)+'px';el.style.width=(w.w*s).toFixed(1)+'px';el.style.height=(w.h*s).toFixed(1)+'px';};
+    // platzieren: Zeile horizontal zentriert, Einheiten vertikal zentriert
     var y=M;
     lines.forEach(function(line){
-      var lineW=0,rowH=0;line.forEach(function(it,k){lineW+=it.bw+(k?G:0);if(it.bh>rowH)rowH=it.bh;});
+      var lineW=0,rowH=0;line.forEach(function(u,k){lineW+=u.bw+(k?G:0);if(u.bh>rowH)rowH=u.bh;});
       var x=M+Math.max(0,(AW-lineW)/2);
-      line.forEach(function(it){var w=it.w,el=it.el,win=it.win,ty=y+Math.max(0,(rowH-it.bh)/2);
-        if(it.isS){win.style.transform='';win.style.width='';win.style.height='';stretched.push(w);}
-        else{win.style.width=w.w+'px';win.style.height=w.h+'px';win.style.transform='scale('+it.s.toFixed(4)+')';}
-        el.style.transform='none';el.style.left=x.toFixed(1)+'px';el.style.top=ty.toFixed(1)+'px';el.style.width=it.bw.toFixed(1)+'px';el.style.height=it.bh.toFixed(1)+'px';
-        x+=it.bw+G;
+      line.forEach(function(u){var uy=y+Math.max(0,(rowH-u.bh)/2);
+        if(u.grp){u.mem.forEach(function(m){placeW(m,x+(m.x-u.x0)*u.s,uy+(m.y-u.y0)*u.s,u.s);});} // Gruppe: relative Anordnung erhalten
+        else{placeW(u.w,x,uy,u.s);}
+        x+=u.bw+G;
       });
       y+=rowH+G;
     });

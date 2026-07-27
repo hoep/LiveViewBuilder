@@ -549,7 +549,7 @@
   function select(id,additive){
     if(id==null){selClear();}
     else if(additive){if(sel[id]){delete sel[id];if(selId===id)selId=Object.keys(sel)[0]||null;}else{sel[id]=true;selId=id;}}
-    else{sel={};sel[id]=true;selId=id;}
+    else{sel={};var _sw=widget(id);if(_sw&&_sw.group){state.widgets.forEach(function(x){if(x.group===_sw.group)sel[x.id]=true;});}else sel[id]=true;selId=id;} // Gruppe: ganze Gruppe wählen
     markSel();try{renderProps();}catch(_e){console.error('renderProps',_e);}if(id!=null&&!additive)showTab('props'); // renderProps darf Auswahl/Drag nie blockieren
   }
   function namedWidgets(excludeId){var out=[];for(var vn in store.views){(store.views[vn].widgets||[]).forEach(function(x){if(x.name&&x.id!==excludeId)out.push({name:x.name,type:x.type,view:vn,id:x.id});});}return out;} // alle benannten Widgets (alle Ansichten)
