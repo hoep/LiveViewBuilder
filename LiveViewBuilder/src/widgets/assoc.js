@@ -26,12 +26,14 @@
     var icEl=el.querySelector('[data-role=aico]');if(icEl)icEl.innerHTML=icon?iconSVG(icon,v):'';
     var vEl=el.querySelector('[data-role=aval]');if(vEl)vEl.textContent=(value==null||value==='')?'–':value;
     var lEl=el.querySelector('[data-role=alabel]');
-    if(strong){                                               // Karte in Skin-Farbe + Kontrasttext
+    if(strong){                                               // Karte in Skin-Farbe + Kontrasttext, Leiste in Kontrastfarbe
       var lum=_lum(sc),txt=(lum!=null&&lum>0.55)?'#141414':'#ffffff';
       el.style.background=sc;el.style.borderColor=sc;el.classList.add('assoc-col');
+      el.style.setProperty('--asc-bar',txt);
       if(icEl)icEl.style.color=txt;if(vEl)vEl.style.color=txt;if(lEl)lEl.style.color=txt;
-    }else{                                                    // normale Kachel (Skin-Default)
+    }else{                                                    // normale Kachel + Akzentleiste in Skin-Farbe (Zustand oder Akzent)
       el.style.background='';el.style.borderColor='';el.classList.remove('assoc-col');
+      el.style.setProperty('--asc-bar',sc||'var(--accent)');
       if(icEl)icEl.style.color='';if(vEl)vEl.style.color='';if(lEl)lEl.style.color='';
     }
   }
