@@ -118,7 +118,7 @@
     if($('#pPick3'))$('#pPick3').onclick=function(){showTab('vars');toast('Untergang-Variable im Baum anklicken');_bindTarget3=w.id;};
     ['pX','pY','pW','pH'].forEach(function(k){var el=$('#'+k);el.oninput=function(){var v=parseInt(el.value)||0;if(k==='pX')w.x=v;if(k==='pY')w.y=v;if(k==='pW')w.w=Math.max(40,v);if(k==='pH')w.h=Math.max(28,v);render();};});
     $('#pDel').onclick=function(){var ids=Object.keys(sel).length?Object.keys(sel):[w.id];state.widgets=state.widgets.filter(function(x){return ids.indexOf(x.id)<0;});selClear();render();renderProps();};
-    $$('[data-al]',p).forEach(function(bt){bt.onclick=function(){var a=bt.dataset.al;if(a==='disth')distributeSel('h');else if(a==='distv')distributeSel('v');else alignSel(a);};});
+    $$('[data-al]',p).forEach(function(bt){bt.onclick=function(){var a=bt.dataset.al;if(a==='disth')distributeSel('h');else if(a==='distv')distributeSel('v');else if(a==='group')groupSel();else if(a==='ungroup')ungroupSel();else alignSel(a);};});
     $$('[data-fc]',p).forEach(function(inp){inp.oninput=inp.onchange=function(){var pr=inp.dataset.fc.split('.'),i=+pr[0],k=pr[1];if(!w.fc||!w.fc[i])return;w.fc[i][k]=(k==='hi'||k==='lo'||k==='pq')?(parseInt(inp.value)||0):inp.value;render();};});
     $$('[data-fcdel]',p).forEach(function(b){b.onclick=function(){w.fc.splice(+b.dataset.fcdel,1);render();renderProps();};});
     if($('#fcAdd'))$('#fcAdd').onclick=function(){if(!w.fc)w.fc=[];w.fc.push({d:'',ic:'cloudsun',hi:0,lo:0,pq:0});render();renderProps();};
@@ -254,7 +254,7 @@
     }
     return res;
   }
-  function addCopies(src){if(!src.length)return;var copies=src.map(function(w){var c=JSON.parse(JSON.stringify(w));c.id=uid();c.x=(c.x||0)+16;c.y=(c.y||0)+16;delete c.name;delete c.hidden;return c;});copies.forEach(function(c){state.widgets.push(c);});sel={};copies.forEach(function(c){sel[c.id]=true;});selId=copies.slice(-1)[0].id;render();renderProps();commit();}
+  function addCopies(src){if(!src.length)return;var gmap={};var copies=src.map(function(w){var c=JSON.parse(JSON.stringify(w));c.id=uid();c.x=(c.x||0)+16;c.y=(c.y||0)+16;delete c.name;delete c.hidden;if(c.group){if(!gmap[c.group])gmap[c.group]='g'+uid();c.group=gmap[c.group];}return c;});copies.forEach(function(c){state.widgets.push(c);});sel={};copies.forEach(function(c){sel[c.id]=true;});selId=copies.slice(-1)[0].id;render();renderProps();commit();}
   // Ausrichten / Verteilen (auf die aktuelle Mehrfachauswahl)
   function selWidgets(){return Object.keys(sel).map(widget).filter(Boolean);}
   function alignSel(kind){
@@ -274,11 +274,14 @@
       ws.forEach(function(w,i){if(i>0&&i<ws.length-1)w.y=Math.round(d0+st*i-w.h/2);});}
     render();renderProps();
   }
+  function groupSel(){var ws=selWidgets();if(ws.length<2){toast('Mind. 2 Elemente wählen');return;}var gid='g'+uid();ws.forEach(function(w){w.group=gid;});renderProps();commit();toast(ws.length+' gruppiert');}
+  function ungroupSel(){var ws=selWidgets(),n=0;ws.forEach(function(w){if(w.group){delete w.group;n++;}});if(n){renderProps();commit();toast('Gruppierung aufgehoben');}}
   function alignSection(){
     var b=function(a,ic,ti){return '<button class="btn" data-al="'+a+'" title="'+ti+'" style="padding:6px;flex:1"><svg class="i"><use href="#ic-'+ic+'"/></svg></button>';};
     return '<div class="prop" style="margin-bottom:10px"><div style="font-size:11px;color:var(--muted);margin-bottom:4px">Ausrichten &amp; Verteilen ('+Object.keys(sel).length+')</div>'
       +'<div style="display:flex;gap:4px">'+b('left','al-left','Links')+b('cx','al-cx','Horizontal zentrieren')+b('right','al-right','Rechts')+b('top','al-top','Oben')+b('cy','al-cy','Vertikal zentrieren')+b('bottom','al-bottom','Unten')+'</div>'
-      +'<div style="display:flex;gap:4px;margin-top:4px">'+b('disth','dist-h','Horizontal verteilen')+b('distv','dist-v','Vertikal verteilen')+'</div></div>';
+      +'<div style="display:flex;gap:4px;margin-top:4px">'+b('disth','dist-h','Horizontal verteilen')+b('distv','dist-v','Vertikal verteilen')+'</div>'
+      +'<div style="display:flex;gap:4px;margin-top:4px"><button class="btn" data-al="group" style="padding:6px;flex:1" title="Elemente gruppieren (Strg/Cmd+G)">Gruppieren</button><button class="btn" data-al="ungroup" style="padding:6px;flex:1" title="Gruppierung aufheben (Strg/Cmd+Shift+G)">Lösen</button></div></div>';
   }
 
   canvas.addEventListener('mousedown',function(e){
