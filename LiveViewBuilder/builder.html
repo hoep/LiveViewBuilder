@@ -2973,8 +2973,14 @@
     var ovc=(m&&m.color)||(a&&w.assocMap&&w.assocMap[String(a.v)]?w.assocMap[String(a.v)].color:'');
     var key=String(ovc||'').toLowerCase(),isAlarm=/crit|fehler|error|alarm/.test(key);
     var sc=_skinColor(ovc),soft=!!sc&&sc!=='var(--text)'&&!isAlarm;   // sanfte Hervorhebung (getönt) vs. Alarm (Vollfläche)
-    var value=(d&&d.f!=null&&d.f!=='')?d.f:((m&&m.text!=null&&m.text!=='')?m.text:((a&&a.name!=null)?a.name:(d?String(d.v):'–')));
-    var pillTxt=(m&&m.text)||(a&&a.name)||'',nav=!!(w.popupTo||w.navTo);
+    // Zähler (numerischer formatierter Wert): Zahl groß, Zustandstext als Pille.
+    // Zustand (Text aus Profil-Assoziation): Text groß und per amap-"Text" ÜBERSCHREIBBAR.
+    var dfTxt=(d&&d.f!=null&&d.f!=='')?String(d.f):'';
+    var dfNum=dfTxt!==''&&/^[+\-]?[\d.,\s]+$/.test(dfTxt);
+    var value,pillTxt;
+    if(dfNum){value=dfTxt;pillTxt=(m&&m.text)||(a&&a.name)||'';}
+    else{value=(m&&m.text!=null&&m.text!=='')?m.text:((a&&a.name!=null&&a.name!=='')?a.name:(dfTxt||(d?String(d.v):'–')));pillTxt='';}
+    var nav=!!(w.popupTo||w.navTo);
     var chip=el.querySelector('[data-role=aico]');if(chip)chip.innerHTML=icon?iconSVG(icon,v):'';
     var vEl=el.querySelector('[data-role=aval]');if(vEl)vEl.textContent=(value==null||value==='')?'–':value;
     var pill=el.querySelector('[data-role=apill]');
