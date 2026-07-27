@@ -201,6 +201,7 @@
       series:[{type:'line',showSymbol:false,smooth:true,lineStyle:{color:acc,width:1.8},areaStyle:{color:accA(.16)},
         data:data,markPoint:{silent:true,symbol:'circle',symbolSize:5,itemStyle:{color:acc},label:{show:false},data:data.length?[{coord:data[data.length-1]}]:[]}}]},true);
   }
+  function _glowCol(col,a){col=(''+(col||'')).trim();var m=col.match(/^#([0-9a-fA-F]{6})$/);if(m){var n=parseInt(m[1],16);return 'rgba('+((n>>16)&255)+','+((n>>8)&255)+','+(n&255)+','+a+')';}m=col.match(/rgba?\(([^)]+)\)/);if(m){var p=m[1].split(',');return 'rgba('+(+p[0])+','+(+p[1])+','+(+p[2])+','+a+')';}return col;} // Farbe mit Alpha (für Glow)
   function setGauge(w,d){
     var ec=_ec[w.id];if(!ec)return;var raw=d?d.v:null,val=d?parseFloat(d.v):0;if(isNaN(val))val=0;
     var mn=(w.min!=null?w.min:0),mx=(w.max!=null?w.max:100);
@@ -217,7 +218,7 @@
     var radius=isHalf?'96%':(style==='ring'?'82%':'92%');
     var detOff=isHalf?[0,'-14%']:(style==='ring'?[0,'0%']:[0,'38%']);
     var titOff=isHalf?[0,'14%']:(style==='ring'?[0,'40%']:[0,'72%']);
-    var width=isFill?13:9;
+    var width=isFill?13:11;
     var ser={type:'gauge',min:mn,max:mx,startAngle:ANG[0],endAngle:ANG[1],center:center,radius:radius,
       axisTick:{show:!!w.gticks,distance:2,splitNumber:4,length:4,lineStyle:{color:cssv('--faint'),width:1}},splitLine:{show:!!w.gticks,length:8,lineStyle:{color:cssv('--faint'),width:1}},axisLabel:{show:!!w.gticks,color:cssv('--faint'),fontSize:8,distance:12},anchor:{show:!!w.gknob,showAbove:true,size:9,itemStyle:{color:cssv('--text')}},
       title:{show:!!w.label,offsetCenter:titOff,color:cssv('--muted'),fontSize:10},
@@ -227,10 +228,10 @@
       ser.axisLine={lineStyle:{width:width,color:[[f1,cssv('--ok')],[f2,cssv('--warm')],[1,cssv('--crit')]]}};
       ser.progress={show:false};
       ser.pointer={show:true,width:4,length:'60%',itemStyle:{color:cssv('--text')}};
-    }else{ // einfarbige Füllung/Fortschritt, Rest = Spur
+    }else{ // moderner gefüllter Bogen (Donut), kein Zeiger, superleichter Glow
       ser.axisLine={lineStyle:{width:width,color:[[1,cssv('--line')]]}};
-      ser.progress={show:true,width:width,roundCap:isFill,itemStyle:{color:fillCol}};
-      ser.pointer=isFill?{show:false}:{show:true,width:4,length:'62%',itemStyle:{color:fillCol}};
+      ser.progress={show:true,width:width,roundCap:true,itemStyle:{color:fillCol,shadowBlur:8,shadowColor:_glowCol(fillCol,0.45)}};
+      ser.pointer={show:false};
     }
     ec.setOption({series:[ser]},true);
   }
