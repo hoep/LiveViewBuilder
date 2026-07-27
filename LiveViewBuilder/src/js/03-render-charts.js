@@ -546,13 +546,16 @@
   function undo(){if(hpos>0){hpos--;applyHist();}}
   function redo(){if(hpos<hist.length-1){hpos++;applyHist();}}
   function selClear(){sel={};selId=null;}
-  function updateGroupBoxes(){ // gestrichelter Rahmen um ausgewählte Gruppe(n)
-    $$('.groupbox',canvas).forEach(function(e){e.remove();});
+  function updateGroupBoxes(){ // gestrichelter Rahmen um ausgewählte Gruppe(n) + Master-Marker
+    $$('.groupbox,.gmbadge',canvas).forEach(function(e){e.remove();});
     if(mode!=='edit')return;
     var groups={};Object.keys(sel).forEach(function(id){var w=widget(id);if(w&&w.group)groups[w.group]=1;});
     for(var g in groups){var mem=state.widgets.filter(function(x){return x.group===g;});if(mem.length<2)continue;
       var bx=1e9,by=1e9,bR=-1e9,bB=-1e9;mem.forEach(function(m){if(m.x<bx)bx=m.x;if(m.y<by)by=m.y;if(m.x+m.w>bR)bR=m.x+m.w;if(m.y+m.h>bB)bB=m.y+m.h;});
-      var pad=5,d=document.createElement('div');d.className='groupbox';d.style.left=(bx-pad)+'px';d.style.top=(by-pad)+'px';d.style.width=(bR-bx+2*pad)+'px';d.style.height=(bB-by+2*pad)+'px';canvas.appendChild(d);}
+      var pad=5,d=document.createElement('div');d.className='groupbox';d.style.left=(bx-pad)+'px';d.style.top=(by-pad)+'px';d.style.width=(bR-bx+2*pad)+'px';d.style.height=(bB-by+2*pad)+'px';canvas.appendChild(d);
+      var mm=mem.filter(function(x){return x.gmaster;})[0]||mem[0];
+      if(mm){var b=document.createElement('div');b.className='gmbadge';b.textContent='M';b.title='Master';b.style.left=mm.x+'px';b.style.top=mm.y+'px';canvas.appendChild(b);}
+    }
   }
   function markSel(){$$('.w',canvas).forEach(function(e){e.classList.toggle('sel',!!sel[e.dataset.id]);});updateGroupBoxes();}
   function select(id,additive){
