@@ -10,7 +10,8 @@
       +row('Schrift','<select id="pGvFf"><option value="">Standard (Mono)</option>'+FF.map(function(o){return '<option value="'+esc(o[0])+'"'+(w.gvff===o[0]?' selected':'')+'>'+o[1]+'</option>';}).join('')+'</select>')
       +row('Gewicht','<select id="pGvFwt"><option value="">Standard</option>'+['300','400','500','600','700','800'].map(function(x){return '<option value="'+x+'"'+(w.gvfwt===x?' selected':'')+'>'+x+'</option>';}).join('')+'</select>')
       +row('Stil','<select id="pGvSty"><option value=""'+(!w.gvsty?' selected':'')+'>Normal</option><option value="italic"'+(w.gvsty==='italic'?' selected':'')+'>Kursiv</option></select>')
-      +row('Größe (px)','<input id="pGvSz" type="number" min="0" value="'+(w.gvsz||'')+'" placeholder="auto">');},
+      +row('Größe (px)','<input id="pGvSz" type="number" min="0" value="'+(w.gvsz||'')+'" placeholder="auto">')
+      +row('Nachkommastellen','<input id="pGvDec" type="number" min="0" max="6" value="'+(w.dec!=null?w.dec:'')+'" placeholder="Profil">');},
     wire:function(w){
       if($('#pGStyle'))$('#pGStyle').onchange=function(){w.gstyle=this.value;render();commit();};
       if($('#pGColor'))$('#pGColor').onchange=function(){w.gcolor=this.value;render();renderProps();commit();};
@@ -23,6 +24,7 @@
       if($('#pGvFwt'))$('#pGvFwt').onchange=function(){w.gvfwt=this.value||undefined;render();commit();};
       if($('#pGvSty'))$('#pGvSty').onchange=function(){w.gvsty=this.value||undefined;render();commit();};
       if($('#pGvSz'))$('#pGvSz').oninput=function(){w.gvsz=parseInt(this.value)||undefined;render();commit();};
+      if($('#pGvDec'))$('#pGvDec').oninput=function(){w.dec=this.value===''?undefined:Math.max(0,Math.min(6,parseInt(this.value)||0));render();commit();};
     },
     live:function(w,el,id,d,base,txt,on){setGauge(w,d);}
   });
