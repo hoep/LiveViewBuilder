@@ -76,7 +76,8 @@
   .htbadge{width:40px;height:40px;flex:none;border-radius:11px;background:color-mix(in oklab,var(--accent) 16%,var(--surface-2));color:var(--accent);display:flex;align-items:center;justify-content:center;padding:8px;transition:.15s}
   .htbadge.on{background:var(--accent);color:#04201b}
   .httext{min-width:0}.htname{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.htstate{font-size:12px;color:var(--muted);font-family:var(--fm)}
-  .hassoc{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:space-between;gap:clamp(6px,6cqmin,10px);padding:clamp(10px,10cqmin,16px);box-sizing:border-box;container-type:size;overflow:hidden}
+  .hassoc{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:space-between;gap:clamp(6px,6cqmin,10px);padding:clamp(10px,10cqmin,16px);padding-left:clamp(14px,12cqmin,20px);box-sizing:border-box;container-type:size;overflow:hidden}
+  .hassoc::before{content:"";position:absolute;left:0;top:0;bottom:0;width:var(--asc-barw,0);background:var(--asc-bar,transparent)} /* starke Betonung der linken Kante */
   .hassoc-top{display:flex;align-items:flex-start;justify-content:space-between;gap:6px}
   .hassoc-chip{display:flex;align-items:center;justify-content:center;flex:none;width:clamp(28px,28cqmin,48px);height:clamp(28px,28cqmin,48px);border-radius:clamp(8px,7cqmin,13px);background:var(--asc-chip,var(--surface-2));color:var(--asc-ic,var(--muted))}
   .hassoc-chip svg{width:56%;height:56%}
@@ -86,6 +87,7 @@
   .hassoc-btm{display:flex;flex-direction:column;gap:clamp(1px,2cqmin,4px);min-width:0}
   .hassocv{font-size:clamp(20px,26cqmin,40px);font-weight:700;line-height:1;color:var(--asc-val,var(--text))}
   .hassocl{font-size:clamp(9px,8cqmin,14px);font-weight:500;line-height:1.1;color:var(--asc-lab,var(--muted));overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .w .hassocv.tw-vff{font-family:var(--asc-vff)!important}.w .hassocv.tw-vfwt{font-weight:var(--asc-vfwt)!important}.w .hassocv.tw-vfsz{font-size:var(--asc-vfsz)!important} /* eigene Schrift fuer die Anzahl (schlaegt Widget-Typografie) */
   .w.assoc-col{transition:background .25s ease,border-color .25s ease}
   .htile-icon{padding:0;gap:0;justify-content:center}
   .htico{width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:var(--accent);padding:6%;box-sizing:border-box;border-radius:var(--r-s);transition:.15s}
