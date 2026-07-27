@@ -2995,11 +2995,15 @@
       S('--asc-chip','color-mix(in oklab,'+sc+' 22%,transparent)');S('--asc-ic',sc);S('--asc-val',sc);S('--asc-lab','color-mix(in oklab,'+sc+' 60%,var(--muted))');
       S('--asc-barw','clamp(4px,4cqmin,6px)');S('--asc-bar',sc);
       if(pill){if(pillTxt){pill.className='hassoc-pill';pill.textContent=pillTxt;S('--asc-pill',sc);S('--asc-pilltx',_contrastText(sc));}else if(nav){pill.className='hassoc-pill chev';pill.innerHTML=_chevSVG(sc);}else{pill.className='hassoc-pill';pill.textContent='';}}
-    }else{                                                    // normal: neutrale Kachel (keine Kante)
-      var neutral=(sc==='var(--text)');                       // Farbe explizit "standard" -> neutrale Pille erlaubt
-      el.style.background='';el.style.borderColor='';el.classList.remove('assoc-col');
-      S('--asc-chip','var(--surface-2)');S('--asc-ic','var(--muted)');S('--asc-val','var(--text)');S('--asc-lab','var(--muted)');
-      S('--asc-barw','0');S('--asc-bar','transparent');
+    }else{                                                    // normal / standard: neutrale Kachel (keine Kante)
+      var neutral=(sc==='var(--text)');                       // Farbe explizit "standard"
+      el.style.borderColor='';el.classList.remove('assoc-col');
+      S('--asc-ic','var(--muted)');S('--asc-val','var(--text)');S('--asc-lab','var(--muted)');S('--asc-barw','0');S('--asc-bar','transparent');
+      if(neutral){                                            // "standard": leichte transluzente Aufhellung (hebt sich in Dark ab) + neutrale Pille
+        el.style.background='color-mix(in oklab,var(--text) 7%,transparent)';S('--asc-chip','color-mix(in oklab,var(--text) 12%,transparent)');
+      }else{                                                  // gar keine Farbe: Kachel-Standard
+        el.style.background='';S('--asc-chip','var(--surface-2)');
+      }
       if(pill){
         if(neutral&&pillTxt){pill.className='hassoc-pill';pill.textContent=pillTxt;S('--asc-pill','color-mix(in oklab,var(--muted) 26%,transparent)');S('--asc-pilltx','var(--text)');}
         else if(nav){pill.className='hassoc-pill chev';pill.innerHTML=_chevSVG('var(--muted)');}
