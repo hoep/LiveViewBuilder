@@ -315,6 +315,7 @@
       drag.w.x=Math.max(0,nx);drag.w.y=Math.max(0,ny);drag.w.w=Math.round(nw);drag.w.h=Math.round(nh);applyGeom(drag.w);badge(e,Math.round(nw)+' × '+Math.round(nh)+' px');return;}
     var g=snapAlign(drag.items,dx,dy,e.altKey);
     drag.items.forEach(function(it){it.w.x=Math.max(0,it.ox+g.dx);it.w.y=Math.max(0,it.oy+g.dy);applyGeom(it.w);});
+    updateGroupBoxes(); // Gruppenrahmen mitführen
     badge(e,Math.round(drag.items[0].w.x)+' , '+Math.round(drag.items[0].w.y));
   });
   function badge(e,txt){var b=$('#selbadge');b.textContent=txt;b.style.left=(e.clientX+16)+'px';b.style.top=(e.clientY+16)+'px';b.style.display='block';}
