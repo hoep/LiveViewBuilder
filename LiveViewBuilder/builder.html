@@ -1349,21 +1349,36 @@
     var sr=_lastVals[w.varId],ss=_lastVals[w.varId2],a=sr?_hhmm(sr.f||sr.v):null,b=ss?_hhmm(ss.f||ss.v):null,sun=$('[data-role=sun]',el);if(sun==null)return;
     var v1=$('[data-role=val]',el);if(v1&&sr)v1.textContent=_hhmmTxt(sr.f||sr.v);var v2=$('[data-role=val2]',el);if(v2&&ss)v2.textContent=_hhmmTxt(ss.f||ss.v);
     if(a==null||b==null||b<=a)return;
-    var now=new Date(),nm=now.getHours()*60+now.getMinutes(),f=Math.max(0,Math.min(1,(nm-a)/(b-a)));
-    var night=!!w.showNight,HY=night?64:82,cy=night?-4:-6,vbH=night?128:96;
+    var now=new Date(),nm=now.getHours()*60+now.getMinutes();
     var _ss=function(t){t=Math.max(0,Math.min(1,t));return t*t*(3-2*t);};       // Smoothstep
-    var TW=45,dayAmt=Math.max(0,Math.min(_ss((nm-(a-TW))/(2*TW)),_ss(((b+TW)-nm)/(2*TW)))); // 1=Tag, 0=Nacht, weicher Dämmerungsübergang (±45 min)
-    var leadDay=dayAmt>=0.5;
-    var mt=1-f,x=mt*mt*12+2*mt*f*100+f*f*188,y=mt*mt*HY+2*mt*f*cy+f*f*HY;
-    sun.setAttribute('cx',x.toFixed(1));sun.setAttribute('cy',y.toFixed(1));sun.style.opacity=(night?dayAmt:Math.max(0.25,dayAmt)).toFixed(2);
-    // Mond entlang der Nachtkurve (Untergang -> Aufgang), nur im Nachtmodus
-    var mx=x,my=y,gnv=0,moon=$('[data-role=moon]',el);
-    if(night){var nlen=(a+1440)-b;gnv=(nm>=b)?(nm-b)/nlen:((nm<a)?(nm+1440-b)/nlen:0);gnv=Math.max(0,Math.min(1,gnv));var gt=1-gnv;mx=gt*gt*188+2*gt*gnv*100+gnv*gnv*12;my=gt*gt*HY+2*gt*gnv*132+gnv*gnv*HY;if(moon){moon.setAttribute('transform','translate('+mx.toFixed(1)+','+my.toFixed(1)+')');moon.style.opacity=(1-dayAmt).toFixed(2);}}
-    // Füllfläche bis Sonne/Mond (Teil-Bezier -> auf Horizont -> zurück)
-    var _qp=function(x0,x1,y1,x2,t){var cx=x0+(x1-x0)*t,cyy=HY+(y1-HY)*t,mt2=1-t,ex=mt2*mt2*x0+2*mt2*t*x1+t*t*x2,ey=mt2*mt2*HY+2*mt2*t*y1+t*t*HY;return 'M'+x0+' '+HY+' Q'+cx.toFixed(1)+' '+cyy.toFixed(1)+' '+ex.toFixed(1)+' '+ey.toFixed(1)+' L'+ex.toFixed(1)+' '+HY+' Z';};
-    var fill=$('[data-role=fill]',el);if(fill){fill.setAttribute('d',_qp(12,100,cy,188,f));fill.style.opacity=(dayAmt*0.30).toFixed(3);}
-    var filln=$('[data-role=filln]',el);if(filln){filln.setAttribute('d',_qp(188,100,132,12,gnv));filln.style.opacity=((1-dayAmt)*0.55).toFixed(3);}
-    if(w.showTime){var nw=$('[data-role=now]',el);if(nw){var px=leadDay?x:mx,py=leadDay?y:my;nw.textContent=('0'+now.getHours()).slice(-2)+':'+('0'+now.getMinutes()).slice(-2);nw.style.left=(px/200*100).toFixed(1)+'%';nw.style.top=(py/vbH*100).toFixed(1)+'%';}} // Uhrzeit über Sonne/Mond
+    var TW=45,dayAmt=Math.max(0,Math.min(_ss((nm-(a-TW))/(2*TW)),_ss(((b+TW)-nm)/(2*TW)))); // 1=Tag, 0=Nacht, weiche Dämmerung (±45 min)
+    var moon=$('[data-role=moon]',el),fill=$('[data-role=fill]',el),filln=$('[data-role=filln]',el),nw=$('[data-role=now]',el);
+    if(w.showNight){
+      // Durchgehende 24h-Sinuskurve: x = Zeit (0..24h), Horizont mittig. Tag = Bogen über der Linie, Nacht = zwei Halbbögen darunter.
+      var W=200,M=8,HY=64,AMP=52,vbH=128;
+      var xOf=function(t){return M+(Math.max(0,Math.min(1440,t))/1440)*(W-2*M);};
+      var yOf=function(t){t=(((t%1440)+1440)%1440);if(t>=a&&t<=b)return HY-AMP*Math.sin(Math.PI*(t-a)/(b-a));var nl=(a+1440)-b,tn=(t>b)?(t-b):(t+1440-b);return HY+AMP*Math.sin(Math.PI*tn/nl);};
+      var samp=function(t0,t1,n){var s='';for(var i=0;i<=n;i++){var t=t0+(t1-t0)*i/n;s+=(i?' L':'')+xOf(t).toFixed(1)+' '+yOf(t).toFixed(1);}return s;};
+      var H=HY.toFixed(0);
+      var cEl=$('[data-role=curve]',el);if(cEl)cEl.setAttribute('d','M'+samp(a,b,30));                                   // Tagbogen (über der Linie)
+      var cnEl=$('[data-role=curven]',el);if(cnEl)cnEl.setAttribute('d','M'+samp(b,1440,18)+' M'+samp(0,a,18));           // Nacht: rechts (Untergang→Mitternacht) + links (Mitternacht→Aufgang)
+      var cx=xOf(nm),cy=yOf(nm);
+      sun.setAttribute('cx',cx.toFixed(1));sun.setAttribute('cy',cy.toFixed(1));sun.style.opacity=dayAmt.toFixed(2);      // Sonne + Mond an derselben Position, überblenden per dayAmt
+      if(moon){moon.setAttribute('transform','translate('+cx.toFixed(1)+','+cy.toFixed(1)+')');moon.style.opacity=(1-dayAmt).toFixed(2);}
+      if(fill){var df='';if(nm>=a){var te=Math.min(nm,b);df='M'+xOf(a).toFixed(1)+' '+H+' L'+samp(a,te,20)+' L'+xOf(te).toFixed(1)+' '+H+' Z';}fill.setAttribute('d',df);fill.style.opacity=(dayAmt*0.30).toFixed(3);} // Tagfläche bis Sonne
+      if(filln){var nf='';                                                                                                // Nachtfläche bis Mond (ggf. rechts + links)
+        if(nm>b){nf='M'+xOf(b).toFixed(1)+' '+H+' L'+samp(b,nm,22)+' L'+xOf(nm).toFixed(1)+' '+H+' Z';}
+        else if(nm<a){nf='M'+xOf(b).toFixed(1)+' '+H+' L'+samp(b,1440,16)+' L'+xOf(1440).toFixed(1)+' '+H+' Z M'+xOf(0).toFixed(1)+' '+H+' L'+samp(0,nm,16)+' L'+xOf(nm).toFixed(1)+' '+H+' Z';}
+        filln.setAttribute('d',nf);filln.style.opacity=((1-dayAmt)*0.55).toFixed(3);}
+      if(w.showTime&&nw){nw.textContent=('0'+now.getHours()).slice(-2)+':'+('0'+now.getMinutes()).slice(-2);nw.style.left=(cx/W*100).toFixed(1)+'%';nw.style.top=(cy/vbH*100).toFixed(1)+'%';}
+    }else{
+      // Nur-Tag: einfacher Bogen über die volle Breite (Aufgang links, Untergang rechts)
+      var f=Math.max(0,Math.min(1,(nm-a)/(b-a))),mt=1-f,x=mt*mt*12+2*mt*f*100+f*f*188,y=mt*mt*82+2*mt*f*(-6)+f*f*82;
+      sun.setAttribute('cx',x.toFixed(1));sun.setAttribute('cy',y.toFixed(1));sun.style.opacity=((nm>=a&&nm<=b)?1:0.25).toFixed(2);
+      var _qp=function(x0,x1,y1,x2,t){var qx=x0+(x1-x0)*t,qy=82+(y1-82)*t,m2=1-t,ex=m2*m2*x0+2*m2*t*x1+t*t*x2,ey=m2*m2*82+2*m2*t*y1+t*t*82;return 'M'+x0+' 82 Q'+qx.toFixed(1)+' '+qy.toFixed(1)+' '+ex.toFixed(1)+' '+ey.toFixed(1)+' L'+ex.toFixed(1)+' 82 Z';};
+      if(fill){fill.setAttribute('d',_qp(12,100,-6,188,f));fill.style.opacity=((nm>=a&&nm<=b)?0.30:0).toFixed(3);}
+      if(w.showTime&&nw){nw.textContent=('0'+now.getHours()).slice(-2)+':'+('0'+now.getMinutes()).slice(-2);nw.style.left=(x/200*100).toFixed(1)+'%';nw.style.top=(y/96*100).toFixed(1)+'%';}
+    }
     var len=$('[data-role=len]',el);if(len){var dl=b-a;len.textContent=Math.floor(dl/60)+' h '+('0'+(dl%60)).slice(-2)+' min';}
   }
   function disposeCharts(){for(var k in _ec){try{_ec[k].dispose();}catch(e){}}_ec={};}
@@ -4253,7 +4268,7 @@ defWidget('statuslist',{
     defaults:function(w){w.label='Sonne';},
     render:function(w){
       var svg=w.showNight
-        ? '<svg class="hscsvg" viewBox="0 0 200 128" preserveAspectRatio="none"><path class="hscfill" data-role="fill" d=""/><path class="hscfilln" data-role="filln" d=""/><path class="hscarc" d="M12 64 Q100 -4 188 64"/><path class="hscarc hscarcn" d="M188 64 Q100 132 12 64"/><line class="hschoriz" x1="0" y1="64" x2="200" y2="64"/><g class="hscmoon" data-role="moon" transform="translate(188,64)"><path d="M4 -5.2 A6 6 0 1 0 4 5.2 A4.6 4.6 0 1 1 4 -5.2 Z"/></g><circle class="hscsun" data-role="sun" cx="12" cy="64" r="7"/></svg>'
+        ? '<svg class="hscsvg" viewBox="0 0 200 128" preserveAspectRatio="none"><path class="hscfill" data-role="fill" d=""/><path class="hscfilln" data-role="filln" d=""/><path class="hscarc" data-role="curve" d=""/><path class="hscarc hscarcn" data-role="curven" d=""/><line class="hschoriz" x1="0" y1="64" x2="200" y2="64"/><g class="hscmoon" data-role="moon" transform="translate(8,64)"><path d="M4 -5.2 A6 6 0 1 0 4 5.2 A4.6 4.6 0 1 1 4 -5.2 Z"/></g><circle class="hscsun" data-role="sun" cx="8" cy="64" r="7"/></svg>'
         : '<svg class="hscsvg" viewBox="0 0 200 96" preserveAspectRatio="none"><path class="hscfill" data-role="fill" d=""/><path class="hscarc" d="M12 82 Q100 -6 188 82"/><line class="hschoriz" x1="0" y1="82" x2="200" y2="82"/><circle class="hscsun" data-role="sun" cx="12" cy="82" r="7"/></svg>';
       return '<div class="hsc"><div class="hscarcwrap">'+svg+(w.showTime?'<div class="hscnow" data-role="now"></div>':'')+'</div><div class="hscrow"><span class="hsct"><svg class="scic" viewBox="0 0 24 24">'+ICONS.sunrise[1]+'</svg><span data-role="val">–</span></span><span class="hsclen" data-role="len"></span><span class="hsct"><svg class="scic" viewBox="0 0 24 24">'+ICONS.sunset[1]+'</svg><span data-role="val2">–</span></span></div></div>';},
     props:function(w){return row('Uhrzeit anzeigen','<input type="checkbox" id="pSunTime"'+(w.showTime?' checked':'')+'>')
