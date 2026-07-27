@@ -222,7 +222,7 @@
     var ser={type:'gauge',min:mn,max:mx,startAngle:ANG[0],endAngle:ANG[1],center:center,radius:radius,
       axisTick:{show:!!w.gticks,distance:2,splitNumber:4,length:4,lineStyle:{color:cssv('--faint'),width:1}},splitLine:{show:!!w.gticks,length:8,lineStyle:{color:cssv('--faint'),width:1}},axisLabel:{show:!!w.gticks,color:cssv('--faint'),fontSize:8,distance:12},anchor:{show:!!w.gknob,showAbove:true,size:9,itemStyle:{color:cssv('--text')}},
       title:{show:!!w.label,offsetCenter:titOff,color:cssv('--muted'),fontSize:10},
-      detail:{valueAnimation:true,fontSize:(isFill?20:19),offsetCenter:detOff,color:cssv('--text'),fontFamily:'ui-monospace,monospace',formatter:(d&&d.f)?String(d.f):'{value}'},
+      detail:{show:(w.gvShow!==false),valueAnimation:true,fontSize:(w.gvsz||(isFill?20:19)),fontWeight:(w.gvfwt||'normal'),fontStyle:(w.gvsty||'normal'),fontFamily:(w.gvff||'ui-monospace,monospace'),offsetCenter:detOff,color:cssv('--text'),formatter:(d&&d.f)?String(d.f):'{value}'},
       data:[{value:val,name:w.label||''}]};
     if(cmode==='graded'&&!isFill){ // Zonen entlang des Bogens, Zeiger zeigt Wert
       ser.axisLine={lineStyle:{width:width,color:[[f1,cssv('--ok')],[f2,cssv('--warm')],[1,cssv('--crit')]]}};
