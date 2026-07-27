@@ -85,10 +85,11 @@
   .htbadge{width:40px;height:40px;flex:none;border-radius:11px;background:color-mix(in oklab,var(--accent) 16%,var(--surface-2));color:var(--accent);display:flex;align-items:center;justify-content:center;padding:8px;transition:.15s}
   .htbadge.on{background:var(--accent);color:#04201b}
   .httext{min-width:0}.htname{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.htstate{font-size:12px;color:var(--muted);font-family:var(--fm)}
-  .hassoc{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:clamp(3px,6cqmin,10px);padding:clamp(6px,9cqmin,16px);box-sizing:border-box;text-align:center;container-type:size}
-  .hassocic{display:flex;align-items:center;justify-content:center;flex:none;width:clamp(20px,34cqmin,40px);height:clamp(20px,34cqmin,40px);color:var(--text)}.hassocic svg{width:74%;height:74%}
-  .hassocv{font-size:clamp(13px,22cqmin,26px);font-weight:700;line-height:1;letter-spacing:.2px}
-  .hassocl{font-size:clamp(9px,10cqmin,13px);font-weight:500;line-height:1.15;color:var(--muted)}
+  .hassoc{position:absolute;inset:0;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:clamp(4px,6cqmin,9px);padding:clamp(8px,10cqmin,16px);padding-left:clamp(13px,13cqmin,20px);box-sizing:border-box;container-type:size;overflow:hidden}
+  .hassoc::before{content:"";position:absolute;left:0;top:0;bottom:0;width:clamp(3px,4cqmin,5px);background:var(--asc-bar,var(--accent))} /* Akzentleiste am linken Rand */
+  .hassocic{display:flex;align-items:center;justify-content:center;flex:none;width:clamp(20px,30cqmin,40px);height:clamp(20px,30cqmin,40px);color:var(--text)}.hassocic svg{width:82%;height:82%}
+  .hassocv{font-size:clamp(14px,20cqmin,24px);font-weight:700;line-height:1;letter-spacing:.2px;align-self:stretch;text-align:left}
+  .hassocl{font-size:clamp(8px,7cqmin,12px);font-weight:500;line-height:1.1;color:var(--muted);align-self:stretch;text-align:left;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .w.assoc-col{transition:background .25s ease,border-color .25s ease}
   .htile-icon{padding:0;gap:0;justify-content:center}
   .htico{width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:var(--accent);padding:6%;box-sizing:border-box;border-radius:var(--r-s);transition:.15s}
@@ -2965,12 +2966,14 @@
     var icEl=el.querySelector('[data-role=aico]');if(icEl)icEl.innerHTML=icon?iconSVG(icon,v):'';
     var vEl=el.querySelector('[data-role=aval]');if(vEl)vEl.textContent=(value==null||value==='')?'–':value;
     var lEl=el.querySelector('[data-role=alabel]');
-    if(strong){                                               // Karte in Skin-Farbe + Kontrasttext
+    if(strong){                                               // Karte in Skin-Farbe + Kontrasttext, Leiste in Kontrastfarbe
       var lum=_lum(sc),txt=(lum!=null&&lum>0.55)?'#141414':'#ffffff';
       el.style.background=sc;el.style.borderColor=sc;el.classList.add('assoc-col');
+      el.style.setProperty('--asc-bar',txt);
       if(icEl)icEl.style.color=txt;if(vEl)vEl.style.color=txt;if(lEl)lEl.style.color=txt;
-    }else{                                                    // normale Kachel (Skin-Default)
+    }else{                                                    // normale Kachel + Akzentleiste in Skin-Farbe (Zustand oder Akzent)
       el.style.background='';el.style.borderColor='';el.classList.remove('assoc-col');
+      el.style.setProperty('--asc-bar',sc||'var(--accent)');
       if(icEl)icEl.style.color='';if(vEl)vEl.style.color='';if(lEl)lEl.style.color='';
     }
   }
