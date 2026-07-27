@@ -26,16 +26,18 @@
     var ovc=(m&&m.color)||(a&&w.assocMap&&w.assocMap[String(a.v)]?w.assocMap[String(a.v)].color:'');
     var key=String(ovc||'').toLowerCase(),isAlarm=/crit|fehler|error|alarm/.test(key);
     var sc=_skinColor(ovc),soft=!!sc&&sc!=='var(--text)'&&!isAlarm;   // sanfte Hervorhebung (getönt) vs. Alarm (Vollfläche)
-    // Zähler (numerischer formatierter Wert): Zahl groß, Zustandstext als Pille.
-    // Zustand (Text aus Profil-Assoziation): Text groß und per amap-"Text" ÜBERSCHREIBBAR.
+    // Zähler (numerisch): Zahl groß, Zustandstext als Pille. Zustand (Text): Text groß (überschreibbar) ODER als Pille (w.stateAs='pill').
+    var asPill=(w.stateAs==='pill');
     var dfTxt=(d&&d.f!=null&&d.f!=='')?String(d.f):'';
     var dfNum=dfTxt!==''&&/^[+\-]?[\d.,\s]+$/.test(dfTxt);
+    var stTxt=(m&&m.text!=null&&m.text!=='')?m.text:((a&&a.name!=null&&a.name!=='')?a.name:(dfTxt||(d?String(d.v):'–')));
     var value,pillTxt;
     if(dfNum){value=dfTxt;pillTxt=(m&&m.text)||(a&&a.name)||'';}
-    else{value=(m&&m.text!=null&&m.text!=='')?m.text:((a&&a.name!=null&&a.name!=='')?a.name:(dfTxt||(d?String(d.v):'–')));pillTxt='';}
+    else if(asPill){value='';pillTxt=stTxt;}
+    else{value=stTxt;pillTxt='';}
     var nav=!!(w.popupTo||w.navTo);
     var chip=el.querySelector('[data-role=aico]');if(chip)chip.innerHTML=icon?iconSVG(icon,v):'';
-    var vEl=el.querySelector('[data-role=aval]');if(vEl)vEl.textContent=(value==null||value==='')?'–':value;
+    var vEl=el.querySelector('[data-role=aval]');if(vEl)vEl.textContent=(value==null||value==='')?(asPill?'':'–'):value;
     var pill=el.querySelector('[data-role=apill]');
     var S=function(k,x){el.style.setProperty(k,x);};
     if(isAlarm){                                              // Alarm: Vollfläche in --crit, weiß, kräftige helle Kante
@@ -58,7 +60,7 @@
         el.style.background='';S('--asc-chip','var(--surface-2)');
       }
       if(pill){
-        if(neutral&&pillTxt){pill.className='hassoc-pill';pill.textContent=pillTxt;S('--asc-pill','color-mix(in oklab,var(--muted) 26%,transparent)');S('--asc-pilltx','var(--text)');}
+        if((neutral||asPill)&&pillTxt){pill.className='hassoc-pill';pill.textContent=pillTxt;S('--asc-pill','color-mix(in oklab,var(--muted) 26%,transparent)');S('--asc-pilltx','var(--text)');}
         else if(nav){pill.className='hassoc-pill chev';pill.innerHTML=_chevSVG('var(--muted)');}
         else{pill.className='hassoc-pill';pill.textContent='';}
       }
@@ -79,6 +81,7 @@
       return '<div class="hassoc" data-role="acard"><div class="hassoc-top">'+chip+pill+'</div><div class="hassoc-btm">'+val+lbl+'</div></div>';},
     props:function(w){var FF=[['system-ui,-apple-system,sans-serif','Sans'],['Georgia,\'Times New Roman\',serif','Serif'],['var(--fm)','Mono'],['\'Segoe UI\',Arial,sans-serif','Segoe/Arial'],['\'Courier New\',monospace','Courier'],['Verdana,sans-serif','Verdana']];
       return row('Anzeige','<select id="pAsShow"><option value="both"'+((w.assocShow||'both')==='both'?' selected':'')+'>Icon + Wert + Label</option><option value="icon"'+(w.assocShow==='icon'?' selected':'')+'>Nur Icon</option><option value="text"'+(w.assocShow==='text'?' selected':'')+'>Wert + Label</option></select>')
+      +row('Zustand als','<select id="pStateAs"><option value="value"'+((w.stateAs||'value')==='value'?' selected':'')+'>Großer Wert</option><option value="pill"'+(w.stateAs==='pill'?' selected':'')+'>Pille</option></select>')
       +listEditor(w,'amap','Manuell: Wert · Icon · Text · Farbe',[{k:'v',ph:'0, >0, 1..5, *'},{k:'icon',ph:'z.B. winopen'},{k:'text',ph:'Text (Pille)'},{k:'color',ph:'ok/warn/crit/text'}])
       +'<div class="hint" style="font-size:11px;color:var(--muted)">Wert: exakt (<b>0</b>, <b>1</b>), Vergleich (<b>&gt;0</b>, <b>&gt;=1</b>, <b>&lt;5</b>, <b>!=0</b>), Bereich (<b>1..5</b>) oder Platzhalter (<b>*</b> = Rest). Exakte Treffer haben Vorrang. Die Spalte <b>Text</b> überschreibt den Zustandstext (Pille) — auch für Profil-Assoziationen (Wert eintragen). Farbe <b>crit</b> = Alarm (rote Vollfläche), sonst getönt mit linker Kante. Icons z. B. winopen/winclosed/wintilt, blindopen/blindclosed, lighton/lightoff.</div>'
       +'<div class="pgh">Schrift Anzahl (Wert)</div>'
@@ -86,6 +89,7 @@
       +row('Gewicht','<select id="pVfwt"><option value="">Standard</option>'+['300','400','500','600','700','800'].map(function(x){return '<option value="'+x+'"'+(w.vfwt===x?' selected':'')+'>'+x+'</option>';}).join('')+'</select>')
       +row('Größe (px)','<input id="pVfsz" type="number" min="0" value="'+(w.vfsz||'')+'" placeholder="auto">');},
     wire:function(w){if($('#pAsShow'))$('#pAsShow').onchange=function(){w.assocShow=this.value;render();refreshAssocLive(w);commit();};
+      if($('#pStateAs'))$('#pStateAs').onchange=function(){w.stateAs=this.value==='value'?undefined:this.value;render();refreshAssocLive(w);commit();};
       if($('#pVff'))$('#pVff').onchange=function(){w.vff=this.value||undefined;render();refreshAssocLive(w);commit();};
       if($('#pVfwt'))$('#pVfwt').onchange=function(){w.vfwt=this.value||undefined;render();refreshAssocLive(w);commit();};
       if($('#pVfsz'))$('#pVfsz').oninput=function(){w.vfsz=parseInt(this.value)||undefined;render();refreshAssocLive(w);commit();};},
