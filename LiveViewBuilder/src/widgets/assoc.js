@@ -19,18 +19,31 @@
         ||(w.amap||[]).filter(function(e){return _assocMatch(e.v,v);})[0];   // dann Operator/Bereich/Platzhalter
     var a=(!m)?assocFor(w,v):null,rr=a?assocResolved(w,a):null;
     var icon=(m&&m.icon)||(rr&&rr.icon)||w.icon||'';
-    // NUR Skin-Farben (passt sich dem Theme an): manuelle/semantische Auswahl sonst Standard-Textfarbe
+    // NUR Skin-Farben (re-theming): manuelle/semantische Auswahl
     var ovc=(m&&m.color)||(a&&w.assocMap&&w.assocMap[String(a.v)]?w.assocMap[String(a.v)].color:'');
-    var color=_skinColor(ovc)||'var(--text)';
-    var text=(m&&m.text!=null&&m.text!=='')?m.text:((d&&d.f!=null&&d.f!=='')?d.f:((a&&a.name!=null)?a.name:(d?String(d.v):'–')));
-    var ic=el.querySelector('[data-role=aico]');if(ic){ic.innerHTML=icon?iconSVG(icon,v):'';ic.style.color=color;}
-    var tx=el.querySelector('[data-role=atx]');if(tx){tx.textContent=(text==null||text==='')?'–':text;tx.style.color=color;}
+    var sc=_skinColor(ovc),strong=!!sc&&sc!=='var(--text)';   // starke Farbe -> ganze Karte einfärben
+    var value=(m&&m.text!=null&&m.text!=='')?m.text:((d&&d.f!=null&&d.f!=='')?d.f:((a&&a.name!=null)?a.name:(d?String(d.v):'–')));
+    var icEl=el.querySelector('[data-role=aico]');if(icEl)icEl.innerHTML=icon?iconSVG(icon,v):'';
+    var vEl=el.querySelector('[data-role=aval]');if(vEl)vEl.textContent=(value==null||value==='')?'–':value;
+    var lEl=el.querySelector('[data-role=alabel]');
+    if(strong){                                               // Karte in Skin-Farbe + Kontrasttext
+      var lum=_lum(sc),txt=(lum!=null&&lum>0.55)?'#141414':'#ffffff';
+      el.style.background=sc;el.style.borderColor=sc;el.classList.add('assoc-col');
+      if(icEl)icEl.style.color=txt;if(vEl)vEl.style.color=txt;if(lEl)lEl.style.color=txt;
+    }else{                                                    // normale Kachel (Skin-Default)
+      el.style.background='';el.style.borderColor='';el.classList.remove('assoc-col');
+      if(icEl)icEl.style.color='';if(vEl)vEl.style.color='';if(lEl)lEl.style.color='';
+    }
   }
   defWidget('assoc',{
     label:'Zustand', paletteIcon:'toggleon', size:[130,120],
     defaults:function(w){w.assocShow='both';},
-    render:function(w){var s=w.assocShow||'both';return '<div class="hassoc'+(s==='both'?'':' one')+'"><span class="hassocic" data-role="aico"'+(s==='text'?' style="display:none"':'')+'>'+(w.icon?iconSVG(w.icon):'')+'</span><span class="hassoctx" data-role="atx"'+(s==='icon'?' style="display:none"':'')+'>'+esc(w.label||'–')+'</span></div>';},
-    props:function(w){return row('Anzeige','<select id="pAsShow"><option value="both"'+((w.assocShow||'both')==='both'?' selected':'')+'>Icon + Text</option><option value="icon"'+(w.assocShow==='icon'?' selected':'')+'>Nur Icon</option><option value="text"'+(w.assocShow==='text'?' selected':'')+'>Nur Text</option></select>')
+    render:function(w){var s=w.assocShow||'both';
+      var ic=(s!=='text')?'<span class="hassocic" data-role="aico">'+(w.icon?iconSVG(w.icon):'')+'</span>':'';
+      var val=(s!=='icon')?'<span class="hassocv" data-role="aval">–</span>':'';
+      var lbl=(s!=='icon'&&w.label)?'<span class="hassocl" data-role="alabel">'+esc(w.label)+'</span>':'';
+      return '<div class="hassoc" data-role="acard">'+ic+val+lbl+'</div>';},
+    props:function(w){return row('Anzeige','<select id="pAsShow"><option value="both"'+((w.assocShow||'both')==='both'?' selected':'')+'>Icon + Wert + Label</option><option value="icon"'+(w.assocShow==='icon'?' selected':'')+'>Nur Icon</option><option value="text"'+(w.assocShow==='text'?' selected':'')+'>Wert + Label</option></select>')
       +listEditor(w,'amap','Manuell: Wert · Icon · Text · Farbe',[{k:'v',ph:'0, >0, 1..5, *'},{k:'icon',ph:'z.B. winopen'},{k:'text',ph:'Text'},{k:'color',ph:'ok/warn/crit/text'}])
       +'<div class="hint" style="font-size:11px;color:var(--muted)">Wert: exakt (<b>0</b>, <b>1</b>), Vergleich (<b>&gt;0</b>, <b>&gt;=1</b>, <b>&lt;5</b>, <b>!=0</b>), Bereich (<b>1..5</b>) oder Platzhalter (<b>*</b> = Rest). Exakte Treffer haben Vorrang. Ganz ohne Zeilen = Profil-Assoziationen der Variable. Icons z. B. winopen/winclosed/wintilt, blindopen/blindclosed, lighton/lightoff.</div>';},
     wire:function(w){if($('#pAsShow'))$('#pAsShow').onchange=function(){w.assocShow=this.value;render();refreshAssocLive(w);commit();};},
