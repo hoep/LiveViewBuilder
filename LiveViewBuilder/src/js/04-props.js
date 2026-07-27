@@ -209,8 +209,9 @@
   function applyGeom(w){var el=$('.w[data-id="'+w.id+'"]',canvas);if(el){el.style.left=w.x+'px';el.style.top=w.y+'px';el.style.width=w.w+'px';el.style.height=w.h+'px';if(_ec[w.id])_ec[w.id].resize();if(w.type==='html'&&(w.htmlFit==='width'||w.htmlFit==='both'))applyHtmlScale(w);}}
   function clearGuides(){$$('.guide',canvas).forEach(function(e){e.remove();});}
   function drawGuide(dir,pos){var g=document.createElement('div');g.className='guide '+dir;if(dir==='v'){g.style.left=pos+'px';g.style.top='0';g.style.height=state.page.h+'px';}else{g.style.top=pos+'px';g.style.left='0';g.style.width=state.page.w+'px';}canvas.appendChild(g);}
-  function snapAlign(items,dx,dy){
+  function snapAlign(items,dx,dy,noSnap){
     var TH=6,it=items[0],w=it.w,nx=it.ox+dx,ny=it.oy+dy;
+    if(noSnap){clearGuides();return {dx:gridOn?snap(dx):Math.round(dx),dy:gridOn?snap(dy):Math.round(dy)};} // Alt: Snapping aus
     var others=state.widgets.filter(function(o){return !sel[o.id];});
     var ax=null,ay=null,gx=null,gy=null;
     var xs=[[nx,0],[nx+w.w,w.w],[nx+w.w/2,w.w/2]],ys=[[ny,0],[ny+w.h,w.h],[ny+w.h/2,w.h/2]];
@@ -230,6 +231,28 @@
     var fdy=(ay!==null)?ay:(gridOn?snap(dy):Math.round(dy));
     if(gx!==null)drawGuide('v',gx);if(gy!==null)drawGuide('h',gy);
     return {dx:fdx,dy:fdy};
+  }
+  // Resize-Snapping: bewegte Kante an Kanten anderer Widgets einrasten; sonst Breite/Höhe an andere Widgets angleichen.
+  function snapResize(drag,dir,nw,nh,noSnap){
+    var res={w:nw,h:nh,gx:null,gy:null};
+    if(noSnap){res.w=gridOn?snap(nw):Math.round(nw);res.h=gridOn?snap(nh):Math.round(nh);return res;} // Alt: Snapping aus
+    var TH=6,others=state.widgets.filter(function(o){return !sel[o.id]&&o!==drag.w;});
+    var lo=drag.ox,ro=drag.ox+drag.ow,to=drag.oy,bo=drag.oy+drag.oh; // feste Gegenkante beim Resizen
+    // ---- Breite ----
+    if(dir.indexOf('e')>=0||dir.indexOf('w')>=0){
+      var edge=(dir.indexOf('e')>=0)?(lo+nw):(ro-nw),bestE=null;   // bewegte X-Kante
+      others.forEach(function(o){[o.x,o.x+o.w].forEach(function(px){var d=Math.abs(px-edge);if(d<=TH&&(!bestE||d<bestE.d))bestE={d:d,px:px};});});
+      if(bestE){res.gx=bestE.px;res.w=(dir.indexOf('e')>=0)?(bestE.px-lo):(ro-bestE.px);}
+      else{others.forEach(function(o){if(res.gx===null&&Math.abs(o.w-nw)<=TH)res.w=o.w;});} // Breite angleichen (z. B. Element darüber)
+    }
+    // ---- Höhe ----
+    if(dir.indexOf('s')>=0||dir.indexOf('n')>=0){
+      var edgeY=(dir.indexOf('s')>=0)?(to+nh):(bo-nh),bestY=null;  // bewegte Y-Kante
+      others.forEach(function(o){[o.y,o.y+o.h].forEach(function(py){var d=Math.abs(py-edgeY);if(d<=TH&&(!bestY||d<bestY.d))bestY={d:d,py:py};});});
+      if(bestY){res.gy=bestY.py;res.h=(dir.indexOf('s')>=0)?(bestY.py-to):(bo-bestY.py);}
+      else{others.forEach(function(o){if(res.gy===null&&Math.abs(o.h-nh)<=TH)res.h=o.h;});} // Höhe angleichen (z. B. Element links)
+    }
+    return res;
   }
   function addCopies(src){if(!src.length)return;var copies=src.map(function(w){var c=JSON.parse(JSON.stringify(w));c.id=uid();c.x=(c.x||0)+16;c.y=(c.y||0)+16;delete c.name;delete c.hidden;return c;});copies.forEach(function(c){state.widgets.push(c);});sel={};copies.forEach(function(c){sel[c.id]=true;});selId=copies.slice(-1)[0].id;render();renderProps();commit();}
   // Ausrichten / Verteilen (auf die aktuelle Mehrfachauswahl)
@@ -281,11 +304,13 @@
     if(drag.mode==='rz'){var dir=drag.dir||'se',nx=drag.ox,ny=drag.oy,nw=drag.ow,nh=drag.oh;
       if(dir.indexOf('e')>=0)nw=drag.ow+dx; if(dir.indexOf('w')>=0)nw=drag.ow-dx;
       if(dir.indexOf('s')>=0)nh=drag.oh+dy; if(dir.indexOf('n')>=0)nh=drag.oh-dy;
-      nw=snap(Math.max(40,nw));nh=snap(Math.max(28,nh));
+      var sr=snapResize(drag,dir,Math.max(40,nw),Math.max(28,nh),e.altKey); // Kanten-/Größen-Snapping (Alt = aus)
+      nw=Math.max(40,sr.w);nh=Math.max(28,sr.h);clearGuides();
+      if(sr.gx!==null)drawGuide('v',sr.gx);if(sr.gy!==null)drawGuide('h',sr.gy);
       if(dir.indexOf('w')>=0)nx=drag.ox+drag.ow-nw; // rechte Kante fix
       if(dir.indexOf('n')>=0)ny=drag.oy+drag.oh-nh; // untere Kante fix
-      drag.w.x=Math.max(0,nx);drag.w.y=Math.max(0,ny);drag.w.w=nw;drag.w.h=nh;applyGeom(drag.w);badge(e,nw+' × '+nh+' px');return;}
-    var g=snapAlign(drag.items,dx,dy);
+      drag.w.x=Math.max(0,nx);drag.w.y=Math.max(0,ny);drag.w.w=Math.round(nw);drag.w.h=Math.round(nh);applyGeom(drag.w);badge(e,Math.round(nw)+' × '+Math.round(nh)+' px');return;}
+    var g=snapAlign(drag.items,dx,dy,e.altKey);
     drag.items.forEach(function(it){it.w.x=Math.max(0,it.ox+g.dx);it.w.y=Math.max(0,it.oy+g.dy);applyGeom(it.w);});
     badge(e,Math.round(drag.items[0].w.x)+' , '+Math.round(drag.items[0].w.y));
   });
