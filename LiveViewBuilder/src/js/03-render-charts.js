@@ -546,6 +546,7 @@
   function undo(){if(hpos>0){hpos--;applyHist();}}
   function redo(){if(hpos<hist.length-1){hpos++;applyHist();}}
   function selClear(){sel={};selId=null;}
+  function _grpMaster(mem){var e=mem.filter(function(m){return m.gmaster;})[0];if(e)return e;var b=mem[0];for(var i=1;i<mem.length;i++)if((mem[i].w*mem[i].h)>(b.w*b.h))b=mem[i];return b;} // Master = gesetzt, sonst flächengrößtes
   function updateGroupBoxes(){ // gestrichelter Rahmen um ausgewählte Gruppe(n) + Master-Marker
     $$('.groupbox,.gmbadge',canvas).forEach(function(e){e.remove();});
     if(mode!=='edit')return;
@@ -553,7 +554,7 @@
     for(var g in groups){var mem=state.widgets.filter(function(x){return x.group===g;});if(mem.length<2)continue;
       var bx=1e9,by=1e9,bR=-1e9,bB=-1e9;mem.forEach(function(m){if(m.x<bx)bx=m.x;if(m.y<by)by=m.y;if(m.x+m.w>bR)bR=m.x+m.w;if(m.y+m.h>bB)bB=m.y+m.h;});
       var pad=5,d=document.createElement('div');d.className='groupbox';d.style.left=(bx-pad)+'px';d.style.top=(by-pad)+'px';d.style.width=(bR-bx+2*pad)+'px';d.style.height=(bB-by+2*pad)+'px';canvas.appendChild(d);
-      var mm=mem.filter(function(x){return x.gmaster;})[0]||mem[0];
+      var mm=_grpMaster(mem);
       if(mm){var b=document.createElement('div');b.className='gmbadge';b.textContent='M';b.title='Master';b.style.left=mm.x+'px';b.style.top=mm.y+'px';canvas.appendChild(b);}
     }
   }
