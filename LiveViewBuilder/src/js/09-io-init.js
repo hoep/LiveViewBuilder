@@ -223,7 +223,7 @@
   function reflowFit(vw,vh){
     var p=state.page,S=sfStructure(p),c=sfCfg(p),order=[],stretched=[],ALL=state.widgets;
     S.bands.forEach(function(b){order=order.concat(b);});
-    order=order.filter(function(w){return !w.reflowHide&&!_reflowOverlay(w,ALL);}); // Overlays/ausgeblendete raus
+    order=order.filter(function(w){return !w.reflowHide&&(!!w.group||!_reflowOverlay(w,ALL));}); // Overlays raus – ausser gruppiert (Kinder bleiben am Master)
     // Flow-Packing nach echter Breite. Gruppen zählen als EIN Block (Bounding-Box), bleiben also zusammen.
     var M=8,G=8,AW=vw-2*M,i;
     var seen={},units=[];

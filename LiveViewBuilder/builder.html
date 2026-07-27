@@ -220,6 +220,7 @@
   .w [data-role=html]{font-size:12px}
   .marquee{position:absolute;border:1px solid var(--accent);background:color-mix(in oklab,var(--accent) 14%,transparent);z-index:50;pointer-events:none}
   .groupbox{position:absolute;border:1.5px dashed var(--accent);border-radius:7px;z-index:6;pointer-events:none;opacity:.75}
+  .gmbadge{position:absolute;z-index:7;pointer-events:none;transform:translate(-2px,-2px);background:var(--accent);color:#06231f;font:700 10px/1 var(--fu,sans-serif);padding:2px 4px;border-radius:5px}
   .guide{position:absolute;background:var(--accent);z-index:60;pointer-events:none;opacity:.9}
   .guide.v{width:1px}.guide.h{height:1px}
   /* Runtime-Modus (Vollbild-Anzeige einer View) */
@@ -1817,13 +1818,16 @@
   function undo(){if(hpos>0){hpos--;applyHist();}}
   function redo(){if(hpos<hist.length-1){hpos++;applyHist();}}
   function selClear(){sel={};selId=null;}
-  function updateGroupBoxes(){ // gestrichelter Rahmen um ausgewählte Gruppe(n)
-    $$('.groupbox',canvas).forEach(function(e){e.remove();});
+  function updateGroupBoxes(){ // gestrichelter Rahmen um ausgewählte Gruppe(n) + Master-Marker
+    $$('.groupbox,.gmbadge',canvas).forEach(function(e){e.remove();});
     if(mode!=='edit')return;
     var groups={};Object.keys(sel).forEach(function(id){var w=widget(id);if(w&&w.group)groups[w.group]=1;});
     for(var g in groups){var mem=state.widgets.filter(function(x){return x.group===g;});if(mem.length<2)continue;
       var bx=1e9,by=1e9,bR=-1e9,bB=-1e9;mem.forEach(function(m){if(m.x<bx)bx=m.x;if(m.y<by)by=m.y;if(m.x+m.w>bR)bR=m.x+m.w;if(m.y+m.h>bB)bB=m.y+m.h;});
-      var pad=5,d=document.createElement('div');d.className='groupbox';d.style.left=(bx-pad)+'px';d.style.top=(by-pad)+'px';d.style.width=(bR-bx+2*pad)+'px';d.style.height=(bB-by+2*pad)+'px';canvas.appendChild(d);}
+      var pad=5,d=document.createElement('div');d.className='groupbox';d.style.left=(bx-pad)+'px';d.style.top=(by-pad)+'px';d.style.width=(bR-bx+2*pad)+'px';d.style.height=(bB-by+2*pad)+'px';canvas.appendChild(d);
+      var mm=mem.filter(function(x){return x.gmaster;})[0]||mem[0];
+      if(mm){var b=document.createElement('div');b.className='gmbadge';b.textContent='M';b.title='Master';b.style.left=mm.x+'px';b.style.top=mm.y+'px';canvas.appendChild(b);}
+    }
   }
   function markSel(){$$('.w',canvas).forEach(function(e){e.classList.toggle('sel',!!sel[e.dataset.id]);});updateGroupBoxes();}
   function select(id,additive){
@@ -2208,8 +2212,11 @@
       ws.forEach(function(w,i){if(i>0&&i<ws.length-1)w.y=Math.round(d0+st*i-w.h/2);});}
     render();renderProps();
   }
-  function groupSel(){var ws=selWidgets();if(ws.length<2){toast('Mind. 2 Elemente wählen');return;}var gid='g'+uid();ws.forEach(function(w){w.group=gid;});renderProps();commit();toast(ws.length+' gruppiert');}
-  function ungroupSel(){var ws=selWidgets(),n=0;ws.forEach(function(w){if(w.group){delete w.group;n++;}});if(n){renderProps();commit();toast('Gruppierung aufgehoben');}}
+  function groupSel(){var ws=selWidgets();if(ws.length<2){toast('Mind. 2 Elemente wählen');return;}
+    var gid='g'+uid();ws.forEach(function(w){w.group=gid;delete w.gmaster;});
+    var mId=Object.keys(sel)[0],mw=mId?widget(mId):ws[0];if(mw)mw.gmaster=true; // erstes gewähltes = Master
+    render();renderProps();commit();toast(ws.length+' gruppiert (Master: '+((mw&&(mw.name||mw.label))||mw&&mw.type||'?')+')');}
+  function ungroupSel(){var ws=selWidgets(),n=0;ws.forEach(function(w){if(w.group){delete w.group;delete w.gmaster;n++;}});if(n){render();renderProps();commit();toast('Gruppierung aufgehoben');}}
   function alignSection(){
     var b=function(a,ic,ti){return '<button class="btn" data-al="'+a+'" title="'+ti+'" style="padding:6px;flex:1"><svg class="i"><use href="#ic-'+ic+'"/></svg></button>';};
     return '<div class="prop" style="margin-bottom:10px"><div style="font-size:11px;color:var(--muted);margin-bottom:4px">Ausrichten &amp; Verteilen ('+Object.keys(sel).length+')</div>'
@@ -2929,7 +2936,7 @@
   function reflowFit(vw,vh){
     var p=state.page,S=sfStructure(p),c=sfCfg(p),order=[],stretched=[],ALL=state.widgets;
     S.bands.forEach(function(b){order=order.concat(b);});
-    order=order.filter(function(w){return !w.reflowHide&&!_reflowOverlay(w,ALL);}); // Overlays/ausgeblendete raus
+    order=order.filter(function(w){return !w.reflowHide&&(!!w.group||!_reflowOverlay(w,ALL));}); // Overlays raus – ausser gruppiert (Kinder bleiben am Master)
     // Flow-Packing nach echter Breite. Gruppen zählen als EIN Block (Bounding-Box), bleiben also zusammen.
     var M=8,G=8,AW=vw-2*M,i;
     var seen={},units=[];
