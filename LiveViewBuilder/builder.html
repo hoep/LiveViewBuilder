@@ -85,11 +85,16 @@
   .htbadge{width:40px;height:40px;flex:none;border-radius:11px;background:color-mix(in oklab,var(--accent) 16%,var(--surface-2));color:var(--accent);display:flex;align-items:center;justify-content:center;padding:8px;transition:.15s}
   .htbadge.on{background:var(--accent);color:#04201b}
   .httext{min-width:0}.htname{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.htstate{font-size:12px;color:var(--muted);font-family:var(--fm)}
-  .hassoc{position:absolute;inset:0;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:clamp(4px,6cqmin,9px);padding:clamp(8px,10cqmin,16px);padding-left:clamp(13px,13cqmin,20px);box-sizing:border-box;container-type:size;overflow:hidden}
-  .hassoc::before{content:"";position:absolute;left:0;top:0;bottom:0;width:clamp(3px,4cqmin,5px);background:var(--asc-bar,var(--accent))} /* Akzentleiste am linken Rand */
-  .hassocic{display:flex;align-items:center;justify-content:center;flex:none;width:clamp(20px,30cqmin,40px);height:clamp(20px,30cqmin,40px);color:var(--text)}.hassocic svg{width:82%;height:82%}
-  .hassocv{font-size:clamp(14px,20cqmin,24px);font-weight:700;line-height:1;letter-spacing:.2px;align-self:stretch;text-align:left}
-  .hassocl{font-size:clamp(8px,7cqmin,12px);font-weight:500;line-height:1.1;color:var(--muted);align-self:stretch;text-align:left;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .hassoc{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:space-between;gap:clamp(6px,6cqmin,10px);padding:clamp(10px,10cqmin,16px);box-sizing:border-box;container-type:size;overflow:hidden}
+  .hassoc-top{display:flex;align-items:flex-start;justify-content:space-between;gap:6px}
+  .hassoc-chip{display:flex;align-items:center;justify-content:center;flex:none;width:clamp(28px,28cqmin,48px);height:clamp(28px,28cqmin,48px);border-radius:clamp(8px,7cqmin,13px);background:var(--asc-chip,var(--surface-2));color:var(--asc-ic,var(--muted))}
+  .hassoc-chip svg{width:56%;height:56%}
+  .hassoc-pill{font-size:clamp(8px,6.5cqmin,11px);font-weight:700;text-transform:uppercase;letter-spacing:.03em;line-height:1;padding:4px 8px;border-radius:999px;background:var(--asc-pill,transparent);color:var(--asc-pilltx,transparent);white-space:nowrap;align-self:flex-start}
+  .hassoc-pill:empty{padding:0}
+  .hassoc-pill.chev{background:none!important;padding:0}
+  .hassoc-btm{display:flex;flex-direction:column;gap:clamp(1px,2cqmin,4px);min-width:0}
+  .hassocv{font-size:clamp(20px,26cqmin,40px);font-weight:700;line-height:1;color:var(--asc-val,var(--text))}
+  .hassocl{font-size:clamp(9px,8cqmin,14px);font-weight:500;line-height:1.1;color:var(--asc-lab,var(--muted));overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .w.assoc-col{transition:background .25s ease,border-color .25s ease}
   .htile-icon{padding:0;gap:0;justify-content:center}
   .htico{width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:var(--accent);padding:6%;box-sizing:border-box;border-radius:var(--r-s);transition:.15s}
@@ -2956,38 +2961,45 @@
   // Kontrasttext (weiß/dunkel) für eine (auch als var(--x) angegebene) Farbe via YIQ-Helligkeit
   var _ascProbe;
   function _contrastText(col){try{if(!_ascProbe){_ascProbe=document.createElement('span');_ascProbe.style.cssText='position:absolute;left:-9999px;top:-9999px';document.body.appendChild(_ascProbe);}_ascProbe.style.color='#7f7f7f';_ascProbe.style.color=col;var m=getComputedStyle(_ascProbe).color.match(/(\d+)\D+(\d+)\D+(\d+)/);if(!m)return '#ffffff';var yiq=(+m[1]*299+ +m[2]*587+ +m[3]*114)/1000;return yiq>=150?'#141414':'#ffffff';}catch(e){return '#ffffff';}}
+  function _chevSVG(c){return '<svg viewBox="0 0 24 24" style="width:16px;height:16px;fill:none;stroke:'+c+';stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="M9 6l6 6l-6 6"/></svg>';}
   function _assocWid(w){var el=$('.w[data-id="'+w.id+'"]',canvas);if(!el)return;
     var d=w.varId&&_lastVals[w.varId],v=d?d.v:null;
     var m=(w.amap||[]).filter(function(e){return _assocEq(e.v,v);})[0]      // exakter Treffer zuerst
         ||(w.amap||[]).filter(function(e){return _assocMatch(e.v,v);})[0];   // dann Operator/Bereich/Platzhalter
     var a=(!m)?assocFor(w,v):null,rr=a?assocResolved(w,a):null;
     var icon=(m&&m.icon)||(rr&&rr.icon)||w.icon||'';
-    // NUR Skin-Farben (re-theming): manuelle/semantische Auswahl
     var ovc=(m&&m.color)||(a&&w.assocMap&&w.assocMap[String(a.v)]?w.assocMap[String(a.v)].color:'');
-    var sc=_skinColor(ovc),strong=!!sc&&sc!=='var(--text)';   // starke Farbe -> ganze Karte einfärben
-    var value=(m&&m.text!=null&&m.text!=='')?m.text:((d&&d.f!=null&&d.f!=='')?d.f:((a&&a.name!=null)?a.name:(d?String(d.v):'–')));
-    var icEl=el.querySelector('[data-role=aico]');if(icEl)icEl.innerHTML=icon?iconSVG(icon,v):'';
+    var key=String(ovc||'').toLowerCase(),isAlarm=/crit|fehler|error|alarm/.test(key);
+    var sc=_skinColor(ovc),soft=!!sc&&sc!=='var(--text)'&&!isAlarm;   // sanfte Hervorhebung (getönt) vs. Alarm (Vollfläche)
+    var value=(d&&d.f!=null&&d.f!=='')?d.f:((m&&m.text!=null&&m.text!=='')?m.text:((a&&a.name!=null)?a.name:(d?String(d.v):'–')));
+    var pillTxt=(m&&m.text)||(a&&a.name)||'',nav=!!(w.popupTo||w.navTo);
+    var chip=el.querySelector('[data-role=aico]');if(chip)chip.innerHTML=icon?iconSVG(icon,v):'';
     var vEl=el.querySelector('[data-role=aval]');if(vEl)vEl.textContent=(value==null||value==='')?'–':value;
-    var lEl=el.querySelector('[data-role=alabel]');
-    if(strong){                                               // Karte in Skin-Farbe + Kontrasttext, Leiste in Kontrastfarbe
-      var txt=_contrastText(sc);
-      el.style.background=sc;el.style.borderColor=sc;el.classList.add('assoc-col');
-      el.style.setProperty('--asc-bar',txt);
-      if(icEl)icEl.style.color=txt;if(vEl)vEl.style.color=txt;if(lEl)lEl.style.color=txt;
-    }else{                                                    // normale Kachel + Akzentleiste in Skin-Farbe (Zustand oder Akzent)
+    var pill=el.querySelector('[data-role=apill]');
+    var S=function(k,x){el.style.setProperty(k,x);};
+    if(isAlarm){                                              // Alarm: Vollfläche in --crit, weiß
+      el.style.background=sc||'var(--crit)';el.style.borderColor=sc||'var(--crit)';el.classList.add('assoc-col');
+      S('--asc-chip','rgba(255,255,255,.20)');S('--asc-ic','#fff');S('--asc-val','#fff');S('--asc-lab','rgba(255,255,255,.85)');
+      if(pill){if(nav){pill.className='hassoc-pill chev';pill.innerHTML=_chevSVG('#fff');}else{pill.className='hassoc-pill';pill.textContent='';}}
+    }else if(soft){                                           // aktiv: getönter Hintergrund + farbiger Rahmen + Pille
+      el.style.background='color-mix(in oklab,'+sc+' 13%,var(--surface))';el.style.borderColor='color-mix(in oklab,'+sc+' 45%,var(--line))';el.classList.add('assoc-col');
+      S('--asc-chip','color-mix(in oklab,'+sc+' 22%,transparent)');S('--asc-ic',sc);S('--asc-val',sc);S('--asc-lab','color-mix(in oklab,'+sc+' 60%,var(--muted))');
+      if(pill){if(pillTxt){pill.className='hassoc-pill';pill.textContent=pillTxt;S('--asc-pill',sc);S('--asc-pilltx',_contrastText(sc));}else if(nav){pill.className='hassoc-pill chev';pill.innerHTML=_chevSVG(sc);}else{pill.className='hassoc-pill';pill.textContent='';}}
+    }else{                                                    // normal: neutrale Kachel
       el.style.background='';el.style.borderColor='';el.classList.remove('assoc-col');
-      el.style.setProperty('--asc-bar',sc||'var(--accent)');
-      if(icEl)icEl.style.color='';if(vEl)vEl.style.color='';if(lEl)lEl.style.color='';
+      S('--asc-chip','var(--surface-2)');S('--asc-ic','var(--muted)');S('--asc-val','var(--text)');S('--asc-lab','var(--muted)');
+      if(pill){if(nav){pill.className='hassoc-pill chev';pill.innerHTML=_chevSVG('var(--muted)');}else{pill.className='hassoc-pill';pill.textContent='';}}
     }
   }
   defWidget('assoc',{
     label:'Zustand', paletteIcon:'toggleon', size:[130,120],
     defaults:function(w){w.assocShow='both';},
     render:function(w){var s=w.assocShow||'both';
-      var ic=(s!=='text')?'<span class="hassocic" data-role="aico">'+(w.icon?iconSVG(w.icon):'')+'</span>':'';
-      var val=(s!=='icon')?'<span class="hassocv" data-role="aval">–</span>':'';
-      var lbl=(s!=='icon'&&w.label)?'<span class="hassocl" data-role="alabel">'+esc(w.label)+'</span>':'';
-      return '<div class="hassoc" data-role="acard">'+ic+val+lbl+'</div>';},
+      var chip=(s!=='text')?'<span class="hassoc-chip" data-role="aico">'+(w.icon?iconSVG(w.icon):'')+'</span>':'';
+      var pill='<span class="hassoc-pill" data-role="apill"></span>';
+      var val='<div class="hassocv" data-role="aval">–</div>';
+      var lbl=(s!=='icon'&&w.label)?'<div class="hassocl" data-role="alabel">'+esc(w.label)+'</div>':'';
+      return '<div class="hassoc" data-role="acard"><div class="hassoc-top">'+chip+pill+'</div><div class="hassoc-btm">'+val+lbl+'</div></div>';},
     props:function(w){return row('Anzeige','<select id="pAsShow"><option value="both"'+((w.assocShow||'both')==='both'?' selected':'')+'>Icon + Wert + Label</option><option value="icon"'+(w.assocShow==='icon'?' selected':'')+'>Nur Icon</option><option value="text"'+(w.assocShow==='text'?' selected':'')+'>Wert + Label</option></select>')
       +listEditor(w,'amap','Manuell: Wert · Icon · Text · Farbe',[{k:'v',ph:'0, >0, 1..5, *'},{k:'icon',ph:'z.B. winopen'},{k:'text',ph:'Text'},{k:'color',ph:'ok/warn/crit/text'}])
       +'<div class="hint" style="font-size:11px;color:var(--muted)">Wert: exakt (<b>0</b>, <b>1</b>), Vergleich (<b>&gt;0</b>, <b>&gt;=1</b>, <b>&lt;5</b>, <b>!=0</b>), Bereich (<b>1..5</b>) oder Platzhalter (<b>*</b> = Rest). Exakte Treffer haben Vorrang. Ganz ohne Zeilen = Profil-Assoziationen der Variable. Icons z. B. winopen/winclosed/wintilt, blindopen/blindclosed, lighton/lightoff.</div>';},

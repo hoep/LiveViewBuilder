@@ -16,38 +16,45 @@
   // Kontrasttext (weiß/dunkel) für eine (auch als var(--x) angegebene) Farbe via YIQ-Helligkeit
   var _ascProbe;
   function _contrastText(col){try{if(!_ascProbe){_ascProbe=document.createElement('span');_ascProbe.style.cssText='position:absolute;left:-9999px;top:-9999px';document.body.appendChild(_ascProbe);}_ascProbe.style.color='#7f7f7f';_ascProbe.style.color=col;var m=getComputedStyle(_ascProbe).color.match(/(\d+)\D+(\d+)\D+(\d+)/);if(!m)return '#ffffff';var yiq=(+m[1]*299+ +m[2]*587+ +m[3]*114)/1000;return yiq>=150?'#141414':'#ffffff';}catch(e){return '#ffffff';}}
+  function _chevSVG(c){return '<svg viewBox="0 0 24 24" style="width:16px;height:16px;fill:none;stroke:'+c+';stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="M9 6l6 6l-6 6"/></svg>';}
   function _assocWid(w){var el=$('.w[data-id="'+w.id+'"]',canvas);if(!el)return;
     var d=w.varId&&_lastVals[w.varId],v=d?d.v:null;
     var m=(w.amap||[]).filter(function(e){return _assocEq(e.v,v);})[0]      // exakter Treffer zuerst
         ||(w.amap||[]).filter(function(e){return _assocMatch(e.v,v);})[0];   // dann Operator/Bereich/Platzhalter
     var a=(!m)?assocFor(w,v):null,rr=a?assocResolved(w,a):null;
     var icon=(m&&m.icon)||(rr&&rr.icon)||w.icon||'';
-    // NUR Skin-Farben (re-theming): manuelle/semantische Auswahl
     var ovc=(m&&m.color)||(a&&w.assocMap&&w.assocMap[String(a.v)]?w.assocMap[String(a.v)].color:'');
-    var sc=_skinColor(ovc),strong=!!sc&&sc!=='var(--text)';   // starke Farbe -> ganze Karte einfärben
-    var value=(m&&m.text!=null&&m.text!=='')?m.text:((d&&d.f!=null&&d.f!=='')?d.f:((a&&a.name!=null)?a.name:(d?String(d.v):'–')));
-    var icEl=el.querySelector('[data-role=aico]');if(icEl)icEl.innerHTML=icon?iconSVG(icon,v):'';
+    var key=String(ovc||'').toLowerCase(),isAlarm=/crit|fehler|error|alarm/.test(key);
+    var sc=_skinColor(ovc),soft=!!sc&&sc!=='var(--text)'&&!isAlarm;   // sanfte Hervorhebung (getönt) vs. Alarm (Vollfläche)
+    var value=(d&&d.f!=null&&d.f!=='')?d.f:((m&&m.text!=null&&m.text!=='')?m.text:((a&&a.name!=null)?a.name:(d?String(d.v):'–')));
+    var pillTxt=(m&&m.text)||(a&&a.name)||'',nav=!!(w.popupTo||w.navTo);
+    var chip=el.querySelector('[data-role=aico]');if(chip)chip.innerHTML=icon?iconSVG(icon,v):'';
     var vEl=el.querySelector('[data-role=aval]');if(vEl)vEl.textContent=(value==null||value==='')?'–':value;
-    var lEl=el.querySelector('[data-role=alabel]');
-    if(strong){                                               // Karte in Skin-Farbe + Kontrasttext, Leiste in Kontrastfarbe
-      var txt=_contrastText(sc);
-      el.style.background=sc;el.style.borderColor=sc;el.classList.add('assoc-col');
-      el.style.setProperty('--asc-bar',txt);
-      if(icEl)icEl.style.color=txt;if(vEl)vEl.style.color=txt;if(lEl)lEl.style.color=txt;
-    }else{                                                    // normale Kachel + Akzentleiste in Skin-Farbe (Zustand oder Akzent)
+    var pill=el.querySelector('[data-role=apill]');
+    var S=function(k,x){el.style.setProperty(k,x);};
+    if(isAlarm){                                              // Alarm: Vollfläche in --crit, weiß
+      el.style.background=sc||'var(--crit)';el.style.borderColor=sc||'var(--crit)';el.classList.add('assoc-col');
+      S('--asc-chip','rgba(255,255,255,.20)');S('--asc-ic','#fff');S('--asc-val','#fff');S('--asc-lab','rgba(255,255,255,.85)');
+      if(pill){if(nav){pill.className='hassoc-pill chev';pill.innerHTML=_chevSVG('#fff');}else{pill.className='hassoc-pill';pill.textContent='';}}
+    }else if(soft){                                           // aktiv: getönter Hintergrund + farbiger Rahmen + Pille
+      el.style.background='color-mix(in oklab,'+sc+' 13%,var(--surface))';el.style.borderColor='color-mix(in oklab,'+sc+' 45%,var(--line))';el.classList.add('assoc-col');
+      S('--asc-chip','color-mix(in oklab,'+sc+' 22%,transparent)');S('--asc-ic',sc);S('--asc-val',sc);S('--asc-lab','color-mix(in oklab,'+sc+' 60%,var(--muted))');
+      if(pill){if(pillTxt){pill.className='hassoc-pill';pill.textContent=pillTxt;S('--asc-pill',sc);S('--asc-pilltx',_contrastText(sc));}else if(nav){pill.className='hassoc-pill chev';pill.innerHTML=_chevSVG(sc);}else{pill.className='hassoc-pill';pill.textContent='';}}
+    }else{                                                    // normal: neutrale Kachel
       el.style.background='';el.style.borderColor='';el.classList.remove('assoc-col');
-      el.style.setProperty('--asc-bar',sc||'var(--accent)');
-      if(icEl)icEl.style.color='';if(vEl)vEl.style.color='';if(lEl)lEl.style.color='';
+      S('--asc-chip','var(--surface-2)');S('--asc-ic','var(--muted)');S('--asc-val','var(--text)');S('--asc-lab','var(--muted)');
+      if(pill){if(nav){pill.className='hassoc-pill chev';pill.innerHTML=_chevSVG('var(--muted)');}else{pill.className='hassoc-pill';pill.textContent='';}}
     }
   }
   defWidget('assoc',{
     label:'Zustand', paletteIcon:'toggleon', size:[130,120],
     defaults:function(w){w.assocShow='both';},
     render:function(w){var s=w.assocShow||'both';
-      var ic=(s!=='text')?'<span class="hassocic" data-role="aico">'+(w.icon?iconSVG(w.icon):'')+'</span>':'';
-      var val=(s!=='icon')?'<span class="hassocv" data-role="aval">–</span>':'';
-      var lbl=(s!=='icon'&&w.label)?'<span class="hassocl" data-role="alabel">'+esc(w.label)+'</span>':'';
-      return '<div class="hassoc" data-role="acard">'+ic+val+lbl+'</div>';},
+      var chip=(s!=='text')?'<span class="hassoc-chip" data-role="aico">'+(w.icon?iconSVG(w.icon):'')+'</span>':'';
+      var pill='<span class="hassoc-pill" data-role="apill"></span>';
+      var val='<div class="hassocv" data-role="aval">–</div>';
+      var lbl=(s!=='icon'&&w.label)?'<div class="hassocl" data-role="alabel">'+esc(w.label)+'</div>':'';
+      return '<div class="hassoc" data-role="acard"><div class="hassoc-top">'+chip+pill+'</div><div class="hassoc-btm">'+val+lbl+'</div></div>';},
     props:function(w){return row('Anzeige','<select id="pAsShow"><option value="both"'+((w.assocShow||'both')==='both'?' selected':'')+'>Icon + Wert + Label</option><option value="icon"'+(w.assocShow==='icon'?' selected':'')+'>Nur Icon</option><option value="text"'+(w.assocShow==='text'?' selected':'')+'>Wert + Label</option></select>')
       +listEditor(w,'amap','Manuell: Wert · Icon · Text · Farbe',[{k:'v',ph:'0, >0, 1..5, *'},{k:'icon',ph:'z.B. winopen'},{k:'text',ph:'Text'},{k:'color',ph:'ok/warn/crit/text'}])
       +'<div class="hint" style="font-size:11px;color:var(--muted)">Wert: exakt (<b>0</b>, <b>1</b>), Vergleich (<b>&gt;0</b>, <b>&gt;=1</b>, <b>&lt;5</b>, <b>!=0</b>), Bereich (<b>1..5</b>) oder Platzhalter (<b>*</b> = Rest). Exakte Treffer haben Vorrang. Ganz ohne Zeilen = Profil-Assoziationen der Variable. Icons z. B. winopen/winclosed/wintilt, blindopen/blindclosed, lighton/lightoff.</div>';},
