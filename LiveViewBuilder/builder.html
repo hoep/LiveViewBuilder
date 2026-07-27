@@ -463,7 +463,7 @@
   .hwp2t{font-family:var(--fm);font-size:26px;font-weight:600;line-height:1}
   .hwp2sub{font-size:11px;color:var(--muted);display:block;margin-top:2px}
   .hwp2days{flex:1;display:flex;flex-direction:column;gap:2px;min-height:0;overflow:hidden}
-  .hwp2day{flex:1 1 0;min-height:0;display:grid;grid-template-columns:26px 20px 36px 1fr 36px 34px;align-items:center;gap:6px;font-size:clamp(8px,7cqh,12px)}
+  .hwp2day{flex:1 1 0;min-height:0;display:grid;grid-template-columns:26px 20px auto minmax(16px,1fr) auto 34px;align-items:center;gap:6px;font-size:clamp(8px,7cqh,12px)}
   .hwp2day .d{color:var(--muted)}
   .hwp2day .ic{width:18px;height:18px;color:var(--warm);display:inline-flex}
   .hwp2day .lo{font-family:var(--fm);color:var(--faint);text-align:right}
@@ -786,7 +786,6 @@
         <div class="pitem" data-add="powerflow">Power-Flow</div>
         <div class="pgh">Wetter &amp; Zeit</div>
         <div class="pitem" data-add="weather">Wetter</div>
-        <div class="pitem" data-add="weatherpro">Wetter+</div>
         <div class="pitem" data-add="windrose">Windrose</div>
         <div class="pitem" data-add="raincard">Regenmenge</div>
         <div class="pitem" data-add="sun">Sonne</div>
@@ -4760,7 +4759,7 @@ defWidget('statuslist',{
     var cs=el.querySelector('[data-role=sub]');if(cs)cs.textContent=(condTxt)?wTrans(condTxt):((cData||condHasVar)?'':'keine/ungültige Daten');
     var hu=el.querySelector('[data-role=hum]');if(hu)hu.innerHTML=(hum!=null)?(_dropSVG+_wtxt(hum)+' %'):'';
     var wi=el.querySelector('[data-role=wind]');if(wi)wi.innerHTML=(wind!=null)?('<svg class="hwmic" style="fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24">'+((ICONS.wind||[])[1]||'')+'</svg>'+_wtxt(wind)+' km/h'):'';
-    if(w.type!=='weatherpro')return;
+    if(!wExt(w))return;
     var days=(fData&&fData.days)||[],start=(w.fcStart!=null?w.fcStart:0),showPq=(w.showPq!==false);
     // Skala fuer Temperaturbalken
     var his=[],los=[];days.forEach(function(d){var h=_wt(d.hi,1),l=_wt(d.lo,1);if(h!=null)his.push(h);if(l!=null)los.push(l);});
@@ -4770,8 +4769,8 @@ defWidget('statuslist',{
       var d=days[start+i];
       var dEl=row.querySelector('.d');if(dEl)dEl.textContent=(d&&d.ts)?wDayLabelTs(d.ts):wDayLabel(start+i);
       var icEl=row.querySelector('.ic');if(icEl)icEl.innerHTML=iconSVG((d&&d.icon)||'cloudsun');
-      var loEl=row.querySelector('.lo');if(loEl)loEl.textContent=d?_wtxt(d.lo):'–';
-      var hiEl=row.querySelector('.hi');if(hiEl)hiEl.textContent=d?_wtxt(d.hi):'–';
+      var loEl=row.querySelector('.lo');if(loEl)loEl.textContent=d?(_wtxt(d.lo)+unit):'–';
+      var hiEl=row.querySelector('.hi');if(hiEl)hiEl.textContent=d?(_wtxt(d.hi)+unit):'–';
       var pqEl=row.querySelector('.pq');if(pqEl)pqEl.innerHTML=(showPq&&d&&d.pop!=null&&d.pop>0)?('<svg class="hwpqi" viewBox="0 0 24 24"><path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/></svg>'+d.pop+'%'):'';
       var fill=row.querySelector('.fill');if(fill){var h=d?_wt(d.hi,1):null,l=d?_wt(d.lo,1):null;if(h==null||l==null){fill.style.width='0';}else{var lp=(l-gmin)/(gmax-gmin)*100,hp=(h-gmin)/(gmax-gmin)*100;fill.style.left=Math.max(0,Math.min(100,lp))+'%';fill.style.width=Math.max(3,Math.min(100,hp)-Math.max(0,lp))+'%';fill.style.background='linear-gradient(90deg,'+tColor(l,w.tgrad)+','+tColor(h,w.tgrad)+')';}}
     });
@@ -4790,43 +4789,45 @@ defWidget('statuslist',{
   }
   function _wMount(w){applyWeather(w);}
   function _wLive(w,el,id,d,base,txt,on){applyWeather(w);return true;}
-
-  // ----- Wetter: nur Aktuell -----
-  defWidget('weather',{
-    label:'Wetter', paletteIcon:'cloudsun', size:[240,130],
-    defaults:function(w){w.label='';w.wfmt='auto';},
-    render:function(w){return '<div class="hwf hwf-cur"><div class="hwbig"><div class="hwbigico" data-role="cico">'+iconSVG(w.icon||'cloudsun')+'</div><div class="hwbigci"><div class="hwbigt" data-role="val">–</div><div class="hwbigsub"><span data-role="sub"></span></div><div class="hwmetrow"><span class="hwmet" data-role="wind"></span><span class="hwmet" data-role="hum"></span></div></div></div></div>';},
-    props:function(w){return wJsonProps(w);},
-    wire:function(w){wJsonWire(w);},
-    mount:_wMount, live:_wLive
-  });
-
-  // ----- Wetter+: Aktuell + Mehrtages-Vorhersage mit Temperaturbalken -----
-  defWidget('weatherpro',{
-    label:'Wetter+', paletteIcon:'cloudsun', size:[340,220],
-    defaults:function(w){w.label='';w.wfmt='auto';w.days=5;w.fcStart=0;w.showPq=true;w.tgrad=[{t:-5,color:'#4aa3ff'},{t:4,color:'#3bd6c6'},{t:14,color:'#39d08a'},{t:22,color:'#f2b441'},{t:32,color:'#f2685a'}];},
-    render:function(w){var n=Math.max(1,Math.min(10,w.days||5));var slots='';for(var i=0;i<n;i++)slots+='<div class="hwp2day" data-i="'+i+'"><span class="d">–</span><span class="ic"></span><span class="lo">–</span><div class="trk"><i class="fill"></i></div><span class="hi">–</span><span class="pq"></span></div>';
-      return '<div class="hwp2"><div class="hwp2cur"><span class="hwp2ic" data-role="cico">'+iconSVG(w.icon||'cloudsun')+'</span><span class="hwp2ci"><span class="hwp2t" data-role="val">–</span><span class="hwp2sub"><span data-role="sub"></span></span><span class="hwmetrow"><span class="hwmet" data-role="wind"></span><span class="hwmet" data-role="hum"></span></span></span></div><div class="hwp2days">'+slots+'</div></div>';},
-    props:function(w){return wJsonProps(w)
-      +row('Vorhersage-Tage','<input id="pWDays" type="number" min="1" max="10" value="'+(w.days||5)+'">')
+  // Erweiterter Stil (Aktuell + Vorhersage): via w.wstyle oder Alt-Typ 'weatherpro'
+  function wExt(w){return w.wstyle==='extended'||w.type==='weatherpro';}
+  function wEnsureExt(w){if(w.days==null)w.days=5;if(w.fcStart==null)w.fcStart=0;if(w.showPq===undefined)w.showPq=true;if(!w.tgrad)w.tgrad=[{t:-5,color:'#4aa3ff'},{t:4,color:'#3bd6c6'},{t:14,color:'#39d08a'},{t:22,color:'#f2b441'},{t:32,color:'#f2685a'}];}
+  function wRenderFn(w){
+    if(wExt(w)){wEnsureExt(w);var n=Math.max(1,Math.min(10,w.days||5)),slots='';for(var i=0;i<n;i++)slots+='<div class="hwp2day" data-i="'+i+'"><span class="d">–</span><span class="ic"></span><span class="lo">–</span><div class="trk"><i class="fill"></i></div><span class="hi">–</span><span class="pq"></span></div>';
+      return '<div class="hwp2"><div class="hwp2cur"><span class="hwp2ic" data-role="cico">'+iconSVG(w.icon||'cloudsun')+'</span><span class="hwp2ci"><span class="hwp2t" data-role="val">–</span><span class="hwp2sub"><span data-role="sub"></span></span><span class="hwmetrow"><span class="hwmet" data-role="wind"></span><span class="hwmet" data-role="hum"></span></span></span></div><div class="hwp2days">'+slots+'</div></div>';}
+    return '<div class="hwf hwf-cur"><div class="hwbig"><div class="hwbigico" data-role="cico">'+iconSVG(w.icon||'cloudsun')+'</div><div class="hwbigci"><div class="hwbigt" data-role="val">–</div><div class="hwbigsub"><span data-role="sub"></span></div><div class="hwmetrow"><span class="hwmet" data-role="wind"></span><span class="hwmet" data-role="hum"></span></div></div></div></div>';
+  }
+  function wPropsFn(w){
+    var ext=wExt(w);
+    var sty=(w.type==='weatherpro')?'':row('Stil','<select id="pWStyle"><option value="standard"'+(!ext?' selected':'')+'>Standard (nur Aktuell)</option><option value="extended"'+(ext?' selected':'')+'>Erweitert (+ Vorhersage)</option></select>');
+    var pr=sty+wJsonProps(w);
+    if(ext)pr+=row('Vorhersage-Tage','<input id="pWDays" type="number" min="1" max="10" value="'+(w.days||5)+'">')
       +row('Erster Tag','<select id="pFcStart"><option value="0"'+((w.fcStart||0)===0?' selected':'')+'>Heute</option><option value="1"'+(w.fcStart===1?' selected':'')+'>Morgen</option></select>')
       +row('Regenwahrsch.','<input type="checkbox" id="pShowPq"'+((w.showPq!==false)?' checked':'')+'>')
-      +'<div class="pgh">Temperaturbalken</div>'+tgradEditor(w)+row('Skala Min/Max','<input id="pGmin" type="number" style="width:60px" value="'+(w.gmin!=null?w.gmin:'')+'" placeholder="auto"> <input id="pGmax" type="number" style="width:60px" value="'+(w.gmax!=null?w.gmax:'')+'" placeholder="auto">');},
-    wire:function(w){wJsonWire(w);
+      +'<div class="pgh">Temperaturbalken</div>'+tgradEditor(w)+row('Skala Min/Max','<input id="pGmin" type="number" style="width:60px" value="'+(w.gmin!=null?w.gmin:'')+'" placeholder="auto"> <input id="pGmax" type="number" style="width:60px" value="'+(w.gmax!=null?w.gmax:'')+'" placeholder="auto">');
+    return pr;
+  }
+  function wWireFn(w){
+    wJsonWire(w);
+    if($('#pWStyle'))$('#pWStyle').onchange=function(){w.wstyle=(this.value==='extended')?'extended':undefined;if(w.wstyle==='extended')wEnsureExt(w);render();renderProps();applyWeather(w);commit();};
+    if(wExt(w)){
       if($('#pWDays'))$('#pWDays').oninput=function(){w.days=Math.max(1,Math.min(10,parseInt(this.value)||5));render();applyWeather(w);commit();};
       if($('#pFcStart'))$('#pFcStart').onchange=function(){w.fcStart=parseInt(this.value);render();applyWeather(w);commit();};
       if($('#pShowPq'))$('#pShowPq').onchange=function(){w.showPq=this.checked;render();applyWeather(w);commit();};
       $$('#props [data-tg]').forEach(function(inp){
         inp.oninput=function(){var pr=inp.getAttribute('data-tg').split('.'),k=pr[0],i=+pr[1];if(!w.tgrad||!w.tgrad[i])return;w.tgrad[i][k]=(k==='t')?(parseFloat(inp.value)||0):inp.value;applyWeather(w);commit();};
-        inp.onchange=function(){if(inp.getAttribute('data-tg').split('.')[0]==='t'&&w.tgrad){w.tgrad.sort(function(a,b){return (a.t||0)-(b.t||0);});renderProps();applyWeather(w);commit();}}; // nach Temperatur einsortieren
+        inp.onchange=function(){if(inp.getAttribute('data-tg').split('.')[0]==='t'&&w.tgrad){w.tgrad.sort(function(a,b){return (a.t||0)-(b.t||0);});renderProps();applyWeather(w);commit();}};
       });
       $$('#props [data-tgdel]').forEach(function(b){b.onclick=function(){w.tgrad.splice(+b.getAttribute('data-tgdel'),1);renderProps();applyWeather(w);commit();};});
       if($('#tgAdd'))$('#tgAdd').onclick=function(){if(!w.tgrad)w.tgrad=[];w.tgrad.push({t:20,color:'#f2b441'});renderProps();applyWeather(w);commit();};
       if($('#pGmin'))$('#pGmin').oninput=function(){w.gmin=this.value===''?undefined:parseFloat(this.value);applyWeather(w);commit();};
       if($('#pGmax'))$('#pGmax').oninput=function(){w.gmax=this.value===''?undefined:parseFloat(this.value);applyWeather(w);commit();};
-    },
-    mount:_wMount, live:_wLive
-  });
+    }
+  }
+  // Ein Wetter-Widget mit Stil-Umschaltung (Standard/Erweitert)
+  defWidget('weather',{label:'Wetter', paletteIcon:'cloudsun', size:[240,130], defaults:function(w){w.label='';w.wfmt='auto';}, render:wRenderFn, props:wPropsFn, wire:wWireFn, mount:_wMount, live:_wLive});
+  // Alt-Typ (bestehende „Wetter+"-Widgets weiterhin gültig; nicht mehr in der Palette)
+  defWidget('weatherpro',{label:'Wetter+', paletteIcon:'cloudsun', size:[340,220], defaults:function(w){w.label='';w.wfmt='auto';wEnsureExt(w);}, render:wRenderFn, props:wPropsFn, wire:wWireFn, mount:_wMount, live:_wLive});
 // webview widget
 defWidget('webview',{
   label:'WebView',
