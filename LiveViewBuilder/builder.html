@@ -3637,7 +3637,6 @@ defWidget('dial',{
       +row('Gewicht','<select id="pGvFwt"><option value="">Standard</option>'+['300','400','500','600','700','800'].map(function(x){return '<option value="'+x+'"'+(w.gvfwt===x?' selected':'')+'>'+x+'</option>';}).join('')+'</select>')
       +row('Stil','<select id="pGvSty"><option value=""'+(!w.gvsty?' selected':'')+'>Normal</option><option value="italic"'+(w.gvsty==='italic'?' selected':'')+'>Kursiv</option></select>')
       +row('Größe (px)','<input id="pGvSz" type="number" min="0" value="'+(w.gvsz||'')+'" placeholder="auto">')
-      +row('Nachkommastellen','<input id="pGvDec" type="number" min="0" max="6" value="'+(w.dec!=null?w.dec:'')+'" placeholder="Profil">')
       +row('Einheit','<input id="pGvUnit" value="'+esc(w.gvUnit||'')+'" placeholder="Profil (z. B. °C)">');},
     wire:function(w){
       if($('#pGStyle'))$('#pGStyle').onchange=function(){w.gstyle=this.value;render();commit();};
@@ -3651,7 +3650,6 @@ defWidget('dial',{
       if($('#pGvFwt'))$('#pGvFwt').onchange=function(){w.gvfwt=this.value||undefined;render();commit();};
       if($('#pGvSty'))$('#pGvSty').onchange=function(){w.gvsty=this.value||undefined;render();commit();};
       if($('#pGvSz'))$('#pGvSz').oninput=function(){w.gvsz=parseInt(this.value)||undefined;render();commit();};
-      if($('#pGvDec'))$('#pGvDec').oninput=function(){w.dec=this.value===''?undefined:Math.max(0,Math.min(6,parseInt(this.value)||0));render();commit();};
       if($('#pGvUnit'))$('#pGvUnit').oninput=function(){w.gvUnit=this.value||undefined;render();commit();};
     },
     live:function(w,el,id,d,base,txt,on){setGauge(w,d);}
