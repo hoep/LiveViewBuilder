@@ -29,6 +29,7 @@ class LiveViewBuilder extends IPSModule
         $this->RegisterPropertyString('BaseUrl', '');       // z. B. http://10.0.0.5:3777 (für klickbare Links)
         $this->RegisterPropertyString('WsPort', '');        // optional: WebSocket-Push-Port
         $this->RegisterPropertyString('IPSViewPath', '');   // optional: Fallback-Quelle für Import
+        $this->RegisterPropertyString('Views', '[]');       // Ansichten-Liste (Modul-verwaltet): [{Name, Home}]
         $this->RegisterAttributeString('Token', '');        // Schreib-Token (auto)
         $this->RegisterAttributeString('ImportStatus', ''); // letzter Import-Status (für Formularanzeige)
         $this->RegisterMessage(0, IPS_KERNELMESSAGE);       // KR_READY abfangen -> Hooks nach dem Boot registrieren
@@ -52,6 +53,82 @@ class LiveViewBuilder extends IPSModule
             return;
         }
         $this->registerHooks(['/hook/builder', '/hook/run']);
+        $this->migrateOldDir();     // fruehere Auto-Ablage in den View-Ordner uebernehmen (einmalig)
+        $this->syncPushBasePath();  // Push-Modul auf denselben Datenordner zeigen lassen (sonst liest der Push den falschen Ordner)
+        $this->syncViews();         // Modul-Liste -> Seiten abgleichen (Anlegen/Loeschen), mit Schutz-Guard
+    }
+
+    // Haelt den BasePath des WebSocket-Push-Moduls identisch zum eigenen Datenordner.
+    private function syncPushBasePath(): void
+    {
+        $push = IPS_GetInstanceListByModuleID('{7B3E9F21-4C8A-4D6E-B1F5-9A0C2D3E4F60}')[0] ?? 0;
+        if (!$push) {
+            return;
+        }
+        $dir = $this->dataDir();
+        if ((string) @IPS_GetProperty($push, 'BasePath') !== $dir) {
+            IPS_SetProperty($push, 'BasePath', $dir);
+            IPS_ApplyChanges($push);   // uebernimmt + zieht die Registrierungen neu (sicher, nur bei KR_READY)
+        }
+    }
+
+    // Gleicht die im Formular verwaltete Views-Liste mit layouts.json ab.
+    // SCHUTZ: Bei leerer Property wird NICHT geloescht (verhindert Massen-Loeschung bei frisch aktualisierter Instanz).
+    // Umbenennen passiert im Builder (Name = Pfad = Identitaet). Inhalt/Widgets bleiben Sache von layouts.json.
+    private function syncViews(): void
+    {
+        $rows = json_decode($this->ReadPropertyString('Views'), true);
+        if (!is_array($rows) || count($rows) === 0) {
+            return; // leere Liste -> nichts anfassen (Guard)
+        }
+        $dir = $this->dataDir();
+        if (!is_dir($dir)) {
+            @mkdir($dir, 0775, true);
+        }
+        $lf    = $dir . '/layouts.json';
+        $store = json_decode((string) @file_get_contents($lf), true);
+        if (!is_array($store) || !isset($store['views']) || !is_array($store['views'])) {
+            $store = ['views' => [], 'current' => null];
+        }
+        $want = [];
+        $home = '';
+        foreach ($rows as $r) {
+            $nm = trim(str_replace('/', '-', (string) ($r['Name'] ?? '')));  // Slash raus (sonst extra Pfad-Segment)
+            if ($nm === '') {
+                continue;
+            }
+            $want[$nm] = true;
+            if (!empty($r['Home']) && $home === '') {
+                $home = $nm;
+            }
+        }
+        if (count($want) === 0) {
+            return;
+        }
+        // Anlegen: neue Namen -> leere View
+        foreach (array_keys($want) as $nm) {
+            if (!isset($store['views'][$nm])) {
+                $store['views'][$nm] = ['page' => ['w' => 1440, 'h' => 900, 'fit' => 'letterbox'], 'widgets' => []];
+            }
+        }
+        // Loeschen: in layouts vorhanden, aber nicht in der Liste
+        foreach (array_keys($store['views']) as $nm) {
+            if (!isset($want[$nm])) {
+                unset($store['views'][$nm]);
+            }
+        }
+        if ($home !== '') {
+            $store['home'] = $home;
+        }
+        if (empty($store['current']) || !isset($store['views'][$store['current']])) {
+            $store['current'] = array_key_first($store['views']);
+        }
+        file_put_contents($lf, json_encode($store, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+        // Push-Registrierungen sofort nachziehen (neu gebundene/entfallene Variablen), wie beim Layout-Speichern
+        $push = IPS_GetInstanceListByModuleID('{7B3E9F21-4C8A-4D6E-B1F5-9A0C2D3E4F60}')[0] ?? 0;
+        if ($push && function_exists('LVBP_Sync')) {
+            @LVBP_Sync($push);
+        }
     }
 
     // Hooks auch nach dem Boot registrieren (Kernel meldet KR_READY per Message).
@@ -189,35 +266,52 @@ class LiveViewBuilder extends IPSModule
         $lib    = @json_decode((string) @file_get_contents(__DIR__ . '/../library.json'), true);
         $bld    = is_array($lib) ? ($lib['build'] ?? '?') : '?';
 
+        // Aktuelle Ansichten aus layouts.json in die List einspielen (Name = Pfad, Widgets-Anzahl, Startseite-Flag)
+        $store = json_decode((string) @file_get_contents($this->dataDir() . '/layouts.json'), true);
+        $home  = is_array($store) ? (string) ($store['home'] ?? '') : '';
+        $viewValues = [];
+        foreach ($views as $nm => $cnt) {
+            $viewValues[] = ['Name' => (string) $nm, 'Widgets' => (int) $cnt, 'Home' => ((string) $nm === $home)];
+        }
+
         $elements = [
             ['type' => 'Label', 'caption' => 'LiveView Builder — Modul-Build: ' . $bld . '   ·   Instanz anlegen registriert /hook/builder + /hook/run automatisch.'],
+            ['type' => 'Label', 'caption' => 'Seiten dieser View (' . $this->siteLabel() . '): Der Seitenname ist Teil des URL-Pfads — /hook/builder/' . $this->siteLabel() . '/<Seite> (bearbeiten) und /hook/run/' . $this->siteLabel() . '/<Seite> (Laufzeit). Hier anlegen und loeschen; Umbenennen im Builder (verschiebt den Inhalt).'],
+            ['type' => 'List', 'name' => 'Views', 'caption' => 'Seiten', 'rowCount' => 8, 'add' => true, 'delete' => true,
+                'columns' => [
+                    ['caption' => 'Name (= Pfad)', 'name' => 'Name', 'width' => 'auto', 'add' => 'Neue Seite', 'edit' => ['type' => 'ValidationTextBox']],
+                    ['caption' => 'Widgets', 'name' => 'Widgets', 'width' => '90px', 'add' => 0],
+                    ['caption' => 'Startseite', 'name' => 'Home', 'width' => '110px', 'add' => false, 'edit' => ['type' => 'CheckBox']],
+                ],
+                'values' => $viewValues,
+            ],
             ['type' => 'ExpansionPanel', 'caption' => 'Einstellungen', 'items' => [
-                ['type' => 'ValidationTextBox', 'name' => 'Site', 'caption' => 'Site-Label (Pfad /hook/builder/<Site>)'],
                 ['type' => 'ValidationTextBox', 'name' => 'BaseUrl', 'caption' => 'Basis-URL (z. B. http://10.0.0.5:3777) — für klickbare Links'],
                 ['type' => 'ValidationTextBox', 'name' => 'BasePath', 'caption' => 'Datenordner (leer = automatisch, je Instanz)'],
                 ['type' => 'ValidationTextBox', 'name' => 'WsPort', 'caption' => 'WebSocket-Port (optional)'],
                 ['type' => 'ValidationTextBox', 'name' => 'IPSViewPath', 'caption' => 'IPSView-Fallbackpfad (optional)'],
+                ['type' => 'ValidationTextBox', 'name' => 'Site', 'caption' => 'View-Name (= Ordner livebuilder/<Name> und URL-Pfad /hook/run/<Name>/...) — leer = Instanzname'],
                 ['type' => 'Label', 'caption' => 'Datenordner aktiv: ' . $this->dataDir()],
             ]],
         ];
 
         $actions = [
-            ['type' => 'Button', 'caption' => '▶  Builder öffnen (alle Ansichten bearbeiten)', 'onClick' => 'LVB_OpenBuilder($id);'],
+            ['type' => 'Button', 'caption' => 'Builder oeffnen (alle Ansichten bearbeiten)', 'onClick' => 'LVB_OpenBuilder($id);'],
         ];
         if (!$hasUrl) {
             $actions[] = ['type' => 'Label', 'caption' => 'Tipp: „Basis-URL" in den Einstellungen setzen, dann sind die Links direkt anklickbar.'];
         }
         if (count($views) === 0) {
-            $actions[] = ['type' => 'Label', 'caption' => 'Noch keine Ansichten. Unten eine IPSView importieren oder im Builder anlegen.'];
+            $actions[] = ['type' => 'Label', 'caption' => 'Noch keine Ansichten. Oben eine anlegen, unten eine IPSView importieren oder im Builder erstellen.'];
         } else {
-            $actions[] = ['type' => 'Label', 'caption' => 'Ansichten:'];
+            $actions[] = ['type' => 'Label', 'caption' => 'Direkt-Links je Ansicht (Klick zeigt die URL):'];
             foreach ($views as $name => $count) {
                 $runUrl  = $this->urlRun((string) $name);
-                $editUrl = $this->urlBuilder() . '?view=' . rawurlencode((string) $name);
+                $editUrl = $this->urlBuilder((string) $name);
                 $actions[] = ['type' => 'RowLayout', 'items' => [
                     ['type' => 'Label',  'caption' => $name . '  (' . $count . ')', 'width' => '240px'],
-                    ['type' => 'Button', 'caption' => '▶ Run',  'onClick' => "echo '" . addslashes($runUrl) . "';"],
-                    ['type' => 'Button', 'caption' => '✎ Edit', 'onClick' => "echo '" . addslashes($editUrl) . "';"],
+                    ['type' => 'Button', 'caption' => 'Run',  'onClick' => "echo '" . addslashes($runUrl) . "';"],
+                    ['type' => 'Button', 'caption' => 'Bearbeiten', 'onClick' => "echo '" . addslashes($editUrl) . "';"],
                 ]];
             }
         }
@@ -260,7 +354,31 @@ class LiveViewBuilder extends IPSModule
         if ($bp !== '') {
             return rtrim($bp, '/');
         }
-        return rtrim(IPS_GetKernelDir(), '/') . '/liveview/' . $this->InstanceID;
+        // Neuer Ordner je View (= Site):  <KernelDir>/livebuilder/<view>/
+        return rtrim(IPS_GetKernelDir(), '/') . '/livebuilder/' . $this->siteLabel();
+    }
+
+    private function oldDataDir(): string
+    {
+        return rtrim(IPS_GetKernelDir(), '/') . '/liveview/' . $this->InstanceID;   // fruehere Auto-Ablage
+    }
+
+    // Einmalige Migration: fruehere Auto-Ablage (liveview/<id>/) in den neuen View-Ordner uebernehmen, falls dieser noch leer ist.
+    private function migrateOldDir(): void
+    {
+        $new = $this->dataDir();
+        if (is_file($new . '/index.json') || is_file($new . '/layouts.json')) {
+            return; // neuer Ordner schon befuellt
+        }
+        $old = $this->oldDataDir();
+        if ($old === $new || !is_file($old . '/layouts.json')) {
+            return;
+        }
+        if (!is_dir($new)) { @mkdir($new, 0775, true); }
+        @copy($old . '/layouts.json', $new . '/layouts.json');            // Handler zerlegt es beim ersten Laden in seiten/
+        foreach (glob($old . '/layouts.*.json') ?: [] as $p) {            // Snapshots mitnehmen
+            @copy($p, $new . '/' . basename($p));
+        }
     }
 
     private function siteLabel(): string
@@ -278,15 +396,15 @@ class LiveViewBuilder extends IPSModule
         return rtrim(trim($this->ReadPropertyString('BaseUrl')), '/');
     }
 
-    private function urlBuilder(): string
+    private function urlBuilder(string $seite = ''): string
     {
-        return $this->baseUrl() . '/hook/builder/' . rawurlencode($this->siteLabel());
+        // Pfad = <View>/<Seite>. Ohne Seite: Builder auf der Start-Seite dieser View.
+        return $this->baseUrl() . '/hook/builder/' . rawurlencode($this->siteLabel()) . ($seite !== '' ? '/' . rawurlencode($seite) : '');
     }
 
-    private function urlRun(string $view): string
+    private function urlRun(string $seite = ''): string
     {
-        $u = $this->baseUrl() . '/hook/run/' . rawurlencode($this->siteLabel());
-        return $view !== '' ? ($u . '?view=' . rawurlencode($view)) : $u;
+        return $this->baseUrl() . '/hook/run/' . rawurlencode($this->siteLabel()) . ($seite !== '' ? '/' . rawurlencode($seite) : '');
     }
 
     private function readViews(): array

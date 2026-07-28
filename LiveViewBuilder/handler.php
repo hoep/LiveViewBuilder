@@ -404,6 +404,45 @@ if ($api === 'layout') {
     $file   = (string) preg_replace('/[^A-Za-z0-9_-]/', '', (string) ($_GET['file'] ?? ''));
     $lf     = $DATADIR . '/layouts' . ($file !== '' ? '.' . $file : '') . '.json';
     $isSave = ($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' || isset($_GET['save']);
+
+    // ---- Speichermodell: index.json + seiten/<slug>.json (eine Datei je Seite) ----
+    // layouts.json bleibt als Kompatibilitaets-Spiegel (Push-Modul) und Fallback erhalten. Snapshots (file != '') bleiben kombiniert.
+    $seiteDir = $DATADIR . '/seiten';
+    $idxFile  = $DATADIR . '/index.json';
+    $slugOf   = function (string $name): string {
+        $b = trim((string) preg_replace('/[^A-Za-z0-9_-]+/u', '-', $name), '-');
+        if ($b === '') { $b = 'seite'; }
+        return $b . '-' . substr(md5($name), 0, 6);            // stabil je Name, kollisionsfrei
+    };
+    $splitStore = function (array $store) use ($seiteDir, $idxFile, $DATADIR, $slugOf): void {
+        if (!is_dir($seiteDir)) { @mkdir($seiteDir, 0775, true); }
+        $index = $store;
+        $index['views'] = [];                                   // index.json haelt alles AUSSER dem Seiteninhalt
+        $keep = [];
+        foreach (($store['views'] ?? []) as $name => $v) {
+            $slug = $slugOf((string) $name);
+            $keep['seite-' . $slug . '.json'] = true;
+            $index['views'][(string) $name] = ['file' => $slug];   // Name -> Datei
+            file_put_contents($seiteDir . '/seite-' . $slug . '.json', json_encode($v, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+        }
+        file_put_contents($idxFile, json_encode($index, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+        foreach (glob($seiteDir . '/seite-*.json') ?: [] as $p) {   // verwaiste Seiten-Dateien entfernen
+            if (empty($keep[basename($p)])) { @unlink($p); }
+        }
+    };
+    $assembleStore = function () use ($seiteDir, $idxFile, $DATADIR): ?array {
+        $idx = json_decode((string) @file_get_contents($idxFile), true);
+        if (!is_array($idx) || !isset($idx['views']) || !is_array($idx['views'])) { return null; }
+        $store = $idx;
+        $store['views'] = [];
+        foreach ($idx['views'] as $name => $ref) {
+            $slug = is_array($ref) ? (string) ($ref['file'] ?? '') : '';
+            $v    = $slug !== '' ? json_decode((string) @file_get_contents($seiteDir . '/seite-' . $slug . '.json'), true) : null;
+            $store['views'][(string) $name] = is_array($v) ? $v : ['page' => ['w' => 1440, 'h' => 900], 'widgets' => []];
+        }
+        return $store;
+    };
+
     if ($isSave) {
         if (!hash_equals($TOKEN, (string) ($_GET['key'] ?? ''))) {
             http_response_code(403);
@@ -414,20 +453,45 @@ if ($api === 'layout') {
         if ($data === '' || $data === false) {
             $data = (string) ($_POST['data'] ?? '');
         }
-        json_decode($data);
-        if (json_last_error() !== JSON_ERROR_NONE) {
+        $store = json_decode($data, true);
+        if (json_last_error() !== JSON_ERROR_NONE || !is_array($store)) {
             http_response_code(400);
             echo json_encode(['error' => 'invalid json']);
             return;
         }
-        file_put_contents($lf, $data);
-        $push = IPS_GetInstanceListByModuleID('{7B3E9F21-4C8A-4D6E-B1F5-9A0C2D3E4F60}')[0] ?? 0; // Registrierungen sofort neu ziehen (neu gebundene Variablen sofort per WS pushen)
+        file_put_contents($lf, $data);                          // layouts(.snapshot).json = Spiegel/Fallback
+        if ($file === '' && isset($store['views'])) {
+            $splitStore($store);                                // nur das Live-Layout in Einzeldateien zerlegen
+        }
+        $push = IPS_GetInstanceListByModuleID('{7B3E9F21-4C8A-4D6E-B1F5-9A0C2D3E4F60}')[0] ?? 0; // Registrierungen sofort neu ziehen
         if ($push && function_exists('LVBP_Sync')) { @LVBP_Sync($push); }
         echo json_encode(['ok' => true, 'bytes' => strlen($data)]);
         return;
     }
-    $data = @file_get_contents($lf);
-    echo ($data !== false && $data !== '') ? $data : json_encode(['pages' => []]);
+
+    // GET: Snapshot -> kombinierte Datei; Live -> aus Einzeldateien zusammensetzen (sonst layouts.json, dabei einmalig migrieren)
+    if ($file !== '') {
+        $data = @file_get_contents($lf);
+        echo ($data !== false && $data !== '') ? $data : json_encode(['pages' => []]);
+        return;
+    }
+    $store = $assembleStore();
+    if ($store === null) {
+        $legacy = json_decode((string) @file_get_contents($DATADIR . '/layouts.json'), true);
+        if (!is_array($legacy) || !isset($legacy['views'])) {
+            // Cross-Dir-Fallback: fruehere Auto-Ablage (liveview/<InstanzID>/) uebernehmen, wenn der neue Ordner leer ist
+            $oldDir = rtrim(IPS_GetKernelDir(), '/') . '/liveview/' . $this->InstanceID;
+            if ($oldDir !== $DATADIR) {
+                $legacy = json_decode((string) @file_get_contents($oldDir . '/layouts.json'), true);
+            }
+        }
+        if (is_array($legacy) && isset($legacy['views'])) {
+            $splitStore($legacy);                               // Migration -> index.json + seiten/ im neuen Ordner
+            @file_put_contents($DATADIR . '/layouts.json', json_encode($legacy, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)); // Spiegel fuers Push-Modul
+            $store = $legacy;
+        }
+    }
+    echo $store !== null ? json_encode($store, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) : json_encode(['pages' => []]);
     return;
 }
 

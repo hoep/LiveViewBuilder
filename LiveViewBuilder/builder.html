@@ -3052,10 +3052,11 @@
     }).catch(function(){toast('IPSView-Liste konnte nicht geladen werden');});
   };
   function lvSite(){var p=location.pathname,m=p.match(/\/hook\/(?:builder|run)\/([^\/?#]+)/);if(m)return decodeURIComponent(m[1]);m=p.match(/\/hook\/([^\/?#]+)/);return m?decodeURIComponent(m[1]):'';}
+  function lvPage(){var m=location.pathname.match(/\/hook\/(?:builder|run)\/[^\/?#]+\/([^\/?#]+)/);return m?decodeURIComponent(m[1]):'';} // 3. Segment = Seite
   $('#liveBtn').onclick=function(){
-    var site=lvSite(),view=encodeURIComponent(store.current||'');
-    if(site){window.open(location.origin+'/hook/run/'+encodeURIComponent(site)+'?view='+view,'_blank');} // sauberes Schema
-    else{window.open('?run=1&view='+view,'_blank');} // Fallback (unbekannter Pfad)
+    var site=lvSite(),page=store.current||'';
+    if(site&&page){window.open(location.origin+'/hook/run/'+encodeURIComponent(site)+'/'+encodeURIComponent(page),'_blank');} // /hook/run/<view>/<seite>
+    else{window.open('?run=1'+(page?'&view='+encodeURIComponent(page):''),'_blank');}
   };
   $('#runmenu').onclick=function(){$('#runlist').classList.toggle('open');};
   function load(){
@@ -3068,7 +3069,7 @@
       if(!store.skin)store.skin='Standard';if(!store.theme)store.theme='dark';
       if(RUN){try{var _lt=localStorage.getItem('lvtheme');if(_lt)store.theme=_lt;var _ls=localStorage.getItem('lvskin');if(_ls&&allSkins()[_ls])store.skin=_ls;}catch(_){}}
       applySkin();GS=bcfg().gs;if(bcfg().sideW){var _sd=$('.side');if(_sd)_sd.style.width=bcfg().sideW+'px';}
-      switchView((VIEWNAME&&store.views&&store.views[VIEWNAME])?VIEWNAME:store.current);buildSwatches();buildIconLib();buildBlocks();buildSkins();buildSettings();buildLayoutList();decoratePalette(); // ?view= auch im Edit-Modus berücksichtigen
+      var _sv=VIEWNAME||lvPage();switchView((_sv&&store.views&&store.views[_sv])?_sv:store.current);buildSwatches();buildIconLib();buildBlocks();buildSkins();buildSettings();buildLayoutList();decoratePalette(); // ?view= auch im Edit-Modus berücksichtigen
       if(RUN){enterRun();}else{toast('Geladen: '+(_target||'Standard')+' · '+Object.keys(store.views).length+' Ansicht(en)');}
     }).catch(function(){store={views:{'Ansicht 1':{page:{w:1440,h:900},widgets:[]}},current:'Ansicht 1'};switchView('Ansicht 1');if(RUN)enterRun();});
   }
@@ -3241,7 +3242,9 @@
   }
   function enterRun(){
     var mob=isMobile();
-    var v=VIEWNAME||(mob&&store.homeMobile&&store.views[store.homeMobile]?store.homeMobile:'')||store.home||store.current;
+    var _pv=VIEWNAME||lvPage(); // Seite aus ?view= ODER Pfad /hook/run/<view>/<Seite>; ohne Seite -> Start-/Hauptseite
+    var _keys=Object.keys(store.views||{});
+    var v=(_pv&&store.views[_pv]?_pv:'')||(mob&&store.homeMobile&&store.views[store.homeMobile]?store.homeMobile:'')||(store.home&&store.views[store.home]?store.home:'')||(store.current&&store.views[store.current]?store.current:'')||_keys[0];
     // pro-Seite hinterlegte Mobil-Alternative auf Handys automatisch nehmen
     if(mob&&store.views[v]&&store.views[v].page&&store.views[v].page.mobileView&&store.views[store.views[v].page.mobileView])v=store.views[v].page.mobileView;
     if(v&&store.views[v])switchView(v);
