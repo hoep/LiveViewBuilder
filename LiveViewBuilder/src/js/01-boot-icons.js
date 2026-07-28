@@ -5,6 +5,15 @@
   // ===== Icon-Bibliothek (Line-Style, Heimautomation). id -> [Kategorie, SVG-Inhalt] =====
   var ICONS={
     bulb:['Licht','<path d="M3 12h1m8 -9v1m8 8h1m-15.4 -6.4l.7 .7m12.1 -.7l-.7 .7" /> <path d="M9 16a5 5 0 1 1 6 0a3.5 3.5 0 0 0 -1 3a2 2 0 0 1 -4 0a3.5 3.5 0 0 0 -1 -3" /> <path d="M9.7 17l4.6 0" />'],
+    battery:['Energie','<rect x="3" y="8" width="15" height="9" rx="2" /><path d="M20 11v2" /><path d="M6 11v3M9.5 11v3M13 11v3" />'],
+    car:['Energie','<path d="M5 11l1.5 -4.5a2 2 0 0 1 1.9 -1.5h7.2a2 2 0 0 1 1.9 1.5l1.5 4.5" /><rect x="3" y="11" width="18" height="6" rx="2" /><circle cx="7.5" cy="17.5" r="1.5" /><circle cx="16.5" cy="17.5" r="1.5" />'],
+    tree:['Energie','<path d="M12 2l5 8h-3l4 6h-12l4 -6h-3z" /><path d="M12 16v6" />'],
+    leaf:['Energie','<path d="M5 21c0 -9 6 -16 16 -17c0 10 -7 17 -16 17z" /><path d="M5 21c2 -6 6 -10 12 -13" />'],
+    pylon:['Energie','<path d="M6 21l6 -18l6 18" /><path d="M4 21h16" /><path d="M8.5 13h7M9.7 9.5h4.6" /><path d="M8 17l4 -3l4 3" />'],
+    windturbine:['Energie','<path d="M12 13v8M8 21h8" /><path d="M12 11v-6" /><path d="M12 11l5 3" /><path d="M12 11l-5 3" /><circle cx="12" cy="11" r="1" />'],
+    plug:['Energie','<path d="M9 3v6M15 3v6" /><path d="M7 9h10v2a5 5 0 0 1 -10 0z" /><path d="M12 16v5" />'],
+    evstation:['Energie','<rect x="5" y="3" width="9" height="18" rx="1.5" /><path d="M8 7h3M8 10.5h3" /><path d="M14 9h2a2 2 0 0 1 2 2v4.5a1.5 1.5 0 0 0 3 0v-6l-2 -2" />'],
+    solarpanel:['Energie','<path d="M4 6h16l1 8h-18z" /><path d="M12 6v8M3.5 10h17M12 14v7M8 21h8" />'],
     ceilinglamp:['Licht','<path d="M5 21h9" /> <path d="M10 21l-7 -8l8.5 -5.5" /> <path d="M13 14c-2.148 -2.148 -2.148 -5.852 0 -8c2.088 -2.088 5.842 -1.972 8 0l-8 8" /> <path d="M11.742 7.574l-1.156 -1.156a2 2 0 0 1 2.828 -2.829l1.144 1.144" /> <path d="M15.5 12l.208 .274a2.527 2.527 0 0 0 3.556 0c.939 -.933 .98 -2.42 .122 -3.4l-.366 -.369" />'],
     floorlamp:['Licht','<path d="M9 20h6" /> <path d="M12 20v-8" /> <path d="M5 12h14l-4 -8h-6l-4 8" />'],
     spot:['Licht','<path d="M3 12h1m8 -9v1m8 8h1m-15.4 -6.4l.7 .7m12.1 -.7l-.7 .7" /> <path d="M9 16a5 5 0 1 1 6 0a3.5 3.5 0 0 0 -1 3a2 2 0 0 1 -4 0a3.5 3.5 0 0 0 -1 -3" /> <path d="M9.7 17l4.6 0" />'],
@@ -78,6 +87,9 @@
     microwave:['Haushalt','<path d="M3 7a1 1 0 0 1 1 -1h16a1 1 0 0 1 1 1v10a1 1 0 0 1 -1 1h-16a1 1 0 0 1 -1 -1l0 -10" /> <path d="M15 6v12" /> <path d="M18 12h.01" /> <path d="M18 15h.01" /> <path d="M18 9h.01" /> <path d="M6.5 10.5c1 -.667 1.5 -.667 2.5 0c.833 .347 1.667 .926 2.5 0" /> <path d="M6.5 13.5c1 -.667 1.5 -.667 2.5 0c.833 .347 1.667 .926 2.5 0" />'],
     coffee:['Haushalt','<path d="M3 14c.83 .642 2.077 1.017 3.5 1c1.423 .017 2.67 -.358 3.5 -1c.83 -.642 2.077 -1.017 3.5 -1c1.423 -.017 2.67 .358 3.5 1" /> <path d="M8 3a2.4 2.4 0 0 0 -1 2a2.4 2.4 0 0 0 1 2" /> <path d="M12 3a2.4 2.4 0 0 0 -1 2a2.4 2.4 0 0 0 1 2" /> <path d="M3 10h14v5a6 6 0 0 1 -6 6h-2a6 6 0 0 1 -6 -6v-5" /> <path d="M16.746 16.726a3 3 0 1 0 .252 -5.555" />'],
     vacuum:['Haushalt','<path d="M21 12a9 9 0 1 1 -18 0a9 9 0 0 1 18 0" /> <path d="M14 9a2 2 0 1 1 -4 0a2 2 0 0 1 4 0" /> <path d="M12 16h.01" />'],
+    vacuumbot:['Haushalt','<path d="M21 12a9 9 0 1 1 -18 0a9 9 0 0 1 18 0" /> <path d="M12 6v-2" /> <path d="M13.5 7.5a1.5 1.5 0 1 1 -3 0a1.5 1.5 0 0 1 3 0" /> <path d="M8.5 13a3.5 3.5 0 0 0 7 0" />'],
+    msg:['Info','<path d="M8 9h8" /> <path d="M8 13h6" /> <path d="M18 4a3 3 0 0 1 3 3v8a3 3 0 0 1 -3 3h-5l-5 3v-3h-2a3 3 0 0 1 -3 -3v-8a3 3 0 0 1 3 -3h12z" />'],
+    info:['Info','<path d="M3 12a9 9 0 1 0 18 0a9 9 0 0 0 -18 0" /> <path d="M12 8h.01" /> <path d="M11 12h1v4h1" />'],
     iron:['Haushalt','<path d="M9 6h7.459a3 3 0 0 1 2.959 2.507l.577 3.464l.81 4.865a1 1 0 0 1 -.985 1.164h-16.82a7 7 0 0 1 7 -7h9.8" /> <path d="M12 15h.01" />'],
     trash:['Haushalt','<path d="M4 7l16 0" /> <path d="M10 11l0 6" /> <path d="M14 11l0 6" /> <path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12" /> <path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3" />'],
     tv:['Multimedia','<path d="M3 9a2 2 0 0 1 2 -2h14a2 2 0 0 1 2 2v9a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2l0 -9" /> <path d="M16 3l-4 4l-4 -4" />'],
@@ -341,8 +353,8 @@
     // ---- Umwelt-Level ----
     droplet:{k:'pct',f:function(p){var g='M12 3s6 6 6 10a6 6 0 11-12 0c0-4 6-10 6-10z',fh=13*aiClamp(p)/100;return '<defs><clipPath id="cld"><path d="'+g+'"/></clipPath></defs><path d="'+g+'"/><rect x="4" y="'+(21-fh).toFixed(1)+'" width="16" height="'+fh.toFixed(1)+'" fill="currentColor" stroke="none" opacity=".7" clip-path="url(#cld)"/>';}},
     humidity:{k:'pct',f:function(p){var g='M12 3s6 6 6 10a6 6 0 11-12 0c0-4 6-10 6-10z',fh=13*aiClamp(p)/100;return '<defs><clipPath id="clh"><path d="'+g+'"/></clipPath></defs><path d="'+g+'"/><rect x="4" y="'+(21-fh).toFixed(1)+'" width="16" height="'+fh.toFixed(1)+'" fill="currentColor" stroke="none" opacity=".7" clip-path="url(#clh)"/><path d="M9 14a3 3 0 003 3" opacity=".55"/>';}},
-    airquality:{k:'pct',f:function(p){var o=aiClamp(p)/100;function d(x,y,t){return '<circle cx="'+x+'" cy="'+y+'" r="1.4"'+(o>=t?' fill="currentColor"':'')+'/>';}return d(6,8,.2)+d(12,6,.4)+d(17,10,.6)+d(9,14,.75)+d(15,16,.9);}},
-    dust:{k:'pct',f:function(p){var o=aiClamp(p)/100;function c(x,y,r,t){return '<circle cx="'+x+'" cy="'+y+'" r="'+r+'"'+(o>=t?' fill="currentColor" fill-opacity=".55"':'')+'/>';}return '<path d="M4 17h16" opacity=".4"/>'+c(7,10,1.6,.2)+c(12,8,2,.5)+c(16,12,1.4,.75)+c(10,13,1.2,.9);}},
+    airquality:{k:'pct',f:function(p){var o=aiClamp(p)/100;function d(x,y,t){return '<circle cx="'+x+'" cy="'+y+'" r="1.4" opacity="'+(o>=t?1:.22)+'"/>';}return d(6,8,.2)+d(12,6,.4)+d(17,10,.6)+d(9,14,.75)+d(15,16,.9);}},
+    dust:{k:'pct',f:function(p){var o=aiClamp(p)/100;function c(x,y,r,t){return '<circle cx="'+x+'" cy="'+y+'" r="'+r+'" opacity="'+(o>=t?1:.22)+'"/>';}return '<path d="M4 17h16" opacity=".4"/>'+c(7,10,1.6,.2)+c(12,8,2,.5)+c(16,12,1.4,.75)+c(10,13,1.2,.9);}},
     co2:{k:'pct',f:function(p){return '<circle cx="12" cy="12" r="4" fill="currentColor" fill-opacity="'+aiOp(p)+'"/><circle cx="5" cy="12" r="2.6"/><circle cx="19" cy="12" r="2.6"/><path d="M7.6 12h1.4M15 12h1.4"/>';}},
     thermometerhalf:{k:'pct',f:function(p){var fh=8*aiClamp(p)/100;return '<path d="M12 3a2 2 0 012 2v9a4 4 0 11-4 0V5a2 2 0 012-2z"/><circle cx="12" cy="18" r="2.4" fill="currentColor" stroke="none"/><rect x="11" y="'+(15.5-fh).toFixed(1)+'" width="2" height="'+fh.toFixed(1)+'" fill="currentColor" stroke="none"/>';}},
     sun:{k:'pct',f:function(p){return '<circle cx="12" cy="12" r="4" fill="currentColor" fill-opacity="'+aiOp(p)+'"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M17.7 6.3l1.4-1.4M4.9 19.1l1.4-1.4" opacity="'+(0.25+aiClamp(p)/100*0.75).toFixed(2)+'"/>';}},
@@ -362,7 +374,15 @@
     if(/(such|search|lost|locat|scan)/.test(s))return 'search';
     var n=parseFloat(s.replace(',','.'));if(!isNaN(n))return ({1:'work',2:'return',3:'charge',4:'search',5:'leave'})[n]||'idle';
     return 'idle';}
-  function iconSVG(id,val){var ax=AICONS[id];if(ax){var inner=ax.k==='pct'?ax.f(aiPct(val)):ax.k==='raw'?ax.f(val):ax.f(aiState(val));return '<svg class="ic24" viewBox="0 0 24 24" data-ai="'+id+'">'+inner+'</svg>';}var e=ICONS[id];return '<svg class="ic24" viewBox="0 0 24 24">'+(e?e[1]:'')+'</svg>';}
+  // Alle Voll-Füllungen der Zustands-Icons -> reine Kontur (Outline). Zustand bleibt über Deckkraft/Kontur-Kasten sichtbar.
+  function _strokeify(s){
+    return s
+      .replace(/fill="currentColor"([^>]*?)fill-opacity="([0-9.]+)"/g,'fill="none"$1opacity="$2"') // Füllung+Füll-Deckkraft -> Kontur mit Deckkraft
+      .replace(/fill-opacity="([0-9.]+)"([^>]*?)fill="currentColor"/g,'opacity="$1"$2fill="none"') // (umgekehrte Attribut-Reihenfolge)
+      .replace(/fill="currentColor"/g,'fill="none"')                                              // restliche Voll-Füllungen -> keine
+      .replace(/\s*stroke="none"/g,'');                                                           // stroke:none entfernen, damit .ic24-Kontur sichtbar wird
+  }
+  function iconSVG(id,val){var ax=AICONS[id];if(ax){var inner=_strokeify(ax.k==='pct'?ax.f(aiPct(val)):ax.k==='raw'?ax.f(val):ax.f(aiState(val)));return '<svg class="ic24" viewBox="0 0 24 24" data-ai="'+id+'">'+inner+'</svg>';}var e=ICONS[id];return '<svg class="ic24" viewBox="0 0 24 24">'+(e?e[1]:'')+'</svg>';}
   var GS=8; // Rasterweite
   var store={views:{},current:null};
   var state={page:{w:1440,h:900},widgets:[]};

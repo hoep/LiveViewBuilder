@@ -75,13 +75,8 @@
         +'<div data-role="cwBarH" style="position:absolute;top:50%;left:0%;width:15px;height:15px;margin:-7.5px 0 0 -7.5px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.45);background:#000;pointer-events:none"></div></div></div>';
       return '<div style="height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:12px;box-sizing:border-box">'+lbl+wheel+slider+'</div>';
     },
-    props:function(w){return row('RGB-Variable','<input id="pCwVar" value="'+(w.varId||'')+'" placeholder="ID"> <button class="btn" id="pCwPick" style="padding:6px 8px">waehlen</button>')
-      +row('Titel','<input id="pCwLbl" value="'+esc(w.label||'')+'" placeholder="optional">');},
-    wire:function(w){
-      if($('#pCwVar'))$('#pCwVar').oninput=function(){w.varId=this.value.trim()||undefined;};
-      if($('#pCwPick'))$('#pCwPick').onclick=function(){showTab('vars');_bindTarget=w.id;};
-      if($('#pCwLbl'))$('#pCwLbl').oninput=function(){w.label=this.value||undefined;render();};
-    },
+    props:function(w){return '';}, // Variable + Label über den zentralen Editor
+    wire:function(w){},
     live:function(w,el,id,d,base,txt,on){
       if(w.varId!==id)return;cwArm(w,el);if(el.__cwDrag)return;
       var iv=parseInt(String(d.v).replace(/[^0-9-]/g,''),10);if(isNaN(iv))iv=0;iv=iv&0xFFFFFF;

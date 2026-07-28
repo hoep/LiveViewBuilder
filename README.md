@@ -1,9 +1,12 @@
 # LiveView Builder
 
-Ein vollwertiger **Dashboard-Builder für IP-Symcon** – im Browser, per Drag & Drop, pixelgenau.
-Baue eigene Visualisierungen aus 49 Widget-Typen, binde beliebige Symcon-Variablen live an,
-skaliere automatisch auf jeden Bildschirm und starte alles als Vollbild-Kiosk – **ohne Ports,
-ohne Skripte, ohne Konfiguration**. Instanz anlegen, URL öffnen, loslegen.
+Ein vollwertiger Dashboard-Builder fuer IP-Symcon - im Browser, per Drag and Drop, pixelgenau.
+Aus 77 Widget-Typen eigene Visualisierungen bauen, beliebige Symcon-Variablen live anbinden,
+automatisch auf jeden Bildschirm skalieren und als Vollbild-Kiosk starten - ohne offene Ports,
+ohne Skripte, ohne Konfiguration. Instanz anlegen, URL oeffnen, loslegen.
+
+Live-Updates laufen primaer per WebSocket-Push (optionaler Port) mit automatischem Polling als
+Fallback - der Fallback funktioniert portfrei auch ueber Symcon-Connect.
 
 ---
 
@@ -15,271 +18,307 @@ ohne Skripte, ohne Konfiguration**. Instanz anlegen, URL öffnen, loslegen.
 - [Einrichtung](#einrichtung-zero-config)
 - [Bedienung](#bedienung)
 - [Widget-Katalog](#widget-katalog)
-- [Skins & Themes](#skins--themes)
-- [SmartFit – der Autoscaler](#smartfit--der-autoscaler)
-- [Speichern, Snapshots & Bausteine](#speichern-snapshots--bausteine)
-- [Kiosk & Fernzugriff](#kiosk--fernzugriff)
-- [Live-Werte (Delta-Polling)](#live-werte-delta-polling)
+- [Skins und Themes](#skins-und-themes)
+- [SmartFit - der Autoscaler](#smartfit---der-autoscaler)
+- [Speichern, Snapshots und Bausteine](#speichern-snapshots-und-bausteine)
+- [Kiosk und Fernzugriff](#kiosk-und-fernzugriff)
+- [Live-Werte (WebSocket + Polling)](#live-werte-websocket--polling)
 - [IPSView-Import](#ipsview-import)
-- [Datenspeicherung & Sicherheit](#datenspeicherung--sicherheit)
+- [Datenspeicherung und Sicherheit](#datenspeicherung-und-sicherheit)
 - [API-Endpunkte](#api-endpunkte-referenz)
-- [FAQ / Fehlerbehebung](#faq--fehlerbehebung)
+- [FAQ und Fehlerbehebung](#faq-und-fehlerbehebung)
 - [Changelog](#changelog)
 
 ---
 
 ## Highlights
 
-- 🧩 **49 Widget-Typen** – von Wert/Schalter über Gauges, Charts (Apache ECharts), Power-Flow,
-  Kameras, Wetter- und Sonnen-Cards bis HTML-Embeds und Wochenplänen.
-- 🎯 **Pixelgenaues Drag & Drop** – absolute Positionierung, Raster-Snap, Ausricht-Hilfen mit
-  einstellbarem Standardabstand, Multi-Select, Ausrichten/Verteilen, Undo/Redo.
-- 🔗 **Beliebige Variablen live binden** – integrierter Objektbaum mit Live-Suche nach
-  Name · Pfad · ID; Werte aktualisieren sich automatisch, Schalten schreibt zurück.
-- 📐 **SmartFit-Autoscaler** – füllt jedes Seitenverhältnis (16:9, Ultrawide, Portrait, Handy)
-  ohne Verzerrung, mit optionalem Reflow. Kein Letterbox, kaum Scrollen.
-- 🎨 **Skins mit Dark & Light** – 11 eingebaute Skins, eigene per Klick, Live-Farb-/Schrift-Editor,
-  Skin-Wechsler-Widget für den Betrachter.
-- 💾 **Auto-Speichern + „Speichern unter"** – benannte Snapshots/Varianten, alles in der Instanz.
-- 🖥️ **Vollbild-Kiosk** – eine URL fürs Wandpanel/Tablet, ohne Symcon-Chrome.
-- 🔌 **Zero-Config** – der WebHook registriert sich selbst, ein Token wird automatisch erzeugt.
-  Live-Updates laufen portfrei über Port 3777 und funktionieren auch über Symcon-Connect.
-- ⬇️ **IPSView-Import** – bestehende `.ipsView`-Seiten (100 % Typ-Abdeckung) übernehmen.
+- 77 Widget-Typen - von Wert/Schalter ueber Gauges, Charts (Apache ECharts), Fluss-Schema,
+  Kameras, Wetter- und Sonnen-Cards bis HTML-Embeds, Wochenplaenen und einem Live-Monitor.
+- Pixelgenaues Drag and Drop - absolute Positionierung, Raster-Snap, Ausricht-Hilfen mit
+  einstellbarem Standardabstand, Multi-Select, Ausrichten/Verteilen, Gruppen, Undo/Redo.
+- Beliebige Variablen live binden - integrierter Objektbaum mit Live-Suche nach
+  Name, Pfad und ID; Werte aktualisieren sich automatisch, Schalten schreibt zurueck.
+- WebSocket-Push als Primaerkanal - sofortige Aktualisierung ueber einen optionalen Port,
+  mit Delta-Polling als portfreiem Fallback (auch ueber Connect).
+- SmartFit-Autoscaler - fuellt jedes Seitenverhaeltnis (16:9, Ultrawide, Portrait, Handy)
+  ohne Verzerrung, mit optionalem Reflow.
+- Skins mit Dark und Light - eingebaute Skins, eigene per Klick, Live-Farb- und Schrift-Editor,
+  Skin-Wechsler-Widget fuer den Betrachter. Alle Grafiken sind token-basiert.
+- Einheitliche Widget-Editoren - zentrale Variablen-Bindung, Icon-Farbe (Skin), Interaktion
+  (Seite/Popup, kurz und lang), Sichtbarkeit, Typografie und Responsive-Optionen fuer alle Widgets.
+- Auto-Speichern und "Speichern unter" - benannte Snapshots/Varianten, alles in der Instanz.
+- Vollbild-Kiosk - eine URL fuers Wandpanel/Tablet, ohne Symcon-Chrome.
+- Zero-Config - der WebHook registriert sich selbst, ein Token wird automatisch erzeugt.
+- IPSView-Import - bestehende .ipsView-Seiten uebernehmen.
 
 ---
 
 ## Voraussetzungen
 
-| | |
+| Komponente | Anforderung |
 |---|---|
-| **IP-Symcon** | ab 7.1 |
-| **WebHook Control** | ist Kernbestandteil von Symcon – nichts zu installieren |
-| **Archive Handler** | optional, nur für **Chart-/Sparkline**-Widgets (historische Verläufe) |
-| **iCal Calendar Reader** | optional, nur fürs **Kalender**-Widget |
-| **Browser** | aktueller Chromium/WebKit/Firefox (Tablet/Kiosk-tauglich) |
+| IP-Symcon | ab 7.1 |
+| WebHook Control | Kernbestandteil von Symcon - nichts zu installieren |
+| Archive Handler | optional, nur fuer Chart-/Sparkline-Widgets (historische Verlaeufe) |
+| iCal Calendar Reader | optional, nur fuers Kalender-Widget |
+| WebSocket-Port | optional, nur fuer den Push-Kanal (sonst laeuft alles per Polling) |
+| Browser | aktueller Chromium/WebKit/Firefox (Tablet/Kiosk-tauglich) |
 
-Es sind **keine** zusätzlichen IO-/Splitter-Instanzen, **keine** offenen Ports und **keine**
-Firewall-Regeln nötig.
+Ohne WebSocket-Port sind keine zusaetzlichen IO-/Splitter-Instanzen, keine offenen Ports und
+keine Firewall-Regeln noetig.
 
 ---
 
 ## Installation
 
-**Über den Module Store** (empfohlen): in Symcon unter *Module → Store* nach „LiveView Builder"
+Ueber den Module Store (empfohlen): in Symcon unter Module, Store nach "LiveView Builder"
 suchen und installieren.
 
-**Über Git** (manuell): in der Symcon-Verwaltungskonsole *Module → Hinzufügen* und die
+Ueber Git (manuell): in der Symcon-Verwaltungskonsole Module, Hinzufuegen und die
 Repository-URL eintragen.
 
-Danach **Symcon-Kernel neu starten** (bzw. *Module → Aktualisieren*), damit die Library geladen wird.
+Danach den Symcon-Kernel neu starten (bzw. Module, Aktualisieren), damit die Library geladen wird.
 
 ---
 
 ## Einrichtung (Zero-Config)
 
-1. *Instanz hinzufügen* → **„LiveView Builder"**.
-2. Der Konfigurationsdialog zeigt sofort die **fertigen URLs**:
-   - **Builder-Editor:** `http://<Symcon-IP>:3777/hook/lvb<InstanzID>?ui=builder`
-   - **Kiosk/Vollbild:** `…?ui=builder&run=1&view=NAME`
-   Der Button **„Adressen anzeigen"** listet die Links (inkl. Connect) auf.
-3. URL im Browser öffnen – der Builder lädt, der Objektbaum zeigt deine Variablen.
+1. Instanz hinzufuegen, "LiveView Builder".
+2. Im Konfigurationsdialog optional ein Site-Label setzen (Pfad-Bestandteil) und - falls
+   gewuenscht - einen WebSocket-Port fuer den Push-Kanal.
+3. Der Dialog zeigt die fertigen URLs:
+   - Builder-Editor: `http://<Symcon-IP>:3777/hook/builder/<Site>`
+   - Kiosk/Vollbild: `http://<Symcon-IP>:3777/hook/run/<Site>?view=<Ansicht>`
+4. URL im Browser oeffnen - der Builder laedt, der Objektbaum zeigt die Variablen.
 
-Beim ersten *Übernehmen* passiert automatisch:
-- der WebHook `/hook/lvb<InstanzID>` wird registriert und auf diese Instanz gelenkt,
-- ein zufälliger **Schreib-Token** wird erzeugt und in die Seite injiziert.
+Beim ersten Uebernehmen passiert automatisch:
+- die WebHooks `/hook/builder` und `/hook/run` werden registriert,
+- ein zufaelliger Schreib-Token wird erzeugt und in die Seite injiziert.
 
-> **Mehrere Dashboards?** Einfach mehrere Instanzen anlegen – jede hat ihre eigene URL und
-> ihre eigenen Ansichten.
+Mehrere Dashboards: einfach mehrere Instanzen anlegen - jede hat ihr eigenes Site-Label und
+ihre eigenen Ansichten.
 
 ---
 
 ## Bedienung
 
-**Palette** (rechte Seitenleiste, Reiter *Palette*): Widget auf die Canvas **ziehen** oder
-anklicken. Danach frei positionieren, an der Ecke skalieren.
+Palette (Seitenleiste, Reiter Palette): Widget auf die Canvas ziehen oder anklicken, danach
+frei positionieren und an der Ecke skalieren.
 
-**Variablen binden** (Reiter *Variablen*): im Baum navigieren oder oben **suchen**
-(Name · Pfad · ID, live beim Tippen). Klick auf eine Variable erzeugt eine Wert-Kachel bzw.
-bindet sie ans ausgewählte Widget. Der Widget-Typ ist jederzeit im Eigenschaften-Panel umstellbar.
+Variablen binden (Reiter Variablen): im Baum navigieren oder oben suchen (Name, Pfad, ID, live
+beim Tippen). Klick auf eine Variable erzeugt eine Wert-Kachel bzw. bindet sie an das
+ausgewaehlte Widget. Der Widget-Typ ist im Eigenschaften-Panel jederzeit umstellbar.
 
-**Ansichten (Views):** mehrere Seiten pro Dashboard, umschaltbar über das Ansichts-Dropdown;
-eine Ansicht als **Startseite** (Kiosk-Default) markierbar.
+Ansichten (Views): mehrere Seiten pro Dashboard, umschaltbar ueber das Ansichts-Dropdown; eine
+Ansicht als Startseite (Kiosk-Default) markierbar. Beim Umbenennen einer Ansicht werden alle
+Verweise (Seite oeffnen, Popup, Startseite) automatisch mitgezogen.
 
-**Toolbar** (alles mit Hover-Tooltip):
-Raster · Vorschau · Struktur einblenden · Baustein speichern · Dunkel/Hell · Undo/Redo ·
-Ansicht neu/umbenennen/löschen/Start · Canvas-Größe · Anpassung (Fit-Modus) · Live · IPSView-Import ·
-Layout-Auswahl · Speichern · Speichern unter.
+Interaktion je Widget: kurzer Tipp und langer Druck sind getrennt belegbar - Seite oeffnen,
+Popup oeffnen, Skript ausfuehren. Ein dezenter Hover-Hinweis zeigt an, dass ein Widget reagiert.
 
-**Reiter** der Seitenleiste: *Variablen · Palette · Farben · Icons · Skins · Einstellungen ·
-Eigenschaften*. Die Seitenleiste ist am linken Rand **breiter ziehbar**.
+Reiter der Seitenleiste: Variablen, Palette, Farben, Icons, Skins, Einstellungen, Eigenschaften.
+Die Seitenleiste ist am linken Rand breiter ziehbar.
 
 ---
 
 ## Widget-Katalog
 
-**Grundelemente:** Wert · Text · Icon · Linie · Form (Rechteck/Kreis/Linie)
+Grundelemente: Wert, Wertkarte, Text, Lauftext, Icon, Linie, Form, Bild, Leer.
 
-**Steuerung:** Kachel · Button · Schalter · Slider · Thermostat · Rollo · Licht ·
-**Dial** (Kreis-Regler) · **Auswahl** (Segmented) · Alarm · Vacuum · Media · **Skin-Wechsler**
+Steuerung: Kachel, Button, Schalter, Slider, RangeSlider, Stepper, Thermostat, Rollo, Licht,
+Dial (Kreis-Regler), CircleRange, Auswahl (Segmented), Checkbox, Alarm, Vacuum, Media,
+Skin-Wechsler, Eingabe (Textfeld), RGB-Button, RGB-Box, RGB-Slider, Farbkreis, CIE-Picker.
 
-**Anzeige:** Chip · **Gauge** / **Gauge+** (Farbzonen) · Balken · **Raum** ·
-**Status-Liste** · **Geräte-Liste** · **Laufzeile** (Alarm-Ticker) · **Temp-Säule** (mit Soll-Marker) ·
-**Status-Grid** · **Metrik-Liste** · **Info-Liste** · **KPI** · **Delta** (▲/▼-Trend) · **Status-Bild**
+Anzeige: Chip, Gauge und Gauge+ (Farbzonen), Balken, Temp-Saeule (mit Soll-Marker), KPI,
+Delta (Auf/Ab-Trend), Statistik (Min/Mittel/Max), Zaehlerwert (Verbrauch je Periode),
+Berechnung, Raum, Zustand (Assoziationen), Status-Liste, Status-Grid, Status-Bild,
+Zustands-Timeline, Geraete-Liste, Metrik-Liste, Info-Liste.
 
-**Diagramme:** **Chart** – vollwertiger **Apache-ECharts-Wrapper** (Fläche/Linie/Balken/Stufen/Punkte,
-Spline, Punkte, Balken-Rundung, Flächen-Verlauf, Legende, Y-Raster, Datenlabels, Y-Min/Max,
-**mehrere Serien**, eigene Farbe/Name pro Serie, **zweite Y-Achse**, **Zoom/Scroll**, **Stapeln**) ·
-Sparkline · Sankey · Power-Flow (mit Fluss-Editor)
+Diagramme: Chart (Apache-ECharts-Wrapper - Flaeche/Linie/Balken/Stufen/Punkte, Spline,
+Balken-Rundung, Flaechen-Verlauf, Legende, Y-Raster, Datenlabels, Y-Min/Max, mehrere Serien,
+zweite Y-Achse, Zoom/Scroll, Stapeln), Sparkline, Sankey, Windrose, Fluss-Schema, Energiefluss-Linie.
 
-**Wetter & Zeit:** Wetter · **Wetter+** (variablen-gebundene Forecast-Tage mit
-**Temperatur→Farbe-Verlaufsbalken**, mehrere Stufen einstellbar) · Sonne ·
-**Sonnenbogen** (Live-Sonnenstand) · Uhr · Timer · Kalender (iCal) · Wochenplan (WeeklySchedule)
+Fluss-Schema (Widget "Fluss"): drei Modi in einem Widget - Pipeline (Stationen in Reihe mit
+Wert je Block und animierten Konnektoren, optionales End-Becken), Energie (zentraler Knoten mit
+frei anlegbaren Elementen Netz/PV/Batterie/Verbraucher, gerichteter, eingefaerbter Flusslinie,
+Geschwindigkeit und Ladezustand) und Hub (Quellen zu Zentrum zu Senken).
 
-**Medien:** Kamera · Kamera+ (PTZ/Bewegung) · **HTML** (rendert Variablen-HTML in isoliertem iframe,
-skalierbar, transparent) · **Bild** · **WebView** (URL)
+Wetter und Zeit: Wetter, Wetter+ (variablen-gebundene Forecast-Tage mit
+Temperatur-zu-Farbe-Verlaufsbalken), Sonne, Sonnenbogen (Live-Sonnen- und Mondstand aus
+Location Control und Astronomie, mit lokalem Fallback), Uhr, Timer, Kalender (iCal),
+Wochenplan (WeeklySchedule, konfigurierbare Zustandsfarben), Regenmenge.
 
-Dazu **eigene Bausteine**: eine Auswahl gruppieren, als wiederverwendbaren Block speichern und
-per Klick/Drag beliebig oft einfügen.
+Medien und Web: Kamera, Kamera+ (PTZ/Bewegung), HTML (rendert Variablen-HTML in isoliertem
+iframe, skalierbar, transparent), WebView (URL).
+
+System und Live: Meldungen (Symcon-Log mit Severity-Filter, konfigurierbarem Intervall),
+Live-Monitor (zeigt eingehende WebSocket-/Poll-Updates, Standard- oder Kompaktdarstellung),
+Objekt-Info, Ereignis-Steuerung, Komponente (wiederverwendbarer Baustein mit ID-Remapping).
+
+Dazu eigene Bausteine: eine Auswahl gruppieren, als wiederverwendbaren Block speichern und per
+Klick oder Drag beliebig oft einfuegen.
 
 ---
 
-## Skins & Themes
+## Skins und Themes
 
-Alle Farben/Schriften kommen aus austauschbaren **Skins** – jeder mit **Dark- und Light-Variante**:
+Alle Farben und Schriften kommen aus austauschbaren Skins - jeder mit Dark- und Light-Variante:
 
-- **11 eingebaute Skins:** Standard (Teal), Indigo, Bernstein, Smaragd, Ozean, Violett, Koralle,
-  Rose, Limette, Gold, Stahl (unterscheiden sich v. a. in der Akzentfarbe).
-- **Eigene Skins:** im Reiter *Skins* „Duplizieren", dann 16 Farb-Tokens + 2 Schriften live editieren.
-- **Toolbar-Toggle** ◐ für Dunkel/Hell; **Skin-Wechsler-Widget** lässt auch den Betrachter im
-  Kiosk zwischen Skins/Themes wechseln (Wahl bleibt per `localStorage` erhalten).
+- Eingebaute Skins in verschiedenen Akzentfarben.
+- Eigene Skins: im Reiter Skins duplizieren, dann Farb-Tokens und Schriften live editieren.
+- Toolbar-Umschalter fuer Dunkel/Hell; das Skin-Wechsler-Widget laesst auch den Betrachter im
+  Kiosk zwischen Skins und Themes wechseln (Wahl bleibt per localStorage erhalten).
 
-Alle Grafiken (Charts, Gauges, Kameras, Verlaufsbalken …) sind token-basiert und färben beim
+Widget-Farben lassen sich als Skin-Stichwort setzen (accent, ok, warn, crit, info, text, faint)
+und passen sich damit automatisch dem aktiven Theme an. Ein Kontrast-Schutz verhindert dunkle
+Schrift auf dunklem Grund. Alle Grafiken (Charts, Gauges, Kameras, Verlaufsbalken) faerben beim
 Skin-Wechsel automatisch mit.
 
 ---
 
-## SmartFit – der Autoscaler
+## SmartFit - der Autoscaler
 
-Pro Ansicht wählbar (Toolbar *Anpassung*):
+Pro Ansicht waehlbar (Toolbar Anpassung):
 
-- **Letterbox** – klassisch, gleichmäßig skaliert mit Rand.
-- **Auto** *(Standard neuer Ansichten)* – füllt den Viewport exakt (Track-Fill), Inhalt bleibt
-  unverzerrt (Text/Icons uniform, Charts/Kameras re-layouten). Bei echtem Portrait/Handy
-  automatisch **Reflow** (höhen-optimierter Umbruch → so wenig Scrollen wie möglich).
-- **Track-Fill** / **Reflow** – erzwungen.
+- Letterbox - gleichmaessig skaliert mit Rand.
+- Auto (Standard neuer Ansichten) - fuellt den Viewport exakt, Inhalt bleibt unverzerrt
+  (Text/Icons uniform, Charts/Kameras re-layouten). Bei echtem Portrait/Handy automatisch Reflow.
+- Track-Fill und Reflow - erzwungen.
 
-Per Widget übersteuerbar (Skalierpolitik fix/skaliert/stretch, Anker, Priorität, Gruppe). Ein
-„Struktur"-Overlay zeigt das erkannte Raster.
-
----
-
-## Speichern, Snapshots & Bausteine
-
-- **Auto-Speichern** (Standard an): jede Änderung wird ~1,5 s später gesichert; ein gelber Ring
-  am Speichern-Button signalisiert „ungespeichert". Abschaltbar unter *Einstellungen*.
-- **Speichern** schreibt ins aktuell geöffnete Layout, **Speichern unter …** legt ein benanntes
-  Layout an. Über das **Layout-Dropdown** wechselst du zwischen „Standard (live)" und Varianten.
-- **Bausteine**: Auswahl → Toolbar „Baustein" → wiederverwendbarer Block (view-übergreifend).
-
-Alles wird im **Instanz-Attribut** gespeichert (kein externes File) und mit dem Symcon-Backup gesichert.
+Per Widget uebersteuerbar (Skalierpolitik fix/skaliert/stretch, Anker, Prioritaet, Gruppe). Ein
+Struktur-Overlay zeigt das erkannte Raster.
 
 ---
 
-## Kiosk & Fernzugriff
+## Speichern, Snapshots und Bausteine
 
-- **Kiosk-URL:** `…/hook/lvb<InstanzID>?ui=builder&run=1&view=<Ansicht>` – Vollbild, kein
-  Symcon-Chrome, ideal für Wandpanel/Tablet (z. B. Fully Kiosk Browser).
-- Ohne `&view=` wird die als **Startseite** markierte Ansicht angezeigt.
-- **Fernzugriff:** dieselbe URL hinter deiner **Symcon-Connect**-Adresse – funktioniert, weil
-  alles über den regulären Port 3777 läuft (kein Extra-Port).
+- Auto-Speichern (Standard an): jede Aenderung wird kurz danach gesichert; ein Ring am
+  Speichern-Button signalisiert "ungespeichert". Abschaltbar unter Einstellungen.
+- Speichern schreibt ins aktuell geoeffnete Layout, Speichern unter legt ein benanntes Layout an.
+  Ueber das Layout-Dropdown wechselt man zwischen Standard (live) und Varianten.
+- Bausteine: Auswahl, Toolbar Baustein, wiederverwendbarer Block (view-uebergreifend).
+
+Alles wird im Instanz-Attribut gespeichert (kein externes File) und mit dem Symcon-Backup gesichert.
 
 ---
 
-## Live-Werte (Delta-Polling)
+## Kiosk und Fernzugriff
 
-Der Builder pollt nur **geänderte** Werte (`?api=val&ids=…&since=…`) im Sekundentakt und pausiert
-bei inaktivem Tab. Das ist bewusst so gewählt:
+- Kiosk-URL: `/hook/run/<Site>?view=<Ansicht>` - Vollbild, kein Symcon-Chrome, ideal fuer
+  Wandpanel/Tablet (z. B. Fully Kiosk Browser).
+- Ohne `&view=` wird die als Startseite markierte Ansicht angezeigt.
+- Fernzugriff: dieselbe URL hinter der Symcon-Connect-Adresse. Der Polling-Fallback laeuft ueber
+  Port 3777 und funktioniert damit auch ueber Connect; der WebSocket-Push ist nur im lokalen Netz
+  bzw. bei erreichbarem Port aktiv.
 
-- **portfrei** – nutzt den vorhandenen Symcon-Webserver (3777),
-- **Connect-tauglich** – funktioniert über den Fernzugriff,
-- **zero-config** – nichts einzurichten.
+---
 
-WebSocket-Push wäre schneller, braucht aber einen eigenen Port + Server-Socket-Instanz + Firewall
-und funktioniert **nicht** über Connect – deshalb ist Polling der Standard.
+## Live-Werte (WebSocket + Polling)
+
+Der Builder haelt die Werte auf zwei Wegen aktuell:
+
+- WebSocket-Push (Primaerkanal): ein eigenes Push-Modul verschickt Aenderungen der im Layout
+  gebundenen Variablen sofort an alle Clients. Aktiv, sobald im Instanzdialog ein WebSocket-Port
+  gesetzt ist und dieser erreichbar ist.
+- Delta-Polling (Fallback): laeuft automatisch, wenn kein Push ankommt (kein Port, nicht
+  erreichbar, oder ueber Connect). Es werden nur geaenderte Werte abgefragt
+  (`?api=val&ids=...&since=...`), und bei inaktivem Tab pausiert die Abfrage.
+
+Der Sicherheits-Poll kann in den Einstellungen abgeschaltet werden (reiner WebSocket-Betrieb);
+beim Seitenwechsel wird dann einmalig gepollt, danach kommen Updates ausschliesslich per Push.
+Ein globales Standard-Intervall fuer periodisch nachladende Widgets (z. B. Meldungen) ist in den
+Einstellungen konfigurierbar und je Widget uebersteuerbar.
 
 ---
 
 ## IPSView-Import
 
-Im Builder **„⬇ IPSView"**. Als Quelle im Instanz-Formular unter **„IPSView-Import: Pfad zu einer
-.ipsView-Datei"** den Dateipfad (z. B. `/var/lib/symcon/media/XXXXX.ipsView`) eintragen.
-Der Importer deckt **alle 38 IPSView-Control-Typen** ab (Buttons, Slider, Status-Bilder, Gauges
-mit Zonen, Wochenpläne, Shapes, HTMLBox …) und übernimmt Variablen-Bindung (über `ItemID`),
-Einheiten, Min/Max und Farben.
+Im Instanz-Formular unter IPSView-Import den Pfad zu einer .ipsView-Datei eintragen
+(z. B. `/var/lib/symcon/media/XXXXX.ipsView`) und im Builder importieren. Der Importer deckt die
+IPSView-Control-Typen ab (Buttons, Slider, Status-Bilder, Gauges mit Zonen, Wochenplaene, Shapes,
+HTMLBox) und uebernimmt Variablen-Bindung (ueber ItemID), Einheiten, Min/Max und Farben.
 
 ---
 
-## Datenspeicherung & Sicherheit
+## Datenspeicherung und Sicherheit
 
-- **Layouts/Skins/Bausteine/Einstellungen** liegen im Instanz-Attribut `Layouts`.
-- **Schreib-Token**: wird automatisch erzeugt und in die Seite injiziert; alle schreibenden
-  Endpunkte (`setvar`, `layout`-POST) prüfen ihn. Der Nutzer verwaltet ihn nicht.
+- Layouts, Skins, Bausteine und Einstellungen liegen im Instanz-Attribut.
+- Schreib-Token: wird automatisch erzeugt und in die Seite injiziert; alle schreibenden
+  Endpunkte (setvar, layout-POST, runscript, setevent, publish) pruefen ihn.
 - Der WebHook liegt hinter der normalen Symcon-Benutzeranmeldung.
 
 ---
 
 ## API-Endpunkte (Referenz)
 
-Alle relativ zum Hook `/hook/lvb<InstanzID>`:
+Alle relativ zum Hook (`/hook/builder/<Site>` fuer den Editor, `/hook/run/<Site>` fuer die Laufzeit):
 
 | Endpunkt | Zweck |
 |---|---|
-| *(ohne)* / `?ui=builder` | Builder-Seite · `&run=1` = Kiosk |
-| `?api=tree&parent=` / `&search=` | Objektbaum (lazy) / Suche Name·Pfad·ID |
-| `?api=val&ids=…&since=…` | Live-Werte (Delta) |
+| `?ui=builder` bzw. `/hook/run/<Site>` | Builder-Seite bzw. Kiosk-Laufzeit |
+| `?api=tree&parent=` / `&search=` | Objektbaum (lazy) und Suche nach Name/Pfad/ID |
+| `?api=val&ids=...&since=...` | Live-Werte (Delta) |
 | `?api=setvar&id=&value=&key=TOKEN` | Variable schreiben |
-| `?api=layout` (GET/POST) · `&list=1` · `&file=` | Layouts laden/speichern/auflisten (Snapshots) |
+| `?api=layout` (GET/POST), `&list=1`, `&file=` | Layouts laden/speichern/auflisten |
 | `?api=history&id=&h=` | Verlaufsdaten (Archive Handler) |
-| `?api=html&id=` | Variablen-HTML fürs HTML-Widget |
+| `?api=html&id=` | Variablen-HTML fuers HTML-Widget |
 | `?api=media&id=` | Media-Bild (Kamera/Bild) |
-| `?api=weekplan&id=` | WeeklySchedule fürs Wochenplan-Widget |
+| `?api=weekplan&id=` | WeeklySchedule fuers Wochenplan-Widget |
 | `?api=cal&ids=&days=` | iCal-Events |
+| `?api=astro&id=&moon=` | Sonnen-/Mondstand fuer die Sonnenbogen-Card |
+| `?api=messages&n=&sev=` | Symcon-Log (gefiltert) fuers Meldungen-Widget |
+| `?api=event&id=` / `?api=setevent&id=&active=&key=TOKEN` | Ereignis lesen/schalten |
+| `?api=objinfo&id=` | Objekt-Metadaten |
+| `?api=runscript&id=&key=TOKEN` | Skript ausfuehren |
+| `?api=publish&key=TOKEN` | Reload-Broadcast an alle Clients (WebSocket) |
 | `?api=import` | IPSView-Seiten importieren |
 | `?api=asset&name=echarts` | lokal gehostetes ECharts |
 
 ---
 
-## FAQ / Fehlerbehebung
+## FAQ und Fehlerbehebung
 
-**Der Builder lädt nicht / 404.**
-Kernel nach der Installation neu gestartet? Instanz einmal *Übernehmen* (registriert den Hook).
-URL-Pfad ist `/hook/lvb<InstanzID>` (die ID steht im Objektbaum/Formular).
+Der Builder laedt nicht / 404.
+Kernel nach der Installation neu gestartet? Instanz einmal Uebernehmen (registriert die Hooks).
+Der URL-Pfad ist `/hook/builder/<Site>` bzw. `/hook/run/<Site>`.
 
-**Charts bleiben leer.**
-Chart-/Sparkline-Widgets brauchen den **Archive Handler** und eine geloggte Variable.
+Charts bleiben leer.
+Chart-/Sparkline-Widgets brauchen den Archive Handler und eine geloggte Variable.
 
-**Kamera/Bild zeigt nichts.**
-Es muss ein **Media-Objekt vom Typ Bild** sein; die Media-ID im Widget eintragen.
+Kamera/Bild zeigt nichts.
+Es muss ein Media-Objekt vom Typ Bild sein; die Media-ID im Widget eintragen.
 
-**Werte aktualisieren langsam (~1 s).**
-Das ist das Delta-Polling (portfrei, Connect-tauglich). So gewollt.
+Werte aktualisieren nur beim Seitenwechsel.
+Reiner WebSocket-Betrieb ohne erreichbaren Port. Entweder den WebSocket-Port pruefen oder den
+Sicherheits-Poll in den Einstellungen wieder aktivieren.
 
-**Kann ich das Aussehen ändern?**
-Ja – Reiter *Skins* (Farben/Schriften, Dark/Light) und *Einstellungen* (Raster, Standardabstand,
-Standard-Canvas, Standard-Skin, Auto-Speichern).
+Kann ich das Aussehen aendern?
+Ja - Reiter Skins (Farben/Schriften, Dark/Light) und Einstellungen (Raster, Standardabstand,
+Standard-Canvas, Standard-Skin, Aktualisierungs-Intervall, Auto-Speichern).
 
 ---
 
 ## Changelog
 
-**1.0**
-- Erstveröffentlichung als eigenständiges Modul.
+1.1
+- WebSocket-Push als Primaerkanal ueber ein eigenes Push-Modul (optionaler Port), mit
+  Delta-Polling als portfreiem Fallback; reiner WebSocket-Betrieb optional.
+- Neues Hook-Schema `/hook/builder/<Site>` und `/hook/run/<Site>` mit Site-Label.
+- Generalisiertes Fluss-Widget mit drei Modi (Pipeline, Energie, Hub).
+- Neue Widgets: Wertkarte, Sonnenbogen, Meldungen, Live-Monitor.
+- Vereinheitlichte Widget-Editoren: zentrale Variablen-Bindung, Icon-Farbe (Skin), Farbe nach
+  Zustand, Praefix/Suffix, Schwellenfarbe, Nachkommastellen; Interaktion (Seite/Popup, kurz und
+  lang) fuer alle Widgets; Kontrast-Schutz fuer Textfarben.
+- Konfigurierbares Aktualisierungs-Intervall (global und je Widget).
+- 77 Widget-Typen.
+
+1.0
+- Erstveroeffentlichung als eigenstaendiges Modul.
 - Selbst-registrierender WebHook, Auto-Token, Layouts im Instanz-Attribut.
-- 49 Widget-Typen, 11 Skins (Dark/Light), SmartFit-Autoscaler, ECharts-Chart-Wrapper,
-  Bausteine, Auto-Speichern + benannte Snapshots, IPSView-Import (100 % Typ-Abdeckung),
-  Live-Werte per Delta-Polling.
+- Widget-Sammlung, Skins (Dark/Light), SmartFit-Autoscaler, ECharts-Chart-Wrapper, Bausteine,
+  Auto-Speichern und benannte Snapshots, IPSView-Import, Live-Werte per Delta-Polling.
 
 ---
 
-*LiveView Builder ist ein Community-Modul für IP-Symcon. „keine Batterie" – reine Visualisierung,
-keine Steuerlogik.*
+LiveView Builder ist ein Community-Modul fuer IP-Symcon. Reine Visualisierung, keine Steuerlogik.

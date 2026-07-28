@@ -14,15 +14,10 @@
     props:function(w){
       var col=w.color||'#ff8800';var mine=parseInt(String(col).replace('#',''),16);if(isNaN(mine))mine=0;
       return row('Farbe','<input id="pRgbCol" type="color" value="'+esc(col)+'">')
-        +row('Label','<input id="pRgbLbl" value="'+esc(w.label||'')+'" placeholder="optional">')
-        +row('Variable','<input id="pRgbVar" value="'+(w.varId||'')+'" placeholder="Integer-Var-ID"> <button class="btn" id="pRgbPick" style="padding:6px 8px">wählen</button>')
-        +'<div class="pgh">RGB-Wert: '+mine+'</div>';
+        +'<div class="pgh">RGB-Wert: '+mine+'</div>'; // Label + Variable über den zentralen Editor
     },
     wire:function(w){
       if($('#pRgbCol'))$('#pRgbCol').oninput=function(){w.color=this.value;render();renderProps();};
-      if($('#pRgbLbl'))$('#pRgbLbl').oninput=function(){w.label=this.value||undefined;render();};
-      if($('#pRgbVar'))$('#pRgbVar').onchange=function(){w.varId=parseInt(this.value)||0;render();};
-      if($('#pRgbPick'))$('#pRgbPick').onclick=function(){showTab('vars');_bindTarget=w.id;};
     },
     live:function(w,el,id,d,base,txt,on){
       if(w.varId!==id)return;var sw=$('[data-role=swatch]',el);if(!sw)return;

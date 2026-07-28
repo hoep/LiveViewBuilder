@@ -5,8 +5,9 @@
     var mm=_rainNum(w.varId),rate=w.varId2?_rainNum(w.varId2):NaN,mx=(w.rmax>0?w.rmax:30);
     var f=isNaN(mm)?0:Math.max(0,Math.min(1,mm/mx));
     var fill=el.querySelector('[data-role=rfill]');if(fill){var H=70;fill.setAttribute('height',(H*f).toFixed(1));fill.setAttribute('y',(80-H*f).toFixed(1));}
-    var v=el.querySelector('[data-role=val]');if(v)v.textContent=isNaN(mm)?'–':(Math.round(mm*10)/10).toString().replace('.',',');
-    var sub=el.querySelector('[data-role=sub]');if(sub)sub.textContent=w.varId2?(isNaN(rate)?'':((Math.round(rate*10)/10).toString().replace('.',',')+' mm/h')):(w.label||'Regen heute');
+    var _fmt=function(x){return (w.dec!=null?x.toFixed(w.dec):(Math.round(x*10)/10).toString()).replace('.',',');};
+    var v=el.querySelector('[data-role=val]');if(v)v.textContent=isNaN(mm)?'–':_fmt(mm);
+    var sub=el.querySelector('[data-role=sub]');if(sub)sub.textContent=w.varId2?(isNaN(rate)?'':(_fmt(rate)+' mm/h')):(w.label||'Regen heute');
     var rain=el.querySelector('[data-role=rain]');if(rain)rain.style.opacity=(!isNaN(rate)&&rate>0)?'1':'0'; // Tropfen nur bei Niederschlag
   }
   defWidget('raincard',{

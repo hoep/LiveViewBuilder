@@ -2,7 +2,7 @@
   // Semantische Skin-Farben (passen sich beim Reskinning/Theme automatisch an)
   var _SEVC=[['var(--text)','Standard'],['var(--ok)','OK'],['var(--warn)','Warnung'],['var(--crit)','Fehler'],['var(--accent)','Akzent'],['var(--info)','Info']];
   function _sevOpts(cur){return _SEVC.map(function(o){return '<option value="'+o[0]+'"'+(cur===o[0]?' selected':'')+'>'+o[1]+'</option>';}).join('');}
-  function _skinColor(c){if(!c)return '';var s=(''+c).trim();if(/^var\(/.test(s))return s;var m={text:'--text',standard:'--text',ok:'--ok',gruen:'--ok','grün':'--ok',warn:'--warn',warnung:'--warn',alert:'--warn',crit:'--crit',fehler:'--crit',error:'--crit',accent:'--accent',akzent:'--accent',info:'--info'};var k=s.toLowerCase();return m[k]?('var('+m[k]+')'):s;} // Stichwort -> Skin-Var, sonst unverändert
+  function _skinColor(c){if(!c)return '';var s=(''+c).trim();if(/^var\(/.test(s))return s;var m={text:'--text',standard:'--text',ok:'--ok',gruen:'--ok','grün':'--ok',warn:'--warn',warnung:'--warn',alert:'--warn',crit:'--crit',fehler:'--crit',error:'--crit',accent:'--accent',akzent:'--accent',info:'--info',faint:'--faint',muted:'--muted',warm:'--warm'};var k=s.toLowerCase();return m[k]?('var('+m[k]+')'):s;} // Stichwort -> Skin-Var, sonst unverändert
   var _assocData={};   // varId -> {assocs:[{v,name,icon,color}], picon}
   var _assocPick=null; // {wid,key} während Icon-Auswahl für eine Assoziation
   var SYMICON={Battery:'battery',Light:'bulb',Lightbulb:'bulb',Bulb:'bulb',LightbulbActive:'bulb',
