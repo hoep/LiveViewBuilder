@@ -65,8 +65,8 @@
       return '<div class="wstatetl" style="position:absolute;inset:0;padding:8px 10px;box-sizing:border-box"><div class="stl-head">'+(w.label?'<span class="stl-title">'+esc(w.label)+'</span>':'')+'<span class="stl-legs">'+leg+'</span></div><div data-role="stl" style="position:absolute;inset:24px 10px 6px 10px"></div></div>';
     },
     mount:function(w){_stlFetch(w);},
-    props:function(w){return row('Fenster (h)','<input id="pStlH" type="number" min="1" value="'+(w.hours>0?w.hours:24)+'">')
-      +row('Ausrichtung','<select id="pStlO"><option value="h"'+((w.orient||'h')==='h'?' selected':'')+'>horizontal (Zeit →)</option><option value="v"'+(w.orient==='v'?' selected':'')+'>vertikal (Zeit ↑)</option></select>')
+    props:function(w){return row('Stunden','<input id="pStlH" type="number" min="1" value="'+(w.hours>0?w.hours:24)+'">')
+      +row('Orientierung','<select id="pStlO"><option value="h"'+((w.orient||'h')==='h'?' selected':'')+'>horizontal (Zeit →)</option><option value="v"'+(w.orient==='v'?' selected':'')+'>vertikal (Zeit ↑)</option></select>')
       +listEditor(w,'states','Zustände: Wert · Farbe · Name (leer = transparent)',[{k:'v',ph:'Wert'},{k:'color',ph:'#hex'},{k:'label',ph:'Name'}])
       +'<button class="btn" id="pStlFill" style="margin:-2px 0 8px;padding:4px 8px;font-size:11px">Zustände aus Profil füllen</button>'
       +listEditor(w,'items','Signale (Zustands-Variablen)',[{k:'vid',ph:'ID'},{k:'label',ph:'Name'}]);},

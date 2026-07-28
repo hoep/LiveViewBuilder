@@ -8,7 +8,7 @@
       if(w.arrowS){defs+='<marker id="'+mid+'s" markerWidth="6" markerHeight="6" refX="2" refY="3" orient="auto"><path d="M6,0 L0,3 L6,6 z" fill="'+c+'"/></marker>';m1=' marker-start="url(#'+mid+'s)"';}
       return '<svg viewBox="0 0 100 100" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%"><defs>'+defs+'</defs><line x1="'+pts[0]+'" y1="'+pts[1]+'" x2="'+pts[2]+'" y2="'+pts[3]+'" stroke="'+c+'" stroke-width="'+lw+'" stroke-linecap="round"'+m1+m2+'/></svg>';},
     props:function(w){return row('Richtung','<select id="pLDir"><option value="h"'+((w.ldir||'h')==='h'?' selected':'')+'>horizontal</option><option value="v"'+(w.ldir==='v'?' selected':'')+'>vertikal</option><option value="d"'+(w.ldir==='d'?' selected':'')+'>diagonal</option></select>')
-      +row('Breite','<input id="pLW" type="number" step="0.5" value="'+(w.lw||3)+'">')
+      +row('Breite (px)','<input id="pLW" type="number" step="0.5" value="'+(w.lw||3)+'">')
       +row('Pfeile','<label style="font-size:12px"><input type="checkbox" id="pArrS"'+(w.arrowS?' checked':'')+'> Start</label> &nbsp; <label style="font-size:12px"><input type="checkbox" id="pArrE"'+(w.arrowE?' checked':'')+'> Ende</label>');},
     wire:function(w){
       if($('#pLDir'))$('#pLDir').onchange=function(){w.ldir=this.value;render();};

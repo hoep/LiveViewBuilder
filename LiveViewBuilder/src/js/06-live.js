@@ -1,8 +1,8 @@
   // C1: nutzt das Widget diese Variablen-ID als Daten-Bindung? (spiegelt pollVals, ohne visVar)
   function widgetDataId(w,id){
     if(w.varId===id||w.varId2===id||w.varId3===id||w.condVar===id||w.vTemp===id||w.vCond===id||w.vHum===id||w.vWind===id||w.vRain===id)return true;
-    var A=['items','links','rows','src','snk','fc'],i,j,o;
-    for(i=0;i<A.length;i++){var a=w[A[i]];if(a)for(j=0;j<a.length;j++){o=a[j];if(o&&(o.vid===id||o.hi===id||o.lo===id||o.pq===id||o.cond===id))return true;}}
+    var A=['items','links','rows','src','snk','fc','elements','stages'],i,j,o;
+    for(i=0;i<A.length;i++){var a=w[A[i]];if(a)for(j=0;j<a.length;j++){o=a[j];if(o&&(o.vid===id||o.subvid===id||o.hi===id||o.lo===id||o.pq===id||o.cond===id||o.speedVid===id||o.socVid===id))return true;}}
     return false;
   }
   // C1: Sichtbarkeits-Bedingung auswerten
@@ -19,10 +19,24 @@
   // deckt damit sowohl pollVals-Bindungen als auch die Sub-Element-Slots (data-vid/viddot/vidbar) ab.
   var _vidx=null;
   function _vidxAdd(id,w,root){if(!id)return;(_vidx[id]=_vidx[id]||[]).push({w:w,root:root});}
-  function _vidxOne(w,root){
-    _vidxAdd(w.varId,w,root);_vidxAdd(w.varId2,w,root);_vidxAdd(w.varId3,w,root);_vidxAdd(w.visVar,w,root);_vidxAdd(w.condVar,w,root);_vidxAdd(w.vTemp,w,root);_vidxAdd(w.vCond,w,root);_vidxAdd(w.vHum,w,root);_vidxAdd(w.vWind,w,root);_vidxAdd(w.vRain,w,root);
-    if(w.fc)w.fc.forEach(function(r){_vidxAdd(r.hi,w,root);_vidxAdd(r.lo,w,root);_vidxAdd(r.pq,w,root);_vidxAdd(r.cond,w,root);});
-    ['links','src','snk','items','rows'].forEach(function(k){if(w[k])w[k].forEach(function(o){if(o)_vidxAdd(o.vid,w,root);});});
+  function _collectIds(w,add){ // alle Variablen-IDs eines Widgets an add() geben
+    add(w.varId);add(w.varId2);add(w.varId3);add(w.visVar);add(w.condVar);add(w.vTemp);add(w.vCond);add(w.vHum);add(w.vWind);add(w.vRain);
+    if(w.fc)w.fc.forEach(function(r){add(r.hi);add(r.lo);add(r.pq);add(r.cond);});
+    ['links','src','snk','items','rows'].forEach(function(k){if(w[k])w[k].forEach(function(o){if(o)add(o.vid);});});
+    if(w.stages)w.stages.forEach(function(o){if(o){add(o.vid);add(o.subvid);}}); // Pipeline-Stationen (Wert + Zusatzwert)
+    if(w.elements)w.elements.forEach(function(o){if(o){add(o.vid);add(o.speedVid);add(o.socVid);}});
+    if(w.tankVid)add(w.tankVid);
+  }
+  function _vidxOne(w,root){_collectIds(w,function(id){_vidxAdd(id,w,root);});}
+  var _allIds=null;
+  function allViewIds(){ // Vereinigung ALLER Variablen-IDs über alle Ansichten -> Poll hält den Cache für jede Seite warm
+    if(_allIds)return _allIds;var set={};
+    try{Object.keys(store.views||{}).forEach(function(vn){var v=store.views[vn];((v&&v.widgets)||[]).forEach(function(w){_collectIds(w,function(id){if(id)set[id]=1;});});});}catch(e){}
+    _allIds=Object.keys(set);return _allIds;
+  }
+  function invalidateAllIds(){_allIds=null;}
+  function applyCached(){ // beim Seitenwechsel: aktuelle Widgets sofort aus dem Cache füllen (kein „–"-Flackern)
+    if(!_vidx)buildVidx();_liveSrc='cache';for(var id in _vidx){var d=_lastVals[id];if(d)applyVal(parseInt(id),d);}
   }
   function buildVidx(){
     _vidx={};
@@ -32,8 +46,11 @@
     if(_popup&&_popup.widgets){var _ov=$('#ovcanvas');if(_ov)_popup.widgets.forEach(function(w){_vidxOne(w,_ov);});}
   }
   function invalidateVidx(){_vidx=null;} // bei render()/Popup-Wechsel aufrufen — nächster poll/apply baut neu
+  // Live-Feed (für WS-Monitor-Widget): jeder eingehende Wert wird protokolliert, mit Quelle (poll/ws)
+  var _liveFeed=[],_liveSrc='poll';
+  function _feedPush(id,d,src){if(src==='cache')return;_liveFeed.push({t:Date.now(),id:id,v:(d.f!=null&&d.f!=='')?d.f:d.v,src:src||'poll'});if(_liveFeed.length>500)_liveFeed.splice(0,_liveFeed.length-500);}
   function applyVal(id,d){
-    if(!id||!d)return;_lastVals[id]=d;
+    if(!id||!d)return;_lastVals[id]=d;_feedPush(id,d,_liveSrc);
     var base=(d.f!==''&&d.f!=null)?d.f:d.v,on=(d.v===true||d.v===1||d.v==='1');
     var _bs=String(base),_pu=(d.u!=null)?String(d.u):''; // Profil-Einheit vom Server
     var num=(_pu!==''&&_bs.length>=_pu.length&&_bs.slice(-_pu.length)===_pu)?_bs.slice(0,-_pu.length).replace(/\s+$/,''):_bs; // Wert ohne Profil-Einheit
@@ -59,11 +76,11 @@
   }
   function pollVals(){
     if(!_vidx)buildVidx();
-    var ids=Object.keys(_vidx);
+    var ids=Object.keys(_vidx); // nur aktuelle Ansicht -> kleine URL; Warm-Cache aller Seiten liefert der WebSocket-Push
     if(!ids.length)return;
     fetch('?api=val&ids='+ids.join(',')+'&since='+_pvSince,{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
       if(!j)return;if(j.ts)_pvSince=j.ts;if(!j.values)return;
-      for(var id in j.values){applyVal(parseInt(id),j.values[id]);}
+      _liveSrc='poll';for(var id in j.values){applyVal(parseInt(id),j.values[id]);}
     }).catch(function(){});
   }
   function startPV(ms){stopPV();_pvT=setInterval(pollVals,ms||1200);}
@@ -78,7 +95,7 @@
     if(_wsTries>=5)return;                    // Server nicht verfügbar/lehnt ab -> aufgeben (kein Reconnect-Sturm/Log-Flut)
     try{_ws=new WebSocket('ws://'+location.hostname+':'+WS_PORT);}catch(e){return;}
     _ws.onopen=function(){try{_ws.send('hello');}catch(e){}};
-    _ws.onmessage=function(ev){_wsOK=true;_wsTries=0;if(bcfg().noSafetyPoll)stopPV();else startPV(5000);try{var j=JSON.parse(ev.data);if(j&&j.reload&&RUN){location.reload();return;}if(j&&j.values){for(var k in j.values){var d=j.values[k];if(d&&d.id)applyVal(d.id,d);}}if(j&&j.media&&j.media.length)j.media.forEach(function(mid){refreshMedia(mid);});}catch(e){}}; // Werte + Kamera-Medien-Push
+    _ws.onmessage=function(ev){_wsOK=true;_wsTries=0;if(bcfg().noSafetyPoll)stopPV();else startPV(5000);try{var j=JSON.parse(ev.data);if(j&&j.reload&&RUN){location.reload();return;}if(j&&j.values){_liveSrc='ws';for(var k in j.values){var d=j.values[k];if(d&&d.id)applyVal(d.id,d);}}if(j&&j.media&&j.media.length)j.media.forEach(function(mid){refreshMedia(mid);});}catch(e){}}; // Werte + Kamera-Medien-Push
     _ws.onclose=function(){_wsOK=false;startPV(1200);_wsTries++;if(_wsTries<5)setTimeout(wsConnect,Math.min(60000,8000*_wsTries));}; // Backoff, max. 5 Versuche
     _ws.onerror=function(){try{_ws.close();}catch(e){}};
   }

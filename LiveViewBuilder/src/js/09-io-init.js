@@ -7,6 +7,20 @@
       cats[cat].forEach(function(id){var b=document.createElement('div');b.className='iconbtn';b.title=id;b.innerHTML=iconSVG(id);b.onclick=function(){assignIcon(id);};g.appendChild(b);});
       box.appendChild(g);
     });
+    // ---- Familie „Adaptiv": dynamische Zustands-Icons, gruppiert nach Variablentyp ----
+    var adaptGroups=[
+      {k:'pct',  cat:'Adaptiv · Füllstand / Helligkeit  (0–100 %)', pv:70,         tip:'0–100 % (Float/Dimmer) · Boolean = voll/leer'},
+      {k:'state',cat:'Adaptiv · Zustand  (auf / zu / an)',          pv:1,          tip:'Boolean an/aus · Integer 0·1·2 · Text auf/zu/kipp'},
+      {k:'raw',  cat:'Adaptiv · Roboter-Status',                    pv:'arbeitet', tip:'Status-Text (lädt/arbeitet/sucht/fährt ein/aus) · Integer 1–5'}
+    ];
+    adaptGroups.forEach(function(gr){
+      var ids=Object.keys(AICONS).filter(function(id){return AICONS[id].k===gr.k&&(!q||id.toLowerCase().indexOf(q)>=0||'adaptiv'.indexOf(q)>=0);});
+      if(!ids.length)return;
+      var ha=document.createElement('div');ha.className='iconcat';ha.textContent=gr.cat;box.appendChild(ha);
+      var ga=document.createElement('div');ga.className='icongrid';
+      ids.forEach(function(id){var b=document.createElement('div');b.className='iconbtn';b.title=id+' · adaptiv · '+gr.tip;b.innerHTML=iconSVG(id,gr.pv);b.onclick=function(){assignIcon(id);};ga.appendChild(b);});
+      box.appendChild(ga);
+    });
     if(!box.children.length)box.innerHTML='<div class="hint">Nichts gefunden.</div>';
   }
   $('#iconSearch').addEventListener('input',function(){buildIconLib(this.value);});
@@ -19,7 +33,14 @@
   function reseq(){seq=1;state.widgets.forEach(function(w){var n=parseInt(String(w.id||'w0').replace('w',''))||0;if(n>=seq)seq=n+1;});}
   function switchView(name){if(!store.views[name])return;store.current=name;state=store.views[name];if(!state.page)state.page={w:1440,h:900};if(!state.widgets)state.widgets=[];selId=null;sel={};reseq();refreshViewSel();setCanvas();invalidateSC();_scMode='';document.body.classList.remove('reflow');restoring=true;render();restoring=false;renderProps();resetHist();} // render() macht bereits Kamera/HTML-Init + Sofort-Poll (kein doppeltes Rendern mehr)
   function newView(){var n=prompt('Name der neuen Ansicht:','Ansicht '+(Object.keys(store.views).length+1));if(!n)return;if(store.views[n]){toast('Name existiert bereits');return;}store.views[n]={page:{w:bcfg().defW,h:bcfg().defH,fit:bcfg().defFit},widgets:[]};switchView(n);toast('Ansicht angelegt: '+n);}
-  function renameView(){var old=store.current;if(!old)return;var n=prompt('Ansicht umbenennen:',old);if(!n||n===old)return;if(store.views[n]){toast('Name existiert bereits');return;}store.views[n]=store.views[old];delete store.views[old];store.current=n;refreshViewSel();toast('Umbenannt');}
+  function _renameViewRefs(old,n){ // alle Verweise auf einen Ansichtsnamen mitziehen (Actions, Home, Mobil)
+    var cnt=0;Object.keys(store.views).forEach(function(vn){var v=store.views[vn];
+      if(v.page&&v.page.mobileView===old){v.page.mobileView=n;cnt++;}
+      (v.widgets||[]).forEach(function(w){['popupTo','longPopup','navTo','longNav','regView'].forEach(function(k){if(w[k]===old){w[k]=n;cnt++;}});});
+    });
+    if(store.home===old)store.home=n;if(store.homeMobile===old)store.homeMobile=n;
+    return cnt;}
+  function renameView(){var old=store.current;if(!old)return;var n=prompt('Ansicht umbenennen:',old);if(!n||n===old)return;if(store.views[n]){toast('Name existiert bereits');return;}store.views[n]=store.views[old];delete store.views[old];store.current=n;var rc=_renameViewRefs(old,n);refreshViewSel();commit();toast('Umbenannt'+(rc?' · '+rc+' Verweis(e) angepasst':''));}
   function deleteView(){var n=store.current;if(!n)return;if(!confirm('Ansicht „'+n+'" wirklich löschen?'))return;delete store.views[n];var keys=Object.keys(store.views);if(!keys.length){store.views['Ansicht 1']={page:{w:1440,h:900},widgets:[]};keys=['Ansicht 1'];}switchView(keys[0]);toast('Gelöscht');}
   $('#viewSel').onchange=function(){switchView(this.value);};
   $('#newView').onclick=newView;$('#renView').onclick=renameView;$('#delView').onclick=deleteView;
@@ -100,6 +121,8 @@
       if(j&&j.views&&Object.keys(j.views).length){store=j;if(!store.current||!store.views[store.current])store.current=Object.keys(store.views)[0];}
       else if(j&&j.widgets){store={views:{'Ansicht 1':j},current:'Ansicht 1'};} // Migration altes Einzel-Format
       else{store={views:{'Ansicht 1':{page:{w:1440,h:900},widgets:[]}},current:'Ansicht 1'};}
+      try{Object.keys(store.views||{}).forEach(function(_vn){var _vv=store.views[_vn];((_vv&&_vv.widgets)||[]).forEach(function(_w){if(_w.type==='powerflow')_w.type='flow';});});}catch(_){} // Migration: powerflow -> flow
+      invalidateAllIds(); // Warm-Cache-ID-Menge nach (Neu-)Laden neu berechnen
       if(!store.skin)store.skin='Standard';if(!store.theme)store.theme='dark';
       if(RUN){try{var _lt=localStorage.getItem('lvtheme');if(_lt)store.theme=_lt;var _ls=localStorage.getItem('lvskin');if(_ls&&allSkins()[_ls])store.skin=_ls;}catch(_){}}
       applySkin();GS=bcfg().gs;if(bcfg().sideW){var _sd=$('.side');if(_sd)_sd.style.width=bcfg().sideW+'px';}
@@ -111,7 +134,7 @@
   // ---------- Runtime (Vollbild-Anzeige) ----------
   // ============ SmartFit — adaptiver Autoscaler (fuellt jeden Viewport, minimiert Scroll) ============
   var SMART_DEF={reflowLo:0.55,phoneW:500,minScale:0.5,gap:8,growCap:2.6,kMin:0.72,kMax:1.9};
-  var SF_STRETCH={chart:1,spark:1,sankey:1,camera:1,campro:1,calendar:1,devlist:1,statuslist:1,ticker:1,tempbar:1,statusgrid:1,meterlist:1,infolist:1,kpi:1,image:1,statusimage:1,select:1,shape:1,dial:1,webview:1,weekplan:1,skinswitch:1,weatherpro:1,suncard:1,media:1,html:1,bar:1,line:1,gauge:1,gaugepro:1};
+  var SF_STRETCH={chart:1,spark:1,sankey:1,camera:1,campro:1,calendar:1,devlist:1,statuslist:1,ticker:1,tempbar:1,statusgrid:1,meterlist:1,infolist:1,kpi:1,image:1,statusimage:1,select:1,shape:1,dial:1,webview:1,weekplan:1,skinswitch:1,weatherpro:1,suncard:1,media:1,html:1,bar:1,line:1,gauge:1,gaugepro:1,valuecard:1,flow:1};
   var SF_LOCK={chart:1,spark:1,camera:1,campro:1,media:1,sankey:1,html:1,calendar:1,devlist:1,statuslist:1};
   var SF_NOGROW={chip:1,button:1,icon:1,clock:1,switch:1,sun:1};
   var SF_PRIO={chart:3,camera:3,campro:3,powerflow:3,sankey:3,gaugepro:3,html:3,chip:1,button:1,icon:1,clock:1,switch:1,sun:1};

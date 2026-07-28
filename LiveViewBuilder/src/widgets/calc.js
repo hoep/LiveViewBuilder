@@ -5,7 +5,7 @@
     render:function(w){return '<div class="wv"><div class="wvbody" style="min-width:0"><div class="l">'+esc(w.label||'')+'</div><div class="v" data-role="val">–</div></div></div>';},
     props:function(w){return row('Rechnung','<select id="pCalcMode">'+['sum','avg','min','max','diff','count'].map(function(m){return '<option value="'+m+'"'+((w.mode||'sum')===m?' selected':'')+'>'+({sum:'Summe',avg:'Mittel',min:'Min',max:'Max',diff:'Differenz (1 − Rest)',count:'Anzahl > 0'}[m])+'</option>';}).join('')+'</select>')
       +row('Einheit','<input id="pCalcUnit" value="'+esc(w.unit||'')+'">')
-      +row('Nachkomma','<input id="pCalcDec" type="number" min="0" max="4" value="'+(w.dec!=null?w.dec:1)+'">')
+      +row('Nachkommastellen','<input id="pCalcDec" type="number" min="0" max="4" value="'+(w.dec!=null?w.dec:1)+'">')
       +listEditor(w,'items','Quellen: Variablen-ID',[{k:'vid',ph:'ID'}]);},
     wire:function(w){
       function re(){var el=$('.w[data-id="'+w.id+'"]',canvas);if(el)WIDGETS.calc.live(w,el);}

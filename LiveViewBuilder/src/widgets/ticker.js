@@ -61,7 +61,7 @@
             +'<input data-tk="sub.'+i+'" value="'+esc(m.sub||'')+'" placeholder="Zusatz">'
             +'<input data-tk="vid.'+i+'" value="'+esc(m.vid||'')+'" placeholder="VarID" style="width:64px">'
             +'<input data-tk="icon.'+i+'" value="'+esc(m.icon||'')+'" placeholder="Icon" style="width:64px">'
-            +'<input data-tk="sev.'+i+'" value="'+esc(m.sev||'')+'" placeholder="sev" style="width:52px">';
+            +'<select data-tk="sev.'+i+'" title="Stufe" style="width:auto">'+['info','ok','warn','crit'].map(function(s){return '<option value="'+s+'"'+((m.sev||'info')===s?' selected':'')+'>'+s+'</option>';}).join('')+'</select>';
         }
         return '<div style="display:flex;gap:4px;margin-bottom:5px;flex-wrap:wrap;align-items:center">'+typeSel+fields+'<button class="btn" data-tkdel="'+i+'" style="padding:2px"><svg class="i"><use href="#ic-minus"/></svg></button></div>';
       }).join('');

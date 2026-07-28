@@ -7,7 +7,7 @@ defWidget('calendar',{
     return '<div class="hcal" data-role="cal"></div>';
   },
   props:function(w){
-    return (w.type==='calendar'?(row('Kalender-IDs','<input id="pCalIds" value="'+esc(w.calIds||'')+'" placeholder="33020,55959">')+row('Tage','<input id="pCalDays" type="number" value="'+(w.days||14)+'">')+row('Ansicht','<select id="pCalView"><option value="agenda"'+((w.calview||'agenda')==='agenda'?' selected':'')+'>Agenda</option><option value="month"'+(w.calview==='month'?' selected':'')+'>Monat</option></select>')):'');
+    return row('Kalender-IDs','<input id="pCalIds" value="'+esc(w.calIds||'')+'" placeholder="33020,55959">')+row('Tage','<input id="pCalDays" type="number" value="'+(w.days||14)+'">')+row('Ansicht','<select id="pCalView"><option value="agenda"'+((w.calview||'agenda')==='agenda'?' selected':'')+'>Agenda</option><option value="month"'+(w.calview==='month'?' selected':'')+'>Monat</option></select>');
   },
   wire:function(w){
     if($('#pCalIds'))$('#pCalIds').oninput=function(){w.calIds=this.value;render();};

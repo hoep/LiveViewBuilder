@@ -5,12 +5,9 @@
       var st='position:absolute;inset:0;width:100%;height:100%;border:1px solid var(--line);border-radius:8px;background:var(--surface-2);color:var(--text);box-sizing:border-box;font-family:var(--fu,inherit)';
       if(w.multi)return '<textarea data-role="tbin" placeholder="'+esc(w.label||'')+'" style="'+st+';font-size:13px;padding:8px;resize:none">'+esc(v)+'</textarea>';
       return '<input data-role="tbin" type="'+(w.pw?'password':'text')+'" value="'+esc(v)+'" placeholder="'+esc(w.label||'')+'" style="'+st+';font-size:14px;padding:0 10px">';},
-    props:function(w){return row('Variable','<input id="pTbVar" value="'+(w.varId||'')+'" placeholder="String-ID"> <button class="btn" id="pTbPick" style="padding:6px 8px">wählen</button>')
-      +row('Mehrzeilig','<input type="checkbox" id="pTbMulti"'+(w.multi?' checked':'')+'>')
-      +row('Passwort','<input type="checkbox" id="pTbPw"'+(w.pw?' checked':'')+'>');},
+    props:function(w){return row('Mehrzeilig','<input type="checkbox" id="pTbMulti"'+(w.multi?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">Textfeld statt Zeile</span>')
+      +row('Passwort','<input type="checkbox" id="pTbPw"'+(w.pw?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">Eingabe verbergen</span>');},
     wire:function(w){
-      if($('#pTbVar'))$('#pTbVar').onchange=function(){w.varId=parseInt(this.value)||0;render();};
-      if($('#pTbPick'))$('#pTbPick').onclick=function(){showTab('vars');_bindTarget=w.id;};
       if($('#pTbMulti'))$('#pTbMulti').onchange=function(){w.multi=this.checked||undefined;render();};
       if($('#pTbPw'))$('#pTbPw').onchange=function(){w.pw=this.checked||undefined;render();};
     },

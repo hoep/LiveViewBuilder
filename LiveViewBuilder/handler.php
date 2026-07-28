@@ -92,11 +92,16 @@ if ($api === 'messages') {
         if ($g) { usort($g, function ($a, $b) { return filemtime($b) - filemtime($a); }); $path = $g[0]; }
     }
     $max = (int) ($_GET['n'] ?? 60); if ($max < 1) $max = 60; if ($max > 200) $max = 200;
+    // Optionaler Severity-Filter: nur diese Kategorien zählen -> liefert die letzten $max Treffer (zeitunabhängig)
+    $sevf = [];
+    if (isset($_GET['sev']) && $_GET['sev'] !== '') {
+        foreach (explode(',', strtoupper((string) $_GET['sev'])) as $s) { $s = trim($s); if ($s !== '') $sevf[$s] = true; }
+    }
     $out = [];
     $fp = @fopen($path, 'rb');
     if ($fp) {
         $st = @fstat($fp); $size = $st ? $st['size'] : 0;
-        $chunk = min($size, 600000); $data = '';
+        $chunk = min($size, 3000000); $data = ''; // größeres Fenster, damit auch seltene Kategorien weit zurück gefunden werden
         if ($chunk > 0) { fseek($fp, -$chunk, SEEK_END); $data = fread($fp, $chunk); }
         fclose($fp);
         $lines = explode("\n", $data);
@@ -106,6 +111,7 @@ if ($api === 'messages') {
             if (count($p) < 5) continue;
             $sev = trim($p[2]);
             if ($sev === '' || $sev === 'DEBUG') continue;
+            if ($sevf && empty($sevf[$sev])) continue; // nur angeforderte Kategorien
             $out[] = ['t' => trim($p[0]), 'sev' => $sev, 'src' => trim($p[3]), 'm' => mb_substr(trim($p[4]), 0, 300)];
         }
     }
@@ -137,6 +143,37 @@ if ($api === 'val') {
         }
     }
     echo json_encode(['ts' => time(), 'values' => $out]);
+    return;
+}
+
+// ---- Astro/Standort: Location Control (Sonne+Dämmerung+lat/lon) + Astronomie (Mond).  ?api=astro&id=<locID>&moon=<astroID> ----
+if ($api === 'astro') {
+    header('Content-Type: application/json; charset=utf-8');
+    $id  = (int) ($_GET['id'] ?? 0);
+    $res = ['ts' => time()];
+    if ($id > 0 && @IPS_InstanceExists($id)) {
+        $cfg = json_decode((string) @IPS_GetConfiguration($id), true);
+        if (is_array($cfg) && isset($cfg['Location'])) {
+            $loc = json_decode((string) $cfg['Location'], true);
+            if (is_array($loc) && isset($loc['latitude'])) { $res['lat'] = $loc['latitude']; $res['lon'] = $loc['longitude'] ?? null; }
+        }
+        $map = ['sunrise' => 'Sunrise', 'sunset' => 'Sunset', 'sunalt' => 'Altitude', 'sunaz' => 'Azimuth',
+                'dawn' => 'CivilTwilightStart', 'dusk' => 'CivilTwilightEnd', 'isday' => 'IsDay'];
+        foreach ($map as $k => $ident) {
+            $vid = @IPS_GetObjectIDByIdent($ident, $id);
+            if ($vid && @IPS_VariableExists($vid)) { $res[$k] = GetValue($vid); }
+        }
+    }
+    $mid = (int) ($_GET['moon'] ?? 0);
+    if ($mid > 0 && @IPS_InstanceExists($mid)) {
+        $mm = ['moonaz' => 'moonazimut', 'moonalt' => 'moonaltitude', 'moonrise' => 'moonrisetime',
+               'moonset' => 'moonsettime', 'moonphase' => 'moonphase', 'moonvis' => 'moonvisibility'];
+        foreach ($mm as $k => $ident) {
+            $vid = @IPS_GetObjectIDByIdent($ident, $mid);
+            if ($vid && @IPS_VariableExists($vid)) { $res[$k] = GetValue($vid); }
+        }
+    }
+    echo json_encode($res);
     return;
 }
 
