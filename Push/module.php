@@ -299,18 +299,31 @@ class LiveViewBuilderPush extends IPSModule
         return array_keys($ids);
     }
 
+    // Merged Store ueber ALLE Views: BasePath kann der Basis-Ordner (livebuilder/) ODER ein einzelner View-Ordner sein.
     private function layoutJson(): array
     {
         $bp = trim($this->ReadPropertyString('BasePath'));
         if ($bp === '') {
             return [];
         }
-        $raw = @file_get_contents(rtrim($bp, '/') . '/layouts.json');
-        if ($raw === false) {
-            return [];
+        $bp    = rtrim($bp, '/');
+        $files = [];
+        if (is_file($bp . '/layouts.json')) {
+            $files[] = $bp . '/layouts.json';               // Einzel-View (BasePath = View-Ordner)
         }
-        $j = json_decode($raw, true);
-        return is_array($j) ? $j : [];
+        foreach (glob($bp . '/*/layouts.json') ?: [] as $p) {
+            $files[] = $p;                                  // Multi-View (BasePath = Basis livebuilder/)
+        }
+        $merged = ['views' => []];
+        foreach ($files as $f) {
+            $j = json_decode((string) @file_get_contents($f), true);
+            if (is_array($j) && isset($j['views']) && is_array($j['views'])) {
+                foreach ($j['views'] as $name => $v) {
+                    $merged['views'][$name . '@' . dirname($f)] = $v;   // je Ordner eindeutig (Namenskollision ueber Views vermeiden)
+                }
+            }
+        }
+        return $merged;
     }
 
     public function GetConfigurationForm()
