@@ -52,7 +52,8 @@ class LiveViewBuilder extends IPSModule
         if (IPS_GetKernelRunlevel() !== KR_READY) {
             return;
         }
-        $this->registerHooks(['/hook/builder', '/hook/run']);
+        $v = $this->siteLabel();
+        $this->registerHooks(['/hook/builder/' . $v, '/hook/run/' . $v]);   // view-spezifisch -> mehrere Instanzen kollidieren nicht
         $this->migrateOldDir();     // fruehere Auto-Ablage in den View-Ordner uebernehmen (einmalig)
         $this->syncPushBasePath();  // Push-Modul auf denselben Datenordner zeigen lassen (sonst liest der Push den falschen Ordner)
         $this->syncViews();         // Modul-Liste -> Seiten abgleichen (Anlegen/Loeschen), mit Schutz-Guard
@@ -65,9 +66,9 @@ class LiveViewBuilder extends IPSModule
         if (!$push) {
             return;
         }
-        $dir = $this->dataDir();
-        if ((string) @IPS_GetProperty($push, 'BasePath') !== $dir) {
-            IPS_SetProperty($push, 'BasePath', $dir);
+        $base = dirname($this->dataDir());   // Basis-Ordner (livebuilder/) -> Push scannt ALLE Views darunter
+        if ((string) @IPS_GetProperty($push, 'BasePath') !== $base) {
+            IPS_SetProperty($push, 'BasePath', $base);
             IPS_ApplyChanges($push);   // uebernimmt + zieht die Registrierungen neu (sicher, nur bei KR_READY)
         }
     }
@@ -431,6 +432,16 @@ class LiveViewBuilder extends IPSModule
             $hooks = [];
         }
         $changed = false;
+        // Veraltete Hooks DIESER Instanz entfernen (alte globale /hook/builder|run, oder frueherer View-Name nach Umbenennung)
+        $kept = [];
+        foreach ($hooks as $h) {
+            if ((int) ($h['TargetID'] ?? 0) === $this->InstanceID && !in_array((string) ($h['Hook'] ?? ''), $wanted, true)) {
+                $changed = true;
+                continue;
+            }
+            $kept[] = $h;
+        }
+        $hooks = $kept;
         foreach ($wanted as $hook) {
             $found = false;
             foreach ($hooks as $i => $h) {
