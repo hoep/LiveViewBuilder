@@ -1,4 +1,4 @@
-  :root{--bg:#0d1315;--surface:#141c1f;--surface-2:#1a2428;--tile:#131b1e;--line:#25333a;--line-soft:#1b262b;--text:#e7eef0;--muted:#8ba0a6;--faint:#63757b;--accent:#00cdab;--accent-2:#0a8f79;--ok:#39d08a;--warn:#f2b441;--crit:#f2685a;--info:#5ab6ff;--warm:#f2a03d;--ring:0 0 0 3px color-mix(in oklab,#00cdab 38%,transparent);--r:12px;--r-s:9px;--fu:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,system-ui,sans-serif;--fm:ui-monospace,"SF Mono",Menlo,Consolas,monospace;color-scheme:dark}
+  :root{--bg:#0d1315;--surface:#141c1f;--surface-2:#1a2428;--tile:#131b1e;--line:#25333a;--line-soft:#1b262b;--text:#e7eef0;--muted:#8ba0a6;--faint:#63757b;--accent:#00cdab;--accent-2:#0a8f79;--ok:#39d08a;--warn:#f2b441;--crit:#f2685a;--info:#5ab6ff;--warm:#f2a03d;--sun:#f5c026;--moon:#9db8e6;--sky-day:#5a92d6;--sky-night:#2f3a78;--ring:0 0 0 3px color-mix(in oklab,#00cdab 38%,transparent);--r:12px;--r-s:9px;--fu:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,system-ui,sans-serif;--fm:ui-monospace,"SF Mono",Menlo,Consolas,monospace;color-scheme:dark}
   *{box-sizing:border-box}
   html,body{height:100%}
   body{margin:0;font-family:var(--fu);color:var(--text);background:var(--bg);display:flex;flex-direction:column;overflow:hidden}
@@ -58,14 +58,22 @@
   .wcam img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block}
   .wcamnm{position:absolute;bottom:7px;left:9px;font-size:11px;color:#fff;font-weight:600;text-shadow:0 1px 3px rgba(0,0,0,.7)}
   .ic24{width:100%;height:100%;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;overflow:visible}
-  .w.t-icon{color:var(--accent)}
+  .w.t-icon{color:var(--wicon,var(--accent))}
   .iconwrap{width:100%;height:100%;display:flex;align-items:center;justify-content:center;padding:10%}
   .wv.hasic{flex-direction:row;align-items:center;gap:10px}
-  .wvic{width:34px;height:34px;flex:none;color:var(--accent)}
+  .wvic{width:34px;height:34px;flex:none;color:var(--wicon,var(--accent))}
+  .iconsw{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
+  .iconswb{width:20px;height:20px;border-radius:50%;border:2px solid var(--line);cursor:pointer;padding:0}
+  .iconswb.on{border-color:var(--text);box-shadow:0 0 0 2px var(--surface),0 0 0 4px var(--accent)}
   .wvbody{min-width:0;display:flex;flex-direction:column;gap:3px}
+  /* Einzeilig: Icon fix links, Label + Wert direkt dahinter (ein Space Abstand) */
+  .wv.wv1{flex-direction:row;align-items:center;gap:7px}
+  .wv1line{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:baseline;gap:5px}
+  .wv1line .wv1l{font-size:12px;color:var(--muted);white-space:nowrap}
+  .wv1line .v{font-family:var(--fm);font-weight:600;font-variant-numeric:tabular-nums;line-height:1.05;white-space:nowrap}
   .wsw .l{display:flex;align-items:center;gap:8px;min-width:0}
-  .swic{width:18px;height:18px;flex:none;color:var(--accent)}
-  .wbar .bl .l.hasic{display:flex;align-items:center;gap:6px}.baric{width:16px;height:16px;flex:none;color:var(--accent)}
+  .swic{width:18px;height:18px;flex:none;color:var(--wicon,var(--accent))}
+  .wbar .bl .l.hasic{display:flex;align-items:center;gap:6px}.baric{width:16px;height:16px;flex:none;color:var(--wicon,var(--accent))}
   .iconcat{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin:10px 2px 5px}
   .icongrid{display:grid;grid-template-columns:repeat(6,1fr);gap:6px}
   .iconbtn{aspect-ratio:1;border:1px solid var(--line);border-radius:8px;background:var(--tile);color:var(--muted);display:flex;align-items:center;justify-content:center;cursor:pointer;padding:6px}
@@ -136,7 +144,7 @@
   .hlrow{display:flex;align-items:center;gap:11px}.hlbadge{width:38px;height:38px;flex:none;border-radius:11px;background:color-mix(in oklab,var(--accent) 16%,var(--surface-2));color:var(--accent);display:flex;align-items:center;justify-content:center;padding:8px;transition:.15s}.hlbadge.on{background:var(--accent);color:#04201b}
   .hltext{min-width:0}.hlname{font-size:12.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.hlstate{font-size:11.5px;color:var(--muted);font-family:var(--fm)}
   .stage.preview .hlbadge{cursor:pointer}
-  .hchip{height:100%;display:flex;align-items:center;gap:8px;padding:0 12px;border-radius:999px}.hchipic{width:18px;height:18px;flex:none;color:var(--accent)}.hchip [data-role=val]{font-family:var(--fm);font-size:13px;font-weight:600;white-space:nowrap}
+  .hchip{height:100%;display:flex;align-items:center;gap:8px;padding:0 12px;border-radius:999px}.hchipic{width:18px;height:18px;flex:none;color:var(--wicon,var(--accent))}.hchip [data-role=val]{font-family:var(--fm);font-size:13px;font-weight:600;white-space:nowrap}
   .hwx{height:100%;display:flex;flex-direction:column;justify-content:center;gap:8px;padding:10px 14px}
   .hwtop{display:flex;align-items:center;gap:12px}.hwicon{width:44px;height:44px;flex:none;color:var(--warm)}.hwtemp{font-family:var(--fm);font-size:30px;font-weight:600;line-height:1}
   .hwsub{font-size:12px;color:var(--muted)}.hwsub [data-role=sub]{font-family:var(--fm);color:var(--text)}
@@ -176,6 +184,53 @@
   @media(prefers-reduced-motion:reduce){.pfdash{animation:none}}
   .pfnode,.pfhouse{fill:var(--surface-2);stroke:var(--line)}.pfhouse{stroke:var(--accent)}
   .pfnlab,.pflab{fill:var(--muted);font-size:11px}.pfnval{fill:var(--text);font-family:ui-monospace,monospace;font-size:13px;font-weight:600}
+
+  /* ===== Fluss-Widget: Pipeline-Modus (Stationen in Reihe + animierte Konnektoren) ===== */
+  .flpipe{display:flex;align-items:center;height:100%;box-sizing:border-box;padding:8px 10px;overflow:auto}
+  .flpipe.v{flex-direction:column}
+  .flnode{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;flex:none;text-align:center;min-width:56px}
+  .flnvtop{font-family:var(--fm);font-variant-numeric:tabular-nums;font-size:13px;font-weight:600;color:var(--accent);line-height:1;white-space:nowrap;min-height:13px}
+  .flbox{width:54px;height:54px;border-radius:14px;background:var(--surface-2);border:1px solid var(--line);display:grid;place-items:center;color:var(--accent);flex:none}
+  .flbox svg{width:24px;height:24px}
+  .flnlab{font-size:11px;color:var(--muted);line-height:1.15;white-space:nowrap}
+  .flnsub{display:block;font-size:9.5px;color:var(--faint);white-space:nowrap}
+  .flconn{flex:1;min-width:24px;align-self:stretch;position:relative}
+  .flpipe.v .flconn{align-self:auto;flex:none;height:24px;width:100%}
+  .flconn::before{content:'';position:absolute;left:0;right:0;top:50%;transform:translateY(-50%);height:2px;background:var(--line);opacity:.55;border-radius:2px}
+  .flpipe.v .flconn::before{left:50%;right:auto;top:0;bottom:0;transform:translateX(-50%);width:2px;height:auto}
+  .flconn i{position:absolute;left:0;right:0;top:50%;transform:translateY(-50%);height:3px;border-radius:3px;background:repeating-linear-gradient(90deg,var(--flcol,var(--accent)) 0 7px,transparent 7px 18px);background-size:18px 100%;animation:flpx 1.1s linear infinite;animation-duration:var(--fldur,1.1s)}
+  .flpipe.v .flconn i{left:50%;right:auto;top:0;bottom:0;transform:translateX(-50%);width:3px;height:auto;background:repeating-linear-gradient(180deg,var(--flcol,var(--accent)) 0 7px,transparent 7px 18px);background-size:100% 18px;animation-name:flpy}
+  .flpipe.rev .flconn i{animation-direction:reverse}
+  .flpipe.noflow .flconn i{animation-play-state:paused;background:repeating-linear-gradient(90deg,var(--muted) 0 7px,transparent 7px 18px);opacity:.5}
+  @keyframes flpx{to{background-position:18px 0}}
+  @keyframes flpy{to{background-position:0 18px}}
+  @media(prefers-reduced-motion:reduce){.flconn i{animation:none}}
+  .flstart{display:flex;flex-direction:column;align-items:center;gap:2px;flex:none;color:var(--muted)}
+  .flstart .flslab{font-size:10px;white-space:nowrap}
+  .flstart .flarr{width:28px;height:28px;fill:none;stroke:var(--muted);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  .fltank{flex:none;display:flex;flex-direction:column;justify-content:center;gap:2px;min-width:118px;padding:10px 14px;border-radius:14px;background:color-mix(in oklab,var(--accent) 8%,var(--surface-2));border:1px solid color-mix(in oklab,var(--accent) 30%,var(--line));position:relative;overflow:hidden;align-self:stretch}
+  .fltlab{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px}
+  .fltval{font-family:var(--fm);font-variant-numeric:tabular-nums;font-size:22px;font-weight:650;color:var(--accent)}
+  .flwave{position:absolute;left:0;right:0;bottom:0;height:20px;opacity:.45;pointer-events:none}
+  .flwave svg{width:200%;height:100%;display:block;animation:flwv 3.6s linear infinite}
+  .flwave path{fill:none;stroke:var(--accent);stroke-width:1.5}
+  @keyframes flwv{to{transform:translateX(-50%)}}
+
+  /* ===== Fluss-Widget: energy-Modus (Power-Flow, Kreis-Knoten) ===== */
+  .efsvg{width:100%;height:100%;display:block;overflow:visible}
+  .efwire{fill:none;stroke-width:2;opacity:.22}
+  .efflow{fill:none;stroke-width:2.6;stroke-dasharray:0.5 11;stroke-linecap:round;animation:efdash 2s linear infinite;transition:opacity .3s}
+  @keyframes efdash{to{stroke-dashoffset:-23}}
+  .efdot{animation:efmove 2s linear infinite;transition:opacity .3s}
+  @keyframes efmove{from{offset-distance:0%}to{offset-distance:100%}}
+  .efnode .efring{fill:var(--surface);stroke-width:3}
+  .efnode .eficon{fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;color:var(--text)}
+  .efnode .eficon *{fill:none;stroke:currentColor}
+  .efname{text-anchor:middle;fill:var(--muted);font-size:11px;font-family:var(--fu)}
+  .efval{text-anchor:middle;fill:var(--text);font-size:11px;font-weight:600;font-family:var(--fm);font-variant-numeric:tabular-nums}
+  .efval2{text-anchor:middle;fill:var(--muted);font-size:10px;font-family:var(--fm);font-variant-numeric:tabular-nums}
+  .efsoc{text-anchor:middle;fill:var(--text);font-size:10px;font-weight:600;font-family:var(--fm)}
+  @media(prefers-reduced-motion:reduce){.efflow,.efdot{animation:none}}
   .hclock{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
   .hctime{font-family:var(--fm);font-size:30px;font-weight:600;font-variant-numeric:tabular-nums;line-height:1}.hcdate{font-size:11px;color:var(--muted)}
   .htimer{height:100%;display:flex;flex-direction:column;justify-content:center;gap:7px;padding:9px 12px}
@@ -191,7 +246,7 @@
   .halarm{height:100%;display:flex;flex-direction:column;justify-content:center;gap:9px;padding:10px;align-items:center}.hastate{font-family:var(--fm);font-size:15px;font-weight:600}
   .habtns{display:flex;gap:8px}.habtns button{padding:7px 12px;border-radius:9px;border:1px solid var(--line);background:var(--surface-2);color:var(--text);cursor:pointer;font-size:12.5px;font-weight:600}
   .hroom{height:100%;display:flex;flex-direction:column;justify-content:center;gap:8px;padding:10px 12px}
-  .hrhead{display:flex;align-items:center;gap:10px}.hricon{width:30px;height:30px;flex:none;border-radius:9px;background:color-mix(in oklab,var(--accent) 15%,var(--surface-2));color:var(--accent);display:flex;align-items:center;justify-content:center;padding:6px}
+  .hrhead{display:flex;align-items:center;gap:10px}.hricon{width:30px;height:30px;flex:none;border-radius:9px;background:color-mix(in oklab,var(--accent) 15%,var(--surface-2));color:var(--wicon,var(--accent));display:flex;align-items:center;justify-content:center;padding:6px}
   .hrname{font-size:13px;font-weight:600}.hrmetrics{display:flex;gap:14px;font-size:12px;color:var(--muted)}.hrmetrics b{font-family:var(--fm);color:var(--text);font-weight:600}
   .hvac{height:100%;display:flex;flex-direction:column;justify-content:center;gap:7px;padding:10px 12px}
   .hvrow{display:flex;align-items:center;gap:9px}.hvicon{width:26px;height:26px;flex:none;color:var(--accent)}.hvst{flex:1;font-size:12.5px}.hvbat{font-family:var(--fm);font-size:12px;color:var(--muted)}
@@ -391,13 +446,35 @@
   .hinfo .hiv{font-family:var(--fm);font-weight:600;font-size:14px;font-variant-numeric:tabular-nums;flex:none}
   /* KPI */
   .hkpi{display:flex;align-items:center;gap:12px;padding:12px;height:100%;box-sizing:border-box}
-  .hkpi .hkbi{width:40px;height:40px;border-radius:11px;background:var(--surface-2);display:grid;place-items:center;flex:none;color:var(--accent)}
+  .hkpi .hkbi{width:40px;height:40px;border-radius:11px;background:var(--surface-2);display:grid;place-items:center;flex:none;color:var(--wicon,var(--accent))}
   .hkpi .hkbi svg{width:19px;height:19px}
   .hkpi .hkm{flex:1;min-width:0}
   .hkpi .hkl{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
   .hkpi .hkn{font-family:var(--fm);font-variant-numeric:tabular-nums;font-size:22px;font-weight:600;line-height:1.05}
   .hkpi .hkn small{font-size:12px;color:var(--muted)}
   .hkpi .hks{font-size:10.5px} .hkpi .hks.up{color:var(--ok)} .hkpi .hks.dn{color:var(--crit)}
+
+  /* ===== Wertkarte (valuecard) — generische Karte aus KPI/Bar/Pill/Toggle-Bausteinen ===== */
+  .hvcard{display:flex;flex-direction:column;height:100%;box-sizing:border-box;padding:12px 14px;gap:5px}
+  .hvctop{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:26px}
+  .hvctl{display:flex;align-items:center;gap:10px;min-width:0}
+  .hvcard .hkbi{width:34px;height:34px;border-radius:9px;background:var(--surface-2);display:grid;place-items:center;flex:none;color:var(--wicon,var(--accent))}
+  .hvcard .hkbi svg{width:19px;height:19px}
+  .hvctitle{font-size:13.5px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .hvcmuted{font-size:11px;color:var(--muted);white-space:nowrap;flex:none}
+  .hvcval{font-family:var(--fm);font-variant-numeric:tabular-nums;font-size:26px;font-weight:650;line-height:1.04;margin-top:auto;color:var(--text)}
+  .hvcval small{font-size:13px;color:var(--muted);font-weight:500}
+  .hvccap{font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .hvcbar{display:flex;flex-direction:column;gap:4px;margin-top:4px}
+  .hvcbar .btrack{height:9px;border-radius:6px;background:var(--surface-2);border:1px solid var(--line);overflow:hidden}
+  .hvcbar .btrack i{display:block;height:100%;width:0;border-radius:6px;background:linear-gradient(90deg,var(--accent-2),var(--accent));transition:width .3s}
+  .hvcbarcap{font-size:10.5px;color:var(--muted);text-align:right}
+  .hpill.warm{color:var(--warm);background:color-mix(in oklab,var(--warm) 15%,transparent)}
+  /* Akzent-Zustand auf der ganzen Kachel (varId2 = Akzent, on) */
+  .w.vc-acc{border-color:color-mix(in oklab,var(--warm) 48%,var(--line));background:color-mix(in oklab,var(--warm) 12%,var(--surface))}
+  .w.vc-acc .hvcval{color:color-mix(in oklab,var(--warm) 85%,var(--text))}
+  .w.vc-acc .hvctitle{color:color-mix(in oklab,var(--warm) 70%,var(--text))}
+  .w.vc-acc .btrack i{background:linear-gradient(90deg,color-mix(in oklab,var(--warm) 65%,var(--accent-2)),var(--warm))}
   /* Delta */
   .hdelta{display:flex;flex-direction:column;justify-content:center;align-items:flex-start;gap:2px;height:100%;padding:8px 12px;box-sizing:border-box}
   .hdelta .hdmain{font-family:var(--fm);font-weight:700;font-size:22px;font-variant-numeric:tabular-nums;display:flex;align-items:center;gap:6px}
@@ -489,14 +566,51 @@
   .hscsvg{flex:1;width:100%;min-height:0;overflow:visible}
   .hscarc{fill:none;stroke:var(--line);stroke-width:1.5;stroke-dasharray:3 4}
   .hschoriz{stroke:var(--line);stroke-width:1}
-  .hscsun{fill:var(--warm);filter:drop-shadow(0 0 5px color-mix(in oklab,var(--warm) 70%,transparent))}
+  .hscsun{fill:var(--sun);filter:drop-shadow(0 0 5px color-mix(in oklab,var(--sun) 70%,transparent))}
   .hscarcn{opacity:.55;stroke-dasharray:2 5} /* Nachtkurve etwas dezenter */
-  .hscmoon path{fill:color-mix(in oklab,var(--info) 55%,var(--text));filter:drop-shadow(0 0 5px color-mix(in oklab,var(--info) 60%,transparent))}
-  .hscfill{fill:var(--info)}                                   /* Tagesfläche bis zur Sonne */
-  .hscfilln{fill:color-mix(in oklab,var(--info) 28%,#000)}     /* dunkle Nachtfläche bis zum Mond */
+  .hscmoon path{fill:var(--moon);filter:drop-shadow(0 0 5px color-mix(in oklab,var(--moon) 60%,transparent))}
+  .hscnowdot{fill:var(--text);opacity:.85}
+  .hscfill{fill:var(--sky-day);opacity:.32}                    /* Tagesfläche bis zur Sonne */
+  .hscfilln{fill:var(--sky-night);opacity:.55}                 /* Nachtfläche bis zum Mond */
   .hscsun{transition:opacity .8s linear,cx .9s linear,cy .9s linear}
   .hscmoon{transition:opacity .8s linear,transform .9s linear}
   .hscfill,.hscfilln{transition:opacity .8s linear}
+
+  /* ===== Sonne & Mond (suncard, reiche Karte) ===== */
+  .hsun{display:flex;flex-direction:column;height:100%;box-sizing:border-box;padding:12px 14px;gap:10px}
+  .hsun .hscarcwrap{flex:1 1 auto;min-height:60px}
+  .hsu-row2,.hsu-row3{display:grid;gap:8px;flex:none}
+  .hsu-row2{grid-template-columns:1fr 1fr}
+  .hsu-row3{grid-template-columns:1fr 1fr 1fr}
+  .hsu-col{display:flex;flex-direction:column;align-items:center;gap:2px;min-width:0;text-align:center}
+  .hsu-lbl{font-size:11.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+  .hsu-big{font-family:var(--fm);font-variant-numeric:tabular-nums;font-size:20px;font-weight:600;color:var(--text);line-height:1.1}
+  .hsu-duo{display:inline-flex;align-items:center;gap:6px;font-family:var(--fm);font-variant-numeric:tabular-nums;font-size:15px;font-weight:600;color:var(--text)}
+  .hsu-gl{font-size:15px;line-height:1}.hsu-gl:not(.hsu-glm){color:var(--sun)}.hsu-glm{color:var(--moon)}
+  .hsu-moon .hsu-big{font-size:18px}
+  .hsu-phase{gap:5px}
+  .hsu-moondisc{width:30px;height:30px;filter:drop-shadow(0 0 5px color-mix(in oklab,var(--moon) 45%,transparent))}
+  .hsu-phase .hsu-lbl{color:var(--text);font-size:12px;white-space:normal;line-height:1.15}
+
+  /* ===== Live-Monitor (wsmon) ===== */
+  .hws{display:flex;flex-direction:column;height:100%;box-sizing:border-box;padding:8px 10px;gap:6px}
+  .hwshd{display:flex;align-items:center;justify-content:space-between;font-size:12px;font-weight:600;color:var(--muted);flex:none}
+  .hwslg{display:inline-flex;align-items:center;gap:4px;font-size:10px;color:var(--faint);font-weight:500}
+  .hwsl{flex:1;min-height:0;overflow:auto;font-family:var(--fm);font-size:11.5px;display:flex;flex-direction:column;gap:1px}
+  .hwsrow{display:flex;align-items:center;gap:7px;padding:1px 2px;white-space:nowrap}
+  .hwsd{width:7px;height:7px;border-radius:50%;flex:none}
+  .hwsd.ws{background:var(--ok)}.hwsd.poll{background:var(--text)}
+  /* Simple-Modus: nur zwei Punkte, zentriert & fluid (skalieren mit der Widget-Größe, kein Abschneiden) */
+  .hws.hws-sim{padding:4px}
+  .hws-sim{flex-direction:row;align-items:center;justify-content:center;gap:0;overflow:hidden}
+  .hws-sim .hwsdlg{width:auto;height:42%;min-height:5px;max-height:20px;aspect-ratio:1;margin:0 7%}
+  .hwsd.idle{opacity:.28}
+  .hwsd.hit{animation:wshit .7s ease-out}
+  @keyframes wshit{0%{transform:scale(1)}35%{transform:scale(1.5);opacity:1}100%{transform:scale(1)}}
+  .hwst{color:var(--faint);font-variant-numeric:tabular-nums}
+  .hwsid{color:var(--muted);min-width:52px}
+  .hwsv{color:var(--text);overflow:hidden;text-overflow:ellipsis}
+  .hwse{color:var(--faint);font-size:11px;padding:4px}
   .hscrow{display:flex;align-items:center;justify-content:space-between;font-size:11px;font-family:var(--fm)}
   .hsct{display:flex;align-items:center;gap:5px}
   .hsct .scic{width:15px;height:15px;fill:none;stroke:var(--warm);stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
@@ -538,8 +652,10 @@
   #ovcanvas .w{position:absolute;overflow:hidden}
   #ovcanvas .winner{position:absolute;inset:0}
   /* K2: Wochenplan Jetzt-Linie */
-  .hwpcol .wpnow{position:absolute;top:-1px;bottom:-1px;width:2px;background:var(--crit);opacity:.85;z-index:2;pointer-events:none;box-shadow:0 0 4px var(--crit)}
-  .hwpday.today>span{color:var(--crit);font-weight:600}
+  .hwpcol .wpnow{position:absolute;top:-1px;bottom:-1px;width:3px;margin-left:-1px;background:var(--wp-now,var(--warm));opacity:1;z-index:2;pointer-events:none;box-shadow:0 0 6px var(--wp-now,var(--warm))}
+  .hwpcol .wpnow::after{content:"";position:absolute;top:0;left:50%;transform:translateX(-50%);width:5px;height:5px;border-radius:50%;background:var(--wp-now,var(--warm));box-shadow:0 0 4px var(--wp-now,var(--warm))} /* Kopf-Punkt = deutlichere Zeit-Markierung */
+  .hwpday.today>span{color:var(--wp-now,var(--warm));font-weight:700}
+  .hwpday.today .hwpcol{border-color:color-mix(in oklab,var(--wp-now,var(--warm)) 55%,var(--line))}
   /* N2: Erscheinungs-Animationen (nur Run) */
   @keyframes wfade{from{opacity:0}to{opacity:1}}
   @keyframes wscale{from{opacity:0;transform:scale(.9)}to{opacity:1;transform:scale(1)}}
@@ -547,6 +663,29 @@
   body.run .w.anim-fade{animation:wfade .45s ease both}
   body.run .w.anim-scale{animation:wscale .4s cubic-bezier(.2,.8,.2,1) both}
   body.run .w.anim-slide{animation:wslide .45s cubic-bezier(.2,.8,.2,1) both}
+
+  /* ===== Hover-Affordance: Widgets mit Aktion (tap / hold / both) — nur ausserhalb Edit-Modus ===== */
+  .stage:not(.edit) .w.act-tap,.stage:not(.edit) .w.act-hold,.stage:not(.edit) .w.act-both,
+  #ovcanvas .w.act-tap,#ovcanvas .w.act-hold,#ovcanvas .w.act-both{cursor:pointer}
+  .stage:not(.edit) .w.act-tap,.stage:not(.edit) .w.act-both,
+  #ovcanvas .w.act-tap,#ovcanvas .w.act-both{transition:transform .14s cubic-bezier(.2,.8,.2,1),outline-color .12s,box-shadow .12s}
+  /* Ring (tap/both) via outline: kein Konflikt mit wglow-box-shadow, nicht von overflow:hidden beschnitten, folgt border-radius */
+  .stage:not(.edit) .w.act-tap:hover,.stage:not(.edit) .w.act-both:hover,
+  #ovcanvas .w.act-tap:hover,#ovcanvas .w.act-both:hover{outline:2px solid color-mix(in oklab,var(--accent) 85%,transparent);outline-offset:1px;transform:translateY(-2px);z-index:7}
+  .stage:not(.edit) .w.act-tap:active,.stage:not(.edit) .w.act-both:active,
+  #ovcanvas .w.act-tap:active,#ovcanvas .w.act-both:active{transform:translateY(0) scale(.985)}
+  /* zarter Ring fuer hold-only (ohne Anheben) */
+  .stage:not(.edit) .w.act-hold:hover,#ovcanvas .w.act-hold:hover{outline:1.5px solid color-mix(in oklab,var(--accent) 42%,transparent);outline-offset:1px}
+  /* Fuellleiste unten (hold/both): fuellt in 0.55s = Long-Press-Dauer; auch bei :active (Touch = Halte-Fortschritt sichtbar) */
+  .stage:not(.edit) .w.act-hold::after,.stage:not(.edit) .w.act-both::after,
+  #ovcanvas .w.act-hold::after,#ovcanvas .w.act-both::after{content:'';position:absolute;left:0;bottom:0;height:3px;width:0;z-index:6;pointer-events:none;opacity:0;background:linear-gradient(90deg,color-mix(in oklab,var(--accent) 60%,transparent),var(--accent));box-shadow:0 0 6px color-mix(in oklab,var(--accent) 55%,transparent);border-radius:0 3px 3px 0}
+  .stage:not(.edit) .w.act-hold:hover::after,.stage:not(.edit) .w.act-hold:active::after,.stage:not(.edit) .w.act-both:hover::after,.stage:not(.edit) .w.act-both:active::after,
+  #ovcanvas .w.act-hold:hover::after,#ovcanvas .w.act-hold:active::after,#ovcanvas .w.act-both:hover::after,#ovcanvas .w.act-both:active::after{opacity:1;width:100%;transition:width .55s linear,opacity .08s}
+  @media (prefers-reduced-motion:reduce){
+    .stage:not(.edit) .w.act-tap:hover,.stage:not(.edit) .w.act-both:hover,#ovcanvas .w.act-tap:hover,#ovcanvas .w.act-both:hover{transform:none}
+    .stage:not(.edit) .w.act-hold::after,.stage:not(.edit) .w.act-both::after,#ovcanvas .w.act-hold::after,#ovcanvas .w.act-both::after{width:100%}
+    .stage:not(.edit) .w.act-hold:hover::after,.stage:not(.edit) .w.act-both:hover::after,#ovcanvas .w.act-hold:hover::after,#ovcanvas .w.act-both:hover::after{transition:opacity .12s}
+  }
 
   /* Zustands-Timeline (statetl) */
   .stl-lanes{position:absolute;inset:0 0 16px 0;display:flex;flex-direction:column;gap:5px}

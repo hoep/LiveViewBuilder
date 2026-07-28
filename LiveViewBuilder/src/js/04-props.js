@@ -1,11 +1,16 @@
   // Universelle Interaktion (Popup/Skript) für JEDES Widget — Klick/Lang-Druck öffnet eine Ansicht als Popup
-  function popupSection(w){return '<div class="pgh">Interaktion</div>'
-    +row('Popup öffnen','<select id="pPopupTo"><option value="">—</option>'+Object.keys(store.views).map(function(n){return '<option value="'+esc(n)+'"'+(w.popupTo===n?' selected':'')+'>'+esc(n)+'</option>';}).join('')+'</select>')
-    +row('Lang-Druck → Popup','<select id="pLongPop"><option value="">—</option>'+Object.keys(store.views).map(function(n){return '<option value="'+esc(n)+'"'+(w.longPopup===n?' selected':'')+'>'+esc(n)+'</option>';}).join('')+'</select>')
+  function popupSection(w){function vopts(cur){return '<option value="">—</option>'+Object.keys(store.views).map(function(n){return '<option value="'+esc(n)+'"'+(cur===n?' selected':'')+'>'+esc(n)+'</option>';}).join('');}
+    return '<div class="pgh">Interaktion</div>'
+    +row('Seite öffnen','<select id="pNavToG">'+vopts(w.navTo)+'</select>')
+    +row('Lang-Druck → Seite','<select id="pLongNav">'+vopts(w.longNav)+'</select>')
+    +row('Popup öffnen','<select id="pPopupTo">'+vopts(w.popupTo)+'</select>')
+    +row('Lang-Druck → Popup','<select id="pLongPop">'+vopts(w.longPopup)+'</select>')
     +row('Popup schließen','<input type="checkbox" id="pClosePop"'+(w.closePopup?' checked':'')+'>')
     +row('Skript ID','<input id="pScriptId" value="'+(w.scriptId||'')+'" placeholder="bei Klick ausführen">')
     +(w.popupTo?listEditor(w,'alias','Alias: Vorlagen-ID → echte Geräte-ID',[{k:'from',ph:'Vorlage'},{k:'to',ph:'echte ID'}]):'');}
   function popupWire(w){
+    if($('#pNavToG'))$('#pNavToG').onchange=function(){w.navTo=this.value||undefined;commit();};
+    if($('#pLongNav'))$('#pLongNav').onchange=function(){w.longNav=this.value||undefined;commit();};
     if($('#pPopupTo'))$('#pPopupTo').onchange=function(){w.popupTo=this.value||undefined;renderProps();commit();};
     if($('#pLongPop'))$('#pLongPop').onchange=function(){w.longPopup=this.value||undefined;commit();};
     if($('#pClosePop'))$('#pClosePop').onchange=function(){w.closePopup=this.checked||undefined;commit();};
@@ -26,8 +31,8 @@
     if(!w){p.innerHTML='<div class="hint">Kein Element ausgewählt.</div>';return;}
     try{
     var typeOpts=Object.keys(TYPES).map(function(t){return '<option value="'+t+'">'+TYPES[t]+'</option>';}).join('');
-    var lbl2={thermostat:'Ziel-Var',light:'Helligkeit',cover:'Stop-Var',weather:'Vorhersage (JSON)',weatherpro:'Vorhersage (JSON)',sun:'Untergang',suncard:'Untergang',media:'Zustand',room:'Metrik 2',vacuum:'Batterie',chart:'Serie 2 (Var)'}[w.type];
-    var lbl3={media:'Lautstärke',room:'Metrik 3',vacuum:'Start/Stop',chart:'Serie 3 (Var)',thermostat:'Modus/Profil-Var'}[w.type];
+    var lbl2={thermostat:'Ziel-Var',light:'Helligkeit',cover:'Stop-Var',weather:'Vorhersage (JSON)',weatherpro:'Vorhersage (JSON)',sun:'Untergang',suncard:'Untergang',media:'Zustand',room:'Metrik 2',vacuum:'Batterie',chart:'Serie 2 (Var)',valuecard:'Toggle/Akzent-Var'}[w.type];
+    var lbl3={media:'Lautstärke',room:'Metrik 3',vacuum:'Start/Stop',chart:'Serie 3 (Var)',thermostat:'Modus/Profil-Var',valuecard:'Balken-Var'}[w.type];
     p.innerHTML=(Object.keys(sel).length>=2?alignSection():'')
       +'<div class="prop">'
       +row('Typ','<select id="pType">'+typeOpts+'</select>')
@@ -35,13 +40,13 @@
       +row('Name','<input id="pName" value="'+esc(w.name||'')+'" placeholder="eindeutige Kennung (intern)">')
       +((w.type==='camera'||w.type==='image')?row('Media-ID','<input id="pMedia" value="'+(w.mediaId||'')+'" placeholder="Media-ID">')
           :(w.type==='line'||w.type==='shape')?row('Farbe','<input id="pColor" type="color" value="'+(w.color||'#00cdab')+'">')
-          :(w.type!=='text'&&w.type!=='calendar'&&w.type!=='clock'&&!(w.type==='html'&&w.htmlSrc==='custom')?row('Variable','<input id="pVar" value="'+(w.varId||'')+'" placeholder="ID"> <button class="btn" id="pPick" style="padding:6px 8px">wählen</button>'):''))
+          :(['text','calendar','clock','component','eventctl','objinfo','infolist','meterlist','statuslist','statusgrid','devlist','skinswitch','windrose','rangeslider','raincard','circlerange','cie'].indexOf(w.type)<0&&!(w.type==='html'&&w.htmlSrc==='custom')?row('Variable','<input id="pVar" value="'+(w.varId||'')+'" placeholder="ID"> <button class="btn" id="pPick" style="padding:6px 8px">wählen</button>'):''))
       +((w.type==='kpi'||w.type==='delta')?('<div class="pgh">Vergleich (Zeitversatz)</div>'
         +row('Aktiv','<input type="checkbox" id="pCmpOn"'+(w.cmpOn?' checked':'')+'>')
-        +(w.cmpOn?(row('Aggregationsstufe',stageSel('pCmpStage',cmpStage(w)))+row('Zählervariable','<input type="checkbox" id="pCmpCnt"'+(w.cmpCounter?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">Verbrauch je Periode</span>')+row('Anzeige','<select id="pCmpMode"><option value="pct"'+((w.cmpMode||'pct')==='pct'?' selected':'')+'>Prozent</option><option value="abs"'+(w.cmpMode==='abs'?' selected':'')+'>Absolut</option></select>')+row('Anstieg = schlecht','<input type="checkbox" id="pCmpInv"'+(w.cmpInvert?' checked':'')+'>')):'')
+        +(w.cmpOn?(row('Aggregationsstufe',stageSel('pCmpStage',cmpStage(w)))+row('Zählervariable','<input type="checkbox" id="pCmpCnt"'+(w.cmpCounter?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">Verbrauch je Periode</span>')+row('Anzeige','<select id="pCmpMode"><option value="pct"'+((w.cmpMode||'pct')==='pct'?' selected':'')+'>Prozent</option><option value="abs"'+(w.cmpMode==='abs'?' selected':'')+'>Absolut</option></select>')+row('Veränderung invertieren','<input type="checkbox" id="pCmpInv"'+(w.cmpInvert?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">Rückgang = gut (z. B. Verbrauch) — nur Farbe dreht, Pfeil bleibt</span>')):'')
       ):'')
       +(FMT_TYPES.indexOf(w.type)>=0?row('Format','<select id="pFmt">'+fmtOpts(w.fmt)+'</select>'):'')
-      +(['value','kpi','bar','gauge','gaugepro','tempbar','dial','chip','cval','sval','delta','room','meterlist'].indexOf(w.type)>=0?row('Nachkommastellen','<input id="pDec" type="number" min="0" max="6" value="'+(w.dec!=null?w.dec:'')+'" placeholder="Standard">'):'')
+      +(['value','kpi','valuecard','bar','gauge','gaugepro','tempbar','dial','chip','cval','sval','delta','room','meterlist','marquee','raincard','rangebtn','assoc'].indexOf(w.type)>=0?row('Nachkommastellen','<input id="pDec" type="number" min="0" max="6" value="'+(w.dec!=null?w.dec:'')+'" placeholder="Standard">'):'')
       +((w.type==='chart'||w.type==='spark')?row('Stunden','<input id="pHours" type="number" value="'+(w.hours||24)+'">'):'')
       +(['bar','gauge','slider','thermostat','gaugepro','timer','tempbar','dial'].indexOf(w.type)>=0?(row('Min','<input id="pMin" type="number" value="'+(w.min!=null?w.min:0)+'">')+row('Max','<input id="pMax" type="number" value="'+(w.max!=null?w.max:100)+'">')):'')
       +((w.type==='slider'||w.type==='thermostat'||w.type==='dial')?row('Schritt','<input id="pStep" type="number" step="0.1" value="'+(w.step||1)+'">'):'')
@@ -55,8 +60,9 @@
         +row('Stil','<select id="pFsty"><option value=""'+(!w.fsty?' selected':'')+'>Normal</option><option value="italic"'+(w.fsty==='italic'?' selected':'')+'>Kursiv</option></select>')
         +row('Schriftgröße (px)','<input id="pFsz" type="number" min="0" value="'+(w.fsz||'')+'" placeholder="Standard">')
       ):'')
-      +(['icon','value','switch','bar','tile','button','light','chip','room','kpi','assoc'].indexOf(w.type)>=0?row('Icon (Fallback)','<span style="width:20px;height:20px;display:inline-flex;align-items:center;color:var(--accent)">'+(w.icon?iconSVG(w.icon):'')+'</span> <button class="btn" id="pIcon" style="padding:5px 8px">wählen</button>'+(w.icon?' <button class="btn" id="pIconX" style="padding:5px 8px" title="Icon entfernen"><svg class="i"><use href="#ic-minus"/></svg></button>':'')):'')
-      +(['icon','value','switch','bar','tile','button','light','chip','room','kpi','assoc'].indexOf(w.type)>=0&&w.varId?'<div id="assocBox" class="assocbox"></div>':'')
+      +(['icon','value','switch','bar','tile','button','light','chip','room','kpi','assoc','valuecard'].indexOf(w.type)>=0?row('Icon (Fallback)','<span style="width:20px;height:20px;display:inline-flex;align-items:center;color:var(--accent)">'+(w.icon?iconSVG(w.icon):'')+'</span> <button class="btn" id="pIcon" style="padding:5px 8px">wählen</button>'+(w.icon?' <button class="btn" id="pIconX" style="padding:5px 8px" title="Icon entfernen"><svg class="i"><use href="#ic-minus"/></svg></button>':'')):'')
+      +(['icon','value','switch','bar','chip','room','kpi','valuecard'].indexOf(w.type)>=0&&w.icon?row('Icon-Farbe',(function(){var SK=[['','Standard'],['accent','Akzent'],['ok','OK'],['warn','Warnung'],['crit','Kritisch'],['info','Info'],['text','Neutral']];return '<span class="iconsw" data-role="iconsw">'+SK.map(function(c){var cur=(w.iconColor||'')===c[0];var st=c[0]?('background:var(--'+c[0]+')'):'background:transparent;border-style:dashed;border-color:var(--muted)';return '<button type="button" class="iconswb'+(cur?' on':'')+'" data-skin="'+c[0]+'" title="'+esc(c[1])+'" style="'+st+'"></button>';}).join('')+'</span>';})()):'')
+      +(['icon','value','switch','bar','tile','button','light','chip','room','kpi','assoc','valuecard'].indexOf(w.type)>=0&&w.varId?'<div id="assocBox" class="assocbox"></div>':'')
       +(function(){try{return (WIDGETS[w.type]&&WIDGETS[w.type].props)?WIDGETS[w.type].props(w):'';}catch(_e){console.error('props('+w.type+')',_e);return '<div class="hint" style="color:var(--crit);font-size:11px">Eigenschaften-Fehler bei „'+esc(w.type)+'" — siehe Konsole</div>';}})()
       +((state.page.fit&&state.page.fit!=='letterbox')?respSection(w):'')
       +((w.type!=='button'&&w.type!=='tile')?popupSection(w):'')
@@ -89,6 +95,7 @@
     if($('#pIcon'))$('#pIcon').onclick=function(){_assocPick=null;showTab('icons');toast('Icon links wählen — wird der Auswahl zugewiesen');};
     if($('#assocBox'))renderAssoc(w);
     if($('#pIconX'))$('#pIconX').onclick=function(){delete w.icon;render();renderProps();};
+    $$('#props [data-role=iconsw] [data-skin]').forEach(function(b){b.onclick=function(){w.iconColor=this.getAttribute('data-skin')||undefined;render();renderProps();commit();};}); // zentrale Icon-Farbe (Skin)
     if($('#pFit'))$('#pFit').onchange=function(){w.fit=this.value||undefined;commit();renderProps();};
     if($('#pPrio'))$('#pPrio').onchange=function(){w.prio=parseInt(this.value)||2;commit();};
     if($('#pGrp'))$('#pGrp').oninput=function(){w.grp=this.value||undefined;commit();};
@@ -122,7 +129,7 @@
     $$('[data-fc]',p).forEach(function(inp){inp.oninput=inp.onchange=function(){var pr=inp.dataset.fc.split('.'),i=+pr[0],k=pr[1];if(!w.fc||!w.fc[i])return;w.fc[i][k]=(k==='hi'||k==='lo'||k==='pq')?(parseInt(inp.value)||0):inp.value;render();};});
     $$('[data-fcdel]',p).forEach(function(b){b.onclick=function(){w.fc.splice(+b.dataset.fcdel,1);render();renderProps();};});
     if($('#fcAdd'))$('#fcAdd').onclick=function(){if(!w.fc)w.fc=[];w.fc.push({d:'',ic:'cloudsun',hi:0,lo:0,pq:0});render();renderProps();};
-    $$('[data-le]',p).forEach(function(inp){inp.oninput=function(){var pr=inp.dataset.le.split('.'),key=pr[0],i=+pr[1],k=pr[2];if(!w[key]||!w[key][i])return;w[key][i][k]=(k==='vid')?(parseInt(inp.value)||0):inp.value;render();};});
+    $$('[data-le]',p).forEach(function(inp){inp.oninput=function(){var pr=inp.dataset.le.split('.'),key=pr[0],i=+pr[1],k=pr[2];if(!w[key]||!w[key][i])return;w[key][i][k]=(/vid$/i.test(k))?(parseInt(inp.value)||0):inp.value;render();};});
     $$('[data-ledel]',p).forEach(function(b){b.onclick=function(){var pr=b.dataset.ledel.split('.');w[pr[0]].splice(+pr[1],1);render();renderProps();};});
     $$('[data-leadd]',p).forEach(function(b){b.onclick=function(){var key=b.dataset.leadd;if(!w[key])w[key]=[];w[key].push(key==='links'?{from:'',to:'',vid:0}:{label:'',vid:0});render();renderProps();};});
     $$('[data-fpick]',p).forEach(function(b){b.onclick=function(){showTab('vars');toast('Variable im Baum anklicken');_bindField={wid:w.id,path:b.dataset.fpick};};}); // generischer Feld-Pick (Pfad, z. B. fc.0.hi)
@@ -180,7 +187,7 @@
     var arr=w[key]||[];var gtc=cols.map(function(){return '1fr';}).join(' ')+' 22px';
     var rows=arr.map(function(r,i){
       return '<div class="fcrow" style="display:grid;grid-template-columns:'+gtc+';gap:4px;margin-bottom:4px">'
-        +cols.map(function(c){return '<input data-le="'+key+'.'+i+'.'+c.k+'" value="'+esc(String(r[c.k]!=null?r[c.k]:''))+'" placeholder="'+c.ph+'">';}).join('')
+        +cols.map(function(c){if(c.type==='color'){var cv=String(r[c.k]!=null?r[c.k]:'');return '<input type="color" data-le="'+key+'.'+i+'.'+c.k+'" value="'+(/^#[0-9a-fA-F]{6}$/.test(cv)?cv:'#00cdab')+'" title="'+esc(c.ph||'Farbe')+'">';}return '<input data-le="'+key+'.'+i+'.'+c.k+'" value="'+esc(String(r[c.k]!=null?r[c.k]:''))+'" placeholder="'+c.ph+'">';}).join('')
         +'<button class="btn" data-ledel="'+key+'.'+i+'" style="padding:2px"><svg class="i"><use href="#ic-minus"/></svg></button></div>';
     }).join('');
     return '<div class="prop" style="margin-top:8px"><div style="font-size:11px;color:var(--muted);margin-bottom:5px">'+title+'</div>'+rows+'<button class="btn" data-leadd="'+key+'"><svg class="i"><use href="#ic-plus"/></svg></button></div>';

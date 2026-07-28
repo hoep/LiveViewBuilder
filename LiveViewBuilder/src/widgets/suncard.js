@@ -1,4 +1,6 @@
-  // ===== Widget: Sonnenbogen (suncard) — Sonnenauf-/untergang mit Bogen =====
+  // ===== Widget: Sonnenbogen (suncard) — Sonnenauf/-untergang mit Tagbogen (+ optional Nacht/Mond) =====
+  // Datenquelle: varId = Sonnenaufgang, varId2 = Sonnenuntergang (Zeit-Variablen).
+  // Rendering/Compute in refreshSun() (03-render-charts.js) — aufgerufen von render() + live.
   defWidget('suncard',{
     label:'Sonnenbogen', paletteIcon:'sunrise', size:[280,150],
     defaults:function(w){w.label='Sonne';},

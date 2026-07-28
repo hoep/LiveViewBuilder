@@ -17,7 +17,7 @@
     var dl=$('#skDel');if(dl&&!dl.disabled)dl.onclick=deleteSkin;
   }
   // ---------- Einstellungen (Builder-Konfigurator) ----------
-  function bcfg(){store.cfg=store.cfg||{};var c=store.cfg;if(c.gs==null)c.gs=8;if(c.gap==null)c.gap=12;if(c.defW==null)c.defW=1440;if(c.defH==null)c.defH=900;if(c.defFit==null)c.defFit='auto';if(c.autosave==null)c.autosave=true;if(c.mobileOpt==null)c.mobileOpt=true;if(c.mobileW==null)c.mobileW=640;if(c.wglow==null)c.wglow=false;return c;}
+  function bcfg(){store.cfg=store.cfg||{};var c=store.cfg;if(c.gs==null)c.gs=8;if(c.gap==null)c.gap=12;if(c.defW==null)c.defW=1440;if(c.defH==null)c.defH=900;if(c.defFit==null)c.defFit='auto';if(c.autosave==null)c.autosave=true;if(c.mobileOpt==null)c.mobileOpt=true;if(c.mobileW==null)c.mobileW=640;if(c.wglow==null)c.wglow=false;if(c.refreshSec==null)c.refreshSec=15;return c;}
   function isMobile(){var w=window.innerWidth||0,h=window.innerHeight||0;if(w<=(bcfg().mobileW||640))return true;try{if(window.matchMedia&&window.matchMedia('(pointer:coarse)').matches&&Math.min(w,h)<=820)return true;}catch(e){}return false;} // coarse-Pointer (Touch) in beiden Ausrichtungen -> mobil
   function buildSettings(){
     var box=$('#setpanel');if(!box)return;var c=bcfg();
@@ -44,6 +44,8 @@
       +'<label class="skrow2" style="flex-direction:row;align-items:center;gap:8px"><input type="checkbox" id="stNoFS"'+(c.noAutoFS?' checked':'')+'><span>Kein Auto-Vollbild beim ersten Klick</span></label>'
       +'<label class="skrow2" style="flex-direction:row;align-items:center;gap:8px"><input type="checkbox" id="stNoPoll"'+(c.noSafetyPoll?' checked':'')+'><span>Sicherheits-Poll abschalten (nur WebSocket)</span></label>'
       +'<div class="hint" style="margin:2px 2px 0">Poll läuft ohnehin nur bei WS-Stille (&gt;5 s). Aus = reiner WebSocket; bei WS-Abbruch wird automatisch wieder gepollt.</div>'
+      +'<label class="skrow2"><span>Standard-Aktualisierung Widgets (Sek.)</span><input id="stRefresh" type="number" min="1" max="600" value="'+(c.refreshSec||15)+'"></label>'
+      +'<div class="hint" style="margin:2px 2px 0">Vorgabe für periodisch nachladende Widgets (z. B. Meldungen). Pro Widget überschreibbar. Minimum 1 s.</div>'
       +'<div class="pgh">Server (nur Info)</div>'
       +'<div class="hint" style="margin:4px 2px">Schreib-Token und WebSocket-Port werden serverseitig in <code>sites.php</code> / <code>hook.php</code> gesetzt — nicht im Builder.</div>';
     if($('#stAuto'))$('#stAuto').onchange=function(){bcfg().autosave=this.checked;commit();if(this.checked)scheduleSave();};
@@ -56,6 +58,7 @@
     if($('#stGlow'))$('#stGlow').onchange=function(){bcfg().wglow=this.checked||undefined;document.body.classList.toggle('wglow',this.checked);commit();toast('Widget-Glow '+(this.checked?'an':'aus'));};
     if($('#stNoFS'))$('#stNoFS').onchange=function(){bcfg().noAutoFS=this.checked||undefined;commit();toast('Auto-Vollbild '+(this.checked?'aus':'an')+' (wirkt nach Reload)');};
     if($('#stNoPoll'))$('#stNoPoll').onchange=function(){bcfg().noSafetyPoll=this.checked||undefined;commit();toast('Sicherheits-Poll '+(this.checked?'aus':'an')+' (wirkt nach Reload)');};
+    if($('#stRefresh'))$('#stRefresh').oninput=function(){bcfg().refreshSec=Math.max(1,Math.min(600,parseInt(this.value)||15));commit();};
     if($('#stMob'))$('#stMob').onchange=function(){bcfg().mobileOpt=this.checked;commit();};
     if($('#stMobW'))$('#stMobW').oninput=function(){bcfg().mobileW=Math.max(320,parseInt(this.value)||640);commit();};
     if($('#stMobHome'))$('#stMobHome').onchange=function(){store.homeMobile=this.value||undefined;commit();};

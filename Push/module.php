@@ -276,16 +276,16 @@ class LiveViewBuilderPush extends IPSModule
         };
         foreach (($j['views'] ?? []) as $vw) {
             foreach (($vw['widgets'] ?? []) as $w) {
-                foreach (['varId', 'varId2', 'varId3', 'visVar'] as $k) {
+                foreach (['varId', 'varId2', 'varId3', 'visVar', 'tankVid'] as $k) {
                     if (!empty($w[$k])) {
                         $add($w[$k]);
                     }
                 }
-                foreach (['items', 'rows', 'links', 'src', 'snk', 'fc'] as $k) {
+                foreach (['items', 'rows', 'links', 'src', 'snk', 'fc', 'stages', 'elements'] as $k) {
                     if (!empty($w[$k]) && is_array($w[$k])) {
                         foreach ($w[$k] as $o) {
                             if (is_array($o)) {
-                                foreach (['vid', 'hi', 'lo', 'pq'] as $kk) {
+                                foreach (['vid', 'subvid', 'hi', 'lo', 'pq', 'speedVid', 'socVid'] as $kk) {
                                     if (!empty($o[$kk])) {
                                         $add($o[$kk]);
                                     }
