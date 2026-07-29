@@ -23,7 +23,10 @@
       var title=w.title?'<span class="hvctitle">'+esc(w.title)+'</span>':'';
       var tr='';
       if(w.varId2&&!w.v2acc){
-        tr='<span class="sw" data-role="sw"></span>';
+        var onC=w.swOn?_cssColorOrEmpty(w.swOn):'',offC=w.swOff?_cssColorOrEmpty(w.swOff):'';
+        var sty=(onC?('--sw-on:'+onC+';'):'')+(offC?('--sw-off:'+offC+';'):'');
+        var knob='<i class="swk">'+(w.swOffIcon?'<span class="swi swi-off">'+iconSVG(w.swOffIcon)+'</span>':'')+(w.swOnIcon?'<span class="swi swi-on">'+iconSVG(w.swOnIcon)+'</span>':'')+'</i>';
+        tr='<span class="sw" data-role="sw"'+(sty?(' style="'+sty+'"'):'')+'>'+knob+'</span>';
       }else if(w.badge||w.okMin!=null||w.okMax!=null){
         var st=w.badgeState||'ok';
         if(st==='muted')tr='<span class="hvcmuted" data-role="badge">'+esc(w.badge||'')+'</span>';
@@ -50,6 +53,14 @@
         +(w.okMin!=null||w.okMax!=null?row('Badge im/außer Bereich','<input id="pVcOkT" value="'+esc(w.okText||'OPTIMAL')+'" style="width:90px"> <input id="pVcBadT" value="'+esc(w.badText||'PRÜFEN')+'" style="width:90px">'):'')
         +'<div class="pgh">Toggle / Akzent (varId2)</div>'
         +row('varId2 = Akzent','<input type="checkbox" id="pVcV2acc"'+(w.v2acc?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">Kachel leuchtet auf (statt Toggle)</span>')
+        +((w.varId2&&!w.v2acc)?(
+          '<div class="pgh">Schalter-Farben</div>'
+          +row('Ein-Farbe',skinSel(w.swOn||'','id="pVcSwOn"'))
+          +row('Aus-Farbe',skinSel(w.swOff||'','id="pVcSwOff"'))
+          +'<div class="pgh">Knopf-Icons (Ein/Aus)</div>'
+          +row('Ein-Icon','<span style="width:18px;height:18px;display:inline-flex;align-items:center;color:var(--accent)">'+(w.swOnIcon?iconSVG(w.swOnIcon):'')+'</span> <button class="btn" id="pVcSwOnIco" style="padding:5px 8px">wählen</button>'+(w.swOnIcon?' <button class="btn" id="pVcSwOnIcoX" style="padding:5px 8px" title="entfernen"><svg class="i"><use href="#ic-minus"/></svg></button>':''))
+          +row('Aus-Icon','<span style="width:18px;height:18px;display:inline-flex;align-items:center;color:var(--accent)">'+(w.swOffIcon?iconSVG(w.swOffIcon):'')+'</span> <button class="btn" id="pVcSwOffIco" style="padding:5px 8px">wählen</button>'+(w.swOffIcon?' <button class="btn" id="pVcSwOffIcoX" style="padding:5px 8px" title="entfernen"><svg class="i"><use href="#ic-minus"/></svg></button>':''))
+        ):'')
         +'<div class="pgh">Farbe nach Zustand</div>'
         +'<div style="font-size:11px;color:var(--muted);margin:-2px 2px 4px">Quelle: <b>varId2</b> (Toggle/Status), sonst Hauptwert. true/false = 1/0. Farbe: #hex oder accent/ok/warn/crit/info.'+(w.vaFill&&w.v2acc?' <span style="color:var(--warm)">— „varId2 = Akzent" oben deaktivieren, sonst überlagern sich beide!</span>':'')+'</div>'
         +listEditor(w,'vassoc','Zustand · Farbe',[{k:'v',ph:'z. B. 1 / true'},{k:'color',ph:'#hex / accent'}])
@@ -66,7 +77,13 @@
       bind('pVcOkT','okText');bind('pVcBadT','badText');
       bind('pVcOkMin','okMin',1);bind('pVcOkMax','okMax',1);bind('pVcBarMin','barMin',1);bind('pVcBarMax','barMax',1);
       if($('#pVcBst'))$('#pVcBst').onchange=function(){w.badgeState=this.value;render();};
-      if($('#pVcV2acc'))$('#pVcV2acc').onchange=function(){w.v2acc=this.checked||undefined;render();commit();};
+      if($('#pVcV2acc'))$('#pVcV2acc').onchange=function(){w.v2acc=this.checked||undefined;render();renderProps();commit();};
+      if($('#pVcSwOn'))$('#pVcSwOn').onchange=function(){w.swOn=this.value||undefined;render();renderProps();commit();};
+      if($('#pVcSwOff'))$('#pVcSwOff').onchange=function(){w.swOff=this.value||undefined;render();renderProps();commit();};
+      if($('#pVcSwOnIco'))$('#pVcSwOnIco').onclick=function(){_iconPick={wid:w.id,field:'swOnIcon'};showTab('icons');toast('Ein-Icon links wählen');};
+      if($('#pVcSwOnIcoX'))$('#pVcSwOnIcoX').onclick=function(){delete w.swOnIcon;render();renderProps();commit();};
+      if($('#pVcSwOffIco'))$('#pVcSwOffIco').onclick=function(){_iconPick={wid:w.id,field:'swOffIcon'};showTab('icons');toast('Aus-Icon links wählen');};
+      if($('#pVcSwOffIcoX'))$('#pVcSwOffIcoX').onclick=function(){delete w.swOffIcon;render();renderProps();commit();};
       if($('#pVcVaFill'))$('#pVcVaFill').onchange=function(){w.vaFill=this.checked||undefined;render();if(w.varId&&_lastVals[w.varId])applyVal(w.varId,_lastVals[w.varId]);commit();};
       if($('#pVcBarOn'))$('#pVcBarOn').onchange=function(){w.barOn=this.checked||undefined;render();renderProps();commit();};
       if($('#pVcOkMin')||$('#pVcOkMax')){/* Badge-Bereich Toggle -> Panel neu, damit Texte-Zeile erscheint */
