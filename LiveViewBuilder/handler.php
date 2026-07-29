@@ -177,6 +177,65 @@ if ($api === 'astro') {
     return;
 }
 
+// ---- Tageslaenge ueber ein ganzes Jahr:  ?api=daylight&id=<LocationInstanz>[&year=][&lat=&lon=] ----
+// Rechnet NICHT selbst, sondern nutzt die native PHP-Funktion date_sun_info().
+// Rueckgabe sind absolute Unix-Zeitstempel (UTC-neutral) - die Umrechnung in Ortszeit macht der
+// Browser, damit die Zeitzone des Symcon-Prozesses (haeufig UTC) keine Rolle spielt.
+if ($api === 'daylight') {
+    header('Content-Type: application/json; charset=utf-8');
+    $id   = (int) ($_GET['id'] ?? 0);
+    $year = (int) ($_GET['year'] ?? 0);
+    if ($year < 1970 || $year > 2200) { $year = (int) date('Y'); }
+    $lat = isset($_GET['lat']) ? (float) $_GET['lat'] : null;
+    $lon = isset($_GET['lon']) ? (float) $_GET['lon'] : null;
+
+    // Standort bevorzugt aus der Location-Control-Instanz (gleiche Quelle wie ?api=astro)
+    if (($lat === null || $lon === null) && $id > 0 && @IPS_InstanceExists($id)) {
+        $cfg = json_decode((string) @IPS_GetConfiguration($id), true);
+        if (is_array($cfg) && isset($cfg['Location'])) {
+            $loc = json_decode((string) $cfg['Location'], true);
+            if (is_array($loc) && isset($loc['latitude'])) {
+                $lat = (float) $loc['latitude'];
+                $lon = (float) ($loc['longitude'] ?? 0);
+            }
+        }
+    }
+    // Ohne Angabe: erste Instanz suchen, die eine Location-Konfiguration mit Breitengrad hat
+    // (unabhaengig von der Modul-GUID, damit es auch bei abweichenden Standort-Modulen greift).
+    if ($lat === null || $lon === null) {
+        foreach (@IPS_GetInstanceList() as $iid) {
+            $cfg = json_decode((string) @IPS_GetConfiguration($iid), true);
+            if (!is_array($cfg) || !isset($cfg['Location'])) { continue; }
+            $loc = json_decode((string) $cfg['Location'], true);
+            if (is_array($loc) && isset($loc['latitude']) && $loc['latitude'] != 0) {
+                $lat = (float) $loc['latitude'];
+                $lon = (float) ($loc['longitude'] ?? 0);
+                $id  = $iid;
+                break;
+            }
+        }
+    }
+    if ($lat === null || $lon === null) {
+        http_response_code(400);
+        echo json_encode(['error' => 'no location', 'hint' => 'Location-Control-Instanz angeben (id) oder lat/lon setzen']);
+        return;
+    }
+
+    $days = [];
+    $t    = gmmktime(12, 0, 0, 1, 1, $year);          // Mittag UTC, damit der Tag eindeutig ist
+    $end  = gmmktime(12, 0, 0, 1, 1, $year + 1);
+    while ($t < $end) {
+        $i = date_sun_info($t, $lat, $lon);
+        // Polarnacht/Mitternachtssonne: sunrise/sunset sind dann bool statt Zeitstempel
+        $r = (isset($i['sunrise']) && is_int($i['sunrise'])) ? $i['sunrise'] : null;
+        $s = (isset($i['sunset'])  && is_int($i['sunset']))  ? $i['sunset']  : null;
+        $days[] = [$t, $r, $s];
+        $t += 86400;
+    }
+    echo json_encode(["year" => $year, "lat" => $lat, "lon" => $lon, "src" => $id, "days" => $days]);
+    return;
+}
+
 // ---- Assoziationen (Variablenprofil): Wert -> Name/Icon/Farbe  ?api=assoc&id=<id> ----
 if ($api === 'assoc') {
     header('Content-Type: application/json; charset=utf-8');
