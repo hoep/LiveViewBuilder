@@ -863,6 +863,7 @@
   <symbol viewBox="0 0 24 24" id="ic-trash"><path d="M4 7l16 0" /> <path d="M10 11l0 6" /> <path d="M14 11l0 6" /> <path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12" /> <path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3" /></symbol>
   <symbol viewBox="0 0 24 24" id="ic-menu"><path d="M4 6l16 0" /> <path d="M4 12l16 0" /> <path d="M4 18l16 0" /></symbol>
   <symbol viewBox="0 0 24 24" id="ic-minus"><path d="M5 12l14 0" /></symbol>
+  <symbol viewBox="0 0 24 24" id="ic-check"><path d="M5 12l5 5l10 -10" /></symbol>
   <symbol viewBox="0 0 24 24" id="ic-al-left"><path d="M4 4l0 16" /> <path d="M8 11a2 2 0 0 1 2 -2h8a2 2 0 0 1 2 2v2a2 2 0 0 1 -2 2h-8a2 2 0 0 1 -2 -2l0 -2" /></symbol>
   <symbol viewBox="0 0 24 24" id="ic-al-cx"><path d="M12 4l0 5" /> <path d="M12 15l0 5" /> <path d="M6 11a2 2 0 0 1 2 -2h8a2 2 0 0 1 2 2v2a2 2 0 0 1 -2 2h-8a2 2 0 0 1 -2 -2l0 -2" /></symbol>
   <symbol viewBox="0 0 24 24" id="ic-al-right"><path d="M20 4l0 16" /> <path d="M4 11a2 2 0 0 1 2 -2h8a2 2 0 0 1 2 2v2a2 2 0 0 1 -2 2h-8a2 2 0 0 1 -2 -2l0 -2" /></symbol>
@@ -971,15 +972,8 @@
         <div class="pitem" data-add="checkbox">Checkbox</div>
         <div class="pitem" data-add="tile">Kachel</div>
         <div class="pitem" data-add="button">Button</div>
-        <div class="pitem" data-add="slider">Slider</div>
-        <div class="pitem" data-add="rangebtn">Stepper</div>
-        <div class="pitem" data-add="rangeslider">RangeSlider</div>
-        <div class="pitem" data-add="circlerange">CircleRange</div>
-        <div class="pitem" data-add="colorwheel">Farbkreis</div>
-        <div class="pitem" data-add="cie">CIE-Picker</div>
-        <div class="pitem" data-add="rgbslider">RGB-Slider</div>
-        <div class="pitem" data-add="rgbbutton">RGB-Button</div>
-        <div class="pitem" data-add="rgbbox">RGB-Box</div>
+        <div class="pitem" data-add="slider" title="Varianten: Slider · Bereich · Rund · Stepper · Dial (in den Eigenschaften)">Regler</div>
+        <div class="pitem" data-add="colorpick" title="Varianten: Farbkreis · CIE · RGB-Slider · RGB-Taste · RGB-Box (in den Eigenschaften)">Farbwähler</div>
         <div class="pitem" data-add="marquee">Lauftext</div>
         <div class="pitem" data-add="textbox">Eingabe</div>
         <div class="pitem" data-add="flowline">Energiefluss-Linie</div>
@@ -1013,12 +1007,10 @@
         <div class="pitem" data-add="wsmon">Live-Monitor</div>
         <div class="pitem" data-add="delta">Delta</div>
         <div class="pgh">Diagramme</div>
-        <div class="pitem" data-add="chart">Chart</div>
-        <div class="pitem" data-add="spark">Sparkline</div>
+        <div class="pitem" data-add="chart" title="Varianten inkl. Sparkline und Wasserfall (in den Eigenschaften)">Chart</div>
         <div class="pitem" data-add="sankey">Sankey</div>
         <div class="pitem" data-add="statetl">Zustands-Timeline</div>
         <div class="pitem" data-add="statelog">Zustands-Verlauf</div>
-        <div class="pitem" data-add="waterfall">Wasserfall</div>
         <div class="pitem" data-add="flow">Fluss</div>
         <div class="pgh">Wetter &amp; Zeit</div>
         <div class="pitem" data-add="weather">Wetter</div>
@@ -1037,7 +1029,6 @@
         <div class="pitem" data-add="statusimage">Status-Bild</div>
         <div class="pitem" data-add="select">Auswahl</div>
         <div class="pitem" data-add="shape">Form</div>
-        <div class="pitem" data-add="dial">Dial</div>
         <div class="pitem" data-add="webview">WebView</div>
         <div class="pitem" data-add="weekplan">Wochenplan</div>
         <div class="pitem" data-add="eventctl">Ereignis</div>
@@ -1382,7 +1373,7 @@
   };
   var PAL_ICON={
     blank:'wblank',value:'meter',text:'wcode',icon:'star',line:'wline',switch:'power',tile:'wtile',button:'power',
-    slider:'wslider',thermostat:'thermostat',cover:'blinds',light:'bulb',dial:'wdial',select:'wselect',alarm:'shield',
+    slider:'wslider',thermostat:'thermostat',cover:'blinds',light:'bulb',dial:'wdial',colorpick:'wdial',select:'wselect',alarm:'shield',
     vacuum:'mower',media:'music',skinswitch:'moon',chip:'star',gauge:'gauge',gaugepro:'gauge',bar:'wbars',room:'home',
     statuslist:'wlist',devlist:'wlist',ticker:'wticker',tempbar:'temperature',statusgrid:'wgrid',meterlist:'wbars',
     infolist:'wlist',kpi:'wkpi',delta:'wdelta',statusimage:'wimage',chart:'wchart',spark:'wchart',sankey:'wsankey',
@@ -1535,7 +1526,7 @@
     var t=w.type, hold=!!(w.longPopup||w.longNav), tap=false;
     if(w.closePopup||w.popupTo||w.scriptId||w.openMenu||w.navBack||w.navTo||(w.regSlot&&w.regView))tap=true;
     else if((t==='tile'||t==='button')&&(w.navTo||w.varId))tap=true;
-    else if(t==='switch'||t==='light'||t==='alarm'||t==='select'||t==='dial')tap=!!w.varId;
+    else if(t==='switch'||t==='light'||t==='alarm'||t==='select'||t==='dial'||(t==='slider'&&_rMode(w)==='dial'))tap=!!w.varId; // Dial ist jetzt eine Variante von slider (rmode)
     else if(t==='cover')tap=!!(w.varId||w.varId2);
     else if(t==='thermostat')tap=!!(w.varId2||w.varId3);
     else if(t==='media')tap=!!w.varId2;
@@ -1543,6 +1534,7 @@
     else if(t==='campro')tap=!!w.mediaId;
     else if(t==='skinswitch')tap=true;
     else if(t==='valuecard')tap=!!(w.varId2&&!w.v2acc); // nur mit Toggle klickbar
+    else if(t==='colorpick'){var _cm=w.cmode||'wheel';tap=(_cm==='wheel'||_cm==='cie'||_cm==='button');} // Farbwähler: box/slider sind reine Anzeige bzw. Slider -> kein Ganz-Widget-Hover
     else{var wc=WIDGETS[t];if(wc&&wc.click&&!wc.noHover)tap=true;} // noHover: interne Teil-Klicks (z. B. msglog-Chips) sollen kein Ganz-Widget-Hover erzeugen
     return tap?(hold?'act-both':'act-tap'):(hold?'act-hold':'');
   }
@@ -1688,10 +1680,27 @@
   function disposeCharts(){for(var k in _ec){try{_ec[k].dispose();}catch(e){}}_ec={};}
   // Responsive ECharts-Schrift: Basisgröße x Skalierung nach Kachelgröße (Referenz 300x180, geklemmt 0.8..1.7)
   function _ecFS(w,base){var sc=Math.min((w&&w.w?w.w:300)/300,(w&&w.h?w.h:180)/180);sc=Math.max(0.8,Math.min(1.7,sc));return Math.round(base*sc*10)/10;}
+  // Wasserfall: Muster-Schritte lazy saeen. addWidget ruft defaults() VOR dem Setzen von ctype,
+  // deshalb kann die Saat nicht in chart.defaults() liegen — sie passiert im pCType-Wechsel und hier defensiv.
+  function _wfSeed(w){
+    // NUR beim ersten Mal Muster-Schritte setzen. Eine bewusst geleerte Liste (Array der Länge 0)
+    // muss leer bleiben - sonst kann der Anwender den letzten Schritt nie löschen.
+    if(!w.steps){
+      w.steps=[
+        {title:'Start',   vid:0, type:'start', color:'info'},
+        {title:'Zunahme', vid:0, type:'auf',   color:'ok'},
+        {title:'Abnahme', vid:0, type:'ab',    color:'crit'},
+        {title:'Summe',   vid:0, type:'sum',   color:'accent'}
+      ];
+      if(w.labels==null)w.labels=true;            // Wasserfall zeigt Datenlabels standardmaessig
+      if(w.showTitle==null)w.showTitle=false;     // frueher ueber label='' geloest — Label bleibt jetzt erhalten
+    }
+    return w.steps;
+  }
   // Wasserfall (nicht zeitbasiert): Schritte start/auf/ab/sub(=Zwischensumme)/sum(=Summe) auf Kategorie-Achse
   function setWaterfall(w){
     var ec=_ec[w.id];if(!ec)return;
-    var steps=(w.steps||[]),cats=[],baseD=[],barD=[],levels=[],running=0;
+    var steps=_wfSeed(w),cats=[],baseD=[],barD=[],levels=[],running=0;
     var upC=_skinToCss(w.wfUp)||cssv('--ok'),dnC=_skinToCss(w.wfDown)||cssv('--crit'),acc=cssv('--accent'),br=parseFloat(w.barRadius!=null?w.barRadius:3);
     steps.forEach(function(s){
       var t=s.type||'auf',lv=s.vid&&_lastVals[s.vid],raw=lv?parseFloat(String(lv.v).replace(',','.')):null;
@@ -1704,7 +1713,7 @@
       cats.push(s.title||'');baseD.push(base);levels.push(running); // Saldo nach diesem Schritt (Level fuer Verbindungslinie)
       barD.push({value:h,itemStyle:{color:col,borderRadius:br}});
     });
-    var unit=(w.yunit||'');
+    var unit=_wfUnit(w); // eigene Einheit (nicht w.yunit - das gehoert dem Achsensystem/Kalenderjahr-Balken)
     var lbl=w.labels?{show:true,position:'top',fontSize:_ecFS(w,9),color:cssv('--muted'),formatter:function(p){return (p.value==null)?'':(Math.round(p.value*100)/100);}}:{show:false};
     var series=[{type:'bar',stack:'wf',silent:true,itemStyle:{color:'transparent'},emphasis:{disabled:true},data:baseD},
                 {type:'bar',stack:'wf',data:barD,label:lbl}];
@@ -1731,9 +1740,9 @@
     if(w.type==='gauge'){setGauge(w,_lastVals[w.varId]);}
     else if(w.type==='gaugepro'){setGaugePro(w,_lastVals[w.varId]);}
     else if(w.type==='sankey'){setSankey(w);}
-    else if(w.type==='waterfall'){setWaterfall(w);}
+    else if(w.type==='waterfall'||w.ctype==='waterfall'){setWaterfall(w);} // Live-Werte, KEINE Historie
     else if(w.ctype==='pie'||w.ctype==='donut'){renderChartData(w);}
-    else{ fetchHist(w); } // immer frisch laden (Query ~2ms); _hist-Cache ist wegen seiten-kollidierender IDs nicht verlaesslich
+    else{ fetchHist(w); } // immer frisch laden (auch ctype 'spark') (Query ~2ms); _hist-Cache ist wegen seiten-kollidierender IDs nicht verlaesslich
   }
   // Per-Zustand-Styling (Ein/Aus) fuer button/tile — IPSView ToggleButton/Value-Button
   function applyBtnState(w,el,on){
@@ -1790,7 +1799,7 @@
     else if(f==='next'||f==='last'){var t=j[f];out=t>0?new Date(t*1000).toLocaleString('de-DE'):'–';}
     vv.textContent=out;
   }).catch(function(){});}
-  function renderChartData(w){if(w.type==='spark')setSpark(w);else if(w.ctype==='pie'||w.ctype==='donut'||w.ctype==='rose')setPie(w);else if(w.type==='chart'&&w.calYear&&String(w.agg)==='3')setCalBar(w);else setLine(w);}
+  function renderChartData(w){if(w.ctype==='daylight')setDaylight(w);else if(w.ctype==='spark'||w.type==='spark')setSpark(w);else if(w.ctype==='waterfall'||w.type==='waterfall')setWaterfall(w);else if(w.ctype==='pie'||w.ctype==='donut'||w.ctype==='rose')setPie(w);else if(w.type==='chart'&&w.calYear&&String(w.agg)==='3')setCalBar(w);else setLine(w);}
   function setPie(w){var ec=_ec[w.id];if(!ec)return;var ids=[w.varId,w.varId2,w.varId3].filter(function(x){return x;});
     var data=ids.map(function(id,i){var o=(w.sopt&&w.sopt[i])||{};var lv=_lastVals[id],v=lv?parseFloat(String(lv.v).replace(',','.')):0;if(isNaN(v))v=0;return {name:o.name||(i===0?(w.label||'Serie 1'):'Serie '+(i+1)),value:Math.max(0,v),itemStyle:{color:o.color||autoColorHex(i)}};});
     var donut=(w.ctype==='donut'),rose=(w.ctype==='rose');
@@ -1804,13 +1813,22 @@
         label:{color:cssv('--text'),fontSize:_ecFS(w,10),formatter:(w.labels?'{b}\n{d}%':'{d}%')},labelLine:{length:6,length2:6,lineStyle:{color:cssv('--line')}},
         itemStyle:{borderColor:cssv('--bg'),borderWidth:2,borderRadius:((donut||rose)?3:0)},minAngle:3}]},true);}
   function chartSeries(w){return (_hist[w.id]&&_hist[w.id].series)?_hist[w.id].series:[];}
+  // Sparkline (ctype 'spark') — kompakte Verlaufskurve: keine Achsen, kein Titel, keine Legende.
+  // Linienfarbe: w.lineColor (feste Skin-Liste); Zweitquelle ist die Serien-Farbe series[0].color.
+  // Fuellung: w.fill!==false (undefined = an). Es wird NUR die erste Serie gezeichnet.
+  // Serienstil ist bewusst hart verdrahtet (Breite 1.8, glatt, ohne Punkte) — w.lw/w.smooth gelten hier nicht.
   function setSpark(w){
-    var ec=_ec[w.id];if(!ec)return;var acc=cssv('--accent');var s0=chartSeries(w)[0]||{data:[]};var data=s0.data;
+    var ec=_ec[w.id];if(!ec)return;
+    var _cs=(w.series&&w.series[0]&&w.series[0].color)||'';                 // Merge-Fallback: Farbe aus dem Serien-Editor
+    var _lc=_skinColor(w.lineColor||_cs||''),_m=_lc&&_lc.match(/^var\((--[\w-]+)\)$/),acc=_m?cssv(_m[1]):(_lc||cssv('--accent'));
+    var s0=chartSeries(w)[0]||{data:[]};var data=s0.data;
+    var ser={type:'line',showSymbol:false,smooth:true,lineStyle:{color:acc,width:1.8},
+      data:data,markPoint:{silent:true,symbol:'circle',symbolSize:5,itemStyle:{color:acc},label:{show:false},data:data.length?[{coord:data[data.length-1]}]:[]}};
+    if(w.fill!==false)ser.areaStyle={color:accA(.16,acc)};
     ec.setOption({backgroundColor:'transparent',animation:!!bcfg().chartAnim,grid:{left:2,right:2,top:6,bottom:4},
       tooltip:{trigger:'axis',confine:true},
       xAxis:{type:'time',show:false},yAxis:{type:'value',scale:true,show:false},
-      series:[{type:'line',showSymbol:false,smooth:true,lineStyle:{color:acc,width:1.8},areaStyle:{color:accA(.16)},
-        data:data,markPoint:{silent:true,symbol:'circle',symbolSize:5,itemStyle:{color:acc},label:{show:false},data:data.length?[{coord:data[data.length-1]}]:[]}}]},true);
+      series:[ser]},true);
   }
   function _glowCol(col,a){col=(''+(col||'')).trim();var m=col.match(/^#([0-9a-fA-F]{6})$/);if(m){var n=parseInt(m[1],16);return 'rgba('+((n>>16)&255)+','+((n>>8)&255)+','+(n&255)+','+a+')';}m=col.match(/rgba?\(([^)]+)\)/);if(m){var p=m[1].split(',');return 'rgba('+(+p[0])+','+(+p[1])+','+(+p[2])+','+a+')';}return col;} // Farbe mit Alpha (für Glow)
   function setGauge(w,d){
@@ -1992,7 +2010,91 @@
     return out;
   }
   function _ensureYAxes(w){if(!(w.yAxes&&w.yAxes.length))w.yAxes=_chYAxes(w).map(function(a){return {side:a.side,name:a.name||'',min:(a.min!=null?a.min:''),max:(a.max!=null?a.max:'')};});return w.yAxes;}
+  // ---- Tageslänge über ein Jahr (ctype 'daylight') ----------------------------------------
+  // Datenquelle: ?api=daylight (nutzt die native PHP-Funktion date_sun_info, wir rechnen nichts nach).
+  // Geliefert werden absolute Unix-Zeitstempel; die Umrechnung in Ortszeit macht der Browser,
+  // damit die Zeitzone des Symcon-Prozesses (häufig UTC) keine Rolle spielt.
+  function _dlHour(ts){var d=new Date(ts*1000);return d.getHours()+d.getMinutes()/60+d.getSeconds()/3600;}
+  // Ohne Sommerzeit: feste Normalzeit-Verschiebung (Stand 1. Januar) statt der jeweils gueltigen
+  // Ortszeit. Ergibt glatte Kurven ohne die Spruenge Ende Maerz / Ende Oktober.
+  function _dlHourStd(ts,offMin){var h=(ts+offMin*60)/3600;h=h/24;h=(h-Math.floor(h))*24;return h;} // Ortszeit = UTC + Versatz
+  function _dlStdOff(year){return -new Date(year,0,1,12,0,0).getTimezoneOffset();} // Minuten oestlich von UTC
+  function fetchDaylight(w){
+    var y=parseInt(w.dlYear)||new Date().getFullYear();
+    var q='?api=daylight&year='+y+(w.dlLoc?('&id='+parseInt(w.dlLoc)):'');
+    fetch(q,{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
+      if(!j||!j.days){_hist[w.id]={dl:null,err:(j&&j.hint)||'kein Standort'};if(_ec[w.id])setDaylight(w);return;}
+      var rise=[],set=[],len=[];
+      var noDst=!!w.dlNoDst,off=_dlStdOff(j.year); // Normalzeit-Versatz nur einmal bestimmen
+      function hOf(ts){return noDst?_dlHourStd(ts,off):_dlHour(ts);}
+      j.days.forEach(function(d){
+        var t=d[0]*1000; // Tagesstempel (Mittag UTC) — nur als x-Position
+        if(d[1]==null||d[2]==null){rise.push([t,null]);set.push([t,null]);len.push([t,null]);return;}
+        var hr=hOf(d[1]),hs=hOf(d[2]);
+        rise.push([t,Math.round(hr*1000)/1000]);
+        set.push([t,Math.round(hs*1000)/1000]);
+        len.push([t,Math.round((d[2]-d[1])/36*1)/100]); // Tageslänge in Stunden
+      });
+      _hist[w.id]={dl:{rise:rise,set:set,len:len,year:j.year,lat:j.lat,lon:j.lon}};
+      if(_ec[w.id])setDaylight(w);
+    }).catch(function(){_hist[w.id]={dl:null,err:'Abruf fehlgeschlagen'};if(_ec[w.id])setDaylight(w);});
+  }
+  function _dlFmt(h){if(h==null)return '–';var hh=Math.floor(h),mm=Math.round((h-hh)*60);if(mm===60){hh++;mm=0;}return ('0'+hh).slice(-2)+':'+('0'+mm).slice(-2);}
+  function setDaylight(w){
+    var ec=_ec[w.id];if(!ec)return;
+    var D=(_hist[w.id]&&_hist[w.id].dl)||null;
+    if(!D){ec.setOption({backgroundColor:'transparent',title:{text:(_hist[w.id]&&_hist[w.id].err)||'Standort fehlt',left:'center',top:'middle',textStyle:{color:cssv('--faint'),fontSize:_ecFS(w,11),fontWeight:'normal'}},xAxis:{show:false},yAxis:{show:false},series:[]},true);return;}
+    var ax=_axShow(w);
+    var cSet=_skinToCss(w.dlSet)||cssv('--warn'),cRise=_skinToCss(w.dlRise)||cssv('--muted');
+    var cFill=_skinToCss(w.dlFill)||cSet;
+    var op=(w.dlOpacity!=null?w.dlOpacity:22)/100;
+    var lp=w.legend?(w.legPos||'top'):'';
+    // Band: unsichtbare Basis (Aufgang) + gestapelte Differenz -> Fläche genau zwischen den Kurven
+    var diff=D.rise.map(function(p,i){var a=p[1],b=D.set[i][1];return [p[0],(a==null||b==null)?null:Math.round((b-a)*1000)/1000];});
+    var series=[
+      {name:'_basis',type:'line',stack:'dl',data:D.rise,symbol:'none',lineStyle:{width:0,opacity:0},areaStyle:{opacity:0},silent:true,tooltip:{show:false},z:1},
+      {name:'Tageslänge',type:'line',stack:'dl',data:diff,symbol:'none',lineStyle:{width:0,opacity:0},areaStyle:{color:cFill,opacity:op},silent:true,z:1},
+      {name:'Untergang',type:'line',data:D.set,symbol:'none',smooth:true,lineStyle:{color:cSet,width:(w.lw||2)},z:3},
+      {name:'Aufgang',  type:'line',data:D.rise,symbol:'none',smooth:true,lineStyle:{color:cRise,width:(w.lw||2)},z:3}
+    ];
+    // Markierung „heute" (durchgezogen) — Datumsschild wie in der Vorlage
+    if(w.dlToday!==false){
+      var now=new Date(),ty=parseInt(w.dlYear)||now.getFullYear();
+      if(now.getFullYear()===ty){
+        var tx=Date.UTC(ty,now.getMonth(),now.getDate(),12,0,0);
+        series[2].markLine={silent:true,symbol:'none',
+          lineStyle:{color:cssv('--text'),width:1.5,type:'solid',opacity:.85},
+          label:{show:true,position:'insideEndTop',formatter:('0'+now.getDate()).slice(-2)+'.'+('0'+(now.getMonth()+1)).slice(-2),
+                 color:cssv('--text'),backgroundColor:cssv('--surface-2'),borderColor:cssv('--line'),borderWidth:1,
+                 padding:[3,6],borderRadius:4,fontSize:_ecFS(w,10)},
+          data:[{xAxis:tx}]};
+      }
+    }
+    ec.setOption({backgroundColor:'transparent',animation:!!bcfg().chartAnim,
+      grid:{left:6,right:8,top:6+_titleSpace(w)+(lp==='top'?20:0),bottom:6+(lp==='bottom'?18:0),containLabel:true},
+      title:_titleOpt(w),legend:_legendOpt(w,w.legend),
+      tooltip:{trigger:'axis',axisPointer:{type:'line'},
+        formatter:function(ps){
+          if(!ps||!ps.length)return '';
+          var d=new Date(ps[0].value[0]),r=null,s=null;
+          ps.forEach(function(p){if(p.seriesName==='Aufgang')r=p.value[1];if(p.seriesName==='Untergang')s=p.value[1];});
+          var lenH=(r!=null&&s!=null)?(s-r):null;
+          return ('0'+d.getUTCDate()).slice(-2)+'.'+('0'+(d.getUTCMonth()+1)).slice(-2)+'.<br>'
+            +'Auf '+_dlFmt(r)+' · Unter '+_dlFmt(s)
+            +(lenH!=null?('<br>Tageslänge '+_dlFmt(lenH)):'');
+        }},
+      xAxis:{type:'time',axisLine:{show:ax.line,lineStyle:{color:cssv('--line')}},axisTick:{show:ax.ticks},
+        axisLabel:{show:ax.xLab,color:cssv('--faint'),fontSize:_ecFS(w,9),formatter:'{MMM}'},
+        splitLine:{show:ax.xGrid,lineStyle:{color:cssv('--line-soft')}}},
+      yAxis:{type:'value',min:(w.dlYMin!=null&&w.dlYMin!==''?parseFloat(w.dlYMin):0),max:(w.dlYMax!=null&&w.dlYMax!==''?parseFloat(w.dlYMax):24),interval:6,
+        axisLine:{show:ax.line,lineStyle:{color:cssv('--line')}},axisTick:{show:ax.ticks},
+        axisLabel:{show:ax.yLab,color:cssv('--faint'),fontSize:_ecFS(w,9),formatter:function(v){return ('0'+v).slice(-2)+':00';}},
+        splitLine:{show:ax.yGrid,lineStyle:{color:cssv('--line-soft')}}},
+      series:series},true);
+  }
   function fetchHist(w){
+    if(w.ctype==='daylight')  {fetchDaylight(w);return;} // eigener Datenweg (Jahresberechnung, keine Historie)
+    if(w.ctype==='waterfall'||w.type==='waterfall')return; // Wasserfall liest ausschliesslich Live-Werte (_lastVals)
     var W=_chWindow(w);
     if(w.type==='chart'&&W.cal&&W.unit==='month'){fetchCalYear(w);return;}
     var S=_chSeries(w).filter(function(s){return s&&s.vid;});if(!S.length)return;
@@ -2259,7 +2361,7 @@
       var z=(w.htmlZoom||100)/100;if(z!==1)wrap.style.transform='scale('+z+')';
     }
   }
-  setInterval(function(){state.widgets.forEach(function(w){if((w.type==='chart'||w.type==='spark')&&!(_wsOK&&bcfg().noSafetyPoll))fetchHist(w);if(w.type==='html'&&w.htmlSrc!=='custom')fetchHtml(w);if(w.type==='weekplan')fetchWeekplan(w);if(w.type==='calendar')fetchCalEvents(w);if(w.type==='eventctl')fetchEvent(w);if(w.type==='objinfo')fetchObjInfo(w);if(w.type==='statetl')_stlFetch(w);if(w.type==='statelog')_slogFetch(w);if(w.type==='table')_tblLoad(w);});},60000);
+  setInterval(function(){state.widgets.forEach(function(w){if((w.type==='chart'||w.type==='spark')&&w.ctype!=='waterfall'&&!(_wsOK&&bcfg().noSafetyPoll))fetchHist(w);if(w.type==='html'&&w.htmlSrc!=='custom')fetchHtml(w);if(w.type==='weekplan')fetchWeekplan(w);if(w.type==='calendar')fetchCalEvents(w);if(w.type==='eventctl')fetchEvent(w);if(w.type==='objinfo')fetchObjInfo(w);if(w.type==='statetl')_stlFetch(w);if(w.type==='statelog')_slogFetch(w);if(w.type==='table')_tblLoad(w);});},60000);
   setInterval(function(){var now=Date.now();state.widgets.forEach(function(w){if(w.type==='camera'||w.type==='campro'){var iv=((w.refresh>0)?w.refresh:15)*1000;if(!w._lastCam||now-w._lastCam>=iv){w._lastCam=now;refreshCam(w);}}});},1000);
 
   // ---------- Auswahl & Eigenschaften ----------
@@ -2363,12 +2465,17 @@
   function selOf(id,cur,opts){cur=cur||opts[0];return '<select id="'+id+'">'+opts.map(function(s){return '<option value="'+s+'"'+(s===cur?' selected':'')+'>'+s+'</option>';}).join('')+'</select>';}
   function dirSel(id,cur){cur=cur||'up';return '<select id="'+id+'"><option value="up"'+(cur==='up'?' selected':'')+'>▲ auf</option><option value="dn"'+(cur==='dn'?' selected':'')+'>▼ ab</option><option value="flat"'+(cur==='flat'?' selected':'')+'>→ neutral</option></select>';}
   function offSel(id,cur,withLast){cur=cur||'1d';var o=(withLast?'<option value="last"'+(cur==='last'?' selected':'')+'>Letzter Wert</option>':'')+Object.keys(OFFS).map(function(k){return '<option value="'+k+'"'+(k===cur?' selected':'')+'>'+OFFLBL[k]+'</option>';}).join('');return '<select id="'+id+'">'+o+'</select>';}
-  function seriesEditor(w){
+  // opt (optional): {max:n} begrenzt die Zeilen und blendet den „Serie"-Knopf aus, {simple:1} laesst Typ/Achse weg.
+  // Wird von ctype 'spark' genutzt (setSpark zeichnet nur chartSeries(w)[0] und ignoriert Typ/Achse).
+  function seriesEditor(w,opt){
+    opt=opt||{};
     var arr=_ensureSeries(w);
+    if(!arr.length&&opt.max){_ensureSeries(w);w.series.push({vid:0,name:'',color:'',type:'',axis:0});arr=w.series;} // Sparkline: eine leere Zeile anbieten
     var TY=[['','Auto'],['line','Linie'],['spline','Linie glatt'],['area','Fläche'],['areaspline','Fläche glatt'],['step','Stufen'],['steparea','Stufenfläche'],['bar','Balken'],['scatter','Punkte']];
     var SK=[['','Auto'],['accent','Akzent'],['info','Info'],['warm','Warm'],['ok','OK'],['warn','Warnung'],['crit','Kritisch'],['muted','Gedämpft']];
-    var isPart=['pie','donut','rose'].indexOf(w.ctype||'area')>=0;
-    var h='<div class="pgh">Serien (Variable · Name · Farbe · Typ · Achse)</div>';
+    var isPart=['pie','donut','rose'].indexOf(w.ctype||'area')>=0||!!opt.simple;
+    if(opt.max)arr=arr.slice(0,opt.max);
+    var h='<div class="pgh">'+(opt.simple?'Variable (ID · Name · Farbe)':'Serien (Variable · Name · Farbe · Typ · Achse)')+'</div>';
     arr.forEach(function(s,i){
       h+='<div class="serow" style="display:flex;flex-wrap:wrap;gap:4px;align-items:center;margin-bottom:6px;padding-bottom:6px;border-bottom:1px solid var(--line-soft)">'
         +'<input data-sf="'+i+'.vid" value="'+(s.vid||'')+'" placeholder="ID" style="width:52px">'
@@ -2379,7 +2486,7 @@
         +(isPart?'':(function(){var ya=_chYAxes(w),cax=Math.min(Math.max(s.axis|0,0),ya.length-1);return '<select data-sf="'+i+'.axis" title="Achse">'+ya.map(function(a,ai){return '<option value="'+ai+'"'+(cax===ai?' selected':'')+'>'+((a.side||'L')==='R'?'R':'L')+(a.name?(' '+esc(a.name)):(' '+(ai+1)))+'</option>';}).join('')+'</select>';})())
         +'<button class="btn" data-sdel="'+i+'" style="padding:2px"><svg class="i"><use href="#ic-minus"/></svg></button></div>';
     });
-    h+='<button class="btn" data-sadd="1" style="padding:4px 8px;font-size:11px"><svg class="i"><use href="#ic-plus"/></svg> Serie</button>';
+    if(!(opt.max&&arr.length>=opt.max))h+='<button class="btn" data-sadd="1" style="padding:4px 8px;font-size:11px"><svg class="i"><use href="#ic-plus"/></svg> Serie</button>';
     return h;
   }
   function axesEditor(w){
@@ -2425,7 +2532,7 @@
   function respSection(w){
     var locked=SF_LOCK[w.type],pol=w.fit||'',autoLbl=(sfClass(w)==='s'?'Stretch':(SF_NOGROW[w.type]?'Fix':'Skaliert'));
     var opts='<option value=""'+(pol===''?' selected':'')+'>Auto ('+autoLbl+')</option>'+(locked?'':'<option value="fix"'+(pol==='fix'?' selected':'')+'>Fix</option><option value="scale"'+(pol==='scale'?' selected':'')+'>Skaliert</option>')+'<option value="stretch"'+(pol==='stretch'?' selected':'')+'>Stretch</option>';
-    var scaleish=(pol==='scale'||pol==='fix'||(pol===''&&sfClass(w)==='x')),pr=w.prio||SF_PRIO[w.type]||2;
+    var scaleish=(pol==='scale'||pol==='fix'||(pol===''&&sfClass(w)==='x')),pr=sfPrio(w); // zentral, keine zweite Priorität-Logik pflegen
     var h='<div class="pgh">Responsiv (SmartFit)</div>';
     h+=row('Skalierung','<select id="pFit">'+opts+'</select>');
     if(scaleish)h+=row('Anker',anchorGrid(w.anchor||''));
@@ -2477,7 +2584,7 @@
       +row('Name','<input id="pName" value="'+esc(w.name||'')+'" placeholder="eindeutige Kennung (intern)">')
       +((w.type==='camera'||w.type==='image')?row('Media-ID','<input id="pMedia" value="'+(w.mediaId||'')+'" placeholder="Media-ID">')
           :(w.type==='line'||w.type==='shape')?row('Farbe','<input id="pColor" type="color" value="'+(w.color||'#00cdab')+'">')
-          :(['text','calendar','clock','component','eventctl','objinfo','infolist','meterlist','statuslist','statusgrid','devlist','chart','skinswitch','windrose','rangeslider','raincard','circlerange','cie'].indexOf(w.type)<0&&!(w.type==='html'&&w.htmlSrc==='custom')?row('Variable','<input id="pVar" value="'+(w.varId||'')+'" placeholder="ID"> <button class="btn" id="pPick" style="padding:6px 8px">wählen</button>'):''))
+          :(['text','calendar','clock','component','eventctl','objinfo','infolist','meterlist','statuslist','statusgrid','devlist','chart','skinswitch','windrose','rangeslider','raincard','circlerange','cie'].indexOf(w.type)<0&&!(w.type==='html'&&w.htmlSrc==='custom')&&!(w.type==='colorpick'&&(w.cmode||'wheel')==='cie')?row('Variable','<input id="pVar" value="'+(w.varId||'')+'" placeholder="ID"> <button class="btn" id="pPick" style="padding:6px 8px">wählen</button>'):''))
       +((w.type==='kpi'||w.type==='delta')?('<div class="pgh">Vergleich (Zeitversatz)</div>'
         +row('Aktiv','<input type="checkbox" id="pCmpOn"'+(w.cmpOn?' checked':'')+'>')
         +(w.cmpOn?(row('Aggregationsstufe',stageSel('pCmpStage',cmpStage(w)))+row('Zählervariable','<input type="checkbox" id="pCmpCnt"'+(w.cmpCounter?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">Verbrauch je Periode</span>')+(!w.cmpCounter?row('Periodenmittel','<input type="checkbox" id="pCmpAvg"'+(w.cmpAvg?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">Mittel über die Periode statt Punktwert</span>'):'')+row('Anzeige','<select id="pCmpMode"><option value="pct"'+((w.cmpMode||'pct')==='pct'?' selected':'')+'>Prozent</option><option value="abs"'+(w.cmpMode==='abs'?' selected':'')+'>Absolut</option></select>')+row('Veränderung invertieren','<input type="checkbox" id="pCmpInv"'+(w.cmpInvert?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">Rückgang = gut (z. B. Verbrauch) — nur Farbe dreht, Pfeil bleibt</span>')):'')
@@ -2485,7 +2592,7 @@
       +(FMT_TYPES.indexOf(w.type)>=0?row('Format','<select id="pFmt">'+fmtOpts(w.fmt)+'</select>'):'')
       +(['value','kpi','valuecard','bar','gauge','gaugepro','tempbar','dial','chip','cval','sval','delta','room','meterlist','marquee','raincard','rangebtn','assoc'].indexOf(w.type)>=0?row('Nachkommastellen','<input id="pDec" type="number" min="0" max="6" value="'+(w.dec!=null?w.dec:'')+'" placeholder="Standard">'):'')
       +(['value','valuecard','bar','assoc','cval','sval','delta','tempbar'].indexOf(w.type)>=0?row('Einzeilig bei geringer Höhe','<input type="checkbox" id="pLineMode"'+(w.lineMode?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">flach gezogen → alles in eine Zeile</span>'):'')
-      +((w.type==='chart'||w.type==='spark')?(function(){if(w.type==='chart'&&['pie','donut','rose'].indexOf(w.ctype||'area')>=0)return '';var r=_chRange(w);var U=[['raw','Roh'],['min','Minuten'],['hour','Stunden'],['day','Tage'],['week','Wochen'],['month','Monate'],['year','Jahre']];var sel='<select id="pRUnit">'+U.map(function(u){return '<option value="'+u[0]+'"'+(r.unit===u[0]?' selected':'')+'>'+u[1]+'</option>';}).join('')+'</select>';var s=row('Zeitraum','<input id="pRN" type="number" min="1" style="width:64px" value="'+(r.n||24)+'"> '+sel);if(r.unit==='raw')s+=row('Fenster-Einheit','<select id="pRRawU"><option value="hour"'+((r.rawUnit||'hour')==='hour'?' selected':'')+'>Stunden</option><option value="day"'+(r.rawUnit==='day'?' selected':'')+'>Tage</option></select>');else s+=row('Wert','<select id="pRAggF"><option value="avg"'+((r.aggF||'avg')==='avg'?' selected':'')+'>Mittel</option><option value="sum"'+(r.aggF==='sum'?' selected':'')+'>Summe</option></select> <span style="font-size:11px;color:var(--muted)">Z&#228;hler: &#8222;Mittel&#8220;=Verbrauch/Bucket</span>');if(r.unit==='month'&&w.type==='chart')s+=row('Zeitmodus','<select id="pRCal"><option value=""'+(!r.cal?' selected':'')+'>Rollierend</option><option value="1"'+(r.cal?' selected':'')+'>Kalenderjahr (J&#228;n&#8211;Dez)</option></select>');return s;})():'')
+      +((w.type==='chart'||w.type==='spark')?(function(){if(w.type==='chart'&&(['pie','donut','rose','waterfall','daylight'].indexOf(w.ctype||'area')>=0))return ''; /* Anteils-Charts und Wasserfall haben keine Zeitachse */var r=_chRange(w);var U=[['raw','Roh'],['min','Minuten'],['hour','Stunden'],['day','Tage'],['week','Wochen'],['month','Monate'],['year','Jahre']];var sel='<select id="pRUnit">'+U.map(function(u){return '<option value="'+u[0]+'"'+(r.unit===u[0]?' selected':'')+'>'+u[1]+'</option>';}).join('')+'</select>';var s=row('Zeitraum','<input id="pRN" type="number" min="1" style="width:64px" value="'+(r.n||24)+'"> '+sel);if(r.unit==='raw')s+=row('Fenster-Einheit','<select id="pRRawU"><option value="hour"'+((r.rawUnit||'hour')==='hour'?' selected':'')+'>Stunden</option><option value="day"'+(r.rawUnit==='day'?' selected':'')+'>Tage</option></select>');else s+=row('Wert','<select id="pRAggF"><option value="avg"'+((r.aggF||'avg')==='avg'?' selected':'')+'>Mittel</option><option value="sum"'+(r.aggF==='sum'?' selected':'')+'>Summe</option></select> <span style="font-size:11px;color:var(--muted)">Z&#228;hler: &#8222;Mittel&#8220;=Verbrauch/Bucket</span>');if(r.unit==='month'&&w.type==='chart'&&w.ctype!=='spark')s+=row('Zeitmodus','<select id="pRCal"><option value=""'+(!r.cal?' selected':'')+'>Rollierend</option><option value="1"'+(r.cal?' selected':'')+'>Kalenderjahr (J&#228;n&#8211;Dez)</option></select>');return s;})():'')
       +(['bar','gauge','slider','thermostat','gaugepro','timer','tempbar','dial'].indexOf(w.type)>=0?(row('Min','<input id="pMin" type="number" value="'+(w.min!=null?w.min:0)+'">')+row('Max','<input id="pMax" type="number" value="'+(w.max!=null?w.max:100)+'">')):'')
       +((w.type==='slider'||w.type==='thermostat'||w.type==='dial')?row('Schritt','<input id="pStep" type="number" step="0.1" value="'+(w.step||1)+'">'):'')
       +(lbl2?row(lbl2,'<input id="pVar2" value="'+(w.varId2||'')+'" placeholder="ID"> <button class="btn" id="pPick2" style="padding:6px 8px">wählen</button>'):'')
@@ -2667,7 +2774,16 @@
   function syncPalette(){
     var pal=document.querySelector('.palette');if(!pal||typeof WIDGETS==='undefined')return;
     var have={};$$('.pitem',pal).forEach(function(el){var t=el.getAttribute('data-add');if(t)have[t]=1;});
-    var miss=Object.keys(WIDGETS).filter(function(t){return !have[t]&&!(WIDGETS[t]&&WIDGETS[t].noPalette);}).sort();
+    // Alias-Registrierungen (z. B. WIDGETS.powerflow === WIDGETS.flow) dürfen keinen zweiten
+    // Palette-Eintrag erzeugen - sonst taucht derselbe Baustein doppelt unter altem Namen auf.
+    var seenReg=[];
+    Object.keys(have).forEach(function(t){if(WIDGETS[t])seenReg.push(WIDGETS[t]);}); // was die Palette schon zeigt
+    var miss=Object.keys(WIDGETS).filter(function(t){
+      var reg=WIDGETS[t];
+      if(have[t]||!reg||reg.noPalette)return false;
+      if(seenReg.indexOf(reg)>=0)return false;   // dieselbe Registrierung nur einmal (Alias)
+      seenReg.push(reg);return true;
+    }).sort();
     if(!miss.length)return;
     var hdr=document.createElement('div');hdr.className='pgh';hdr.textContent='Weitere';pal.appendChild(hdr);
     miss.forEach(function(t){var el=document.createElement('div');el.className='pitem';el.setAttribute('data-add',t);el.textContent=(WIDGETS[t].label||t);pal.appendChild(el);_wirePitem(el);});
@@ -2950,7 +3066,7 @@
   function _collectIds(w,add){ // alle Variablen-IDs eines Widgets an add() geben
     add(w.varId);add(w.varId2);add(w.varId3);add(w.visVar);add(w.condVar);add(w.vTemp);add(w.vCond);add(w.vHum);add(w.vWind);add(w.vRain);
     if(w.fc)w.fc.forEach(function(r){add(r.hi);add(r.lo);add(r.pq);add(r.cond);});
-    ['links','src','snk','items','rows','steps'].forEach(function(k){if(w[k])w[k].forEach(function(o){if(o)add(o.vid);});});
+    ['links','src','snk','items','rows','steps','series'].forEach(function(k){if(w[k])w[k].forEach(function(o){if(o)add(o.vid);});});
     if(w.stages)w.stages.forEach(function(o){if(o){add(o.vid);add(o.subvid);}}); // Pipeline-Stationen (Wert + Zusatzwert)
     if(w.elements)w.elements.forEach(function(o){if(o){add(o.vid);add(o.speedVid);add(o.socVid);}});
     if(w.tankVid)add(w.tankVid);
@@ -3116,7 +3232,7 @@
     var body=keys.length?keys.map(function(n){return '<div class="pitem blk" data-blk="'+esc(n)+'" title="Klicken/Ziehen zum Einfügen">'+esc(n)+'<span class="blkx" data-blkdel="'+esc(n)+'" title="Löschen">×</span></div>';}).join(''):'<div style="font-size:11px;color:var(--faint);padding:2px 2px">Noch keine. Elemente wählen → „Baustein".</div>';
     box.innerHTML=tools+body;
     if($('#blkExp'))$('#blkExp').onclick=function(){var a=document.createElement('a');a.href='data:application/json;charset=utf-8,'+encodeURIComponent(JSON.stringify(store.blocks||{},null,1));a.download='bausteine.json';document.body.appendChild(a);a.click();a.remove();};
-    if($('#blkImp'))$('#blkImp').onclick=function(){var inp=document.createElement('input');inp.type='file';inp.accept='.json,application/json';inp.onchange=function(){var f=inp.files[0];if(!f)return;var r=new FileReader();r.onload=function(){try{var j=JSON.parse(r.result);store.blocks=store.blocks||{};for(var k in j)store.blocks[k]=j[k];buildBlocks();commit();toast('Bausteine importiert');}catch(e){toast('Ungültige Datei');}};r.readAsText(f);};inp.click();};
+    if($('#blkImp'))$('#blkImp').onclick=function(){var inp=document.createElement('input');inp.type='file';inp.accept='.json,application/json';inp.onchange=function(){var f=inp.files[0];if(!f)return;var r=new FileReader();r.onload=function(){try{var j=JSON.parse(r.result);store.blocks=store.blocks||{};for(var k in j)store.blocks[k]=j[k];migrateStore(store);buildBlocks();commit();toast('Bausteine importiert');}catch(e){toast('Ungültige Datei');}};r.readAsText(f);};inp.click();};
     $$('#blocks .blk').forEach(function(el){
       el.onclick=function(e){if(e.target.getAttribute('data-blkdel')!=null)return;insertBlock(el.getAttribute('data-blk'));};
       el.setAttribute('draggable','true');
@@ -3408,6 +3524,7 @@
     fetch('?api=import'+(media?('&media='+media):''),{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
       if(!j||!j.views||!Object.keys(j.views).length){toast('Import: '+((j&&j.error)||'keine Seiten gefunden'));return;}
       var cnt=0;for(var n in j.views){store.views[n]=j.views[n];cnt++;}
+      migrateStore(store); // importierte Seiten koennen alte Typnamen enthalten
       switchView(j.current||Object.keys(j.views)[0]);
       toast('Importiert: '+cnt+' Seite(n) — jetzt „Speichern" nicht vergessen');
     }).catch(function(){toast('Import fehlgeschlagen');});
@@ -3444,7 +3561,7 @@
       if(j&&j.views&&Object.keys(j.views).length){store=j;if(!store.current||!store.views[store.current])store.current=Object.keys(store.views)[0];}
       else if(j&&j.widgets){store={views:{'Ansicht 1':j},current:'Ansicht 1'};} // Migration altes Einzel-Format
       else{store={views:{'Ansicht 1':{page:{w:1440,h:900},widgets:[]}},current:'Ansicht 1'};}
-      try{Object.keys(store.views||{}).forEach(function(_vn){var _vv=store.views[_vn];((_vv&&_vv.widgets)||[]).forEach(function(_w){if(_w.type==='powerflow')_w.type='flow';});});}catch(_){} // Migration: powerflow -> flow
+      migrateStore(store); // Typ-Migration (js/11-migrate.js): alte Einzel-Typen -> Sammel-Typ + Variante. MUSS vor dem ersten Rendern laufen
       invalidateAllIds(); // Warm-Cache-ID-Menge nach (Neu-)Laden neu berechnen
       if(!store.skin)store.skin='Standard';if(!store.theme)store.theme='dark';
       if(RUN){try{var _lt=localStorage.getItem('lvtheme');if(_lt)store.theme=_lt;var _ls=localStorage.getItem('lvskin');if(_ls&&allSkins()[_ls])store.skin=_ls;}catch(_){}}
@@ -3457,15 +3574,22 @@
   // ---------- Runtime (Vollbild-Anzeige) ----------
   // ============ SmartFit — adaptiver Autoscaler (fuellt jeden Viewport, minimiert Scroll) ============
   var SMART_DEF={reflowLo:0.55,phoneW:500,minScale:0.5,gap:8,growCap:2.6,kMin:0.72,kMax:1.9};
-  var SF_STRETCH={chart:1,spark:1,sankey:1,camera:1,campro:1,calendar:1,devlist:1,statuslist:1,ticker:1,tempbar:1,statusgrid:1,meterlist:1,infolist:1,kpi:1,image:1,statusimage:1,select:1,shape:1,dial:1,webview:1,weekplan:1,skinswitch:1,weatherpro:1,suncard:1,media:1,html:1,bar:1,line:1,gauge:1,gaugepro:1,valuecard:1,flow:1};
-  var SF_LOCK={chart:1,spark:1,camera:1,campro:1,media:1,sankey:1,html:1,calendar:1,devlist:1,statuslist:1};
+  // dial:1 wirkt hier nicht mehr direkt — 'dial' ist seit der Regler-Zusammenlegung KEIN eigener
+  // w.type mehr, sondern die Variante rmode='dial' des Widgets 'slider'. _sfKey() unten übersetzt
+  // dafür auf den Schlüssel 'dial', damit dieser Eintrag weiterhin greift (Dial soll wie zuvor
+  // strecken/rund bleiben, nicht wie ein normaler Regler frei skalieren).
+  var SF_STRETCH={chart:1,sankey:1,camera:1,campro:1,calendar:1,devlist:1,statuslist:1,ticker:1,tempbar:1,statusgrid:1,meterlist:1,infolist:1,kpi:1,image:1,statusimage:1,select:1,shape:1,dial:1,webview:1,weekplan:1,skinswitch:1,weatherpro:1,suncard:1,media:1,html:1,bar:1,line:1,gauge:1,gaugepro:1,valuecard:1,flow:1};
+  var SF_LOCK={chart:1,camera:1,campro:1,media:1,sankey:1,html:1,calendar:1,devlist:1,statuslist:1};
   var SF_NOGROW={chip:1,button:1,icon:1,clock:1,switch:1,sun:1};
-  var SF_PRIO={chart:3,camera:3,campro:3,powerflow:3,sankey:3,gaugepro:3,html:3,chip:1,button:1,icon:1,clock:1,switch:1,sun:1};
+  var SF_PRIO={chart:3,camera:3,campro:3,flow:3,sankey:3,gaugepro:3,html:3,chip:1,button:1,icon:1,clock:1,switch:1,sun:1};
   var _scCache=null,_scView=null,_scMode='';
   function invalidateSC(){_scCache=null;}
   function sfCfg(p){var c=(p&&p.smart)||{},o={},k;for(k in SMART_DEF)o[k]=(c[k]!=null?c[k]:SMART_DEF[k]);return o;}
-  function sfClass(w){if(w.fit==='stretch')return 's';if((w.fit==='scale'||w.fit==='fix')&&!SF_LOCK[w.type])return 'x';return SF_STRETCH[w.type]?'s':'x';}
-  function sfPrio(w){return w.prio||SF_PRIO[w.type]||2;}
+  // Effektiver Tabellen-Schluessel: normalerweise w.type, aber der Regler meldet fuer die
+  // Dial-Variante 'dial', damit SF_STRETCH/SF_PRIO wie vor der Zusammenlegung greifen.
+  function _sfKey(w){if(w.type==='slider'&&typeof _rMode==='function'&&_rMode(w)==='dial')return 'dial';return w.type;}
+  function sfClass(w){if(w.fit==='stretch')return 's';var k=_sfKey(w);if((w.fit==='scale'||w.fit==='fix')&&!SF_LOCK[k])return 'x';return SF_STRETCH[k]?'s':'x';}
+  function sfPrio(w){return w.prio||SF_PRIO[_sfKey(w)]||2;}
   function effFit(p){return (p&&p.fit)||'letterbox';}
   function sfSnap(v){return Math.round(v/10)*10;}
   function sfClamp(v,a,b){return v<a?a:(v>b?b:v);}
@@ -3863,6 +3987,73 @@
       };
     });
   }
+  // ===== Typ-Migration: zusammengelegte Widget-Familien =====
+  // Mehrere frueher eigenstaendige Widgets sind zu Sammel-Typen mit einer Varianten-
+  // Eigenschaft verschmolzen (Farbwaehler -> colorpick/cmode, Regler -> slider/rmode,
+  // Sparkline+Wasserfall -> chart/ctype). Gespeicherte Layouts enthalten aber weiterhin
+  // die ALTEN Typnamen; ohne Registry-Eintrag wuerden diese Widgets beim Laden
+  // kommentarlos verschwinden. Diese Schicht schreibt sie beim Laden still um.
+  //
+  // Eigenschaften:
+  //   - still: kein Toast, kein Log-Rauschen (nur console.debug, wenn wirklich etwas passiert)
+  //   - idempotent: ein bereits migriertes Widget traegt keinen Alt-Typ mehr; die
+  //     Varianten-Eigenschaft wird nur gesetzt, wenn sie noch fehlt
+  //   - vollstaendig: erfasst store.views (inkl. Popup-Ansichten), store.chrome (Leisten),
+  //     store.blocks (Bausteine) und jede weitere verschachtelte widgets-Liste
+
+  var MIG_TYPES={
+    // --- Farbwaehler-Familie -> colorpick (Variante in w.cmode) ---
+    colorwheel : {type:'colorpick', key:'cmode', val:'wheel'},
+    cie        : {type:'colorpick', key:'cmode', val:'cie'},
+    rgbslider  : {type:'colorpick', key:'cmode', val:'slider'},
+    rgbbutton  : {type:'colorpick', key:'cmode', val:'button'},
+    rgbbox     : {type:'colorpick', key:'cmode', val:'box'},
+    // --- Regler-Familie -> slider (Variante in w.rmode) ---
+    rangeslider: {type:'slider', key:'rmode', val:'range'},
+    circlerange: {type:'slider', key:'rmode', val:'circle'},
+    rangebtn   : {type:'slider', key:'rmode', val:'stepper'},
+    dial       : {type:'slider', key:'rmode', val:'dial'},
+    // --- Chart-Verwandte -> chart (Variante in w.ctype) ---
+    spark      : {type:'chart', key:'ctype', val:'spark'},
+    waterfall  : {type:'chart', key:'ctype', val:'waterfall'},
+    // --- Altlast frueherer Versionen ---
+    powerflow  : {type:'flow'}
+  };
+  var MIG_MAXD=12; // Sicherheitsnetz gegen zu tiefe/zyklische Strukturen
+
+  function migIsArr(o){return Object.prototype.toString.call(o)==='[object Array]';}
+
+  /** Ein einzelnes Widget umschreiben. Liefert 1, wenn es ein Alt-Typ war. */
+  function migWidget(w){
+    if(!w||typeof w!=='object')return 0;
+    var m=MIG_TYPES[w.type];if(!m)return 0;
+    w.type=m.type;
+    if(m.key&&w[m.key]==null)w[m.key]=m.val; // vorhandene Variante nie ueberschreiben
+    return 1;
+  }
+
+  /** Alle widgets-Listen unterhalb von o finden und migrieren (Ansichten, Leisten, Bausteine, Verschachtelungen). */
+  function migSweep(o,depth){
+    if(!o||typeof o!=='object'||depth>MIG_MAXD)return 0;
+    var n=0,i,k,v;
+    if(migIsArr(o)){for(i=0;i<o.length;i++)n+=migSweep(o[i],depth+1);return n;}
+    for(k in o){
+      if(!Object.prototype.hasOwnProperty.call(o,k))continue;
+      v=o[k];if(!v||typeof v!=='object')continue;
+      if(k==='widgets'&&migIsArr(v)){for(i=0;i<v.length;i++)n+=migWidget(v[i]);}
+      n+=migSweep(v,depth+1);
+    }
+    return n;
+  }
+
+  /** Ganzen Store still migrieren — muss VOR dem ersten Rendern laufen. */
+  function migrateStore(st){
+    if(!st||typeof st!=='object')return 0;
+    var n=0;
+    try{n=migSweep(st,0);}catch(e){try{console.debug('LVB-Migration abgebrochen:',e);}catch(_){}return 0;}
+    if(n){try{console.debug('LVB: '+n+' Widget(s) auf zusammengelegte Typen migriert');}catch(_){}}
+    return n;
+  }
   // ===== Widget: Alarm =====
   defWidget('alarm',{
     label:'Alarm', paletteIcon:'shield', size:[200,112],
@@ -4066,41 +4257,133 @@ defWidget('calendar',{
     wire:function(w){_camFitWire(w);var m=$('#pMedia');if(m)m.oninput=function(){w.mediaId=this.value.trim()||undefined;render();};if($('#pCamRef'))$('#pCamRef').oninput=function(){w.refresh=parseInt(this.value)||15;};},
     mount:function(w){_camAspect(w);}
   });
-  // chart — Chart
+  // chart — Sammel-Widget fuer alle Diagramme. Die Variante steckt in w.ctype:
+  //   Zeitreihe : area | areaspline | line | spline | step | steparea | bar | barstack | scatter
+  //   Kompakt   : spark      (frueher eigenes Widget 'spark')
+  //   Ohne Zeit : pie | donut | rose | waterfall   (waterfall frueher eigenes Widget 'waterfall')
+  // Vorbelegte Größe je Chart-Typ (Standard = 'area'); beim Umschalten nur übernehmen, solange
+  // die Größe noch der vorherigen Standardgröße entspricht (analog colorpick.js/slider.js).
+  var CT_SIZE={spark:[150,50],waterfall:[360,220],daylight:[420,190],pie:[260,220],donut:[260,220],rose:[260,220]};
+  function _ctSize(ct){return CT_SIZE[ct]||[340,190];}
+  // Eigene Einheit fuer den Wasserfall (w.wfUnit) - NICHT w.yunit, das gehoert dem Achsensystem
+  // (Kalenderjahr-Balken + Mehrfachachsen). Fallback liest einmalig alte Widgets, die vor dieser
+  // Trennung mit yunit angelegt wurden; geschrieben wird ab jetzt ausschliesslich wfUnit.
+  function _wfUnit(w){return (w.wfUnit!=null)?w.wfUnit:(w.yunit||'');}
+  // Sichtbarkeit der Optionen zentral in _chartVis() — bitte dort pflegen und NICHT in verschachtelten if-Ketten.
+  function _chartVis(ct){
+    // ACHTUNG: 'dl' ist unten die Datenlabel-Sichtbarkeit — der Tageslaengen-Typ heisst deshalb 'dayl'.
+    var part=['pie','donut','rose'].indexOf(ct)>=0, wf=(ct==='waterfall'), sp=(ct==='spark'), dayl=(ct==='daylight');
+    var bar=(ct==='bar'||ct==='barstack'), scat=(ct==='scatter');
+    var line=!part&&!bar&&!scat&&!wf&&!sp&&!dayl;
+    return {
+      part:part, wf:wf, spark:sp, bar:bar, scat:scat, line:line, dayl:dayl,
+      lineOpt:line,                    // Glaetten / Punkte / Linienbreite / Flaechen-Verlauf
+      symOpt:scat,                     // Punkte-Groesse
+      br:(bar||wf),                    // Balken-Rundung (w.barRadius)
+      leg:(!wf&&!sp),                  // Legende + Position
+      dl:(!wf&&!sp&&!dayl),            // Datenlabels generisch (Wasserfall/Tageslaenge bringen eigene mit)
+      title:!sp,                       // Titelblock (Label als Titel + Position)
+      ax:(!part&&!sp),                 // Achsen & Raster (Beschriftung/Hilfslinien/Achslinien/Ticks)
+      axPlus:(!part&&!sp&&!wf&&!dayl), // Raster-Teilung, Stapeln, Zoom, Extrema, Perioden-Navigation
+      cmp:(!part&&!sp&&!wf&&!dayl),    // Vergleich (Zeitversatz)
+      ser:(!wf&&!dayl),                // Serien-Editor (Wasserfall + Tageslaenge haben eigene Datenquelle)
+      yax:(!part&&!sp&&!wf&&!dayl)     // Y-Achsen-Editor (Tageslaenge hat eine feste 0-24h-Achse)
+    };
+  }
   defWidget('chart',{
     label:'Chart',
     paletteIcon:'wchart',
     size:[340,190],
     noHover:true, // interner Perioden-Klick (‹ ›) soll KEINEN Ganz-Widget-Hover erzeugen; Hover nur bei Seite/Popup-Verknuepfung
 
-    render:function(w){return '<div data-role="chart" style="position:absolute;inset:0"></div>'+(w.pnav?'<div style="position:absolute;left:6px;bottom:4px;display:flex;gap:4px;align-items:center;z-index:2"><button data-role="pprev" style="width:22px;height:20px;border:1px solid var(--line);background:var(--surface-2);color:var(--text);border-radius:5px;cursor:pointer;font-size:12px;line-height:1">‹</button><span data-role="plabel" style="font-size:10px;color:var(--muted);min-width:30px;text-align:center">jetzt</span><button data-role="pnext" style="width:22px;height:20px;border:1px solid var(--line);background:var(--surface-2);color:var(--text);border-radius:5px;cursor:pointer;font-size:12px;line-height:1">›</button></div>':'');},
-    click:function(w,el,e){var pp=e.target.closest('[data-role=pprev]'),pn=e.target.closest('[data-role=pnext]');if(!pp&&!pn)return false;w._pOff=Math.max(0,(w._pOff||0)+(pp?1:-1));fetchHist(w);return true;},
+    // Perioden-Knoepfe nur bei Zeitreihen — Sparkline hat keinen Platz, Wasserfall keine Zeitachse
+    render:function(w){var ct=w.ctype||'area',nav=(w.pnav&&ct!=='spark'&&ct!=='waterfall');
+      return '<div data-role="chart" style="position:absolute;inset:0"></div>'+(nav?'<div style="position:absolute;left:6px;bottom:4px;display:flex;gap:4px;align-items:center;z-index:2"><button data-role="pprev" style="width:22px;height:20px;border:1px solid var(--line);background:var(--surface-2);color:var(--text);border-radius:5px;cursor:pointer;font-size:12px;line-height:1">‹</button><span data-role="plabel" style="font-size:10px;color:var(--muted);min-width:30px;text-align:center">jetzt</span><button data-role="pnext" style="width:22px;height:20px;border:1px solid var(--line);background:var(--surface-2);color:var(--text);border-radius:5px;cursor:pointer;font-size:12px;line-height:1">›</button></div>':'');},
+    click:function(w,el,e){var ct=w.ctype||'area';if(ct==='spark'||ct==='waterfall')return false; // keine Perioden-Navigation (falsche Datenquelle)
+      var pp=e.target.closest('[data-role=pprev]'),pn=e.target.closest('[data-role=pnext]');if(!pp&&!pn)return false;w._pOff=Math.max(0,(w._pOff||0)+(pp?1:-1));fetchHist(w);return true;},
     props:function(w){
       if(w.type!=='chart')return '';
-      var ct=w.ctype||'area',isPart=['pie','donut','rose'].indexOf(ct)>=0,isBar=(ct==='bar'||ct==='barstack'),isScat=(ct==='scatter'),isLine=!isPart&&!isBar&&!isScat;
-      var h=row('Chart-Typ','<select id="pCType"><optgroup label="Zeitreihe"><option value="area"'+(ct==='area'?' selected':'')+'>Fläche</option><option value="areaspline"'+(ct==='areaspline'?' selected':'')+'>Fläche glatt (Spline)</option><option value="line"'+(ct==='line'?' selected':'')+'>Linie</option><option value="spline"'+(ct==='spline'?' selected':'')+'>Linie glatt (Spline)</option><option value="step"'+(ct==='step'?' selected':'')+'>Stufen</option><option value="steparea"'+(ct==='steparea'?' selected':'')+'>Stufenfläche</option><option value="bar"'+(ct==='bar'?' selected':'')+'>Balken</option><option value="barstack"'+(ct==='barstack'?' selected':'')+'>Balken gestapelt</option><option value="scatter"'+(ct==='scatter'?' selected':'')+'>Punkte</option></optgroup><optgroup label="Anteile (ohne Zeit)"><option value="pie"'+(ct==='pie'?' selected':'')+'>Kreis (Pie)</option><option value="donut"'+(ct==='donut'?' selected':'')+'>Donut</option><option value="rose"'+(ct==='rose'?' selected':'')+'>Rose (Nightingale)</option></optgroup></select>');
-      h+='<div class="pgh">Diagramm-Optionen</div>';
-      if(isLine)h+=row('Glätten (Spline)','<input type="checkbox" id="pSmooth"'+(w.smooth!==false?' checked':'')+'>')+row('Punkte','<input type="checkbox" id="pSym"'+(w.symbols?' checked':'')+'> <input id="pSymS" type="number" style="width:52px" value="'+(w.symSize||5)+'" title="Größe">')+row('Linienbreite','<input id="pLw" type="number" step="0.5" value="'+(w.lw||2)+'">')+row('Flächen-Verlauf','<input type="checkbox" id="pGrad"'+(w.grad?' checked':'')+'>');
-      if(isScat)h+=row('Punkte-Größe','<input id="pSymS" type="number" style="width:52px" value="'+(w.symSize||7)+'">');
-      if(isBar)h+=row('Balken-Rundung','<input id="pBr" type="number" value="'+(w.barRadius!=null?w.barRadius:3)+'">');
-      h+=row('Legende','<input type="checkbox" id="pLeg"'+(w.legend?' checked':'')+'>')+(w.legend?row('Legende-Pos','<select id="pLegPos"><option value="top"'+((w.legPos||'top')==='top'?' selected':'')+'>oben</option><option value="bottom"'+(w.legPos==='bottom'?' selected':'')+'>unten</option><option value="left"'+(w.legPos==='left'?' selected':'')+'>links</option><option value="right"'+(w.legPos==='right'?' selected':'')+'>rechts</option></select>'):'')+row('Datenlabels','<input type="checkbox" id="pDl"'+(w.labels?' checked':'')+'>');
-      // Titel gilt fuer ALLE Chart-Typen (auch Torte/Donut/Rose) - deshalb ausserhalb des Achsen-Blocks
-      var _tOn=(w.showTitle!=null?w.showTitle:(!w.legend&&!!w.label));
-      h+='<div class="pgh">Titel</div>'+row('Titel anzeigen','<input type="checkbox" id="pShowT"'+(_tOn?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">Label als Titel</span>')
-        +(_tOn?row('Titel-Position','<select id="pTitlePos"><option value="left"'+((w.titlePos||'left')==='left'?' selected':'')+'>links</option><option value="center"'+(w.titlePos==='center'?' selected':'')+'>zentriert</option><option value="right"'+(w.titlePos==='right'?' selected':'')+'>rechts</option></select>'+(((w.label||'')==='')?' <span style="font-size:11px;color:var(--warm)">— Label ist leer, es erscheint nichts</span>':'')):'');
-      if(!isPart){
-        h+='<div class="pgh">Achsen & Raster</div>'+row('Y-Beschriftung','<input type="checkbox" id="pYLab"'+(w.yLabels!==false?' checked':'')+'>')+row('X-Beschriftung','<input type="checkbox" id="pXLab"'+(w.xLabels!==false?' checked':'')+'>')+row('Y-Hilfslinien','<input type="checkbox" id="pYg"'+(w.ygrid!==false?' checked':'')+'>')+row('X-Hilfslinien','<input type="checkbox" id="pXg"'+(w.xgrid?' checked':'')+'>')+row('Achslinien','<input type="checkbox" id="pAxLine"'+(w.axLine?' checked':'')+'>')+row('Tickmarks','<input type="checkbox" id="pAxTicks"'+(w.axTicks?' checked':'')+'>')+row('Raster-Teilung','<input id="pGridDivs" type="number" min="0" style="width:56px" value="'+(w.gridDivs||'')+'" placeholder="auto"> <span style="font-size:11px;color:var(--muted)">Y-Achse: Anzahl</span>');
-        if(isBar||isLine)h+=row('Stapeln','<input type="checkbox" id="pStack"'+(w.stack?' checked':'')+'>');
-        h+=row('Zoom/Scroll','<input type="checkbox" id="pZoom"'+(w.zoom?' checked':'')+'>')+row('Extrema (Max/Min)','<input type="checkbox" id="pExtr"'+(w.extrema?' checked':'')+'>')+row('Perioden-Navigation','<input type="checkbox" id="pPnav"'+(w.pnav?' checked':'')+'>');
-        h+='<div class="pgh">Vergleich (Zeitversatz)</div>'+row('Aktiv','<input type="checkbox" id="pCmpOn"'+(w.cmpOn?' checked':'')+'>')+(w.cmpOn?(row('Versatz',offSel('pCmpOff',w.cmpOff))+row('Schatten %','<input id="pCmpShade" type="number" min="0" max="90" value="'+(w.cmpShade!=null?w.cmpShade:55)+'">')):'');
+      var ct=w.ctype||'area',V=_chartVis(ct);
+      var h=row('Chart-Typ','<select id="pCType"><optgroup label="Zeitreihe"><option value="area"'+(ct==='area'?' selected':'')+'>Fläche</option><option value="areaspline"'+(ct==='areaspline'?' selected':'')+'>Fläche glatt (Spline)</option><option value="line"'+(ct==='line'?' selected':'')+'>Linie</option><option value="spline"'+(ct==='spline'?' selected':'')+'>Linie glatt (Spline)</option><option value="step"'+(ct==='step'?' selected':'')+'>Stufen</option><option value="steparea"'+(ct==='steparea'?' selected':'')+'>Stufenfläche</option><option value="bar"'+(ct==='bar'?' selected':'')+'>Balken</option><option value="barstack"'+(ct==='barstack'?' selected':'')+'>Balken gestapelt</option><option value="scatter"'+(ct==='scatter'?' selected':'')+'>Punkte</option></optgroup><optgroup label="Kompakt"><option value="spark"'+(ct==='spark'?' selected':'')+'>Sparkline (kompakt)</option></optgroup><optgroup label="Anteile (ohne Zeit)"><option value="pie"'+(ct==='pie'?' selected':'')+'>Kreis (Pie)</option><option value="donut"'+(ct==='donut'?' selected':'')+'>Donut</option><option value="rose"'+(ct==='rose'?' selected':'')+'>Rose (Nightingale)</option></optgroup><optgroup label="Ohne Zeit"><option value="waterfall"'+(ct==='waterfall'?' selected':'')+'>Wasserfall</option></optgroup><optgroup label="Astronomie"><option value="daylight"'+(ct==='daylight'?' selected':'')+'>Tageslänge (ganzes Jahr)</option></optgroup></select>');
+      // ---- Tageslänge: Datenquelle ist der Standort (date_sun_info serverseitig), keine Variablen ----
+      if(V.dayl){
+        h+='<div style="font-size:11px;color:var(--muted);margin:2px 2px 6px">Auf- und Untergang für jeden Tag des Jahres, Fläche dazwischen = Tageslänge. Der Standort wird automatisch aus der Location-Instanz gelesen.</div>'
+          +row('Jahr','<input id="pDlYear" type="number" style="width:80px" value="'+(w.dlYear||new Date().getFullYear())+'">')
+          +row('Standort-Instanz','<input id="pDlLoc" value="'+(w.dlLoc||'')+'" placeholder="leer = automatisch" style="width:110px">')
+          +row('Heute markieren','<input type="checkbox" id="pDlToday"'+(w.dlToday!==false?' checked':'')+'>')
+          +row('Ohne Sommerzeit','<input type="checkbox" id="pDlNoDst"'+(w.dlNoDst?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">glatte Kurven ohne die Sprünge im März/Oktober</span>')
+          +row('Untergang-Linie',skinSel(w.dlSet||'warn','id="pDlSet"'))
+          +row('Aufgang-Linie',skinSel(w.dlRise||'muted','id="pDlRise"'))
+          +row('Füllung',skinSel(w.dlFill||'','id="pDlFill"')+' <span style="font-size:11px;color:var(--muted)">leer = wie Untergang</span>')
+          +row('Füllung-Deckkraft %','<input id="pDlOp" type="number" min="0" max="100" style="width:64px" value="'+(w.dlOpacity!=null?w.dlOpacity:22)+'">');
       }
-      h+=seriesEditor(w);
-      if(!isPart)h+=axesEditor(w);
+      // ---- Wasserfall: Schritte (Datenquelle sind LIVE-Werte, keine Historie) ----
+      if(V.wf)h+=listEditor(w,'steps','Schritte: Titel · Variable · Typ · Farbe',[
+          {k:'title',ph:'Titel'},
+          {k:'vid',ph:'ID'},
+          {k:'type',type:'select',def:'auf',options:[['start','Start'],['auf','Auf (+)'],['ab','Ab (−)'],['sub','Zwischensumme'],['sum','Summe']]},
+          {k:'color',type:'skincolor'}
+        ]);
+      // ---- Diagramm-Optionen ----
+      h+='<div class="pgh">'+(V.wf?'Optionen':'Diagramm-Optionen')+'</div>';
+      if(V.spark)h+=row('Linienfarbe',selOf('pSpLine',w.lineColor,['accent','ok','warn','crit','info']))
+        +row('Füllung','<input type="checkbox" id="pSpFill"'+((w.fill!==false)?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">Fläche unter der Linie</span>');
+      if(V.lineOpt)h+=row('Glätten (Spline)','<input type="checkbox" id="pSmooth"'+(w.smooth!==false?' checked':'')+'>')+row('Punkte','<input type="checkbox" id="pSym"'+(w.symbols?' checked':'')+'> <input id="pSymS" type="number" style="width:52px" value="'+(w.symSize||5)+'" title="Größe">')+row('Linienbreite','<input id="pLw" type="number" step="0.5" value="'+(w.lw||2)+'">')+row('Flächen-Verlauf','<input type="checkbox" id="pGrad"'+(w.grad?' checked':'')+'>');
+      if(V.symOpt)h+=row('Punkte-Größe','<input id="pSymS" type="number" style="width:52px" value="'+(w.symSize||7)+'">');
+      if(V.wf)h+=row('Y-Einheit','<input id="pWfUnit" value="'+esc(_wfUnit(w))+'" style="width:80px" placeholder="z. B. €">')
+        +row('Datenlabels','<input type="checkbox" id="pDl"'+(w.labels?' checked':'')+'>')
+        +row('Verbindungslinien','<input type="checkbox" id="pWfConn"'+(w.wfConnect!==false?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">gestrichelt, zwischen den Balken</span>');
+      if(V.br)h+=row('Balken-Rundung','<input id="pBr" type="number" value="'+(w.barRadius!=null?w.barRadius:3)+'">');
+      if(V.wf)h+=row('Fallback Auf',skinSel(w.wfUp||'ok','id="pWfUp"'))+row('Fallback Ab',skinSel(w.wfDown||'crit','id="pWfDn"'));
+      if(V.leg)h+=row('Legende','<input type="checkbox" id="pLeg"'+(w.legend?' checked':'')+'>')+(w.legend?row('Legende-Pos','<select id="pLegPos"><option value="top"'+((w.legPos||'top')==='top'?' selected':'')+'>oben</option><option value="bottom"'+(w.legPos==='bottom'?' selected':'')+'>unten</option><option value="left"'+(w.legPos==='left'?' selected':'')+'>links</option><option value="right"'+(w.legPos==='right'?' selected':'')+'>rechts</option></select>'):'');
+      if(V.dl)h+=row('Datenlabels','<input type="checkbox" id="pDl"'+(w.labels?' checked':'')+'>');
+      // Titel gilt fuer fast ALLE Chart-Typen (auch Torte/Donut/Rose/Wasserfall) - deshalb ausserhalb des Achsen-Blocks
+      if(V.title){
+        var _tOn=(w.showTitle!=null?w.showTitle:(!w.legend&&!!w.label));
+        h+='<div class="pgh">Titel</div>'+row('Titel anzeigen','<input type="checkbox" id="pShowT"'+(_tOn?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">Label als Titel</span>')
+          +(_tOn?row('Titel-Position','<select id="pTitlePos"><option value="left"'+((w.titlePos||'left')==='left'?' selected':'')+'>links</option><option value="center"'+(w.titlePos==='center'?' selected':'')+'>zentriert</option><option value="right"'+(w.titlePos==='right'?' selected':'')+'>rechts</option></select>'+(((w.label||'')==='')?' <span style="font-size:11px;color:var(--warm)">— Label ist leer, es erscheint nichts</span>':'')):'');
+      }
+      if(V.ax){
+        h+='<div class="pgh">Achsen & Raster</div>'+row('Y-Beschriftung','<input type="checkbox" id="pYLab"'+(w.yLabels!==false?' checked':'')+'>')+row('X-Beschriftung','<input type="checkbox" id="pXLab"'+(w.xLabels!==false?' checked':'')+'>')+row('Y-Hilfslinien','<input type="checkbox" id="pYg"'+(w.ygrid!==false?' checked':'')+'>')+row('X-Hilfslinien','<input type="checkbox" id="pXg"'+(w.xgrid?' checked':'')+'>')+row('Achslinien','<input type="checkbox" id="pAxLine"'+(w.axLine?' checked':'')+'>')+row('Tickmarks','<input type="checkbox" id="pAxTicks"'+(w.axTicks?' checked':'')+'>');
+        if(V.axPlus)h+=row('Raster-Teilung','<input id="pGridDivs" type="number" min="0" style="width:56px" value="'+(w.gridDivs||'')+'" placeholder="auto"> <span style="font-size:11px;color:var(--muted)">Y-Achse: Anzahl</span>');
+        if(V.axPlus&&(V.bar||V.line))h+=row('Stapeln','<input type="checkbox" id="pStack"'+(w.stack?' checked':'')+'>');
+        if(V.axPlus)h+=row('Zoom/Scroll','<input type="checkbox" id="pZoom"'+(w.zoom?' checked':'')+'>')+row('Extrema (Max/Min)','<input type="checkbox" id="pExtr"'+(w.extrema?' checked':'')+'>')+row('Perioden-Navigation','<input type="checkbox" id="pPnav"'+(w.pnav?' checked':'')+'>');
+      }
+      if(V.cmp)h+='<div class="pgh">Vergleich (Zeitversatz)</div>'+row('Aktiv','<input type="checkbox" id="pCmpOn"'+(w.cmpOn?' checked':'')+'>')+(w.cmpOn?(row('Versatz',offSel('pCmpOff',w.cmpOff))+row('Schatten %','<input id="pCmpShade" type="number" min="0" max="90" value="'+(w.cmpShade!=null?w.cmpShade:55)+'">')):'');
+      if(V.ser)h+=seriesEditor(w,V.spark?{max:1,simple:1}:null); // Sparkline zeichnet nur die erste Serie
+      if(V.yax)h+=axesEditor(w);
       return h;
     },
     wire:function(w){
       function reChart(){if(_ec[w.id])renderChartData(w);commit();}
-      if($('#pCType'))$('#pCType').onchange=function(){w.ctype=this.value;reChart();};
+      if($('#pCType'))$('#pCType').onchange=function(){
+        var alt=w.ctype||'area',neu=this.value;
+        if(alt!==neu){
+          var sa=_ctSize(alt),sn=_ctSize(neu);
+          if(w.w===sa[0]&&w.h===sa[1]){w.w=sn[0];w.h=sn[1];applyGeom(w);} // Standardgröße nur übernehmen, solange sie unverändert war
+        }
+        w.ctype=neu;
+        if(w.ctype==='waterfall')_wfSeed(w);   // Muster-Schritte lazy saeen — defaults() laeuft vor dem Setzen von ctype
+        render();renderProps();commit();       // render(): Perioden-Knoepfe/Chart-Neuaufbau, renderProps(): andere Optionen
+      };
+      // --- Tageslänge ---
+      if($('#pDlYear'))$('#pDlYear').onchange=function(){w.dlYear=parseInt(this.value)||undefined;fetchDaylight(w);commit();};
+      if($('#pDlLoc'))$('#pDlLoc').onchange=function(){w.dlLoc=parseInt(this.value)||undefined;fetchDaylight(w);commit();};
+      if($('#pDlToday'))$('#pDlToday').onchange=function(){w.dlToday=this.checked?undefined:false;reChart();};
+      if($('#pDlNoDst'))$('#pDlNoDst').onchange=function(){w.dlNoDst=this.checked||undefined;fetchDaylight(w);commit();};
+      if($('#pDlSet'))$('#pDlSet').onchange=function(){w.dlSet=this.value||undefined;reChart();};
+      if($('#pDlRise'))$('#pDlRise').onchange=function(){w.dlRise=this.value||undefined;reChart();};
+      if($('#pDlFill'))$('#pDlFill').onchange=function(){w.dlFill=this.value||undefined;reChart();};
+      if($('#pDlOp'))$('#pDlOp').oninput=function(){w.dlOpacity=this.value===''?undefined:parseInt(this.value);reChart();};
+      // --- Sparkline ---
+      if($('#pSpLine'))$('#pSpLine').onchange=function(){w.lineColor=this.value||undefined;reChart();};
+      if($('#pSpFill'))$('#pSpFill').onchange=function(){w.fill=this.checked?undefined:false;reChart();};
+      // --- Wasserfall ---
+      if($('#pWfUnit'))$('#pWfUnit').oninput=function(){w.wfUnit=this.value;reChart();};
+      if($('#pWfConn'))$('#pWfConn').onchange=function(){w.wfConnect=this.checked?undefined:false;reChart();};
+      if($('#pWfUp'))$('#pWfUp').oninput=$('#pWfUp').onchange=function(){w.wfUp=this.value;reChart();};
+      if($('#pWfDn'))$('#pWfDn').oninput=$('#pWfDn').onchange=function(){w.wfDown=this.value;reChart();};
+      // --- gemeinsam ---
       if($('#pSmooth'))$('#pSmooth').onchange=function(){w.smooth=this.checked;reChart();};
       if($('#pSym'))$('#pSym').onchange=function(){w.symbols=this.checked;reChart();};
       if($('#pSymS'))$('#pSymS').oninput=function(){w.symSize=parseFloat(this.value)||5;reChart();};
@@ -4131,7 +4414,11 @@ defWidget('calendar',{
       $$('#props [data-adel]').forEach(function(b){b.onclick=function(){_ensureYAxes(w);w.yAxes.splice(parseInt(b.getAttribute('data-adel')),1);renderProps();if(_ec[w.id])renderChartData(w);commit();};});
       if($('#props [data-aadd]'))$('#props [data-aadd]').onclick=function(){_ensureYAxes(w);w.yAxes.push({side:'R',name:'',min:'',max:''});renderProps();if(_ec[w.id])renderChartData(w);commit();};
     },
-    live:function(w,el,id,d,base,txt,on){if(w.ctype==='pie'||w.ctype==='donut'||w.ctype==='rose'){if(_ec[w.id])setPie(w);}else if(_ec[w.id])chartPushRefresh(w);}
+    // Anteile -> setPie, Wasserfall -> setWaterfall (Live-Werte, KEIN Historien-Nachzug), sonst (inkl. spark) entprellte Historie
+    live:function(w,el,id,d,base,txt,on){var ct=w.ctype||'area';
+      if(ct==='pie'||ct==='donut'||ct==='rose'){if(_ec[w.id])setPie(w);}
+      else if(ct==='waterfall'){if((w.steps||[]).some(function(s){return s.vid===id;}))setWaterfall(w);}
+      else if(_ec[w.id])chartPushRefresh(w);}
   });
   // ===== Widget: Checkbox — bool anzeigen/schalten, optional nur Anzeige =====
   defWidget('checkbox',{
@@ -4169,98 +4456,6 @@ defWidget('chip',{
     props:function(w){return chromeProps(w);},
     wire:function(w){chromeWire(w);}
   });
-  // ===== Widget: CIE-Picker (cie) — xy-Farbraum, schreibt x -> varId, y -> varId2 (0..1) =====
-  function _cieXY2rgb(x,y){if(y<=0)return null;var Y=1,X=x/y*Y,Z=(1-x-y)/y*Y;
-    var r=3.2406*X-1.5372*Y-0.4986*Z,g=-0.9689*X+1.8758*Y+0.0415*Z,b=0.0557*X-0.2040*Y+1.0570*Z;
-    if(r<-0.02||g<-0.02||b<-0.02)return null;
-    function gm(c){c=c<0?0:c;return c<=0.0031308?12.92*c:1.055*Math.pow(c,1/2.4)-0.055;}
-    r=gm(r);g=gm(g);b=gm(b);var mx=Math.max(r,g,b);if(mx>1){r/=mx;g/=mx;b/=mx;}
-    return [Math.round(r*255),Math.round(g*255),Math.round(b*255)];}
-  function drawCie(w){var cv=$('.w[data-id="'+w.id+'"] [data-role=ciecanvas]',canvas);if(!cv||!cv.getContext)return;
-    var W=cv.width=110,H=cv.height=110,ctx=cv.getContext('2d'),img=ctx.createImageData(W,H),dd=img.data;
-    for(var py=0;py<H;py++)for(var px=0;px<W;px++){var x=px/W*0.75,y=(1-py/H)*0.85,rgb=_cieXY2rgb(x,y),i=(py*W+px)*4;
-      if(rgb){dd[i]=rgb[0];dd[i+1]=rgb[1];dd[i+2]=rgb[2];dd[i+3]=255;}else{dd[i]=17;dd[i+1]=23;dd[i+2]=25;dd[i+3]=255;}}
-    ctx.putImageData(img,0,0);
-    var el=$('.w[data-id="'+w.id+'"]',canvas);if(el)WIDGETS.cie.live(w,el);}
-  defWidget('cie',{
-    label:'CIE-Picker', paletteIcon:'wshape', size:[150,150],
-    mount:function(w){drawCie(w);},
-    render:function(w){return '<div style="position:absolute;inset:0;padding:6px;box-sizing:border-box"><div style="position:relative;width:100%;height:100%"><canvas data-role="ciecanvas" style="width:100%;height:100%;border-radius:6px;display:block;cursor:crosshair"></canvas><div data-role="ciemk" style="position:absolute;width:12px;height:12px;border:2px solid #fff;border-radius:50%;transform:translate(-50%,-50%);box-shadow:0 0 3px #000;pointer-events:none;left:50%;top:50%"></div></div></div>';},
-    props:function(w){return row('x (Var)','<input id="pCieX" value="'+(w.varId||'')+'" placeholder="ID"> <button class="btn" id="pCieXP" style="padding:6px 8px">wählen</button>')
-      +row('y (Var)','<input id="pCieY" value="'+(w.varId2||'')+'" placeholder="ID"> <button class="btn" id="pCieYP" style="padding:6px 8px">wählen</button>');},
-    wire:function(w){
-      if($('#pCieX'))$('#pCieX').oninput=function(){w.varId=parseInt(this.value)||0;render();};
-      if($('#pCieXP'))$('#pCieXP').onclick=function(){showTab('vars');_bindTarget=w.id;};
-      if($('#pCieY'))$('#pCieY').oninput=function(){w.varId2=parseInt(this.value)||0;render();};
-      if($('#pCieYP'))$('#pCieYP').onclick=function(){showTab('vars');_bindTarget2=w.id;};
-    },
-    live:function(w,el,id,d,base,txt,on){var lx=w.varId&&_lastVals[w.varId],ly=w.varId2&&_lastVals[w.varId2],mk=$('[data-role=ciemk]',el);if(!mk)return;var x=lx?parseFloat(String(lx.v).replace(',','.')):NaN,y=ly?parseFloat(String(ly.v).replace(',','.')):NaN;if(!isNaN(x))mk.style.left=Math.max(0,Math.min(100,x/0.75*100))+'%';if(!isNaN(y))mk.style.top=Math.max(0,Math.min(100,(1-y/0.85)*100))+'%';},
-    click:function(w,el,e){var cv=$('[data-role=ciecanvas]',el);if(!cv)return false;var rb=cv.getBoundingClientRect();var fx=Math.max(0,Math.min(1,(e.clientX-rb.left)/rb.width)),fy=Math.max(0,Math.min(1,(e.clientY-rb.top)/rb.height));var x=fx*0.75,y=(1-fy)*0.85;if(w.varId)setVar(w.varId,Math.round(x*1000)/1000);if(w.varId2)setVar(w.varId2,Math.round(y*1000)/1000);var mk=$('[data-role=ciemk]',el);if(mk){mk.style.left=(fx*100)+'%';mk.style.top=(fy*100)+'%';}return true;}
-  });
-  // ===== Widget: CircleRangeSlider — runder Regler mit ZWEI Griffen (unterer/oberer Wert) =====
-  function _crMin(w){return (w&&w.crMin!=null)?w.crMin:0;}
-  function _crMax(w){return (w&&w.crMax!=null)?w.crMax:100;}
-  function _crCur(w,id){var lv=id&&_lastVals[id],n=lv?parseFloat(String(lv.v).replace(',','.')):NaN;return isNaN(n)?_crMin(w):n;}
-  function _crAng(w,val){var mn=_crMin(w),mx=_crMax(w),f=Math.max(0,Math.min(1,(val-mn)/((mx-mn)||1)));return 135+270*f;}
-  function _crValAt(w,ang){var rel=ang-135;while(rel<0)rel+=360;while(rel>=360)rel-=360;if(rel>270)rel=(rel>315?0:270);var mn=_crMin(w),mx=_crMax(w),st=(w.crStep>0?w.crStep:1),v=mn+(rel/270)*(mx-mn);v=Math.round(v/st)*st;return Math.max(mn,Math.min(mx,Math.round(v*1000)/1000));}
-  function _crPt(ang,r){var a=ang*Math.PI/180;return [(50+r*Math.cos(a)),(50+r*Math.sin(a))];}
-  function _crArc(a0,a1,r){var p0=_crPt(a0,r),p1=_crPt(a1,r),large=((a1-a0)>180)?1:0;return 'M'+p0[0].toFixed(1)+' '+p0[1].toFixed(1)+' A'+r+' '+r+' 0 '+large+' 1 '+p1[0].toFixed(1)+' '+p1[1].toFixed(1);}
-  function _crApply(w,el,loO,hiO){
-    var loV=(loO!=null)?loO:_crCur(w,w.varId),hiV=(hiO!=null)?hiO:_crCur(w,w.varId2);
-    var la=_crAng(w,loV),ha=_crAng(w,hiV),lp=_crPt(la,40),hp=_crPt(ha,40);
-    var seg=el.querySelector('[data-role=crseg]');if(seg)seg.setAttribute('d',_crArc(Math.min(la,ha),Math.max(la,ha),40));
-    var lt=el.querySelector('[data-role=lo]');if(lt){lt.setAttribute('cx',lp[0].toFixed(1));lt.setAttribute('cy',lp[1].toFixed(1));}
-    var ht=el.querySelector('[data-role=hi]');if(ht){ht.setAttribute('cx',hp[0].toFixed(1));ht.setAttribute('cy',hp[1].toFixed(1));}
-    var vt=el.querySelector('[data-role=crval]');if(vt)vt.textContent=(Math.round(loV*10)/10)+' – '+(Math.round(hiV*10)/10);
-  }
-  var _crDrag=null;
-  if(!window._crWired){window._crWired=1;
-    document.addEventListener('pointerdown',function(e){
-      if(mode==='edit')return;var th=e.target.closest?e.target.closest('[data-cr-thumb]'):null;if(!th)return;
-      var el=th.closest('.w');if(!el)return;var w=widget(el.dataset.id);if(!w||w.type!=='circlerange')return;
-      _crDrag={w:w,el:el,role:th.getAttribute('data-role'),svg:el.querySelector('svg'),last:0};
-      e.preventDefault();e.stopPropagation();
-    },true);
-    document.addEventListener('pointermove',function(e){
-      if(!_crDrag)return;var d=_crDrag,w=d.w,rb=d.svg.getBoundingClientRect();
-      var ang=Math.atan2(e.clientY-(rb.top+rb.height/2),e.clientX-(rb.left+rb.width/2))*180/Math.PI;if(ang<0)ang+=360;
-      var val=_crValAt(w,ang),now=Date.now();
-      if(d.role==='lo'){var hv=_crCur(w,w.varId2);if(val>hv)val=hv;_crApply(w,d.el,val,null);if(w.varId&&now-d.last>=110){d.last=now;setVar(w.varId,val);}}
-      else{var lv=_crCur(w,w.varId);if(val<lv)val=lv;_crApply(w,d.el,null,val);if(w.varId2&&now-d.last>=110){d.last=now;setVar(w.varId2,val);}}
-      e.preventDefault();
-    });
-    function _crEnd(){_crDrag=null;}
-    document.addEventListener('pointerup',_crEnd);document.addEventListener('pointercancel',_crEnd);
-  }
-  defWidget('circlerange',{
-    label:'CircleRange', paletteIcon:'wdial', size:[150,150],
-    defaults:function(w){w.crMin=0;w.crMax=100;w.crStep=1;},
-    render:function(w){
-      var loV=_crCur(w,w.varId),hiV=_crCur(w,w.varId2),la=_crAng(w,loV),ha=_crAng(w,hiV),lp=_crPt(la,40),hp=_crPt(ha,40);
-      return '<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center">'
-        +'<svg viewBox="0 0 100 100" style="width:100%;height:100%">'
-        +'<path d="'+_crArc(135,405,40)+'" fill="none" stroke="var(--surface-2)" stroke-width="7" stroke-linecap="round"/>'
-        +'<path data-role="crseg" d="'+_crArc(Math.min(la,ha),Math.max(la,ha),40)+'" fill="none" stroke="var(--accent)" stroke-width="7" stroke-linecap="round"/>'
-        +'<circle data-role="lo" data-cr-thumb="1" cx="'+lp[0].toFixed(1)+'" cy="'+lp[1].toFixed(1)+'" r="6" fill="var(--surface)" stroke="var(--accent)" stroke-width="2.5" style="cursor:grab;touch-action:none"/>'
-        +'<circle data-role="hi" data-cr-thumb="1" cx="'+hp[0].toFixed(1)+'" cy="'+hp[1].toFixed(1)+'" r="6" fill="var(--surface)" stroke="var(--accent)" stroke-width="2.5" style="cursor:grab;touch-action:none"/>'
-        +'<text data-role="crval" x="50" y="53" text-anchor="middle" fill="var(--text)" font-size="10" font-family="var(--fm)">'+(Math.round(loV*10)/10)+' – '+(Math.round(hiV*10)/10)+'</text>'
-        +(w.label?'<text x="50" y="66" text-anchor="middle" fill="var(--muted)" font-size="7">'+esc(w.label)+'</text>':'')
-        +'</svg></div>';},
-    props:function(w){return row('Unten (Var)','<input id="pCrVar" value="'+(w.varId||'')+'" placeholder="ID"> <button class="btn" id="pCrPick" style="padding:6px 8px">wählen</button>')
-      +row('Oben (Var)','<input id="pCrVar2" value="'+(w.varId2||'')+'" placeholder="ID"> <button class="btn" id="pCrPick2" style="padding:6px 8px">wählen</button>')
-      +row('Min/Max','<input id="pCrMin" type="number" style="width:60px" value="'+_crMin(w)+'"> <input id="pCrMax" type="number" style="width:60px" value="'+_crMax(w)+'">')
-      +row('Schritt','<input id="pCrStep" type="number" step="0.1" value="'+(w.crStep>0?w.crStep:1)+'">');},
-    wire:function(w){
-      if($('#pCrVar'))$('#pCrVar').oninput=function(){w.varId=parseInt(this.value)||0;render();};
-      if($('#pCrPick'))$('#pCrPick').onclick=function(){showTab('vars');_bindTarget=w.id;};
-      if($('#pCrVar2'))$('#pCrVar2').oninput=function(){w.varId2=parseInt(this.value)||0;render();};
-      if($('#pCrPick2'))$('#pCrPick2').onclick=function(){showTab('vars');_bindTarget2=w.id;};
-      if($('#pCrMin'))$('#pCrMin').oninput=function(){var v=parseFloat(this.value);w.crMin=isNaN(v)?0:v;render();};
-      if($('#pCrMax'))$('#pCrMax').oninput=function(){var v=parseFloat(this.value);w.crMax=isNaN(v)?100:v;render();};
-      if($('#pCrStep'))$('#pCrStep').oninput=function(){var v=parseFloat(this.value);w.crStep=(isNaN(v)||v<=0)?1:v;render();};
-    },
-    live:function(w,el,id,d,base,txt,on){if(_crDrag&&_crDrag.el===el)return;_crApply(w,el);}
-  });
   // ===== Widget: Uhr (clock) — Digital-Uhr mit Datum =====
   // Sekunden/12h werden vom zentralen Tick (js/03) nicht abgedeckt -> eigenes Format über data-role="ctime".
   // Standard-Uhr (24h, ohne Sekunden) bleibt auf data-role="time" und damit auf dem zentralen Tick.
@@ -4283,7 +4478,18 @@ defWidget('chip',{
       if($('#pClkSec'))$('#pClkSec').onchange=function(){w.showSec=this.checked||undefined;render();commit();};},
     mount:function(w){if(w.showSec||w.h12)_clkUpd(w,new Date());} // Erst-Anzeige ohne auf den nächsten Sekunden-Tick zu warten
   });
-  // ===== Widget: Farbkreis (colorwheel) — HSV-Picker, liest/schreibt EINE RGB-Integer-Variable =====
+  // ===== Widget: Farbwähler (colorpick) — zusammengelegte Familie =====
+  // Varianten über w.cmode:
+  //   wheel  = Farbkreis (HSV)        -> varId = RGB-Integer (24 Bit)
+  //   cie    = CIE-Picker (xy)        -> varId = CIE-x (0..1), varId2 = CIE-y (0..1)
+  //   slider = RGB-Slider (R/G/B)     -> varId = RGB-Integer (24 Bit)
+  //   button = RGB-Preset-Taste       -> varId = RGB-Integer (24 Bit), w.color = Preset
+  //   box    = Farbfläche (Anzeige)   -> varId = RGB-Integer (24 Bit)
+  // Vorbild für die kontextsensitiven Optionen: widgets/chart.js (w.ctype).
+  var CP_SIZE={wheel:[176,224],cie:[150,150],slider:[220,120],button:[80,80],box:[120,120]}; // Standardgröße je Variante
+  function cpMode(w){return w.cmode||'wheel';}
+
+  // ---------------------------------------------------------------- Variante „wheel" (Farbkreis, HSV)
   // Helfer: HSV <-> RGB. h in 0..360, s/v in 0..1, r/g/b in 0..255.
   function cwHsv2rgb(h,s,v){
     h=((h%360)+360)%360;s=Math.max(0,Math.min(1,s));v=Math.max(0,Math.min(1,v));
@@ -4297,7 +4503,7 @@ defWidget('chip',{
     if(d!==0){if(mx===r)h=((g-b)/d)%6;else if(mx===g)h=(b-r)/d+2;else h=(r-g)/d+4;h*=60;if(h<0)h+=360;}
     return [h,mx===0?0:d/mx,mx];
   }
-  function cwArm(w,el){
+  function cwArm(w,el){ // Lazy-Binding: Listener duerfen nur EINMAL haengen (__cwB als Flag)
     var wh=$('[data-role=cwWheel]',el);if(wh&&!wh.__cwB){wh.__cwB=1;cwBindWheel(w,el,wh);}
     var bar=$('[data-role=cwBar]',el);if(bar&&!bar.__cwB){bar.__cwB=1;cwBindBar(w,el,bar);}
   }
@@ -4347,34 +4553,202 @@ defWidget('chip',{
       bar.addEventListener('pointermove',mv);bar.addEventListener('pointerup',up);bar.addEventListener('pointercancel',up);
     });
   }
-  defWidget('colorwheel',{
-    label:'Farbkreis', paletteIcon:'wdial', size:[176,224],
-    defaults:function(w){w.label='Farbe';},
+  function cpRenderWheel(w){
+    var lbl=w.label?'<div style="font-size:11px;color:var(--muted);flex:none">'+esc(w.label)+'</div>':'';
+    var wheel='<div data-role="cwWheel" style="position:relative;flex:none;width:118px;height:118px;border-radius:50%;background:radial-gradient(circle at center,#fff,rgba(255,255,255,0) 72%),conic-gradient(from 0deg,hsl(0,100%,50%),hsl(60,100%,50%),hsl(120,100%,50%),hsl(180,100%,50%),hsl(240,100%,50%),hsl(300,100%,50%),hsl(360,100%,50%));box-shadow:inset 0 0 0 1px var(--line);cursor:crosshair;touch-action:none">'
+      +'<div data-role="cwHandle" style="position:absolute;left:50%;top:50%;width:15px;height:15px;margin:-7.5px 0 0 -7.5px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.45);background:#000;pointer-events:none"></div></div>';
+    var slider='<div style="display:flex;align-items:center;gap:8px;width:100%;flex:none">'
+      +'<div data-role="cwPrev" style="flex:none;width:26px;height:26px;border-radius:7px;border:1px solid var(--line);background:#000"></div>'
+      +'<div data-role="cwBar" style="position:relative;flex:1;height:16px;border-radius:8px;background:linear-gradient(90deg,#000,#fff);box-shadow:inset 0 0 0 1px var(--line);cursor:pointer;touch-action:none">'
+      +'<div data-role="cwBarH" style="position:absolute;top:50%;left:0%;width:15px;height:15px;margin:-7.5px 0 0 -7.5px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.45);background:#000;pointer-events:none"></div></div></div>';
+    return '<div style="height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:12px;box-sizing:border-box">'+lbl+wheel+slider+'</div>';
+  }
+  function cpLiveWheel(w,el,id,d,base,txt,on){
+    if(w.varId!==id)return;cwArm(w,el);if(el.__cwDrag)return;
+    var iv=parseInt(String(d.v).replace(/[^0-9-]/g,''),10);if(isNaN(iv))iv=0;iv=iv&0xFFFFFF;
+    var hsv=cwRgb2hsv((iv>>16)&255,(iv>>8)&255,iv&255),prev=el.__cwHsv;
+    if(hsv[1]===0&&prev)hsv[0]=prev[0];if(hsv[2]===0&&prev)hsv[0]=prev[0]; // Hue erhalten (sonst springt der Kreis bei Schwarz/Weiss auf Rot)
+    el.__cwHsv=hsv;cwPaint(el,hsv[0],hsv[1],hsv[2]);
+  }
+  function cpClickWheel(w,el,e){
+    cwArm(w,el);
+    if(el.__cwSkip){el.__cwSkip=0;return true;}
+    var wh=e.target.closest('[data-role=cwWheel]');if(wh){var p=cwWheelHsv(w,el,wh,e);cwSet(w,el,p[0],p[1],p[2],true);return true;}
+    var bar=e.target.closest('[data-role=cwBar]');if(bar){var q=cwBarHsv(w,el,bar,e);cwSet(w,el,q[0],q[1],q[2],true);return true;}
+    return true; // Farbkreis verschluckt die universelle Popup/Nav/Skript-Aktion (Bestandsverhalten)
+  }
+
+  // ---------------------------------------------------------------- Variante „cie" (xy-Farbraum)
+  function _cieXY2rgb(x,y){if(y<=0)return null;var Y=1,X=x/y*Y,Z=(1-x-y)/y*Y;
+    var r=3.2406*X-1.5372*Y-0.4986*Z,g=-0.9689*X+1.8758*Y+0.0415*Z,b=0.0557*X-0.2040*Y+1.0570*Z;
+    if(r<-0.02||g<-0.02||b<-0.02)return null;
+    function gm(c){c=c<0?0:c;return c<=0.0031308?12.92*c:1.055*Math.pow(c,1/2.4)-0.055;}
+    r=gm(r);g=gm(g);b=gm(b);var mx=Math.max(r,g,b);if(mx>1){r/=mx;g/=mx;b/=mx;}
+    return [Math.round(r*255),Math.round(g*255),Math.round(b*255)];}
+  function drawCie(w){
+    var root=$('.w[data-id="'+w.id+'"]',canvas)||((_popup&&$('#ovcanvas'))?$('.w[data-id="'+w.id+'"]',$('#ovcanvas')):null); // auch im Popup zeichnen
+    var cv=root&&$('[data-role=ciecanvas]',root);if(!cv||!cv.getContext)return;
+    var W=cv.width=110,H=cv.height=110,ctx=cv.getContext('2d'),img=ctx.createImageData(W,H),dd=img.data;
+    for(var py=0;py<H;py++)for(var px=0;px<W;px++){var x=px/W*0.75,y=(1-py/H)*0.85,rgb=_cieXY2rgb(x,y),i=(py*W+px)*4;
+      if(rgb){dd[i]=rgb[0];dd[i+1]=rgb[1];dd[i+2]=rgb[2];dd[i+3]=255;}else{dd[i]=17;dd[i+1]=23;dd[i+2]=25;dd[i+3]=255;}}
+    ctx.putImageData(img,0,0);
+    if(root)cpLiveCie(w,root);} // Marker nachziehen (direkt lokal, nicht über WIDGETS[...])
+  function cpRenderCie(w){return '<div style="position:absolute;inset:0;padding:6px;box-sizing:border-box"><div style="position:relative;width:100%;height:100%"><canvas data-role="ciecanvas" style="width:100%;height:100%;border-radius:6px;display:block;cursor:crosshair"></canvas><div data-role="ciemk" style="position:absolute;width:12px;height:12px;border:2px solid #fff;border-radius:50%;transform:translate(-50%,-50%);box-shadow:0 0 3px #000;pointer-events:none;left:50%;top:50%"></div></div></div>';}
+  function cpLiveCie(w,el,id,d,base,txt,on){var lx=w.varId&&_lastVals[w.varId],ly=w.varId2&&_lastVals[w.varId2],mk=$('[data-role=ciemk]',el);if(!mk)return;var x=lx?parseFloat(String(lx.v).replace(',','.')):NaN,y=ly?parseFloat(String(ly.v).replace(',','.')):NaN;if(!isNaN(x))mk.style.left=Math.max(0,Math.min(100,x/0.75*100))+'%';if(!isNaN(y))mk.style.top=Math.max(0,Math.min(100,(1-y/0.85)*100))+'%';}
+  function cpClickCie(w,el,e){var cv=$('[data-role=ciecanvas]',el);if(!cv)return false;var rb=cv.getBoundingClientRect();var fx=Math.max(0,Math.min(1,(e.clientX-rb.left)/rb.width)),fy=Math.max(0,Math.min(1,(e.clientY-rb.top)/rb.height));var x=fx*0.75,y=(1-fy)*0.85;if(w.varId)setVar(w.varId,Math.round(x*1000)/1000);if(w.varId2)setVar(w.varId2,Math.round(y*1000)/1000);var mk=$('[data-role=ciemk]',el);if(mk){mk.style.left=(fx*100)+'%';mk.style.top=(fy*100)+'%';}return true;}
+
+  // ---------------------------------------------------------------- Variante „slider" (R/G/B)
+  // Liest/schreibt w.varId als 24-Bit-Integer (R<<16 | G<<8 | B). Track-Fuellung je Kanal in Kanalfarbe.
+  function _rgbEls(el){return {r:$('[data-ch=r]',el),g:$('[data-ch=g]',el),b:$('[data-ch=b]',el)};}
+  function _rgbClamp(n){n=n|0;return n<0?0:(n>255?255:n);}
+  function _rgbHex(r,g,b){return '#'+[r,g,b].map(function(n){return ('0'+(_rgbClamp(n)).toString(16)).slice(-2);}).join('').toUpperCase();}
+  function _rgbFill(inp){if(!inp)return;var col=inp.getAttribute('data-col'),p=Math.max(0,Math.min(100,(+inp.value)/255*100));
+    inp.style.background='linear-gradient(90deg,'+col+' 0%,'+col+' '+p+'%,var(--surface-2) '+p+'%,var(--surface-2) 100%)';}
+  function _rgbPaint(el){ // Sliderwerte in Fuellung/Zahl/Swatch/Hex spiegeln
+    var e=_rgbEls(el);if(!e.r||!e.g||!e.b)return;
+    var r=_rgbClamp(+e.r.value),g=_rgbClamp(+e.g.value),b=_rgbClamp(+e.b.value);
+    _rgbFill(e.r);_rgbFill(e.g);_rgbFill(e.b);
+    var nr=$('[data-num=r]',el),ng=$('[data-num=g]',el),nb=$('[data-num=b]',el);
+    if(nr)nr.textContent=r;if(ng)ng.textContent=g;if(nb)nb.textContent=b;
+    var sw=$('[data-role=sw]',el);if(sw)sw.style.background='rgb('+r+','+g+','+b+')';
+    var hx=$('[data-role=hex]',el);if(hx)hx.textContent=_rgbHex(r,g,b);
+  }
+  // ACHTUNG: _rgbInput wird aus dem Inline-Attribut oninput="_rgbInput(this)" des gerenderten HTML gerufen.
+  // Die Funktion muss global bleiben (kein Modulscope) und darf nur zusammen mit dem Attribut umbenannt werden.
+  function _rgbInput(inp){ // Inline oninput je Slider — baut Integer neu und schreibt
+    var el=inp.closest('.w');if(!el)return;el._rgbBusy=Date.now();_rgbPaint(el);
+    if(typeof mode!=='undefined'&&mode==='edit')return; // im Editor nicht schreiben
+    var w=widget(el.dataset.id);if(!w||!w.varId)return;
+    var e=_rgbEls(el),v=((_rgbClamp(+e.r.value)<<16)|(_rgbClamp(+e.g.value)<<8)|_rgbClamp(+e.b.value))>>>0;
+    setVar(w.varId,v); // throttle nicht noetig
+  }
+  function cpRenderSlider(w){
+    var chs=[['r','R','#f2685a'],['g','G','#39d08a'],['b','B','#5ab6ff']];
+    var rows=chs.map(function(c){
+      // data-role MUSS 'ch' bleiben — [data-role=range] wuerde in _wChange zusaetzlich den Rohwert 0..255 schreiben
+      return '<div style="display:flex;align-items:center;gap:8px">'
+        +'<span style="width:12px;text-align:center;font-size:12px;font-weight:700;color:'+c[2]+';flex:none">'+c[1]+'</span>'
+        +'<input class="hsrange" type="range" data-role="ch" data-ch="'+c[0]+'" data-col="'+c[2]+'" min="0" max="255" step="1" value="0" oninput="_rgbInput(this)" style="flex:1;min-width:0;background:linear-gradient(90deg,'+c[2]+' 0%,'+c[2]+' 0%,var(--surface-2) 0%,var(--surface-2) 100%)">'
+        +'<span data-num="'+c[0]+'" style="width:30px;text-align:right;font-family:var(--fm);font-size:12px;color:var(--muted);flex:none">0</span>'
+      +'</div>';
+    }).join('');
+    return '<div style="height:100%;display:flex;flex-direction:column;justify-content:center;gap:7px;padding:10px 12px;box-sizing:border-box">'
+      +'<div style="display:flex;align-items:center;gap:8px">'
+        +'<span data-role="sw" style="width:22px;height:22px;border-radius:6px;border:1px solid var(--line);background:#000;flex:none"></span>'
+        +(w.label?'<span style="font-size:12px;color:var(--muted);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(w.label)+'</span>':'<span style="flex:1"></span>')
+        +'<span data-role="hex" style="font-family:var(--fm);font-size:11px;color:var(--muted);flex:none">#000000</span>'
+      +'</div>'+rows+'</div>';
+  }
+  function cpLiveSlider(w,el,id,d,base,txt,on){
+    if(w.varId!==id)return;
+    var n=parseInt(String(d.v).replace(',','.'),10);if(isNaN(n))n=0;
+    var r=(n>>16)&255,g=(n>>8)&255,b=n&255;
+    var busy=el._rgbBusy&&(Date.now()-el._rgbBusy<900);
+    var a=document.activeElement,inside=!!(a&&a.getAttribute&&a.getAttribute('data-role')==='ch'&&el.contains(a));
+    if(busy||inside)return; // waehrend Bedienung Slider/Swatch nicht ueberschreiben
+    var e=_rgbEls(el);if(e.r)e.r.value=r;if(e.g)e.g.value=g;if(e.b)e.b.value=b;
+    _rgbPaint(el);
+  }
+
+  // ---------------------------------------------------------------- Variante „button" (Preset-Taste)
+  function cpBtnInt(col){var mine=parseInt(String(col||'#000000').replace('#',''),16);if(isNaN(mine))mine=0;return mine;}
+  function cpRenderButton(w){
+    var col=w.color||'#ff8800';
+    var mine=parseInt(String(col).replace('#',''),16);if(isNaN(mine))mine=0;
+    var cur=w.varId&&_lastVals[w.varId];
+    var active=!!(cur&&parseInt(String(cur.v).replace(',','.'),10)===mine);
+    var chk='<svg data-role="chk" class="i" style="display:'+(active?'block':'none')+';position:absolute;top:5px;right:5px;width:16px;height:16px;fill:none;stroke:#fff;stroke-width:3;stroke-linecap:round;stroke-linejoin:round;filter:drop-shadow(0 0 2px rgba(0,0,0,.65))"><use href="#ic-check"/></svg>';
+    var lbl=w.label?'<div style="position:absolute;left:4px;right:4px;bottom:5px;text-align:center;font-size:11px;line-height:1.1;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.7);pointer-events:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(w.label)+'</div>':'';
+    return '<div data-role="swatch" style="position:absolute;inset:6px;border-radius:12px;background:'+esc(col)+';border:1px solid var(--line);box-shadow:'+(active?'0 0 0 3px var(--accent)':'none')+';cursor:pointer">'+chk+lbl+'</div>';
+  }
+  function cpLiveButton(w,el,id,d,base,txt,on){
+    if(w.varId!==id)return;var sw=$('[data-role=swatch]',el);if(!sw)return;
+    var mine=cpBtnInt(w.color);
+    var active=(parseInt(String(d.v).replace(',','.'),10)===mine);
+    sw.style.boxShadow=active?'0 0 0 3px var(--accent)':'none';
+    var ck=$('[data-role=chk]',sw);if(ck)ck.style.display=active?'block':'none';
+  }
+  function cpClickButton(w,el,e){
+    if(!w.varId)return false; // ohne Variable greift die universelle Popup/Nav-Aktion
+    setVar(w.varId,cpBtnInt(w.color));return true;
+  }
+
+  // ---------------------------------------------------------------- Variante „box" (reine Anzeige)
+  function cpRenderBox(w){return '<div style="position:absolute;inset:0;padding:8px;box-sizing:border-box;display:flex;flex-direction:column;gap:6px"><div data-role="sw" style="flex:1;border-radius:9px;border:1px solid var(--line);background:#333;min-height:20px;cursor:pointer"></div>'+(w.label?'<div style="font-size:11px;color:var(--muted);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(w.label)+'</div>':'')+'</div>';}
+  function cpLiveBox(w,el,id,d,base,txt,on){var sw=$('[data-role=sw]',el);if(sw){var n=parseInt(d.v)||0;sw.style.background='#'+('000000'+(n&0xFFFFFF).toString(16)).slice(-6);}}
+
+  // ---------------------------------------------------------------- Registry
+  defWidget('colorpick',{
+    label:'Farbwähler', paletteIcon:'wdial', size:CP_SIZE.wheel,
+    defaults:function(w){w.cmode='wheel';w.label='Farbe';w.color='#ff8800';}, // Standard = Farbkreis; w.color ist die Preset-Farbe der Tasten-Variante
+    mount:function(w){if(cpMode(w)==='cie')drawCie(w);},
     render:function(w){
-      var lbl=w.label?'<div style="font-size:11px;color:var(--muted);flex:none">'+esc(w.label)+'</div>':'';
-      var wheel='<div data-role="cwWheel" style="position:relative;flex:none;width:118px;height:118px;border-radius:50%;background:radial-gradient(circle at center,#fff,rgba(255,255,255,0) 72%),conic-gradient(from 0deg,hsl(0,100%,50%),hsl(60,100%,50%),hsl(120,100%,50%),hsl(180,100%,50%),hsl(240,100%,50%),hsl(300,100%,50%),hsl(360,100%,50%));box-shadow:inset 0 0 0 1px var(--line);cursor:crosshair;touch-action:none">'
-        +'<div data-role="cwHandle" style="position:absolute;left:50%;top:50%;width:15px;height:15px;margin:-7.5px 0 0 -7.5px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.45);background:#000;pointer-events:none"></div></div>';
-      var slider='<div style="display:flex;align-items:center;gap:8px;width:100%;flex:none">'
-        +'<div data-role="cwPrev" style="flex:none;width:26px;height:26px;border-radius:7px;border:1px solid var(--line);background:#000"></div>'
-        +'<div data-role="cwBar" style="position:relative;flex:1;height:16px;border-radius:8px;background:linear-gradient(90deg,#000,#fff);box-shadow:inset 0 0 0 1px var(--line);cursor:pointer;touch-action:none">'
-        +'<div data-role="cwBarH" style="position:absolute;top:50%;left:0%;width:15px;height:15px;margin:-7.5px 0 0 -7.5px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.45);background:#000;pointer-events:none"></div></div></div>';
-      return '<div style="height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:12px;box-sizing:border-box">'+lbl+wheel+slider+'</div>';
+      switch(cpMode(w)){
+        case 'cie':    return cpRenderCie(w);
+        case 'slider': return cpRenderSlider(w);
+        case 'button': return cpRenderButton(w);
+        case 'box':    return cpRenderBox(w);
+        default:       return cpRenderWheel(w);
+      }
     },
-    props:function(w){return '';}, // Variable + Label über den zentralen Editor
-    wire:function(w){},
+    props:function(w){
+      if(w.type!=='colorpick')return '';
+      var cm=cpMode(w);
+      var M=[['wheel','Farbkreis (HSV)'],['cie','CIE-Picker (xy)'],['slider','RGB-Slider (R/G/B)'],['button','RGB-Preset-Taste'],['box','Farbfläche (Anzeige)']];
+      var h=row('Darstellung','<select id="pCMode">'+M.map(function(o){return '<option value="'+o[0]+'"'+(cm===o[0]?' selected':'')+'>'+o[1]+'</option>';}).join('')+'</select>');
+      h+='<div class="pgh">Farbwähler-Optionen</div>';
+      if(cm==='button'){
+        var col=w.color||'#ff8800';var mine=parseInt(String(col).replace('#',''),16);if(isNaN(mine))mine=0;
+        h+=row('Farbe','<input id="pRgbCol" type="color" value="'+esc(col)+'">')
+          +'<div class="pgh">RGB-Wert: '+mine+'</div>'; // Label + Variable über den zentralen Editor
+      }else if(cm==='cie'){
+        // eigene Variablenzeilen: x -> varId, y -> varId2 (die zentrale „Variable"-Zeile ist hierfür ausgeblendet)
+        h+=row('x (Var)','<input id="pCieX" value="'+(w.varId||'')+'" placeholder="ID"> <button class="btn" id="pCieXP" style="padding:6px 8px">wählen</button>')
+          +row('y (Var)','<input id="pCieY" value="'+(w.varId2||'')+'" placeholder="ID"> <button class="btn" id="pCieYP" style="padding:6px 8px">wählen</button>');
+      }
+      // wheel/slider/box: nichts Eigenes — Variable und Label kommen aus dem zentralen Editor
+      return h;
+    },
+    wire:function(w){
+      if($('#pCMode'))$('#pCMode').onchange=function(){
+        var alt=cpMode(w),neu=this.value;
+        if(alt!==neu){
+          var sa=CP_SIZE[alt]||CP_SIZE.wheel,sn=CP_SIZE[neu]||CP_SIZE.wheel;
+          if(w.w===sa[0]&&w.h===sa[1]){w.w=sn[0];w.h=sn[1];} // Variantengroesse nur uebernehmen, solange die alte unveraendert war
+          if(alt==='cie'||neu==='cie'){ // Variablen bedeuten hier voellig Verschiedenes -> Bindung loesen statt falsch schreiben
+            if(w.varId||w.varId2){w.varId=0;w.varId2=0;if(typeof toast==='function')toast('Variablenbindung zurückgesetzt — CIE nutzt x/y (0..1), die anderen einen RGB-Integer');}
+          }else if(w.varId2){w.varId2=0;} // varId2 gehoert ausschliesslich zur CIE-Variante
+          if(neu==='button'&&!w.color)w.color='#ff8800'; // Preset-Farbe nachziehen, sonst schreibt der Klick 0 statt der angezeigten Farbe
+          // Die Tasten-Variante zeigt das Label MITTEN in der Farbfläche (Original rgbbutton hatte
+          // deshalb bewusst kein Label). Nur den unveränderten Standardtext anfassen, nie eigenen Text.
+          if(neu==='button'&&(w.label==='Farbe'||w.label==='Label'))w.label='';
+          else if(alt==='button'&&!w.label)w.label='Farbe';
+        }
+        w.cmode=neu;render();renderProps();commit(); // renderProps ist zwingend, sonst bleiben die alten Optionen stehen
+      };
+      if($('#pRgbCol'))$('#pRgbCol').oninput=function(){w.color=this.value;render();renderProps();};
+      if($('#pCieX'))$('#pCieX').oninput=function(){w.varId=parseInt(this.value)||0;render();};
+      if($('#pCieXP'))$('#pCieXP').onclick=function(){showTab('vars');_bindTarget=w.id;};
+      if($('#pCieY'))$('#pCieY').oninput=function(){w.varId2=parseInt(this.value)||0;render();};
+      if($('#pCieYP'))$('#pCieYP').onclick=function(){showTab('vars');_bindTarget2=w.id;};
+    },
     live:function(w,el,id,d,base,txt,on){
-      if(w.varId!==id)return;cwArm(w,el);if(el.__cwDrag)return;
-      var iv=parseInt(String(d.v).replace(/[^0-9-]/g,''),10);if(isNaN(iv))iv=0;iv=iv&0xFFFFFF;
-      var hsv=cwRgb2hsv((iv>>16)&255,(iv>>8)&255,iv&255),prev=el.__cwHsv;
-      if(hsv[1]===0&&prev)hsv[0]=prev[0];if(hsv[2]===0&&prev)hsv[0]=prev[0];
-      el.__cwHsv=hsv;cwPaint(el,hsv[0],hsv[1],hsv[2]);
+      switch(cpMode(w)){ // Guards bleiben je Variante getrennt (varId!==id, _rgbBusy, __cwDrag)
+        case 'cie':    cpLiveCie(w,el,id,d,base,txt,on);break;
+        case 'slider': cpLiveSlider(w,el,id,d,base,txt,on);break;
+        case 'button': cpLiveButton(w,el,id,d,base,txt,on);break;
+        case 'box':    cpLiveBox(w,el,id,d,base,txt,on);break;
+        default:       cpLiveWheel(w,el,id,d,base,txt,on);
+      }
     },
     click:function(w,el,e){
-      cwArm(w,el);
-      if(el.__cwSkip){el.__cwSkip=0;return true;}
-      var wh=e.target.closest('[data-role=cwWheel]');if(wh){var p=cwWheelHsv(w,el,wh,e);cwSet(w,el,p[0],p[1],p[2],true);return true;}
-      var bar=e.target.closest('[data-role=cwBar]');if(bar){var q=cwBarHsv(w,el,bar,e);cwSet(w,el,q[0],q[1],q[2],true);return true;}
-      return true;
+      switch(cpMode(w)){
+        case 'cie':    return cpClickCie(w,el,e);
+        case 'button': return cpClickButton(w,el,e);
+        case 'slider': return false; // Slider/Box haben keinen eigenen Klick -> Popup/Nav/Skript greift
+        case 'box':    return false;
+        default:       return cpClickWheel(w,el,e);
+      }
     }
   });
   // ===== Widget: Komponente (component) — instanziiert eine Ansicht als parametrierbare Vorlage =====
@@ -4449,21 +4823,6 @@ defWidget('devlist',{
   },
   props:function(w){
     return (w.type==='devlist'?listEditor(w,'items','Geräte: Name · Icon · ID',[{k:'label',ph:'Name'},{k:'icon',ph:'Icon'},{k:'vid',ph:'ID'}]):'');
-  }
-});
-// dial widget
-defWidget('dial',{
-  label:'Dial',
-  paletteIcon:'wdial',
-  size:[150,150],
-  defaults:function(w){
-    w.min=0;w.max=100;w.step=1;w.label='Sollwert';
-  },
-  render:function(w){
-    var dp0=_dpt(135);return '<div class="hdial"><svg viewBox="0 0 100 100"><path class="dtrack" d="'+dialTrack()+'"/><path class="dprog" data-role="dprog" d="'+dialProg(0)+'"/><circle class="dthumb" data-role="dthumb" cx="'+dp0[0]+'" cy="'+dp0[1]+'" r="5.5"/></svg><div class="dctr"><div class="dval" data-role="val">–</div><div class="dlbl">'+esc(w.label||'')+'</div></div></div>';
-  },
-  live:function(w,el,id,d,base,txt,on){
-    if(w.varId===id){var dvv=$('[data-role=val]',el);if(dvv)dvv.textContent=txt;var dmn=(w.min!=null?w.min:0),dmx=(w.max!=null?w.max:100),dnv=parseFloat(String(d.v).replace(',','.'));if(!isNaN(dnv)){var dfr=Math.max(0,Math.min(1,(dnv-dmn)/((dmx-dmn)||1))),pp=$('[data-role=dprog]',el);if(pp)pp.setAttribute('d',dialProg(dfr));var th=$('[data-role=dthumb]',el);if(th){var pt=_dpt(135+270*dfr);th.setAttribute('cx',pt[0]);th.setAttribute('cy',pt[1]);}}}
   }
 });
   // ===== Widget: Ereignis (eventctl) — Wochenplan/Timer aktiv schalten + Status =====
@@ -5007,221 +5366,6 @@ defWidget('meterlist',{
     },
     live:function(w,el,id,d,base,txt,on){_rainApply(w,el);}
   });
-  // ===== Widget: Stepper (rangebtn) — +/− schreibt Variable; Tipp = 1 Schritt, Halten = kontinuierlich =====
-  var _rbT=null;
-  function _rbStop(){if(_rbT){clearTimeout(_rbT.d);clearInterval(_rbT.i);_rbT=null;}}
-  if(!window._rbWired){window._rbWired=1;
-    document.addEventListener('pointerdown',function(e){
-      if(mode==='edit')return;
-      var b=e.target.closest?e.target.closest('[data-role=inc],[data-role=dec]'):null;if(!b)return;
-      var el=b.closest('.w');if(!el)return;var w=widget(el.dataset.id);if(!w||w.type!=='rangebtn'||!w.varId)return;
-      var inc=b.getAttribute('data-role')==='inc';
-      function step(){var lv=_lastVals[w.varId],cur=lv?parseFloat(String(lv.v).replace(',','.')):0;if(isNaN(cur))cur=0;var st=w.step||1,mn=(w.min!=null?w.min:-1e12),mx=(w.max!=null?w.max:1e12),nv=Math.max(mn,Math.min(mx,cur+(inc?st:-st)));setVar(w.varId,Math.round(nv*1000)/1000);}
-      step();_rbStop();
-      var d=setTimeout(function(){var i=setInterval(step,200);_rbT={d:null,i:i};},420);_rbT={d:d,i:null};
-      try{b.setPointerCapture(e.pointerId);}catch(_){}
-      e.preventDefault();e.stopPropagation();
-    },true);
-    document.addEventListener('pointerup',_rbStop);
-    document.addEventListener('pointercancel',_rbStop);
-  }
-  defWidget('rangebtn',{
-    label:'Stepper', paletteIcon:'wslider', size:[160,64],
-    defaults:function(w){w.step=1;w.min=0;w.max=100;w.label='Wert';},
-    render:function(w){
-      function btn(role,ic){return '<button data-role="'+role+'" style="width:34px;height:34px;border-radius:9px;border:1px solid var(--line);background:var(--surface-2);color:var(--text);cursor:pointer;flex:none;display:flex;align-items:center;justify-content:center;touch-action:none"><svg class="i" style="width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round"><use href="#ic-'+ic+'"/></svg></button>';}
-      return '<div style="height:100%;display:flex;align-items:center;gap:8px;padding:6px 10px">'+btn('dec','minus')+'<div style="flex:1;text-align:center;min-width:0"><div data-role="val" style="font-family:var(--fm);font-variant-numeric:tabular-nums;font-size:20px;font-weight:600;line-height:1">–</div>'+(w.label?'<div style="font-size:11px;color:var(--muted);margin-top:2px">'+esc(w.label)+'</div>':'')+'</div>'+btn('inc','plus')+'</div>';},
-    props:function(w){return row('Schritt','<input id="pRbStep" type="number" step="0.1" value="'+(w.step||1)+'">')
-      +row('Min/Max','<input id="pRbMin" type="number" style="width:60px" value="'+(w.min!=null?w.min:0)+'"> <input id="pRbMax" type="number" style="width:60px" value="'+(w.max!=null?w.max:100)+'">');},
-    wire:function(w){
-      if($('#pRbStep'))$('#pRbStep').oninput=function(){w.step=parseFloat(this.value)||1;};
-      if($('#pRbMin'))$('#pRbMin').oninput=function(){var v=parseFloat(this.value);w.min=isNaN(v)?undefined:v;};
-      if($('#pRbMax'))$('#pRbMax').oninput=function(){var v=parseFloat(this.value);w.max=isNaN(v)?undefined:v;};
-    },
-    live:function(w,el,id,d,base,txt,on){var v=$('[data-role=val]',el);if(v)v.textContent=txt;}
-  });
-  // ===== Widget: RangeSlider — horizontaler Regler mit ZWEI Griffen (unterer/oberer Wert) =====
-  // varId = unterer Wert (lo), varId2 = oberer Wert (hi). Eigene Skala: rsMin/rsMax/rsStep.
-  function _rsMin(w){return (w&&w.rsMin!=null)?w.rsMin:0;}
-  function _rsMax(w){return (w&&w.rsMax!=null)?w.rsMax:100;}
-  function _rsStep(w){var s=(w&&w.rsStep!=null)?w.rsStep:1;return (s>0)?s:1;}
-  function _rsClamp(v,a,b){return v<a?a:(v>b?b:v);}
-  function _rsFmt(v){return String(Math.round(v*1000)/1000);}
-  function _rsFrac(w,val){var mn=_rsMin(w),mx=_rsMax(w),sp=(mx-mn)||1;return _rsClamp((val-mn)/sp,0,1);}
-  function _rsVal(w,frac){var mn=_rsMin(w),mx=_rsMax(w),st=_rsStep(w);var v=mn+_rsClamp(frac,0,1)*(mx-mn);v=Math.round(v/st)*st;v=_rsClamp(v,mn,mx);return Math.round(v*1000)/1000;}
-  function _rsCur(w,id,fb){if(!id)return fb;var lv=_lastVals[id];if(!lv)return fb;var n=parseFloat(String(lv.v).replace(',','.'));return isNaN(n)?fb:n;}
-  function _rsApply(w,el,loO,hiO){
-    var mn=_rsMin(w),mx=_rsMax(w);
-    var loV=(loO!=null)?loO:_rsCur(w,w.varId,mn);
-    var hiV=(hiO!=null)?hiO:_rsCur(w,w.varId2,mx);
-    loV=_rsClamp(loV,mn,mx);hiV=_rsClamp(hiV,mn,mx);
-    var lf=_rsFrac(w,loV)*100,hf=_rsFrac(w,hiV)*100;
-    var tl=$('[data-role=lo]',el);if(tl)tl.style.left=lf+'%';
-    var th=$('[data-role=hi]',el);if(th)th.style.left=hf+'%';
-    var fl=$('[data-role=fill]',el);if(fl){var a=Math.min(lf,hf),b=Math.max(lf,hf);fl.style.left=a+'%';fl.style.right=(100-b)+'%';}
-    var vl=$('[data-role=vlo]',el);if(vl)vl.textContent=_rsFmt(loV);
-    var vh=$('[data-role=vhi]',el);if(vh)vh.textContent=_rsFmt(hiV);
-  }
-
-  // Pointer-Interaktion (einmalig, dokumentweit; nur in Run/Preview)
-  var _rsDrag=null;
-  if(!window._rsWired){window._rsWired=1;
-    document.addEventListener('pointerdown',function(e){
-      if(mode==='edit')return;
-      var th=e.target.closest?e.target.closest('[data-rs-thumb]'):null;if(!th)return;
-      var el=th.closest('.w');if(!el)return;var w=widget(el.dataset.id);if(!w||w.type!=='rangeslider')return;
-      _rsDrag={w:w,el:el,role:th.getAttribute('data-role'),rail:th.parentNode,last:0,pid:null,pval:null};
-      try{th.setPointerCapture(e.pointerId);}catch(_){}
-      e.preventDefault();e.stopPropagation();
-    },true);
-    document.addEventListener('pointermove',function(e){
-      if(!_rsDrag)return;var d=_rsDrag,w=d.w;
-      var rect=d.rail.getBoundingClientRect();if(!rect.width)return;
-      var val=_rsVal(w,(e.clientX-rect.left)/rect.width),mn=_rsMin(w),mx=_rsMax(w);
-      if(d.role==='lo'){var hv=_rsCur(w,w.varId2,mx);if(val>hv)val=hv;d.pid=w.varId;d.pval=val;_rsApply(w,d.el,val,null);}
-      else{var lv=_rsCur(w,w.varId,mn);if(val<lv)val=lv;d.pid=w.varId2;d.pval=val;_rsApply(w,d.el,null,val);}
-      var now=Date.now();if(d.pid&&now-d.last>=110){d.last=now;setVar(d.pid,d.pval);}
-      e.preventDefault();
-    });
-    function _rsEnd(){if(!_rsDrag)return;var d=_rsDrag;_rsDrag=null;if(d.pid&&d.pval!=null)setVar(d.pid,d.pval);}
-    document.addEventListener('pointerup',_rsEnd);
-    document.addEventListener('pointercancel',_rsEnd);
-  }
-
-  defWidget('rangeslider',{
-    label:'RangeSlider', paletteIcon:'wslider', size:[240,72],
-    defaults:function(w){w.rsMin=0;w.rsMax=100;w.rsStep=1;w.label='Bereich';},
-    render:function(w){
-      var mn=_rsMin(w),mx=_rsMax(w);
-      var loV=_rsClamp(_rsCur(w,w.varId,mn),mn,mx),hiV=_rsClamp(_rsCur(w,w.varId2,mx),mn,mx);
-      var lf=_rsFrac(w,loV)*100,hf=_rsFrac(w,hiV)*100,a=Math.min(lf,hf),b=Math.max(lf,hf);
-      var lbl=w.label?'<span style="color:var(--muted);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0">'+esc(w.label)+'</span>':'<span></span>';
-      var head='<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px">'+lbl+'<span style="font-family:var(--fm);font-variant-numeric:tabular-nums;font-size:13px;color:var(--text);white-space:nowrap"><b data-role="vlo">'+_rsFmt(loV)+'</b><span style="color:var(--muted)"> – </span><b data-role="vhi">'+_rsFmt(hiV)+'</b></span></div>';
-      function thumb(role,left){return '<div data-role="'+role+'" data-rs-thumb="1" style="position:absolute;top:50%;left:'+left+'%;width:22px;height:22px;transform:translate(-50%,-50%);border-radius:50%;background:var(--surface);border:2px solid var(--accent);box-shadow:0 1px 3px rgba(0,0,0,.25);cursor:grab;touch-action:none;z-index:2"></div>';}
-      var rail='<div data-role="rail" style="position:absolute;left:11px;right:11px;top:50%;transform:translateY(-50%);height:5px;border-radius:3px;background:var(--surface-2)">'
-        +'<div data-role="fill" style="position:absolute;top:0;bottom:0;left:'+a+'%;right:'+(100-b)+'%;background:var(--accent);border-radius:3px"></div>'
-        +thumb('lo',lf)+thumb('hi',hf)+'</div>';
-      return '<div style="position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;padding:8px 12px;box-sizing:border-box">'+head
-        +'<div style="position:relative;height:22px">'+rail+'</div></div>';
-    },
-    props:function(w){
-      return row('Unten (Var)','<input id="pRsVar" value="'+(w.varId||'')+'" placeholder="ID"> <button class="btn" id="pRsPick" style="padding:6px 8px">wählen</button>')
-        +row('Oben (Var)','<input id="pRsVar2" value="'+(w.varId2||'')+'" placeholder="ID"> <button class="btn" id="pRsPick2" style="padding:6px 8px">wählen</button>')
-        +row('Beschriftung','<input id="pRsLbl" value="'+esc(w.label||'')+'" placeholder="z. B. Bereich">')
-        +row('Min/Max','<input id="pRsMin" type="number" style="width:60px" value="'+_rsMin(w)+'"> <input id="pRsMax" type="number" style="width:60px" value="'+_rsMax(w)+'">')
-        +row('Schritt','<input id="pRsStep" type="number" step="0.1" value="'+_rsStep(w)+'">');
-    },
-    wire:function(w){
-      if($('#pRsVar'))$('#pRsVar').oninput=function(){w.varId=parseInt(this.value)||0;render();};
-      if($('#pRsPick'))$('#pRsPick').onclick=function(){showTab('vars');_bindTarget=w.id;};
-      if($('#pRsVar2'))$('#pRsVar2').oninput=function(){w.varId2=parseInt(this.value)||0;render();};
-      if($('#pRsPick2'))$('#pRsPick2').onclick=function(){showTab('vars');_bindTarget2=w.id;};
-      if($('#pRsLbl'))$('#pRsLbl').oninput=function(){w.label=this.value||'';render();};
-      if($('#pRsMin'))$('#pRsMin').oninput=function(){var v=parseFloat(this.value);w.rsMin=isNaN(v)?0:v;render();};
-      if($('#pRsMax'))$('#pRsMax').oninput=function(){var v=parseFloat(this.value);w.rsMax=isNaN(v)?100:v;render();};
-      if($('#pRsStep'))$('#pRsStep').oninput=function(){var v=parseFloat(this.value);w.rsStep=(isNaN(v)||v<=0)?1:v;render();};
-    },
-    live:function(w,el,id,d,base,txt,on){
-      if(_rsDrag&&_rsDrag.el===el)return; // nicht während des Ziehens überschreiben
-      if(id!==w.varId&&id!==w.varId2)return;
-      _rsApply(w,el);
-    }
-  });
-  // ===== Widget: RGB-Box (rgbbox) — Live-Farbfläche einer RGB-Integer-Variable, öffnet optional Popup =====
-  defWidget('rgbbox',{
-    label:'RGB-Box', paletteIcon:'wshape', size:[120,120],
-    render:function(w){return '<div style="position:absolute;inset:0;padding:8px;box-sizing:border-box;display:flex;flex-direction:column;gap:6px"><div data-role="sw" style="flex:1;border-radius:9px;border:1px solid var(--line);background:#333;min-height:20px;cursor:pointer"></div>'+(w.label?'<div style="font-size:11px;color:var(--muted);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(w.label)+'</div>':'')+'</div>';},
-    props:function(w){return '';}, // Variable zentral, Popup über die Interaktions-Sektion
-    wire:function(w){},
-    live:function(w,el,id,d,base,txt,on){var sw=$('[data-role=sw]',el);if(sw){var n=parseInt(d.v)||0;sw.style.background='#'+('000000'+(n&0xFFFFFF).toString(16)).slice(-6);}}
-  });
-  // ===== Widget: RGB-Button (rgbbutton) — Farb-Preset-Taste, schreibt RGB-Integer in Variable =====
-  defWidget('rgbbutton',{
-    label:'RGB-Button', paletteIcon:'bulb', size:[80,80],
-    defaults:function(w){w.color='#ff8800';w.label='';},
-    render:function(w){
-      var col=w.color||'#ff8800';
-      var mine=parseInt(String(col).replace('#',''),16);if(isNaN(mine))mine=0;
-      var cur=w.varId&&_lastVals[w.varId];
-      var active=!!(cur&&parseInt(String(cur.v).replace(',','.'),10)===mine);
-      var chk='<svg data-role="chk" class="i" style="display:'+(active?'block':'none')+';position:absolute;top:5px;right:5px;width:16px;height:16px;fill:none;stroke:#fff;stroke-width:3;stroke-linecap:round;stroke-linejoin:round;filter:drop-shadow(0 0 2px rgba(0,0,0,.65))"><use href="#ic-check"/></svg>';
-      var lbl=w.label?'<div style="position:absolute;left:4px;right:4px;bottom:5px;text-align:center;font-size:11px;line-height:1.1;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.7);pointer-events:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(w.label)+'</div>':'';
-      return '<div data-role="swatch" style="position:absolute;inset:6px;border-radius:12px;background:'+esc(col)+';border:1px solid var(--line);box-shadow:'+(active?'0 0 0 3px var(--accent)':'none')+';cursor:pointer">'+chk+lbl+'</div>';
-    },
-    props:function(w){
-      var col=w.color||'#ff8800';var mine=parseInt(String(col).replace('#',''),16);if(isNaN(mine))mine=0;
-      return row('Farbe','<input id="pRgbCol" type="color" value="'+esc(col)+'">')
-        +'<div class="pgh">RGB-Wert: '+mine+'</div>'; // Label + Variable über den zentralen Editor
-    },
-    wire:function(w){
-      if($('#pRgbCol'))$('#pRgbCol').oninput=function(){w.color=this.value;render();renderProps();};
-    },
-    live:function(w,el,id,d,base,txt,on){
-      if(w.varId!==id)return;var sw=$('[data-role=swatch]',el);if(!sw)return;
-      var mine=parseInt(String(w.color||'#000000').replace('#',''),16);if(isNaN(mine))mine=0;
-      var active=(parseInt(String(d.v).replace(',','.'),10)===mine);
-      sw.style.boxShadow=active?'0 0 0 3px var(--accent)':'none';
-      var ck=$('[data-role=chk]',sw);if(ck)ck.style.display=active?'block':'none';
-    },
-    click:function(w,el,e){
-      if(!w.varId)return false;
-      var mine=parseInt(String(w.color||'#000000').replace('#',''),16);if(isNaN(mine))mine=0;
-      setVar(w.varId,mine);return true;
-    }
-  });
-  // ===== Widget: RGB-Slider — drei Kanaele R/G/B (0-255) auf EINE RGB-Integer-Variable =====
-  // Liest/schreibt w.varId als 24-Bit-Integer (R<<16 | G<<8 | B). Track-Fuellung je Kanal in Kanalfarbe.
-  function _rgbEls(el){return {r:$('[data-ch=r]',el),g:$('[data-ch=g]',el),b:$('[data-ch=b]',el)};}
-  function _rgbClamp(n){n=n|0;return n<0?0:(n>255?255:n);}
-  function _rgbHex(r,g,b){return '#'+[r,g,b].map(function(n){return ('0'+(_rgbClamp(n)).toString(16)).slice(-2);}).join('').toUpperCase();}
-  function _rgbFill(inp){if(!inp)return;var col=inp.getAttribute('data-col'),p=Math.max(0,Math.min(100,(+inp.value)/255*100));
-    inp.style.background='linear-gradient(90deg,'+col+' 0%,'+col+' '+p+'%,var(--surface-2) '+p+'%,var(--surface-2) 100%)';}
-  function _rgbPaint(el){ // Sliderwerte in Fuellung/Zahl/Swatch/Hex spiegeln
-    var e=_rgbEls(el);if(!e.r||!e.g||!e.b)return;
-    var r=_rgbClamp(+e.r.value),g=_rgbClamp(+e.g.value),b=_rgbClamp(+e.b.value);
-    _rgbFill(e.r);_rgbFill(e.g);_rgbFill(e.b);
-    var nr=$('[data-num=r]',el),ng=$('[data-num=g]',el),nb=$('[data-num=b]',el);
-    if(nr)nr.textContent=r;if(ng)ng.textContent=g;if(nb)nb.textContent=b;
-    var sw=$('[data-role=sw]',el);if(sw)sw.style.background='rgb('+r+','+g+','+b+')';
-    var hx=$('[data-role=hex]',el);if(hx)hx.textContent=_rgbHex(r,g,b);
-  }
-  function _rgbInput(inp){ // Inline oninput je Slider — baut Integer neu und schreibt
-    var el=inp.closest('.w');if(!el)return;el._rgbBusy=Date.now();_rgbPaint(el);
-    if(typeof mode!=='undefined'&&mode==='edit')return; // im Editor nicht schreiben
-    var w=widget(el.dataset.id);if(!w||!w.varId)return;
-    var e=_rgbEls(el),v=((_rgbClamp(+e.r.value)<<16)|(_rgbClamp(+e.g.value)<<8)|_rgbClamp(+e.b.value))>>>0;
-    setVar(w.varId,v); // throttle nicht noetig
-  }
-  defWidget('rgbslider',{
-    label:'RGB-Slider', paletteIcon:'wslider', size:[220,120],
-    defaults:function(w){w.label='Farbe';},
-    render:function(w){
-      var chs=[['r','R','#f2685a'],['g','G','#39d08a'],['b','B','#5ab6ff']];
-      var rows=chs.map(function(c){
-        return '<div style="display:flex;align-items:center;gap:8px">'
-          +'<span style="width:12px;text-align:center;font-size:12px;font-weight:700;color:'+c[2]+';flex:none">'+c[1]+'</span>'
-          +'<input class="hsrange" type="range" data-role="ch" data-ch="'+c[0]+'" data-col="'+c[2]+'" min="0" max="255" step="1" value="0" oninput="_rgbInput(this)" style="flex:1;min-width:0;background:linear-gradient(90deg,'+c[2]+' 0%,'+c[2]+' 0%,var(--surface-2) 0%,var(--surface-2) 100%)">'
-          +'<span data-num="'+c[0]+'" style="width:30px;text-align:right;font-family:var(--fm);font-size:12px;color:var(--muted);flex:none">0</span>'
-        +'</div>';
-      }).join('');
-      return '<div style="height:100%;display:flex;flex-direction:column;justify-content:center;gap:7px;padding:10px 12px;box-sizing:border-box">'
-        +'<div style="display:flex;align-items:center;gap:8px">'
-          +'<span data-role="sw" style="width:22px;height:22px;border-radius:6px;border:1px solid var(--line);background:#000;flex:none"></span>'
-          +(w.label?'<span style="font-size:12px;color:var(--muted);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(w.label)+'</span>':'<span style="flex:1"></span>')
-          +'<span data-role="hex" style="font-family:var(--fm);font-size:11px;color:var(--muted);flex:none">#000000</span>'
-        +'</div>'+rows+'</div>';
-    },
-    live:function(w,el,id,d,base,txt,on){
-      if(w.varId!==id)return;
-      var n=parseInt(String(d.v).replace(',','.'),10);if(isNaN(n))n=0;
-      var r=(n>>16)&255,g=(n>>8)&255,b=n&255;
-      var busy=el._rgbBusy&&(Date.now()-el._rgbBusy<900);
-      var a=document.activeElement,inside=!!(a&&a.getAttribute&&a.getAttribute('data-role')==='ch'&&el.contains(a));
-      if(busy||inside)return; // waehrend Bedienung Slider/Swatch nicht ueberschreiben
-      var e=_rgbEls(el);if(e.r)e.r.value=r;if(e.g)e.g.value=g;if(e.b)e.b.value=b;
-      _rgbPaint(el);
-    }
-  });
   // ===== Widget: Raum (Room) — Metrik-Kachel mit Icon, Name und bis zu 3 Werten =====
   defWidget('room',{
     label:'Raum', paletteIcon:'home', size:[200,110],
@@ -5288,40 +5432,258 @@ defWidget('meterlist',{
     defaults:function(w){w.label='Ansicht';},
     render:function(w){var _sn=Object.keys(allSkins()),_th=(store.theme||'dark');return '<div class="hskw"><select data-role="skwsel">'+_sn.map(function(n){return '<option'+(n===(store.skin||'Standard')?' selected':'')+'>'+esc(n)+'</option>';}).join('')+'</select><button class="hskwb'+(_th==='light'?' on':'')+'" data-skw="light" title="Hell">'+iconSVG('sun')+'</button><button class="hskwb'+(_th==='dark'?' on':'')+'" data-skw="dark" title="Dunkel">'+iconSVG('moon')+'</button></div>';}
   });
-  // ===== Widget: Slider — horizontaler Wert-Regler =====
-  defWidget('slider',{
-    label:'Slider', paletteIcon:'wslider', size:[220,74],
-    render:function(w){return '<div class="hslider"><div class="hsrow"><span class="hsname">'+esc(w.label||'')+'</span><span class="hsval" data-role="val">–</span></div><input class="hsrange" type="range" data-role="range" min="'+(w.min!=null?w.min:0)+'" max="'+(w.max!=null?w.max:100)+'" step="'+(w.step||1)+'" value="0"'+(w.mirror?' style="transform:scaleX(-1)"':'')+'></div>';},
-    props:function(w){return row('Spiegeln','<input type="checkbox" id="pSMirror"'+(w.mirror?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">Skala umkehren</span>');},
-    wire:function(w){if($('#pSMirror'))$('#pSMirror').onchange=function(){w.mirror=this.checked||undefined;render();};},
-    live:function(w,el,id,d,base,txt,on){var sv=$('[data-role=val]',el);if(sv)sv.textContent=txt;var r=$('[data-role=range]',el);if(r&&document.activeElement!==r)r.value=parseFloat(d.v);}
-  });
-  // ===== Widget: Sparkline (spark) — kompakte Verlaufskurve =====
-  // Eigene setSpark-Variante (überschreibt die aus 03-render-charts.js): honoriert Linienfarbe (Skin-Keyword)
-  // und Füllung an/aus. Alle Render-Pfade laufen über renderChartData -> setSpark, daher greift dies überall.
-  function setSpark(w){
-    var ec=_ec[w.id];if(!ec)return;
-    var _lc=w.lineColor?_skinColor(w.lineColor):'',_m=_lc&&_lc.match(/^var\((--[\w-]+)\)$/),acc=_m?cssv(_m[1]):(_lc||cssv('--accent'));
-    var s0=chartSeries(w)[0]||{data:[]};var data=s0.data;
-    var ser={type:'line',showSymbol:false,smooth:true,lineStyle:{color:acc,width:1.8},
-      data:data,markPoint:{silent:true,symbol:'circle',symbolSize:5,itemStyle:{color:acc},label:{show:false},data:data.length?[{coord:data[data.length-1]}]:[]}};
-    if(w.fill!==false)ser.areaStyle={color:accA(.16,acc)};
-    ec.setOption({backgroundColor:'transparent',animation:!!bcfg().chartAnim,grid:{left:2,right:2,top:6,bottom:4},
-      tooltip:{trigger:'axis',confine:true},
-      xAxis:{type:'time',show:false},yAxis:{type:'value',scale:true,show:false},
-      series:[ser]},true);
+  // ===== Widget-Familie: Regler (slider) =====
+  // Varianten über w.rmode (Vorbild: chart.js/w.ctype, colorpick.js/w.cmode):
+  //   'slider'  Schieberegler (horizontal)            — ein Wert, <input type=range>
+  //   'range'   Bereichsregler (zwei Griffe, linear)  — varId = unten, varId2 = oben
+  //   'circle'  Bereichsregler rund (zwei Griffe)     — varId = unten, varId2 = oben
+  //   'stepper' Stepper (+/− Tasten)                  — Schritt = Inkrement je Tastendruck
+  //   'dial'    Dial (runder Sollwert-Regler)         — Tippen setzt den Wert
+  // Gemeinsame Eigenschaften: w.varId, w.label, w.min, w.max, w.step (zentrale Zeilen pVar/pLabel/pMin/pMax/pStep).
+  // Alte Eigenschaftsnamen rsMin/rsMax/rsStep (Bereichsregler) und crMin/crMax/crStep (rund) werden gelesen
+  // und beim ersten Zeichnen auf min/max/step umgezogen (_rgMig).
+  var RG_SIZE={slider:[220,74],range:[240,72],circle:[150,150],stepper:[160,64],dial:[150,150]};
+  var RG_LBL ={slider:'Label',range:'Bereich',circle:'Label',stepper:'Wert',dial:'Sollwert'}; // Default-Beschriftung je Variante
+  // Variante auflösen — Alt-Typen bleiben gültig (Alias-Registrierung erfolgt später)
+  function _rMode(w){return (w&&w.rmode)||{slider:'slider',rangeslider:'range',circlerange:'circle',rangebtn:'stepper',dial:'dial'}[(w&&w.type)||'']||'slider';}
+
+  // ---------------------------------------------------------------- gemeinsame Helfer
+  function _rgMig(w){ // einmalige, stille Übernahme der alten Eigenschaftsnamen auf min/max/step
+    if(!w)return w;
+    if(w.min==null&&w.rsMin!=null)w.min=w.rsMin;
+    if(w.max==null&&w.rsMax!=null)w.max=w.rsMax;
+    if(w.step==null&&w.rsStep!=null)w.step=w.rsStep;
+    if(w.min==null&&w.crMin!=null)w.min=w.crMin;
+    if(w.max==null&&w.crMax!=null)w.max=w.crMax;
+    if(w.step==null&&w.crStep!=null)w.step=w.crStep;
+    return w;
   }
-  defWidget('spark',{
-    label:'Sparkline', paletteIcon:'wchart', size:[150,50],
-    render:function(w){return '<div data-role="chart"></div>';},
-    props:function(w){if(w.type!=='spark')return '';
-      return row('Linienfarbe',selOf('pSpLine',w.lineColor,['accent','ok','warn','crit','info']))
-        +row('Füllung','<input type="checkbox" id="pSpFill"'+((w.fill!==false)?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">Fläche unter der Linie</span>');},
-    wire:function(w){
-      if($('#pSpLine'))$('#pSpLine').onchange=function(){w.lineColor=this.value||undefined;render();commit();};
-      if($('#pSpFill'))$('#pSpFill').onchange=function(){w.fill=this.checked?undefined:false;render();commit();};
+  function _rgMin(w){return (w&&w.min!=null)?w.min:((w&&w.rsMin!=null)?w.rsMin:((w&&w.crMin!=null)?w.crMin:0));}
+  function _rgMax(w){return (w&&w.max!=null)?w.max:((w&&w.rsMax!=null)?w.rsMax:((w&&w.crMax!=null)?w.crMax:100));}
+  function _rgStep(w){var s=(w&&w.step!=null)?w.step:((w&&w.rsStep!=null)?w.rsStep:((w&&w.crStep!=null)?w.crStep:1));return (s>0)?s:1;}
+  function _rgClamp(v,a,b){return v<a?a:(v>b?b:v);}
+  function _rgCur(w,id,fb){if(!id)return fb;var lv=_lastVals[id];if(!lv)return fb;var n=parseFloat(String(lv.v).replace(',','.'));return isNaN(n)?fb:n;}
+
+  // ---------------------------------------------------------------- Variante „slider" (Schieberegler)
+  function _rgRenderSlider(w){
+    return '<div class="hslider"><div class="hsrow"><span class="hsname">'+esc(w.label||'')+'</span><span class="hsval" data-role="val">–</span></div><input class="hsrange" type="range" data-role="range" min="'+(w.min!=null?w.min:0)+'" max="'+(w.max!=null?w.max:100)+'" step="'+(w.step||1)+'" value="0"'+(w.mirror?' style="transform:scaleX(-1)"':'')+'></div>';
+  }
+
+  // ---------------------------------------------------------------- Variante „range" (zwei Griffe, linear)
+  // eigene Zahl-Darstellung (3 Nachkommastellen), bewusst ohne dec/fmt/pre/suf
+  function _rgFmt(v){return String(Math.round(v*1000)/1000);}
+  function _rgFrac(w,val){var mn=_rgMin(w),mx=_rgMax(w),sp=(mx-mn)||1;return _rgClamp((val-mn)/sp,0,1);}
+  function _rgVal(w,frac){var mn=_rgMin(w),mx=_rgMax(w),st=_rgStep(w);var v=mn+_rgClamp(frac,0,1)*(mx-mn);v=Math.round(v/st)*st;v=_rgClamp(v,mn,mx);return Math.round(v*1000)/1000;}
+  function _rgApplyRange(w,el,loO,hiO){
+    var mn=_rgMin(w),mx=_rgMax(w);
+    var loV=(loO!=null)?loO:_rgCur(w,w.varId,mn);
+    var hiV=(hiO!=null)?hiO:_rgCur(w,w.varId2,mx);
+    loV=_rgClamp(loV,mn,mx);hiV=_rgClamp(hiV,mn,mx);
+    var lf=_rgFrac(w,loV)*100,hf=_rgFrac(w,hiV)*100;
+    var tl=$('[data-role=lo]',el);if(tl)tl.style.left=lf+'%';
+    var th=$('[data-role=hi]',el);if(th)th.style.left=hf+'%';
+    var fl=$('[data-role=fill]',el);if(fl){var a=Math.min(lf,hf),b=Math.max(lf,hf);fl.style.left=a+'%';fl.style.right=(100-b)+'%';}
+    var vl=$('[data-role=vlo]',el);if(vl)vl.textContent=_rgFmt(loV);
+    var vh=$('[data-role=vhi]',el);if(vh)vh.textContent=_rgFmt(hiV);
+  }
+  function _rgRenderRange(w){
+    var mn=_rgMin(w),mx=_rgMax(w);
+    var loV=_rgClamp(_rgCur(w,w.varId,mn),mn,mx),hiV=_rgClamp(_rgCur(w,w.varId2,mx),mn,mx);
+    var lf=_rgFrac(w,loV)*100,hf=_rgFrac(w,hiV)*100,a=Math.min(lf,hf),b=Math.max(lf,hf);
+    var lbl=w.label?'<span style="color:var(--muted);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0">'+esc(w.label)+'</span>':'<span></span>';
+    var head='<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px">'+lbl+'<span style="font-family:var(--fm);font-variant-numeric:tabular-nums;font-size:13px;color:var(--text);white-space:nowrap"><b data-role="vlo">'+_rgFmt(loV)+'</b><span style="color:var(--muted)"> – </span><b data-role="vhi">'+_rgFmt(hiV)+'</b></span></div>';
+    function thumb(role,left){return '<div data-role="'+role+'" data-rs-thumb="1" style="position:absolute;top:50%;left:'+left+'%;width:22px;height:22px;transform:translate(-50%,-50%);border-radius:50%;background:var(--surface);border:2px solid var(--accent);box-shadow:0 1px 3px rgba(0,0,0,.25);cursor:grab;touch-action:none;z-index:2"></div>';}
+    var rail='<div data-role="rail" style="position:absolute;left:11px;right:11px;top:50%;transform:translateY(-50%);height:5px;border-radius:3px;background:var(--surface-2)">'
+      +'<div data-role="fill" style="position:absolute;top:0;bottom:0;left:'+a+'%;right:'+(100-b)+'%;background:var(--accent);border-radius:3px"></div>'
+      +thumb('lo',lf)+thumb('hi',hf)+'</div>';
+    return '<div style="position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;padding:8px 12px;box-sizing:border-box">'+head
+      +'<div style="position:relative;height:22px">'+rail+'</div></div>';
+  }
+
+  // ---------------------------------------------------------------- Variante „circle" (zwei Griffe, rund)
+  // 270°-Bogen von 135° bis 405°, Radius 40 im viewBox 0 0 100 100, Mittelpunkt 50/50
+  function _rgAng(w,val){var mn=_rgMin(w),mx=_rgMax(w),f=Math.max(0,Math.min(1,(val-mn)/((mx-mn)||1)));return 135+270*f;}
+  function _rgValAt(w,ang){var rel=ang-135;while(rel<0)rel+=360;while(rel>=360)rel-=360;if(rel>270)rel=(rel>315?0:270);var mn=_rgMin(w),mx=_rgMax(w),st=_rgStep(w),v=mn+(rel/270)*(mx-mn);v=Math.round(v/st)*st;return Math.max(mn,Math.min(mx,Math.round(v*1000)/1000));}
+  function _rgPt(ang,r){var a=ang*Math.PI/180;return [(50+r*Math.cos(a)),(50+r*Math.sin(a))];}
+  function _rgArc(a0,a1,r){var p0=_rgPt(a0,r),p1=_rgPt(a1,r),large=((a1-a0)>180)?1:0;return 'M'+p0[0].toFixed(1)+' '+p0[1].toFixed(1)+' A'+r+' '+r+' 0 '+large+' 1 '+p1[0].toFixed(1)+' '+p1[1].toFixed(1);}
+  function _rgApplyCircle(w,el,loO,hiO){
+    var mn=_rgMin(w); // rund: fehlender Wert fällt IMMER auf Minimum (anders als linear, dort oben -> Maximum)
+    var loV=(loO!=null)?loO:_rgCur(w,w.varId,mn),hiV=(hiO!=null)?hiO:_rgCur(w,w.varId2,mn);
+    var la=_rgAng(w,loV),ha=_rgAng(w,hiV),lp=_rgPt(la,40),hp=_rgPt(ha,40);
+    var seg=el.querySelector('[data-role=crseg]');if(seg)seg.setAttribute('d',_rgArc(Math.min(la,ha),Math.max(la,ha),40));
+    var lt=el.querySelector('[data-role=lo]');if(lt){lt.setAttribute('cx',lp[0].toFixed(1));lt.setAttribute('cy',lp[1].toFixed(1));}
+    var ht=el.querySelector('[data-role=hi]');if(ht){ht.setAttribute('cx',hp[0].toFixed(1));ht.setAttribute('cy',hp[1].toFixed(1));}
+    var vt=el.querySelector('[data-role=crval]');if(vt)vt.textContent=(Math.round(loV*10)/10)+' – '+(Math.round(hiV*10)/10);
+  }
+  function _rgRenderCircle(w){
+    var mn=_rgMin(w);
+    var loV=_rgCur(w,w.varId,mn),hiV=_rgCur(w,w.varId2,mn),la=_rgAng(w,loV),ha=_rgAng(w,hiV),lp=_rgPt(la,40),hp=_rgPt(ha,40);
+    return '<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center">'
+      +'<svg viewBox="0 0 100 100" style="width:100%;height:100%">'
+      +'<path d="'+_rgArc(135,405,40)+'" fill="none" stroke="var(--surface-2)" stroke-width="7" stroke-linecap="round"/>'
+      +'<path data-role="crseg" d="'+_rgArc(Math.min(la,ha),Math.max(la,ha),40)+'" fill="none" stroke="var(--accent)" stroke-width="7" stroke-linecap="round"/>'
+      +'<circle data-role="lo" data-cr-thumb="1" cx="'+lp[0].toFixed(1)+'" cy="'+lp[1].toFixed(1)+'" r="6" fill="var(--surface)" stroke="var(--accent)" stroke-width="2.5" style="cursor:grab;touch-action:none"/>'
+      +'<circle data-role="hi" data-cr-thumb="1" cx="'+hp[0].toFixed(1)+'" cy="'+hp[1].toFixed(1)+'" r="6" fill="var(--surface)" stroke="var(--accent)" stroke-width="2.5" style="cursor:grab;touch-action:none"/>'
+      +'<text data-role="crval" x="50" y="53" text-anchor="middle" fill="var(--text)" font-size="10" font-family="var(--fm)">'+(Math.round(loV*10)/10)+' – '+(Math.round(hiV*10)/10)+'</text>'
+      +(w.label?'<text x="50" y="66" text-anchor="middle" fill="var(--muted)" font-size="7">'+esc(w.label)+'</text>':'')
+      +'</svg></div>';
+  }
+
+  // ---------------------------------------------------------------- Variante „stepper" (+/− Tasten)
+  function _rgRenderStepper(w){
+    function btn(role,ic){return '<button data-role="'+role+'" style="width:34px;height:34px;border-radius:9px;border:1px solid var(--line);background:var(--surface-2);color:var(--text);cursor:pointer;flex:none;display:flex;align-items:center;justify-content:center;touch-action:none"><svg class="i" style="width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round"><use href="#ic-'+ic+'"/></svg></button>';}
+    return '<div style="height:100%;display:flex;align-items:center;gap:8px;padding:6px 10px">'+btn('dec','minus')+'<div style="flex:1;text-align:center;min-width:0"><div data-role="val" style="font-family:var(--fm);font-variant-numeric:tabular-nums;font-size:20px;font-weight:600;line-height:1">–</div>'+(w.label?'<div style="font-size:11px;color:var(--muted);margin-top:2px">'+esc(w.label)+'</div>':'')+'</div>'+btn('inc','plus')+'</div>';
+  }
+
+  // ---------------------------------------------------------------- Variante „dial" (runder Sollwert-Regler)
+  // Geometrie (_dpt/dialTrack/dialProg) liegt in js/03-render-charts.js — bewusst NICHT hierher verschoben
+  function _rgRenderDial(w){
+    var dp0=_dpt(135);
+    return '<div class="hdial"><svg viewBox="0 0 100 100"><path class="dtrack" d="'+dialTrack()+'"/><path class="dprog" data-role="dprog" d="'+dialProg(0)+'"/><circle class="dthumb" data-role="dthumb" cx="'+dp0[0]+'" cy="'+dp0[1]+'" r="5.5"/></svg><div class="dctr"><div class="dval" data-role="val">–</div><div class="dlbl">'+esc(w.label||'')+'</div></div></div>';
+  }
+
+  // ---------------------------------------------------------------- Pointer-Interaktion (einmalig, dokumentweit)
+  var _rgDragR=null,_rgDragC=null,_rgT=null;
+  function _rgStop(){if(_rgT){clearTimeout(_rgT.d);clearInterval(_rgT.i);_rgT=null;}} // Stepper-Wiederholung beenden
+  if(!window._rgWired){window._rgWired=1;
+    document.addEventListener('pointerdown',function(e){
+      if(mode==='edit')return;
+      var cl=function(s){return e.target.closest?e.target.closest(s):null;};
+      // 1) Bereichsregler linear — Griff greifen
+      var th=cl('[data-rs-thumb]');
+      if(th){
+        var el=th.closest('.w');if(!el)return;var w=widget(el.dataset.id);if(!w||_rMode(w)!=='range')return;
+        _rgDragR={w:w,el:el,role:th.getAttribute('data-role'),rail:th.parentNode,last:0,pid:null,pval:null};
+        try{th.setPointerCapture(e.pointerId);}catch(_){}
+        e.preventDefault();e.stopPropagation();return;
+      }
+      // 2) Bereichsregler rund — Griff greifen (bewusst OHNE setPointerCapture)
+      var ct=cl('[data-cr-thumb]');
+      if(ct){
+        var el2=ct.closest('.w');if(!el2)return;var w2=widget(el2.dataset.id);if(!w2||_rMode(w2)!=='circle')return;
+        _rgDragC={w:w2,el:el2,role:ct.getAttribute('data-role'),svg:el2.querySelector('svg'),last:0,pid:null,pval:null};
+        e.preventDefault();e.stopPropagation();return;
+      }
+      // 3) Stepper — Tipp = 1 Schritt, Halten = kontinuierlich
+      var b=cl('[data-role=inc],[data-role=dec]');
+      if(b){
+        var el3=b.closest('.w');if(!el3)return;var w3=widget(el3.dataset.id);if(!w3||_rMode(w3)!=='stepper'||!w3.varId)return;
+        var inc=b.getAttribute('data-role')==='inc';
+        var step=function(){var lv=_lastVals[w3.varId],cur=lv?parseFloat(String(lv.v).replace(',','.')):0;if(isNaN(cur))cur=0;var st=w3.step||1,mn=(w3.min!=null?w3.min:-1e12),mx=(w3.max!=null?w3.max:1e12),nv=Math.max(mn,Math.min(mx,cur+(inc?st:-st)));setVar(w3.varId,Math.round(nv*1000)/1000);};
+        step();_rgStop();
+        var dly=setTimeout(function(){var iv=setInterval(step,200);_rgT={d:null,i:iv};},420);_rgT={d:dly,i:null};
+        try{b.setPointerCapture(e.pointerId);}catch(_){}
+        e.preventDefault();e.stopPropagation();return;
+      }
+    },true);
+    document.addEventListener('pointermove',function(e){
+      if(_rgDragR){
+        var d=_rgDragR,w=d.w,rect=d.rail.getBoundingClientRect();if(!rect.width)return;
+        var val=_rgVal(w,(e.clientX-rect.left)/rect.width),mn=_rgMin(w),mx=_rgMax(w);
+        if(d.role==='lo'){var hv=_rgCur(w,w.varId2,mx);if(val>hv)val=hv;d.pid=w.varId;d.pval=val;_rgApplyRange(w,d.el,val,null);}
+        else{var lv=_rgCur(w,w.varId,mn);if(val<lv)val=lv;d.pid=w.varId2;d.pval=val;_rgApplyRange(w,d.el,null,val);}
+        var now=Date.now();if(d.pid&&now-d.last>=110){d.last=now;setVar(d.pid,d.pval);}
+        e.preventDefault();return;
+      }
+      if(_rgDragC){
+        var c=_rgDragC,cw=c.w,rb=c.svg.getBoundingClientRect(),cmn=_rgMin(cw);
+        var ang=Math.atan2(e.clientY-(rb.top+rb.height/2),e.clientX-(rb.left+rb.width/2))*180/Math.PI;if(ang<0)ang+=360;
+        var cval=_rgValAt(cw,ang),cnow=Date.now();
+        if(c.role==='lo'){var chv=_rgCur(cw,cw.varId2,cmn);if(cval>chv)cval=chv;c.pid=cw.varId;c.pval=cval;_rgApplyCircle(cw,c.el,cval,null);}
+        else{var clv=_rgCur(cw,cw.varId,cmn);if(cval<clv)cval=clv;c.pid=cw.varId2;c.pval=cval;_rgApplyCircle(cw,c.el,null,cval);}
+        if(c.pid&&cnow-c.last>=110){c.last=cnow;setVar(c.pid,c.pval);}
+        e.preventDefault();return;
+      }
+    });
+    var _rgEnd=function(){
+      if(_rgDragR){var d=_rgDragR;_rgDragR=null;if(d.pid&&d.pval!=null)setVar(d.pid,d.pval);} // letzten Wert final schreiben
+      if(_rgDragC){var c=_rgDragC;_rgDragC=null;if(c.pid&&c.pval!=null)setVar(c.pid,c.pval);} // neu auch rund (vorher ging der letzte Teilschritt verloren)
+      _rgStop();
+    };
+    document.addEventListener('pointerup',_rgEnd);
+    document.addEventListener('pointercancel',_rgEnd);
+  }
+
+  // ---------------------------------------------------------------- Registry
+  defWidget('slider',{
+    label:'Regler', paletteIcon:'wslider', size:RG_SIZE.slider,
+    noHover:true, // Klick-Hook gilt nur der Dial-Variante; die übrigen Varianten sollen keinen Ganz-Widget-Hover bekommen
+    defaults:function(w){w.rmode='slider';w.min=0;w.max=100;w.step=1;},
+    render:function(w){
+      _rgMig(w);
+      switch(_rMode(w)){
+        case 'range':   return _rgRenderRange(w);
+        case 'circle':  return _rgRenderCircle(w);
+        case 'stepper': return _rgRenderStepper(w);
+        case 'dial':    return _rgRenderDial(w);
+        default:        return _rgRenderSlider(w);
+      }
     },
-    live:function(w,el,id,d,base,txt,on){if(_ec[w.id])chartPushRefresh(w);}
+    // Dial: Tippen setzt den Wert (früher zentral in js/05-interaction.js)
+    click:function(w,el,e){
+      if(_rMode(w)!=='dial'||!w.varId)return false;
+      if(w.closePopup||w.popupTo||w.scriptId||w.openMenu||w.navBack||w.navTo||(w.regSlot&&w.regView))return false; // Reihenfolge wie bisher: Popup/Seite/Skript zuerst
+      var dsv=el.querySelector('svg');if(!dsv)return false;
+      var rb=dsv.getBoundingClientRect(),ccx=rb.left+rb.width/2,ccy=rb.top+rb.height/2,ang=Math.atan2(e.clientY-ccy,e.clientX-ccx)*180/Math.PI;if(ang<0)ang+=360;
+      var rel=ang-135;if(rel<0)rel+=360;
+      if(rel<=270){var dmn=(w.min!=null?w.min:0),dmx=(w.max!=null?w.max:100),st=w.step||1,dval=dmn+(rel/270)*(dmx-dmn);dval=Math.round(dval/st)*st;setVar(w.varId,dval);}
+      return true; // Kette abbrechen (auch in der Lücke unten)
+    },
+    props:function(w){
+      _rgMig(w);
+      var rm=_rMode(w);
+      var GRP=[['Linear',[['slider','Schieberegler (horizontal)'],['range','Bereichsregler (zwei Griffe, horizontal)'],['stepper','Stepper (+/− Tasten)']]],
+               ['Rund',  [['dial','Dial (runder Sollwert-Regler)'],['circle','Bereichsregler rund (zwei Griffe)']]]];
+      var h=row('Regler-Typ','<select id="pRMode">'+GRP.map(function(g){return '<optgroup label="'+g[0]+'">'+g[1].map(function(o){return '<option value="'+o[0]+'"'+(rm===o[0]?' selected':'')+'>'+o[1]+'</option>';}).join('')+'</optgroup>';}).join('')+'</select>');
+      h+='<div class="pgh">Regler-Optionen</div>';
+      if(rm==='range'||rm==='circle'){
+        h+=row('Oben (Var)','<input id="pRgVar2" value="'+(w.varId2||'')+'" placeholder="ID"> <button class="btn" id="pRgPick2" style="padding:6px 8px">wählen</button>')
+          +'<div class="hint" style="font-size:11px;color:var(--muted);margin:-2px 0 6px">Die Zeile „Variable" oben ist der untere Wert. Die Anzeige nutzt eine eigene Formatierung.</div>';
+      }
+      if(rm==='slider')h+=row('Spiegeln','<input type="checkbox" id="pSMirror"'+(w.mirror?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">Skala umkehren</span>');
+      if(rm==='stepper'||rm==='dial')h+=row('Nachkommastellen','<input id="pRgDec" type="number" min="0" max="6" value="'+(w.dec!=null?w.dec:'')+'" placeholder="Standard">');
+      if(rm==='stepper')h+='<div class="hint" style="font-size:11px;color:var(--muted);margin:-2px 0 6px">„Schritt" ist das Inkrement je Tastendruck, „Min/Max" sind die Klemmgrenzen.</div>';
+      if(rm==='dial')h+='<div class="hint" style="font-size:11px;color:var(--muted);margin:-2px 0 6px">Tippen setzt den Wert (kein Ziehen).</div>';
+      return h;
+    },
+    wire:function(w){
+      if($('#pRMode'))$('#pRMode').onchange=function(){
+        var alt=_rMode(w),neu=this.value;
+        if(alt!==neu){
+          var sa=RG_SIZE[alt]||RG_SIZE.slider,sn=RG_SIZE[neu]||RG_SIZE.slider;
+          if(w.w===sa[0]&&w.h===sa[1]){w.w=sn[0];w.h=sn[1];}                      // Variantengröße nur übernehmen, solange die alte unverändert war
+          if((w.label||'')===(RG_LBL[alt]||'Label'))w.label=RG_LBL[neu]||'Label'; // Nutzer-Beschriftung nie überschreiben
+          if(neu!=='range'&&neu!=='circle'&&w.varId2)w.varId2=0;                  // zweite Variable gehört nur zu den Zwei-Griff-Varianten
+        }
+        w.rmode=neu;render();renderProps();commit(); // renderProps ist zwingend, sonst bleiben die alten Optionen stehen
+      };
+      if($('#pRgVar2'))$('#pRgVar2').oninput=function(){w.varId2=parseInt(this.value)||0;render();};
+      if($('#pRgPick2'))$('#pRgPick2').onclick=function(){showTab('vars');_bindTarget2=w.id;};
+      if($('#pSMirror'))$('#pSMirror').onchange=function(){w.mirror=this.checked||undefined;render();commit();};
+      if($('#pRgDec'))$('#pRgDec').oninput=function(){w.dec=this.value===''?undefined:Math.max(0,Math.min(6,parseInt(this.value)||0));render();if(w.varId&&_lastVals[w.varId])applyVal(w.varId,_lastVals[w.varId]);commit();};
+    },
+    live:function(w,el,id,d,base,txt,on){
+      var rm=_rMode(w);
+      if(rm==='range'){
+        if(_rgDragR&&_rgDragR.el===el)return;                 // nicht während des Ziehens überschreiben
+        if(id!==w.varId&&id!==w.varId2)return;
+        _rgApplyRange(w,el);return;
+      }
+      if(rm==='circle'){
+        if(_rgDragC&&_rgDragC.el===el)return;
+        _rgApplyCircle(w,el);return;                          // ohne ID-Filter (wie bisher)
+      }
+      if(rm==='stepper'){var bv=$('[data-role=val]',el);if(bv)bv.textContent=txt;return;}
+      if(rm==='dial'){
+        if(w.varId!==id)return;
+        var dvv=$('[data-role=val]',el);if(dvv)dvv.textContent=txt;
+        var dmn=(w.min!=null?w.min:0),dmx=(w.max!=null?w.max:100),dnv=parseFloat(String(d.v).replace(',','.'));
+        if(!isNaN(dnv)){var dfr=Math.max(0,Math.min(1,(dnv-dmn)/((dmx-dmn)||1))),pp=$('[data-role=dprog]',el);if(pp)pp.setAttribute('d',dialProg(dfr));var th=$('[data-role=dthumb]',el);if(th){var pt=_dpt(135+270*dfr);th.setAttribute('cx',pt[0]);th.setAttribute('cy',pt[1]);}}
+        return;
+      }
+      var sv=$('[data-role=val]',el);if(sv)sv.textContent=txt;
+      var r=$('[data-role=range]',el);if(r&&document.activeElement!==r)r.value=parseFloat(d.v); // nicht überschreiben, solange gezogen wird
+    }
   });
   // ===== Widget: Zustands-Verlauf (statelog) — Aktivitaetsliste der Zustandswechsel (Punkt · Name · Uhrzeit) =====
   // Nutzt dieselbe Zustands-Logik wie statetl (_stlMatch/_stlColor). Variable = zentrale "Variable"-Auswahl (w.varId).
@@ -6020,61 +6382,6 @@ defWidget('statuslist',{
       _vcState(w,el); // Farbe nach Zustand (liest _lastVals; unabhängig davon, welche ID das Update auslöste)
       return true;
     }
-  });
-  // waterfall — Wasserfall-Diagramm (nicht zeitbasiert, ECharts).
-  // Schritte: Titel (x-Achse) · Variable (Symcon-ID) · Typ · Farbe.
-  // Typ: start | auf (+) | ab (−) | sub (Zwischensumme, berechnet) | sum (Summe, berechnet).
-  defWidget('waterfall',{
-    label:'Wasserfall',
-    paletteIcon:'wchart',
-    size:[360,220],
-    defaults:function(w){
-      w.label='';
-      w.steps=[
-        {title:'Start',   vid:0, type:'start', color:'info'},
-        {title:'Zunahme', vid:0, type:'auf',   color:'ok'},
-        {title:'Abnahme', vid:0, type:'ab',    color:'crit'},
-        {title:'Summe',   vid:0, type:'sum',   color:'accent'}
-      ];
-      w.labels=true;
-    },
-    render:function(w){return '<div data-role="chart" style="position:absolute;inset:0"></div>';},
-    props:function(w){
-      return listEditor(w,'steps','Schritte: Titel · Variable · Typ · Farbe',[
-          {k:'title',ph:'Titel'},
-          {k:'vid',ph:'ID'},
-          {k:'type',type:'select',def:'auf',options:[['start','Start'],['auf','Auf (+)'],['ab','Ab (−)'],['sub','Zwischensumme'],['sum','Summe']]},
-          {k:'color',type:'skincolor'}
-        ])
-        +'<div class="pgh">Optionen</div>'
-        +row('Y-Einheit','<input id="pWfUnit" value="'+esc(w.yunit||'')+'" style="width:80px" placeholder="z. B. €">')
-        +row('Datenlabels','<input type="checkbox" id="pWfLbl"'+(w.labels?' checked':'')+'>')
-        +row('Verbindungslinien','<input type="checkbox" id="pWfConn"'+(w.wfConnect!==false?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">gestrichelt, zwischen den Balken</span>')
-        +row('Balken-Rundung','<input id="pWfBr" type="number" value="'+(w.barRadius!=null?w.barRadius:3)+'">')
-        +row('Fallback Auf',skinSel(w.wfUp||'ok','id="pWfUp"'))+row('Fallback Ab',skinSel(w.wfDown||'crit','id="pWfDn"'))
-        +'<div class="pgh">Achsen & Raster</div>'
-        +row('Titel anzeigen','<input type="checkbox" id="pWfT"'+(w.showTitle?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">Label als Titel</span>')
-        +row('Y-Beschriftung','<input type="checkbox" id="pWfYL"'+(w.yLabels!==false?' checked':'')+'>')
-        +row('X-Beschriftung','<input type="checkbox" id="pWfXL"'+(w.xLabels!==false?' checked':'')+'>')
-        +row('Hilfslinien','<input type="checkbox" id="pWfYg"'+(w.ygrid!==false?' checked':'')+'>')
-        +row('Achslinien','<input type="checkbox" id="pWfAx"'+(w.axLine?' checked':'')+'>')
-        +row('Tickmarks','<input type="checkbox" id="pWfTk"'+(w.axTicks?' checked':'')+'>');
-    },
-    wire:function(w){
-      if($('#pWfUnit'))$('#pWfUnit').oninput=function(){w.yunit=this.value;if(_ec[w.id])setWaterfall(w);commit();};
-      if($('#pWfLbl'))$('#pWfLbl').onchange=function(){w.labels=this.checked;if(_ec[w.id])setWaterfall(w);commit();};
-      if($('#pWfConn'))$('#pWfConn').onchange=function(){w.wfConnect=this.checked?undefined:false;if(_ec[w.id])setWaterfall(w);commit();};
-      if($('#pWfBr'))$('#pWfBr').oninput=function(){w.barRadius=parseFloat(this.value)||0;if(_ec[w.id])setWaterfall(w);commit();};
-      if($('#pWfUp'))$('#pWfUp').oninput=function(){w.wfUp=this.value;if(_ec[w.id])setWaterfall(w);commit();};
-      if($('#pWfDn'))$('#pWfDn').oninput=function(){w.wfDown=this.value;if(_ec[w.id])setWaterfall(w);commit();};
-      if($('#pWfT'))$('#pWfT').onchange=function(){w.showTitle=this.checked||undefined;if(_ec[w.id])setWaterfall(w);commit();};
-      if($('#pWfYL'))$('#pWfYL').onchange=function(){w.yLabels=this.checked;if(_ec[w.id])setWaterfall(w);commit();};
-      if($('#pWfXL'))$('#pWfXL').onchange=function(){w.xLabels=this.checked;if(_ec[w.id])setWaterfall(w);commit();};
-      if($('#pWfYg'))$('#pWfYg').onchange=function(){w.ygrid=this.checked;if(_ec[w.id])setWaterfall(w);commit();};
-      if($('#pWfAx'))$('#pWfAx').onchange=function(){w.axLine=this.checked||undefined;if(_ec[w.id])setWaterfall(w);commit();};
-      if($('#pWfTk'))$('#pWfTk').onchange=function(){w.axTicks=this.checked||undefined;if(_ec[w.id])setWaterfall(w);commit();};
-    },
-    live:function(w,el,id,d,base,txt,on){if((w.steps||[]).some(function(s){return s.vid===id;}))setWaterfall(w);}
   });
   // ===== Wetter-Widgets: "weather" (nur Aktuell) + "weatherpro" (Aktuell + Vorhersage) =====
   // EINE String-Variable (JSON) liefert alle Daten. Erkannt werden: OpenWeatherMap (One-Call),

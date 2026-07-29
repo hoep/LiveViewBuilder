@@ -2,7 +2,7 @@
     var t=w.type, hold=!!(w.longPopup||w.longNav), tap=false;
     if(w.closePopup||w.popupTo||w.scriptId||w.openMenu||w.navBack||w.navTo||(w.regSlot&&w.regView))tap=true;
     else if((t==='tile'||t==='button')&&(w.navTo||w.varId))tap=true;
-    else if(t==='switch'||t==='light'||t==='alarm'||t==='select'||t==='dial')tap=!!w.varId;
+    else if(t==='switch'||t==='light'||t==='alarm'||t==='select'||t==='dial'||(t==='slider'&&_rMode(w)==='dial'))tap=!!w.varId; // Dial ist jetzt eine Variante von slider (rmode)
     else if(t==='cover')tap=!!(w.varId||w.varId2);
     else if(t==='thermostat')tap=!!(w.varId2||w.varId3);
     else if(t==='media')tap=!!w.varId2;
@@ -10,6 +10,7 @@
     else if(t==='campro')tap=!!w.mediaId;
     else if(t==='skinswitch')tap=true;
     else if(t==='valuecard')tap=!!(w.varId2&&!w.v2acc); // nur mit Toggle klickbar
+    else if(t==='colorpick'){var _cm=w.cmode||'wheel';tap=(_cm==='wheel'||_cm==='cie'||_cm==='button');} // Farbwähler: box/slider sind reine Anzeige bzw. Slider -> kein Ganz-Widget-Hover
     else{var wc=WIDGETS[t];if(wc&&wc.click&&!wc.noHover)tap=true;} // noHover: interne Teil-Klicks (z. B. msglog-Chips) sollen kein Ganz-Widget-Hover erzeugen
     return tap?(hold?'act-both':'act-tap'):(hold?'act-hold':'');
   }
@@ -155,10 +156,27 @@
   function disposeCharts(){for(var k in _ec){try{_ec[k].dispose();}catch(e){}}_ec={};}
   // Responsive ECharts-Schrift: Basisgröße x Skalierung nach Kachelgröße (Referenz 300x180, geklemmt 0.8..1.7)
   function _ecFS(w,base){var sc=Math.min((w&&w.w?w.w:300)/300,(w&&w.h?w.h:180)/180);sc=Math.max(0.8,Math.min(1.7,sc));return Math.round(base*sc*10)/10;}
+  // Wasserfall: Muster-Schritte lazy saeen. addWidget ruft defaults() VOR dem Setzen von ctype,
+  // deshalb kann die Saat nicht in chart.defaults() liegen — sie passiert im pCType-Wechsel und hier defensiv.
+  function _wfSeed(w){
+    // NUR beim ersten Mal Muster-Schritte setzen. Eine bewusst geleerte Liste (Array der Länge 0)
+    // muss leer bleiben - sonst kann der Anwender den letzten Schritt nie löschen.
+    if(!w.steps){
+      w.steps=[
+        {title:'Start',   vid:0, type:'start', color:'info'},
+        {title:'Zunahme', vid:0, type:'auf',   color:'ok'},
+        {title:'Abnahme', vid:0, type:'ab',    color:'crit'},
+        {title:'Summe',   vid:0, type:'sum',   color:'accent'}
+      ];
+      if(w.labels==null)w.labels=true;            // Wasserfall zeigt Datenlabels standardmaessig
+      if(w.showTitle==null)w.showTitle=false;     // frueher ueber label='' geloest — Label bleibt jetzt erhalten
+    }
+    return w.steps;
+  }
   // Wasserfall (nicht zeitbasiert): Schritte start/auf/ab/sub(=Zwischensumme)/sum(=Summe) auf Kategorie-Achse
   function setWaterfall(w){
     var ec=_ec[w.id];if(!ec)return;
-    var steps=(w.steps||[]),cats=[],baseD=[],barD=[],levels=[],running=0;
+    var steps=_wfSeed(w),cats=[],baseD=[],barD=[],levels=[],running=0;
     var upC=_skinToCss(w.wfUp)||cssv('--ok'),dnC=_skinToCss(w.wfDown)||cssv('--crit'),acc=cssv('--accent'),br=parseFloat(w.barRadius!=null?w.barRadius:3);
     steps.forEach(function(s){
       var t=s.type||'auf',lv=s.vid&&_lastVals[s.vid],raw=lv?parseFloat(String(lv.v).replace(',','.')):null;
@@ -171,7 +189,7 @@
       cats.push(s.title||'');baseD.push(base);levels.push(running); // Saldo nach diesem Schritt (Level fuer Verbindungslinie)
       barD.push({value:h,itemStyle:{color:col,borderRadius:br}});
     });
-    var unit=(w.yunit||'');
+    var unit=_wfUnit(w); // eigene Einheit (nicht w.yunit - das gehoert dem Achsensystem/Kalenderjahr-Balken)
     var lbl=w.labels?{show:true,position:'top',fontSize:_ecFS(w,9),color:cssv('--muted'),formatter:function(p){return (p.value==null)?'':(Math.round(p.value*100)/100);}}:{show:false};
     var series=[{type:'bar',stack:'wf',silent:true,itemStyle:{color:'transparent'},emphasis:{disabled:true},data:baseD},
                 {type:'bar',stack:'wf',data:barD,label:lbl}];
@@ -198,9 +216,9 @@
     if(w.type==='gauge'){setGauge(w,_lastVals[w.varId]);}
     else if(w.type==='gaugepro'){setGaugePro(w,_lastVals[w.varId]);}
     else if(w.type==='sankey'){setSankey(w);}
-    else if(w.type==='waterfall'){setWaterfall(w);}
+    else if(w.type==='waterfall'||w.ctype==='waterfall'){setWaterfall(w);} // Live-Werte, KEINE Historie
     else if(w.ctype==='pie'||w.ctype==='donut'){renderChartData(w);}
-    else{ fetchHist(w); } // immer frisch laden (Query ~2ms); _hist-Cache ist wegen seiten-kollidierender IDs nicht verlaesslich
+    else{ fetchHist(w); } // immer frisch laden (auch ctype 'spark') (Query ~2ms); _hist-Cache ist wegen seiten-kollidierender IDs nicht verlaesslich
   }
   // Per-Zustand-Styling (Ein/Aus) fuer button/tile — IPSView ToggleButton/Value-Button
   function applyBtnState(w,el,on){
@@ -257,7 +275,7 @@
     else if(f==='next'||f==='last'){var t=j[f];out=t>0?new Date(t*1000).toLocaleString('de-DE'):'–';}
     vv.textContent=out;
   }).catch(function(){});}
-  function renderChartData(w){if(w.type==='spark')setSpark(w);else if(w.ctype==='pie'||w.ctype==='donut'||w.ctype==='rose')setPie(w);else if(w.type==='chart'&&w.calYear&&String(w.agg)==='3')setCalBar(w);else setLine(w);}
+  function renderChartData(w){if(w.ctype==='daylight')setDaylight(w);else if(w.ctype==='spark'||w.type==='spark')setSpark(w);else if(w.ctype==='waterfall'||w.type==='waterfall')setWaterfall(w);else if(w.ctype==='pie'||w.ctype==='donut'||w.ctype==='rose')setPie(w);else if(w.type==='chart'&&w.calYear&&String(w.agg)==='3')setCalBar(w);else setLine(w);}
   function setPie(w){var ec=_ec[w.id];if(!ec)return;var ids=[w.varId,w.varId2,w.varId3].filter(function(x){return x;});
     var data=ids.map(function(id,i){var o=(w.sopt&&w.sopt[i])||{};var lv=_lastVals[id],v=lv?parseFloat(String(lv.v).replace(',','.')):0;if(isNaN(v))v=0;return {name:o.name||(i===0?(w.label||'Serie 1'):'Serie '+(i+1)),value:Math.max(0,v),itemStyle:{color:o.color||autoColorHex(i)}};});
     var donut=(w.ctype==='donut'),rose=(w.ctype==='rose');
@@ -271,13 +289,22 @@
         label:{color:cssv('--text'),fontSize:_ecFS(w,10),formatter:(w.labels?'{b}\n{d}%':'{d}%')},labelLine:{length:6,length2:6,lineStyle:{color:cssv('--line')}},
         itemStyle:{borderColor:cssv('--bg'),borderWidth:2,borderRadius:((donut||rose)?3:0)},minAngle:3}]},true);}
   function chartSeries(w){return (_hist[w.id]&&_hist[w.id].series)?_hist[w.id].series:[];}
+  // Sparkline (ctype 'spark') — kompakte Verlaufskurve: keine Achsen, kein Titel, keine Legende.
+  // Linienfarbe: w.lineColor (feste Skin-Liste); Zweitquelle ist die Serien-Farbe series[0].color.
+  // Fuellung: w.fill!==false (undefined = an). Es wird NUR die erste Serie gezeichnet.
+  // Serienstil ist bewusst hart verdrahtet (Breite 1.8, glatt, ohne Punkte) — w.lw/w.smooth gelten hier nicht.
   function setSpark(w){
-    var ec=_ec[w.id];if(!ec)return;var acc=cssv('--accent');var s0=chartSeries(w)[0]||{data:[]};var data=s0.data;
+    var ec=_ec[w.id];if(!ec)return;
+    var _cs=(w.series&&w.series[0]&&w.series[0].color)||'';                 // Merge-Fallback: Farbe aus dem Serien-Editor
+    var _lc=_skinColor(w.lineColor||_cs||''),_m=_lc&&_lc.match(/^var\((--[\w-]+)\)$/),acc=_m?cssv(_m[1]):(_lc||cssv('--accent'));
+    var s0=chartSeries(w)[0]||{data:[]};var data=s0.data;
+    var ser={type:'line',showSymbol:false,smooth:true,lineStyle:{color:acc,width:1.8},
+      data:data,markPoint:{silent:true,symbol:'circle',symbolSize:5,itemStyle:{color:acc},label:{show:false},data:data.length?[{coord:data[data.length-1]}]:[]}};
+    if(w.fill!==false)ser.areaStyle={color:accA(.16,acc)};
     ec.setOption({backgroundColor:'transparent',animation:!!bcfg().chartAnim,grid:{left:2,right:2,top:6,bottom:4},
       tooltip:{trigger:'axis',confine:true},
       xAxis:{type:'time',show:false},yAxis:{type:'value',scale:true,show:false},
-      series:[{type:'line',showSymbol:false,smooth:true,lineStyle:{color:acc,width:1.8},areaStyle:{color:accA(.16)},
-        data:data,markPoint:{silent:true,symbol:'circle',symbolSize:5,itemStyle:{color:acc},label:{show:false},data:data.length?[{coord:data[data.length-1]}]:[]}}]},true);
+      series:[ser]},true);
   }
   function _glowCol(col,a){col=(''+(col||'')).trim();var m=col.match(/^#([0-9a-fA-F]{6})$/);if(m){var n=parseInt(m[1],16);return 'rgba('+((n>>16)&255)+','+((n>>8)&255)+','+(n&255)+','+a+')';}m=col.match(/rgba?\(([^)]+)\)/);if(m){var p=m[1].split(',');return 'rgba('+(+p[0])+','+(+p[1])+','+(+p[2])+','+a+')';}return col;} // Farbe mit Alpha (für Glow)
   function setGauge(w,d){
@@ -459,7 +486,91 @@
     return out;
   }
   function _ensureYAxes(w){if(!(w.yAxes&&w.yAxes.length))w.yAxes=_chYAxes(w).map(function(a){return {side:a.side,name:a.name||'',min:(a.min!=null?a.min:''),max:(a.max!=null?a.max:'')};});return w.yAxes;}
+  // ---- Tageslänge über ein Jahr (ctype 'daylight') ----------------------------------------
+  // Datenquelle: ?api=daylight (nutzt die native PHP-Funktion date_sun_info, wir rechnen nichts nach).
+  // Geliefert werden absolute Unix-Zeitstempel; die Umrechnung in Ortszeit macht der Browser,
+  // damit die Zeitzone des Symcon-Prozesses (häufig UTC) keine Rolle spielt.
+  function _dlHour(ts){var d=new Date(ts*1000);return d.getHours()+d.getMinutes()/60+d.getSeconds()/3600;}
+  // Ohne Sommerzeit: feste Normalzeit-Verschiebung (Stand 1. Januar) statt der jeweils gueltigen
+  // Ortszeit. Ergibt glatte Kurven ohne die Spruenge Ende Maerz / Ende Oktober.
+  function _dlHourStd(ts,offMin){var h=(ts+offMin*60)/3600;h=h/24;h=(h-Math.floor(h))*24;return h;} // Ortszeit = UTC + Versatz
+  function _dlStdOff(year){return -new Date(year,0,1,12,0,0).getTimezoneOffset();} // Minuten oestlich von UTC
+  function fetchDaylight(w){
+    var y=parseInt(w.dlYear)||new Date().getFullYear();
+    var q='?api=daylight&year='+y+(w.dlLoc?('&id='+parseInt(w.dlLoc)):'');
+    fetch(q,{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
+      if(!j||!j.days){_hist[w.id]={dl:null,err:(j&&j.hint)||'kein Standort'};if(_ec[w.id])setDaylight(w);return;}
+      var rise=[],set=[],len=[];
+      var noDst=!!w.dlNoDst,off=_dlStdOff(j.year); // Normalzeit-Versatz nur einmal bestimmen
+      function hOf(ts){return noDst?_dlHourStd(ts,off):_dlHour(ts);}
+      j.days.forEach(function(d){
+        var t=d[0]*1000; // Tagesstempel (Mittag UTC) — nur als x-Position
+        if(d[1]==null||d[2]==null){rise.push([t,null]);set.push([t,null]);len.push([t,null]);return;}
+        var hr=hOf(d[1]),hs=hOf(d[2]);
+        rise.push([t,Math.round(hr*1000)/1000]);
+        set.push([t,Math.round(hs*1000)/1000]);
+        len.push([t,Math.round((d[2]-d[1])/36*1)/100]); // Tageslänge in Stunden
+      });
+      _hist[w.id]={dl:{rise:rise,set:set,len:len,year:j.year,lat:j.lat,lon:j.lon}};
+      if(_ec[w.id])setDaylight(w);
+    }).catch(function(){_hist[w.id]={dl:null,err:'Abruf fehlgeschlagen'};if(_ec[w.id])setDaylight(w);});
+  }
+  function _dlFmt(h){if(h==null)return '–';var hh=Math.floor(h),mm=Math.round((h-hh)*60);if(mm===60){hh++;mm=0;}return ('0'+hh).slice(-2)+':'+('0'+mm).slice(-2);}
+  function setDaylight(w){
+    var ec=_ec[w.id];if(!ec)return;
+    var D=(_hist[w.id]&&_hist[w.id].dl)||null;
+    if(!D){ec.setOption({backgroundColor:'transparent',title:{text:(_hist[w.id]&&_hist[w.id].err)||'Standort fehlt',left:'center',top:'middle',textStyle:{color:cssv('--faint'),fontSize:_ecFS(w,11),fontWeight:'normal'}},xAxis:{show:false},yAxis:{show:false},series:[]},true);return;}
+    var ax=_axShow(w);
+    var cSet=_skinToCss(w.dlSet)||cssv('--warn'),cRise=_skinToCss(w.dlRise)||cssv('--muted');
+    var cFill=_skinToCss(w.dlFill)||cSet;
+    var op=(w.dlOpacity!=null?w.dlOpacity:22)/100;
+    var lp=w.legend?(w.legPos||'top'):'';
+    // Band: unsichtbare Basis (Aufgang) + gestapelte Differenz -> Fläche genau zwischen den Kurven
+    var diff=D.rise.map(function(p,i){var a=p[1],b=D.set[i][1];return [p[0],(a==null||b==null)?null:Math.round((b-a)*1000)/1000];});
+    var series=[
+      {name:'_basis',type:'line',stack:'dl',data:D.rise,symbol:'none',lineStyle:{width:0,opacity:0},areaStyle:{opacity:0},silent:true,tooltip:{show:false},z:1},
+      {name:'Tageslänge',type:'line',stack:'dl',data:diff,symbol:'none',lineStyle:{width:0,opacity:0},areaStyle:{color:cFill,opacity:op},silent:true,z:1},
+      {name:'Untergang',type:'line',data:D.set,symbol:'none',smooth:true,lineStyle:{color:cSet,width:(w.lw||2)},z:3},
+      {name:'Aufgang',  type:'line',data:D.rise,symbol:'none',smooth:true,lineStyle:{color:cRise,width:(w.lw||2)},z:3}
+    ];
+    // Markierung „heute" (durchgezogen) — Datumsschild wie in der Vorlage
+    if(w.dlToday!==false){
+      var now=new Date(),ty=parseInt(w.dlYear)||now.getFullYear();
+      if(now.getFullYear()===ty){
+        var tx=Date.UTC(ty,now.getMonth(),now.getDate(),12,0,0);
+        series[2].markLine={silent:true,symbol:'none',
+          lineStyle:{color:cssv('--text'),width:1.5,type:'solid',opacity:.85},
+          label:{show:true,position:'insideEndTop',formatter:('0'+now.getDate()).slice(-2)+'.'+('0'+(now.getMonth()+1)).slice(-2),
+                 color:cssv('--text'),backgroundColor:cssv('--surface-2'),borderColor:cssv('--line'),borderWidth:1,
+                 padding:[3,6],borderRadius:4,fontSize:_ecFS(w,10)},
+          data:[{xAxis:tx}]};
+      }
+    }
+    ec.setOption({backgroundColor:'transparent',animation:!!bcfg().chartAnim,
+      grid:{left:6,right:8,top:6+_titleSpace(w)+(lp==='top'?20:0),bottom:6+(lp==='bottom'?18:0),containLabel:true},
+      title:_titleOpt(w),legend:_legendOpt(w,w.legend),
+      tooltip:{trigger:'axis',axisPointer:{type:'line'},
+        formatter:function(ps){
+          if(!ps||!ps.length)return '';
+          var d=new Date(ps[0].value[0]),r=null,s=null;
+          ps.forEach(function(p){if(p.seriesName==='Aufgang')r=p.value[1];if(p.seriesName==='Untergang')s=p.value[1];});
+          var lenH=(r!=null&&s!=null)?(s-r):null;
+          return ('0'+d.getUTCDate()).slice(-2)+'.'+('0'+(d.getUTCMonth()+1)).slice(-2)+'.<br>'
+            +'Auf '+_dlFmt(r)+' · Unter '+_dlFmt(s)
+            +(lenH!=null?('<br>Tageslänge '+_dlFmt(lenH)):'');
+        }},
+      xAxis:{type:'time',axisLine:{show:ax.line,lineStyle:{color:cssv('--line')}},axisTick:{show:ax.ticks},
+        axisLabel:{show:ax.xLab,color:cssv('--faint'),fontSize:_ecFS(w,9),formatter:'{MMM}'},
+        splitLine:{show:ax.xGrid,lineStyle:{color:cssv('--line-soft')}}},
+      yAxis:{type:'value',min:(w.dlYMin!=null&&w.dlYMin!==''?parseFloat(w.dlYMin):0),max:(w.dlYMax!=null&&w.dlYMax!==''?parseFloat(w.dlYMax):24),interval:6,
+        axisLine:{show:ax.line,lineStyle:{color:cssv('--line')}},axisTick:{show:ax.ticks},
+        axisLabel:{show:ax.yLab,color:cssv('--faint'),fontSize:_ecFS(w,9),formatter:function(v){return ('0'+v).slice(-2)+':00';}},
+        splitLine:{show:ax.yGrid,lineStyle:{color:cssv('--line-soft')}}},
+      series:series},true);
+  }
   function fetchHist(w){
+    if(w.ctype==='daylight')  {fetchDaylight(w);return;} // eigener Datenweg (Jahresberechnung, keine Historie)
+    if(w.ctype==='waterfall'||w.type==='waterfall')return; // Wasserfall liest ausschliesslich Live-Werte (_lastVals)
     var W=_chWindow(w);
     if(w.type==='chart'&&W.cal&&W.unit==='month'){fetchCalYear(w);return;}
     var S=_chSeries(w).filter(function(s){return s&&s.vid;});if(!S.length)return;
@@ -726,7 +837,7 @@
       var z=(w.htmlZoom||100)/100;if(z!==1)wrap.style.transform='scale('+z+')';
     }
   }
-  setInterval(function(){state.widgets.forEach(function(w){if((w.type==='chart'||w.type==='spark')&&!(_wsOK&&bcfg().noSafetyPoll))fetchHist(w);if(w.type==='html'&&w.htmlSrc!=='custom')fetchHtml(w);if(w.type==='weekplan')fetchWeekplan(w);if(w.type==='calendar')fetchCalEvents(w);if(w.type==='eventctl')fetchEvent(w);if(w.type==='objinfo')fetchObjInfo(w);if(w.type==='statetl')_stlFetch(w);if(w.type==='statelog')_slogFetch(w);if(w.type==='table')_tblLoad(w);});},60000);
+  setInterval(function(){state.widgets.forEach(function(w){if((w.type==='chart'||w.type==='spark')&&w.ctype!=='waterfall'&&!(_wsOK&&bcfg().noSafetyPoll))fetchHist(w);if(w.type==='html'&&w.htmlSrc!=='custom')fetchHtml(w);if(w.type==='weekplan')fetchWeekplan(w);if(w.type==='calendar')fetchCalEvents(w);if(w.type==='eventctl')fetchEvent(w);if(w.type==='objinfo')fetchObjInfo(w);if(w.type==='statetl')_stlFetch(w);if(w.type==='statelog')_slogFetch(w);if(w.type==='table')_tblLoad(w);});},60000);
   setInterval(function(){var now=Date.now();state.widgets.forEach(function(w){if(w.type==='camera'||w.type==='campro'){var iv=((w.refresh>0)?w.refresh:15)*1000;if(!w._lastCam||now-w._lastCam>=iv){w._lastCam=now;refreshCam(w);}}});},1000);
 
   // ---------- Auswahl & Eigenschaften ----------
@@ -830,12 +941,17 @@
   function selOf(id,cur,opts){cur=cur||opts[0];return '<select id="'+id+'">'+opts.map(function(s){return '<option value="'+s+'"'+(s===cur?' selected':'')+'>'+s+'</option>';}).join('')+'</select>';}
   function dirSel(id,cur){cur=cur||'up';return '<select id="'+id+'"><option value="up"'+(cur==='up'?' selected':'')+'>▲ auf</option><option value="dn"'+(cur==='dn'?' selected':'')+'>▼ ab</option><option value="flat"'+(cur==='flat'?' selected':'')+'>→ neutral</option></select>';}
   function offSel(id,cur,withLast){cur=cur||'1d';var o=(withLast?'<option value="last"'+(cur==='last'?' selected':'')+'>Letzter Wert</option>':'')+Object.keys(OFFS).map(function(k){return '<option value="'+k+'"'+(k===cur?' selected':'')+'>'+OFFLBL[k]+'</option>';}).join('');return '<select id="'+id+'">'+o+'</select>';}
-  function seriesEditor(w){
+  // opt (optional): {max:n} begrenzt die Zeilen und blendet den „Serie"-Knopf aus, {simple:1} laesst Typ/Achse weg.
+  // Wird von ctype 'spark' genutzt (setSpark zeichnet nur chartSeries(w)[0] und ignoriert Typ/Achse).
+  function seriesEditor(w,opt){
+    opt=opt||{};
     var arr=_ensureSeries(w);
+    if(!arr.length&&opt.max){_ensureSeries(w);w.series.push({vid:0,name:'',color:'',type:'',axis:0});arr=w.series;} // Sparkline: eine leere Zeile anbieten
     var TY=[['','Auto'],['line','Linie'],['spline','Linie glatt'],['area','Fläche'],['areaspline','Fläche glatt'],['step','Stufen'],['steparea','Stufenfläche'],['bar','Balken'],['scatter','Punkte']];
     var SK=[['','Auto'],['accent','Akzent'],['info','Info'],['warm','Warm'],['ok','OK'],['warn','Warnung'],['crit','Kritisch'],['muted','Gedämpft']];
-    var isPart=['pie','donut','rose'].indexOf(w.ctype||'area')>=0;
-    var h='<div class="pgh">Serien (Variable · Name · Farbe · Typ · Achse)</div>';
+    var isPart=['pie','donut','rose'].indexOf(w.ctype||'area')>=0||!!opt.simple;
+    if(opt.max)arr=arr.slice(0,opt.max);
+    var h='<div class="pgh">'+(opt.simple?'Variable (ID · Name · Farbe)':'Serien (Variable · Name · Farbe · Typ · Achse)')+'</div>';
     arr.forEach(function(s,i){
       h+='<div class="serow" style="display:flex;flex-wrap:wrap;gap:4px;align-items:center;margin-bottom:6px;padding-bottom:6px;border-bottom:1px solid var(--line-soft)">'
         +'<input data-sf="'+i+'.vid" value="'+(s.vid||'')+'" placeholder="ID" style="width:52px">'
@@ -846,7 +962,7 @@
         +(isPart?'':(function(){var ya=_chYAxes(w),cax=Math.min(Math.max(s.axis|0,0),ya.length-1);return '<select data-sf="'+i+'.axis" title="Achse">'+ya.map(function(a,ai){return '<option value="'+ai+'"'+(cax===ai?' selected':'')+'>'+((a.side||'L')==='R'?'R':'L')+(a.name?(' '+esc(a.name)):(' '+(ai+1)))+'</option>';}).join('')+'</select>';})())
         +'<button class="btn" data-sdel="'+i+'" style="padding:2px"><svg class="i"><use href="#ic-minus"/></svg></button></div>';
     });
-    h+='<button class="btn" data-sadd="1" style="padding:4px 8px;font-size:11px"><svg class="i"><use href="#ic-plus"/></svg> Serie</button>';
+    if(!(opt.max&&arr.length>=opt.max))h+='<button class="btn" data-sadd="1" style="padding:4px 8px;font-size:11px"><svg class="i"><use href="#ic-plus"/></svg> Serie</button>';
     return h;
   }
   function axesEditor(w){
@@ -892,7 +1008,7 @@
   function respSection(w){
     var locked=SF_LOCK[w.type],pol=w.fit||'',autoLbl=(sfClass(w)==='s'?'Stretch':(SF_NOGROW[w.type]?'Fix':'Skaliert'));
     var opts='<option value=""'+(pol===''?' selected':'')+'>Auto ('+autoLbl+')</option>'+(locked?'':'<option value="fix"'+(pol==='fix'?' selected':'')+'>Fix</option><option value="scale"'+(pol==='scale'?' selected':'')+'>Skaliert</option>')+'<option value="stretch"'+(pol==='stretch'?' selected':'')+'>Stretch</option>';
-    var scaleish=(pol==='scale'||pol==='fix'||(pol===''&&sfClass(w)==='x')),pr=w.prio||SF_PRIO[w.type]||2;
+    var scaleish=(pol==='scale'||pol==='fix'||(pol===''&&sfClass(w)==='x')),pr=sfPrio(w); // zentral, keine zweite Priorität-Logik pflegen
     var h='<div class="pgh">Responsiv (SmartFit)</div>';
     h+=row('Skalierung','<select id="pFit">'+opts+'</select>');
     if(scaleish)h+=row('Anker',anchorGrid(w.anchor||''));

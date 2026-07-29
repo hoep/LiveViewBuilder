@@ -97,6 +97,7 @@
     fetch('?api=import'+(media?('&media='+media):''),{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
       if(!j||!j.views||!Object.keys(j.views).length){toast('Import: '+((j&&j.error)||'keine Seiten gefunden'));return;}
       var cnt=0;for(var n in j.views){store.views[n]=j.views[n];cnt++;}
+      migrateStore(store); // importierte Seiten koennen alte Typnamen enthalten
       switchView(j.current||Object.keys(j.views)[0]);
       toast('Importiert: '+cnt+' Seite(n) — jetzt „Speichern" nicht vergessen');
     }).catch(function(){toast('Import fehlgeschlagen');});
@@ -133,7 +134,7 @@
       if(j&&j.views&&Object.keys(j.views).length){store=j;if(!store.current||!store.views[store.current])store.current=Object.keys(store.views)[0];}
       else if(j&&j.widgets){store={views:{'Ansicht 1':j},current:'Ansicht 1'};} // Migration altes Einzel-Format
       else{store={views:{'Ansicht 1':{page:{w:1440,h:900},widgets:[]}},current:'Ansicht 1'};}
-      try{Object.keys(store.views||{}).forEach(function(_vn){var _vv=store.views[_vn];((_vv&&_vv.widgets)||[]).forEach(function(_w){if(_w.type==='powerflow')_w.type='flow';});});}catch(_){} // Migration: powerflow -> flow
+      migrateStore(store); // Typ-Migration (js/11-migrate.js): alte Einzel-Typen -> Sammel-Typ + Variante. MUSS vor dem ersten Rendern laufen
       invalidateAllIds(); // Warm-Cache-ID-Menge nach (Neu-)Laden neu berechnen
       if(!store.skin)store.skin='Standard';if(!store.theme)store.theme='dark';
       if(RUN){try{var _lt=localStorage.getItem('lvtheme');if(_lt)store.theme=_lt;var _ls=localStorage.getItem('lvskin');if(_ls&&allSkins()[_ls])store.skin=_ls;}catch(_){}}
@@ -146,15 +147,22 @@
   // ---------- Runtime (Vollbild-Anzeige) ----------
   // ============ SmartFit — adaptiver Autoscaler (fuellt jeden Viewport, minimiert Scroll) ============
   var SMART_DEF={reflowLo:0.55,phoneW:500,minScale:0.5,gap:8,growCap:2.6,kMin:0.72,kMax:1.9};
-  var SF_STRETCH={chart:1,spark:1,sankey:1,camera:1,campro:1,calendar:1,devlist:1,statuslist:1,ticker:1,tempbar:1,statusgrid:1,meterlist:1,infolist:1,kpi:1,image:1,statusimage:1,select:1,shape:1,dial:1,webview:1,weekplan:1,skinswitch:1,weatherpro:1,suncard:1,media:1,html:1,bar:1,line:1,gauge:1,gaugepro:1,valuecard:1,flow:1};
-  var SF_LOCK={chart:1,spark:1,camera:1,campro:1,media:1,sankey:1,html:1,calendar:1,devlist:1,statuslist:1};
+  // dial:1 wirkt hier nicht mehr direkt — 'dial' ist seit der Regler-Zusammenlegung KEIN eigener
+  // w.type mehr, sondern die Variante rmode='dial' des Widgets 'slider'. _sfKey() unten übersetzt
+  // dafür auf den Schlüssel 'dial', damit dieser Eintrag weiterhin greift (Dial soll wie zuvor
+  // strecken/rund bleiben, nicht wie ein normaler Regler frei skalieren).
+  var SF_STRETCH={chart:1,sankey:1,camera:1,campro:1,calendar:1,devlist:1,statuslist:1,ticker:1,tempbar:1,statusgrid:1,meterlist:1,infolist:1,kpi:1,image:1,statusimage:1,select:1,shape:1,dial:1,webview:1,weekplan:1,skinswitch:1,weatherpro:1,suncard:1,media:1,html:1,bar:1,line:1,gauge:1,gaugepro:1,valuecard:1,flow:1};
+  var SF_LOCK={chart:1,camera:1,campro:1,media:1,sankey:1,html:1,calendar:1,devlist:1,statuslist:1};
   var SF_NOGROW={chip:1,button:1,icon:1,clock:1,switch:1,sun:1};
-  var SF_PRIO={chart:3,camera:3,campro:3,powerflow:3,sankey:3,gaugepro:3,html:3,chip:1,button:1,icon:1,clock:1,switch:1,sun:1};
+  var SF_PRIO={chart:3,camera:3,campro:3,flow:3,sankey:3,gaugepro:3,html:3,chip:1,button:1,icon:1,clock:1,switch:1,sun:1};
   var _scCache=null,_scView=null,_scMode='';
   function invalidateSC(){_scCache=null;}
   function sfCfg(p){var c=(p&&p.smart)||{},o={},k;for(k in SMART_DEF)o[k]=(c[k]!=null?c[k]:SMART_DEF[k]);return o;}
-  function sfClass(w){if(w.fit==='stretch')return 's';if((w.fit==='scale'||w.fit==='fix')&&!SF_LOCK[w.type])return 'x';return SF_STRETCH[w.type]?'s':'x';}
-  function sfPrio(w){return w.prio||SF_PRIO[w.type]||2;}
+  // Effektiver Tabellen-Schluessel: normalerweise w.type, aber der Regler meldet fuer die
+  // Dial-Variante 'dial', damit SF_STRETCH/SF_PRIO wie vor der Zusammenlegung greifen.
+  function _sfKey(w){if(w.type==='slider'&&typeof _rMode==='function'&&_rMode(w)==='dial')return 'dial';return w.type;}
+  function sfClass(w){if(w.fit==='stretch')return 's';var k=_sfKey(w);if((w.fit==='scale'||w.fit==='fix')&&!SF_LOCK[k])return 'x';return SF_STRETCH[k]?'s':'x';}
+  function sfPrio(w){return w.prio||SF_PRIO[_sfKey(w)]||2;}
   function effFit(p){return (p&&p.fit)||'letterbox';}
   function sfSnap(v){return Math.round(v/10)*10;}
   function sfClamp(v,a,b){return v<a?a:(v>b?b:v);}

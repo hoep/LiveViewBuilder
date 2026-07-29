@@ -22,7 +22,7 @@
   function _collectIds(w,add){ // alle Variablen-IDs eines Widgets an add() geben
     add(w.varId);add(w.varId2);add(w.varId3);add(w.visVar);add(w.condVar);add(w.vTemp);add(w.vCond);add(w.vHum);add(w.vWind);add(w.vRain);
     if(w.fc)w.fc.forEach(function(r){add(r.hi);add(r.lo);add(r.pq);add(r.cond);});
-    ['links','src','snk','items','rows','steps'].forEach(function(k){if(w[k])w[k].forEach(function(o){if(o)add(o.vid);});});
+    ['links','src','snk','items','rows','steps','series'].forEach(function(k){if(w[k])w[k].forEach(function(o){if(o)add(o.vid);});});
     if(w.stages)w.stages.forEach(function(o){if(o){add(o.vid);add(o.subvid);}}); // Pipeline-Stationen (Wert + Zusatzwert)
     if(w.elements)w.elements.forEach(function(o){if(o){add(o.vid);add(o.speedVid);add(o.socVid);}});
     if(w.tankVid)add(w.tankVid);
@@ -188,7 +188,7 @@
     var body=keys.length?keys.map(function(n){return '<div class="pitem blk" data-blk="'+esc(n)+'" title="Klicken/Ziehen zum Einfügen">'+esc(n)+'<span class="blkx" data-blkdel="'+esc(n)+'" title="Löschen">×</span></div>';}).join(''):'<div style="font-size:11px;color:var(--faint);padding:2px 2px">Noch keine. Elemente wählen → „Baustein".</div>';
     box.innerHTML=tools+body;
     if($('#blkExp'))$('#blkExp').onclick=function(){var a=document.createElement('a');a.href='data:application/json;charset=utf-8,'+encodeURIComponent(JSON.stringify(store.blocks||{},null,1));a.download='bausteine.json';document.body.appendChild(a);a.click();a.remove();};
-    if($('#blkImp'))$('#blkImp').onclick=function(){var inp=document.createElement('input');inp.type='file';inp.accept='.json,application/json';inp.onchange=function(){var f=inp.files[0];if(!f)return;var r=new FileReader();r.onload=function(){try{var j=JSON.parse(r.result);store.blocks=store.blocks||{};for(var k in j)store.blocks[k]=j[k];buildBlocks();commit();toast('Bausteine importiert');}catch(e){toast('Ungültige Datei');}};r.readAsText(f);};inp.click();};
+    if($('#blkImp'))$('#blkImp').onclick=function(){var inp=document.createElement('input');inp.type='file';inp.accept='.json,application/json';inp.onchange=function(){var f=inp.files[0];if(!f)return;var r=new FileReader();r.onload=function(){try{var j=JSON.parse(r.result);store.blocks=store.blocks||{};for(var k in j)store.blocks[k]=j[k];migrateStore(store);buildBlocks();commit();toast('Bausteine importiert');}catch(e){toast('Ungültige Datei');}};r.readAsText(f);};inp.click();};
     $$('#blocks .blk').forEach(function(el){
       el.onclick=function(e){if(e.target.getAttribute('data-blkdel')!=null)return;insertBlock(el.getAttribute('data-blk'));};
       el.setAttribute('draggable','true');
