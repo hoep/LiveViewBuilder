@@ -8,7 +8,7 @@
     var ser={type:'line',showSymbol:false,smooth:true,lineStyle:{color:acc,width:1.8},
       data:data,markPoint:{silent:true,symbol:'circle',symbolSize:5,itemStyle:{color:acc},label:{show:false},data:data.length?[{coord:data[data.length-1]}]:[]}};
     if(w.fill!==false)ser.areaStyle={color:accA(.16,acc)};
-    ec.setOption({backgroundColor:'transparent',grid:{left:2,right:2,top:6,bottom:4},
+    ec.setOption({backgroundColor:'transparent',animation:!!bcfg().chartAnim,grid:{left:2,right:2,top:6,bottom:4},
       tooltip:{trigger:'axis',confine:true},
       xAxis:{type:'time',show:false},yAxis:{type:'value',scale:true,show:false},
       series:[ser]},true);
@@ -22,5 +22,6 @@
     wire:function(w){
       if($('#pSpLine'))$('#pSpLine').onchange=function(){w.lineColor=this.value||undefined;render();commit();};
       if($('#pSpFill'))$('#pSpFill').onchange=function(){w.fill=this.checked?undefined:false;render();commit();};
-    }
+    },
+    live:function(w,el,id,d,base,txt,on){if(_ec[w.id])chartPushRefresh(w);}
   });

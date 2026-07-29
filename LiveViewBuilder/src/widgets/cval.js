@@ -3,7 +3,7 @@
     label:'Zählerwert', paletteIcon:'wkpi', size:[190,96],
     defaults:function(w){w.label='Verbrauch';w.cmpStage='day';},
     render:function(w){var al=w.align?(';text-align:'+w.align):'';var fs=w.valfs||26;
-      return '<div class="wv"><div class="wvbody" style="min-width:0'+al+'"><div class="l">'+esc(w.label||'')+(STAGECUR[cmpStage(w)]?' · '+STAGECUR[cmpStage(w)]:'')+'</div><div class="v" data-role="val" style="font-size:'+fs+'px">–</div></div></div>';},
+      return '<div class="wv"><div class="wvbody" style="min-width:0'+al+'"><div class="l">'+esc(w.label||'')+(STAGECUR[cmpStage(w)]?' · '+STAGECUR[cmpStage(w)]:'')+'</div><div class="v" data-role="val" style="font-size:'+(w.valfs?w.valfs+'px':'var(--wf-val)')+'">–</div></div></div>';},
     props:function(w){return row('Aggregationsstufe',stageSel('pCvStage',cmpStage(w)))
       +row('Einheit','<input id="pCvUnit" value="'+esc(w.unit||'')+'">')
       +row('Wert-Größe','<input id="pCvFs" type="number" value="'+(w.valfs||26)+'">')
