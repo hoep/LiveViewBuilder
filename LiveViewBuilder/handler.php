@@ -545,7 +545,26 @@ if ($api === 'history') {
 }
 
 // ---- Zeitversatz-Vergleich, automatisch nach Logging-Typ (Standard/Zähler) ----
-if ($api === 'agg') { // Min/Max/Avg (zeitgewichtet) einer geloggten Standardvariable ueber die aktuelle Periode
+// Aggregat-Helfer: Min/Max/Avg einer Variable ueber [from,to] via native AC_GetAggregatedValues.
+// stage->level so gewaehlt, dass die aktuelle Periode i. d. R. genau EIN Bucket ist.
+if (!function_exists('lvbStageLevel')) {
+    function lvbStageLevel($stage) {
+        $m = ['minute' => 5, 'hour' => 0, 'day' => 1, 'week' => 2, 'month' => 3, 'year' => 4];
+        return isset($m[$stage]) ? $m[$stage] : 1;
+    }
+    function lvbPeriodStat($ac, $id, $level, $from, $to) {
+        $rows = @AC_GetAggregatedValues($ac, $id, $level, $from, $to, 0);
+        if (!is_array($rows) || !count($rows)) return ['min' => null, 'max' => null, 'avg' => null];
+        $min = null; $max = null; $sum = 0.0; $n = 0;
+        foreach ($rows as $b) {
+            if (isset($b['Min']) && $b['Min'] !== null) $min = ($min === null) ? (float) $b['Min'] : min($min, (float) $b['Min']);
+            if (isset($b['Max']) && $b['Max'] !== null) $max = ($max === null) ? (float) $b['Max'] : max($max, (float) $b['Max']);
+            if (isset($b['Avg']) && $b['Avg'] !== null) { $sum += (float) $b['Avg']; $n++; }
+        }
+        return ['min' => $min, 'max' => $max, 'avg' => ($n > 0 ? $sum / $n : null)];
+    }
+}
+if ($api === 'agg') { // Min/Max/Avg einer geloggten Variable ueber die aktuelle Periode (native Aggregation)
     header('Content-Type: application/json; charset=utf-8');
     $id    = (int) ($_GET['id'] ?? 0);
     $stage = (string) ($_GET['stage'] ?? 'day'); // minute|hour|day|week|month|year
@@ -563,28 +582,37 @@ if ($api === 'agg') { // Min/Max/Avg (zeitgewichtet) einer geloggten Standardvar
         case 'year':   $pStart = mktime(0, 0, 0, 1, 1, $Y);   break;
         default:       $pStart = mktime(0, 0, 0, $mo, $d, $Y); break; // day
     }
-    $rows = @AC_GetLoggedValues($ac, $id, $pStart, $now, 0);          // Werte in der Periode (neueste zuerst)
-    $bef  = @AC_GetLoggedValues($ac, $id, 0, $pStart, 1);             // letzter Wert vor Periodenstart
-    $startVal = (is_array($bef) && count($bef)) ? (float) $bef[0]['Value'] : null;
-    $pts = is_array($rows) ? array_reverse($rows) : [];              // aelteste zuerst
-    if ($startVal === null && count($pts)) { $startVal = (float) $pts[0]['Value']; }
-    $prevT = $pStart; $prevV = $startVal; $sum = 0.0; $min = null; $max = null;
-    $acc = function ($v, $t0, $t1) use (&$sum, &$min, &$max) {
-        if ($v === null) return;
-        $dur = $t1 - $t0; if ($dur < 0) $dur = 0;
-        $sum += $v * $dur;
-        $min = ($min === null) ? $v : min($min, $v);
-        $max = ($max === null) ? $v : max($max, $v);
-    };
-    foreach ($pts as $r) {
-        $t = (int) $r['TimeStamp']; if ($t < $pStart) $t = $pStart; if ($t > $now) $t = $now;
-        $acc($prevV, $prevT, $t);
-        $prevT = $t; $prevV = (float) $r['Value'];
+    $s = lvbPeriodStat($ac, $id, lvbStageLevel($stage), $pStart, $now);
+    echo json_encode(['min' => $s['min'], 'max' => $s['max'], 'avg' => $s['avg']]);
+    return;
+}
+// ---- Generischer Archiv-Aggregat-Passthrough: AC_GetAggregatedValues(id, level, from, to) ----
+// level: 0=Stunde 1=Tag 2=Woche 3=Monat 4=Jahr 5=5-Min. Bei Zaehlern steht der Verbrauch im Feld avg.
+if ($api === 'aggregated') {
+    header('Content-Type: application/json; charset=utf-8');
+    $id    = (int) ($_GET['id'] ?? 0);
+    $level = (int) ($_GET['level'] ?? 3);
+    $to    = (int) ($_GET['to'] ?? time());
+    $from  = (int) ($_GET['from'] ?? ($to - 366 * 86400));
+    $limit = (int) ($_GET['limit'] ?? 0);
+    if (!@IPS_VariableExists($id)) { echo json_encode(['id' => $id, 'rows' => []]); return; }
+    $acs = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}');
+    $ac  = $acs[0] ?? 0;
+    if (!$ac) { echo json_encode(['id' => $id, 'rows' => []]); return; }
+    $rows = @AC_GetAggregatedValues($ac, $id, $level, $from, $to, $limit);
+    $out  = [];
+    if (is_array($rows)) {
+        foreach ($rows as $b) {
+            $out[] = [
+                't'   => (int) $b['TimeStamp'],
+                'avg' => isset($b['Avg']) ? $b['Avg'] : null,
+                'sum' => isset($b['Sum']) ? $b['Sum'] : null,
+                'min' => isset($b['Min']) ? $b['Min'] : null,
+                'max' => isset($b['Max']) ? $b['Max'] : null,
+            ];
+        }
     }
-    $acc($prevV, $prevT, $now);
-    $total = $now - $pStart;
-    $avg = ($total > 0 && $min !== null) ? $sum / $total : $prevV;
-    echo json_encode(['min' => $min, 'max' => $max, 'avg' => $avg]);
+    echo json_encode(['id' => $id, 'level' => $level, 'counter' => (@AC_GetAggregationType($ac, $id) == 1), 'rows' => $out]);
     return;
 }
 if ($api === 'cmp') {
@@ -639,6 +667,13 @@ if ($api === 'cmp') {
         $vp1 = $valAt($prevSame); $vp0 = $valAt($prevStart);
         $past = ($vp1 !== null && $vp0 !== null) ? ($vp1 - $vp0) : null;    // Verbrauch Vorperiode (gleiches Fenster)
         echo json_encode(['type' => 1, 'cur' => $cur, 'past' => $past]);
+        return;
+    }
+    if (($_GET['mode'] ?? '') === 'avg') { // Periodenmittel (zeitgew. Mittel je Periode) via native Aggregation
+        $lvl  = lvbStageLevel($stage);
+        $curS = lvbPeriodStat($ac, $id, $lvl, $pStart, $now);
+        $prvS = lvbPeriodStat($ac, $id, $lvl, $prevStart, $prevSame);
+        echo json_encode(['type' => 0, 'cur' => $curS['avg'], 'past' => $prvS['avg']]);
         return;
     }
     $cn   = @GetValue($id);

@@ -29,9 +29,20 @@
   $('#modeBtn').onclick=function(){mode=(mode==='edit')?'preview':'edit';stage.classList.toggle('edit',mode==='edit');stage.classList.toggle('preview',mode==='preview');this.textContent=(mode==='edit')?'Vorschau':'Bearbeiten';this.classList.toggle('on',mode==='preview');if(mode==='preview')select(null);};
 
   // ---------- Ansichten (Views) ----------
-  function refreshViewSel(){var s=$('#viewSel');if(!s)return;s.innerHTML='';Object.keys(store.views).forEach(function(n){var o=document.createElement('option');o.value=n;o.textContent=n+(n===store.home?'  · Start':'');if(n===store.current)o.selected=true;s.appendChild(o);});}
+  function _isPopupView(name){ // Popup = Seite, auf die ein Widget per Popup-Aktion verweist (Home ist nie Popup)
+    if(name===store.home)return false;
+    for(var vn in store.views){var ws=(store.views[vn].widgets)||[];for(var i=0;i<ws.length;i++){if(ws[i].popupTo===name||ws[i].longPopup===name)return true;}}
+    return false;
+  }
+  function refreshViewSel(){var s=$('#viewSel');if(!s)return;s.innerHTML='';
+    var all=Object.keys(store.views),cmp=function(a,b){return a.localeCompare(b,'de',{sensitivity:'base'});};
+    var pages=all.filter(function(n){return !_isPopupView(n);}).sort(cmp);   // normale Seiten (S), alphabetisch
+    var pops=all.filter(_isPopupView).sort(cmp);                             // Popups (P), alphabetisch
+    function add(list,badge){list.forEach(function(n){var o=document.createElement('option');o.value=n;o.textContent=badge+' · '+n+(n===store.home?'  · Start':'');if(n===store.current)o.selected=true;s.appendChild(o);});}
+    add(pages,'S');add(pops,'P');
+  }
   function reseq(){seq=1;state.widgets.forEach(function(w){var n=parseInt(String(w.id||'w0').replace('w',''))||0;if(n>=seq)seq=n+1;});}
-  function switchView(name){if(!store.views[name])return;store.current=name;state=store.views[name];if(!state.page)state.page={w:1440,h:900};if(!state.widgets)state.widgets=[];selId=null;sel={};reseq();refreshViewSel();setCanvas();invalidateSC();_scMode='';document.body.classList.remove('reflow');restoring=true;render();restoring=false;renderProps();resetHist();} // render() macht bereits Kamera/HTML-Init + Sofort-Poll (kein doppeltes Rendern mehr)
+  function switchView(name){if(!store.views[name])return;store.current=name;state=store.views[name];if(!state.page)state.page={w:1440,h:900};if(!state.widgets)state.widgets=[];selId=null;sel={};reseq();refreshViewSel();setCanvas();invalidateSC();_scMode='';document.body.classList.remove('reflow');restoring=true;render();restoring=false;renderProps();resetHist();chromeUI();} // render() macht bereits Kamera/HTML-Init + Sofort-Poll (kein doppeltes Rendern mehr)
   function newView(){var n=prompt('Name der neuen Ansicht:','Ansicht '+(Object.keys(store.views).length+1));if(!n)return;if(store.views[n]){toast('Name existiert bereits');return;}store.views[n]={page:{w:bcfg().defW,h:bcfg().defH,fit:bcfg().defFit},widgets:[]};switchView(n);toast('Ansicht angelegt: '+n);}
   function _renameViewRefs(old,n){ // alle Verweise auf einen Ansichtsnamen mitziehen (Actions, Home, Mobil)
     var cnt=0;Object.keys(store.views).forEach(function(vn){var v=store.views[vn];
@@ -127,7 +138,7 @@
       if(!store.skin)store.skin='Standard';if(!store.theme)store.theme='dark';
       if(RUN){try{var _lt=localStorage.getItem('lvtheme');if(_lt)store.theme=_lt;var _ls=localStorage.getItem('lvskin');if(_ls&&allSkins()[_ls])store.skin=_ls;}catch(_){}}
       applySkin();GS=bcfg().gs;if(bcfg().sideW){var _sd=$('.side');if(_sd)_sd.style.width=bcfg().sideW+'px';}
-      var _sv=VIEWNAME||lvPage();switchView((_sv&&store.views&&store.views[_sv])?_sv:store.current);buildSwatches();buildIconLib();buildBlocks();buildSkins();buildSettings();buildLayoutList();decoratePalette(); // ?view= auch im Edit-Modus berücksichtigen
+      var _sv=VIEWNAME||lvPage();switchView((_sv&&store.views&&store.views[_sv])?_sv:store.current);buildSwatches();buildIconLib();buildBlocks();buildSkins();buildSettings();buildLayoutList();syncPalette();decoratePalette();chromeUI(); // ?view= auch im Edit-Modus berücksichtigen; syncPalette ergänzt fehlende Registry-Widgets
       if(RUN){enterRun();}else{toast('Geladen: '+(_target||'Standard')+' · '+Object.keys(store.views).length+' Ansicht(en)');}
     }).catch(function(){store={views:{'Ansicht 1':{page:{w:1440,h:900},widgets:[]}},current:'Ansicht 1'};switchView('Ansicht 1');if(RUN)enterRun();});
   }

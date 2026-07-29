@@ -2,9 +2,17 @@
   // Semantische Skin-Farben (passen sich beim Reskinning/Theme automatisch an)
   var _SEVC=[['var(--text)','Standard'],['var(--ok)','OK'],['var(--warn)','Warnung'],['var(--crit)','Fehler'],['var(--accent)','Akzent'],['var(--info)','Info']];
   function _sevOpts(cur){return _SEVC.map(function(o){return '<option value="'+o[0]+'"'+(cur===o[0]?' selected':'')+'>'+o[1]+'</option>';}).join('');}
-  function _skinColor(c){if(!c)return '';var s=(''+c).trim();if(/^var\(/.test(s))return s;var m={text:'--text',standard:'--text',ok:'--ok',gruen:'--ok','grün':'--ok',warn:'--warn',warnung:'--warn',alert:'--warn',crit:'--crit',fehler:'--crit',error:'--crit',accent:'--accent',akzent:'--accent',info:'--info',faint:'--faint',muted:'--muted',warm:'--warm'};var k=s.toLowerCase();return m[k]?('var('+m[k]+')'):s;} // Stichwort -> Skin-Var, sonst unverändert
+  // Stichwort -> Skin-Var. Zuerst generisch gegen SKIN_TOKENS (damit neue Skin-Farben wie
+  // accent-2 automatisch funktionieren), danach die deutschen/alten Synonyme, sonst unverändert.
+  function _skinColor(c){if(!c)return '';var s=(''+c).trim();if(/^var\(/.test(s))return s;
+    if(typeof SKIN_TOKENS!=='undefined'&&SKIN_TOKENS.indexOf(s)>=0)return 'var(--'+s+')';
+    var m={text:'--text',standard:'--text',ok:'--ok',gruen:'--ok','grün':'--ok',warn:'--warn',warnung:'--warn',alert:'--warn',crit:'--crit',fehler:'--crit',error:'--crit',accent:'--accent',akzent:'--accent',info:'--info',faint:'--faint',muted:'--muted',warm:'--warm'};
+    var k=s.toLowerCase();return m[k]?('var('+m[k]+')'):s;}
+  // Nur echte Farbwerte durchlassen - ein unbekanntes Stichwort darf keine CSS-Variable kaputtmachen.
+  function _cssColorOrEmpty(c){var v=_skinColor(c);return (/^var\(--[\w-]+\)$/.test(v)||/^#[0-9a-fA-F]{3,8}$/.test(v)||/^(rgb|hsl|color-mix)\(/.test(v))?v:'';}
   var _assocData={};   // varId -> {assocs:[{v,name,icon,color}], picon}
   var _assocPick=null; // {wid,key} während Icon-Auswahl für eine Assoziation
+  var _iconPick=null;  // {wid,field} generische Icon-Auswahl in ein beliebiges Widget-Feld (z. B. Switch On/Off-Icon)
   var SYMICON={Battery:'battery',Light:'bulb',Lightbulb:'bulb',Bulb:'bulb',LightbulbActive:'bulb',
     Window:'window',Door:'door',Lock:'lock',Locked:'lock',Unlocked:'unlock',Motion:'motion',Move:'motion',
     Presence:'person',Temperature:'temperature',Drops:'droplet',Rain:'rain',Snow:'snow',Cloud:'cloud',
@@ -51,6 +59,7 @@
       $$('.asev',box).forEach(function(sel){sel.onchange=function(){var k=sel.getAttribute('data-akey');if(!w.assocMap)w.assocMap={};if(!w.assocMap[k])w.assocMap[k]={};if(sel.value)w.assocMap[k].color=sel.value;else delete w.assocMap[k].color;w.assocOn=true;render();renderProps();refreshAssocLive(w);commit();};}); // Skin-Farbe (Icon+Text), passt sich dem Theme an
     });}
   function assignIcon(id){
+    if(_iconPick){var wp=widget(_iconPick.wid);if(wp){wp[_iconPick.field]=id;render();select(wp.id);renderProps();toast('Icon: '+id);}_iconPick=null;return;}
     if(_assocPick){var wa=widget(_assocPick.wid);if(wa){if(!wa.assocMap)wa.assocMap={};if(!wa.assocMap[_assocPick.key])wa.assocMap[_assocPick.key]={};wa.assocMap[_assocPick.key].icon=id;wa.assocOn=true;render();select(wa.id);renderProps();refreshAssocLive(wa);toast('Status-Icon: '+id);}_assocPick=null;return;}
     var ICONABLE=['icon','value','switch','bar','tile','button','light','chip','weather','weatherpro','room','kpi','assoc']; // wie die Icon-Zeile in renderProps
     var ids=Object.keys(sel);if(!ids.length&&selId)ids=[selId];

@@ -3,7 +3,7 @@
     label:'Statistik', paletteIcon:'wkpi', size:[200,96],
     defaults:function(w){w.label='Ø Wert';w.cmpStage='day';w.statAvg=true;},
     render:function(w){var al=w.align?(';text-align:'+w.align):'';var cnt=aggParts(w).length;var fs=w.valfs||(cnt>=2?15:26);
-      return '<div class="wv"><div class="wvbody" style="min-width:0'+al+'"><div class="l">'+esc(w.label||'')+(STAGECUR[cmpStage(w)]?' · '+STAGECUR[cmpStage(w)]:'')+'</div><div class="v" data-role="val" style="font-size:'+fs+'px;line-height:1.15">–</div></div></div>';},
+      return '<div class="wv"><div class="wvbody" style="min-width:0'+al+'"><div class="l">'+esc(w.label||'')+(STAGECUR[cmpStage(w)]?' · '+STAGECUR[cmpStage(w)]:'')+'</div><div class="v" data-role="val" style="font-size:'+(w.valfs?w.valfs+'px':(cnt>=2?'var(--wf-txt)':'var(--wf-val)'))+';line-height:1.15">–</div></div></div>';},
     props:function(w){return row('Aggregationsstufe',stageSel('pSvStage',cmpStage(w)))
       +row('Werte','<label style="margin-right:10px"><input type="checkbox" id="pSvMin"'+(w.statMin?' checked':'')+'> Min</label>'
                    +'<label style="margin-right:10px"><input type="checkbox" id="pSvAvg"'+((w.statAvg||(!w.statMin&&!w.statMax&&!w.statAvg))?' checked':'')+'> Ø</label>'

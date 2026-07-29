@@ -130,6 +130,8 @@
       var hiEl=row.querySelector('.hi');if(hiEl)hiEl.textContent=d?(_wtxt(d.hi)+unit):'–';
       var pqEl=row.querySelector('.pq');if(pqEl)pqEl.innerHTML=(showPq&&d&&d.pop!=null&&d.pop>0)?('<svg class="hwpqi" viewBox="0 0 24 24"><path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/></svg>'+d.pop+'%'):'';
       var fill=row.querySelector('.fill');if(fill){var h=d?_wt(d.hi,1):null,l=d?_wt(d.lo,1):null;if(h==null||l==null){fill.style.width='0';}else{var lp=(l-gmin)/(gmax-gmin)*100,hp=(h-gmin)/(gmax-gmin)*100;fill.style.left=Math.max(0,Math.min(100,lp))+'%';fill.style.width=Math.max(3,Math.min(100,hp)-Math.max(0,lp))+'%';fill.style.background='linear-gradient(90deg,'+tColor(l,w.tgrad)+','+tColor(h,w.tgrad)+')';}}
+      // Aktuelle Temperatur als kleiner Knopf – nur in der Heute-Zeile
+      var cn=row.querySelector('.cnow');if(cn){var isToday=d&&((d.ts&&wDayLabelTs(d.ts)==='Heute')||(!d.ts&&(start+i)===0));if(isToday&&temp!=null){var cp=(temp-gmin)/(gmax-gmin)*100;cn.style.left=Math.max(0,Math.min(100,cp))+'%';cn.style.display='block';}else{cn.style.display='none';}}
     });
   }
   function wJsonProps(w){ // gemeinsame Props: Format, Einheit + Hinweis auf die JSON-Variable
@@ -150,7 +152,7 @@
   function wExt(w){return w.wstyle==='extended'||w.type==='weatherpro';}
   function wEnsureExt(w){if(w.days==null)w.days=5;if(w.fcStart==null)w.fcStart=0;if(w.showPq===undefined)w.showPq=true;if(!w.tgrad)w.tgrad=[{t:-5,color:'#4aa3ff'},{t:4,color:'#3bd6c6'},{t:14,color:'#39d08a'},{t:22,color:'#f2b441'},{t:32,color:'#f2685a'}];}
   function wRenderFn(w){
-    if(wExt(w)){wEnsureExt(w);var n=Math.max(1,Math.min(10,w.days||5)),slots='';for(var i=0;i<n;i++)slots+='<div class="hwp2day" data-i="'+i+'"><span class="d">–</span><span class="ic"></span><span class="lo">–</span><div class="trk"><i class="fill"></i></div><span class="hi">–</span><span class="pq"></span></div>';
+    if(wExt(w)){wEnsureExt(w);var n=Math.max(1,Math.min(10,w.days||5)),slots='';for(var i=0;i<n;i++)slots+='<div class="hwp2day" data-i="'+i+'"><span class="d">–</span><span class="ic"></span><span class="lo">–</span><div class="trk"><i class="fill"></i><i class="cnow"></i></div><span class="hi">–</span><span class="pq"></span></div>';
       return '<div class="hwp2"><div class="hwp2cur"><span class="hwp2ic" data-role="cico">'+iconSVG(w.icon||'cloudsun')+'</span><span class="hwp2ci"><span class="hwp2t" data-role="val">–</span><span class="hwp2sub"><span data-role="sub"></span></span><span class="hwmetrow"><span class="hwmet" data-role="wind"></span><span class="hwmet" data-role="hum"></span></span></span></div><div class="hwp2days">'+slots+'</div></div>';}
     return '<div class="hwf hwf-cur"><div class="hwbig"><div class="hwbigico" data-role="cico">'+iconSVG(w.icon||'cloudsun')+'</div><div class="hwbigci"><div class="hwbigt" data-role="val">–</div><div class="hwbigsub"><span data-role="sub"></span></div><div class="hwmetrow"><span class="hwmet" data-role="wind"></span><span class="hwmet" data-role="hum"></span></div></div></div></div>';
   }
@@ -184,4 +186,4 @@
   // Ein Wetter-Widget mit Stil-Umschaltung (Standard/Erweitert)
   defWidget('weather',{label:'Wetter', paletteIcon:'cloudsun', size:[240,130], defaults:function(w){w.label='';w.wfmt='auto';}, render:wRenderFn, props:wPropsFn, wire:wWireFn, mount:_wMount, live:_wLive});
   // Alt-Typ (bestehende „Wetter+"-Widgets weiterhin gültig; nicht mehr in der Palette)
-  defWidget('weatherpro',{label:'Wetter+', paletteIcon:'cloudsun', size:[340,220], defaults:function(w){w.label='';w.wfmt='auto';wEnsureExt(w);}, render:wRenderFn, props:wPropsFn, wire:wWireFn, mount:_wMount, live:_wLive});
+  defWidget('weatherpro',{label:'Wetter+', noPalette:true, paletteIcon:'cloudsun', size:[340,220], defaults:function(w){w.label='';w.wfmt='auto';wEnsureExt(w);}, render:wRenderFn, props:wPropsFn, wire:wWireFn, mount:_wMount, live:_wLive});

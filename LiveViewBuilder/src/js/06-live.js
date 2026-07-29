@@ -1,7 +1,7 @@
   // C1: nutzt das Widget diese Variablen-ID als Daten-Bindung? (spiegelt pollVals, ohne visVar)
   function widgetDataId(w,id){
     if(w.varId===id||w.varId2===id||w.varId3===id||w.condVar===id||w.vTemp===id||w.vCond===id||w.vHum===id||w.vWind===id||w.vRain===id)return true;
-    var A=['items','links','rows','src','snk','fc','elements','stages'],i,j,o;
+    var A=['items','links','rows','src','snk','fc','elements','stages','steps'],i,j,o;
     for(i=0;i<A.length;i++){var a=w[A[i]];if(a)for(j=0;j<a.length;j++){o=a[j];if(o&&(o.vid===id||o.subvid===id||o.hi===id||o.lo===id||o.pq===id||o.cond===id||o.speedVid===id||o.socVid===id))return true;}}
     return false;
   }
@@ -22,7 +22,7 @@
   function _collectIds(w,add){ // alle Variablen-IDs eines Widgets an add() geben
     add(w.varId);add(w.varId2);add(w.varId3);add(w.visVar);add(w.condVar);add(w.vTemp);add(w.vCond);add(w.vHum);add(w.vWind);add(w.vRain);
     if(w.fc)w.fc.forEach(function(r){add(r.hi);add(r.lo);add(r.pq);add(r.cond);});
-    ['links','src','snk','items','rows'].forEach(function(k){if(w[k])w[k].forEach(function(o){if(o)add(o.vid);});});
+    ['links','src','snk','items','rows','steps'].forEach(function(k){if(w[k])w[k].forEach(function(o){if(o)add(o.vid);});});
     if(w.stages)w.stages.forEach(function(o){if(o){add(o.vid);add(o.subvid);}}); // Pipeline-Stationen (Wert + Zusatzwert)
     if(w.elements)w.elements.forEach(function(o){if(o){add(o.vid);add(o.speedVid);add(o.socVid);}});
     if(w.tankVid)add(w.tankVid);
@@ -103,7 +103,7 @@
   function setVar(id,val){fetch('?api=setvar&id='+id+'&value='+encodeURIComponent(val)+'&key='+encodeURIComponent(TOKEN),{cache:'no-store'}).then(function(){setTimeout(pollVals,250);});}
 
   // ---------- Variablen-Baum ----------
-  var _bindTarget=null,_bindTarget2=null,_bindTarget3=null,_bindVis=null,_bindObj=null,_bindField=null;
+  var _bindTarget=null,_bindTarget2=null,_bindTarget3=null,_bindVis=null,_bindObj=null,_bindField=null,_bindSeries=null;
   function setPath(obj,path,val){var p=path.split('.'),o=obj,i;for(i=0;i<p.length-1;i++){var k=p[i];if(o[k]==null)o[k]=(/^\d+$/.test(p[i+1]))?[]:{};o=o[k];}o[p[p.length-1]]=val;}
   function getPath(obj,path){var p=path.split('.'),o=obj,i;for(i=0;i<p.length;i++){if(o==null)return undefined;o=o[p[i]];}return o;}
   function iconFor(t){var id=t===0?'ic-folder':t===1?'ic-cube':t===2?'ic-tag':t===3?'ic-code':t===5?'ic-image':'ic-dot';return '<svg class="i"><use href="#'+id+'"/></svg>';}
@@ -134,6 +134,7 @@
     else if(w.type==='kpi'||w.type==='calc'||w.type==='cval'||w.type==='sval'){if(!w.unit)w.unit=su.replace(/^\s+/,'');}
   }
   function bindVar(n){
+    if(_bindSeries){var wS=widget(_bindSeries.wid);if(wS){_ensureSeries(wS);var se=wS.series[_bindSeries.idx]=(wS.series[_bindSeries.idx]||{});se.vid=n.id;if(!se.name)se.name=n.name;delete _hist[wS.id];render();select(wS.id);fetchHist(wS);toast('Serie gebunden: '+n.name);}_bindSeries=null;return;}
     if(_bindField){var wfd=widget(_bindField.wid);if(wfd){setPath(wfd,_bindField.path,n.id);render();select(wfd.id);toast('Gebunden: '+n.name);}_bindField=null;return;}
     if(_bindObj){var wob=widget(_bindObj);if(wob){wob.objId=n.id;render();select(wob.id);fetchObjInfo(wob);toast('Objekt: '+n.name);}_bindObj=null;return;}
     if(_bindVis){var wvs=widget(_bindVis);if(wvs){wvs.visVar=n.id;render();select(wvs.id);toast('Sichtbarkeit: '+n.name);}_bindVis=null;return;}

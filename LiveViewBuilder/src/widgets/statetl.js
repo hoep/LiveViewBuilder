@@ -10,7 +10,7 @@
   }
   function _stlColor(w,val){ // Farbe für einen Segmentwert, '' = transparent (keine Definition)
     var st=w.states||[];
-    for(var i=0;i<st.length;i++){if(_stlMatch(st[i].v,val))return st[i].color?esc(st[i].color):'';}
+    for(var i=0;i<st.length;i++){if(_stlMatch(st[i].v,val))return st[i].color?_skinColor(st[i].color):'';}
     return '';
   }
   function _stlSegs(data,from,to,liveVal){
@@ -26,7 +26,7 @@
   }
   function _stlFetch(w){
     var items=(w.items||[]).filter(function(o){return o&&o.vid;});if(!items.length){_stlDraw(w);return;}
-    var now=Math.floor(Date.now()/1000),h=(w.hours>0?w.hours:24),from=now-h*3600,to=now,fetchFrom=from-h*3600,done=0,acc={};
+    var now=Math.floor(Date.now()/1000),win=_winSec(w),from=now-win,to=now,fetchFrom=from-win,done=0,acc={};
     w._stlFrom=from;w._stlTo=to; // sichtbares Fenster; Fetch reicht 1 Fenster weiter zurück (Zustand am linken Rand)
     items.forEach(function(o){
       fetch('?api=history&id='+o.vid+'&from='+fetchFrom+'&to='+to,{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
@@ -55,24 +55,39 @@
     function tl(f){var d=new Date((from+(to-from)*f)*1000);return ('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2);}
     var axis='<div class="stl-axis'+(vert?' v':'')+'"><span>'+tl(0)+'</span><span>'+tl(0.5)+'</span><span>'+tl(1)+'</span></div>';
     box.innerHTML='<div class="stl-lanes'+(vert?' v':'')+'">'+lanes+'</div>'+axis;
+    if(w.showLog){var lb=$('[data-role=slog]',el);if(lb){ // Verlaufsliste (erstes Signal), Anzahl = logCount
+      var first=items[0],dd=((data[first.vid])||[]).slice().reverse(),mx=(w.logCount>0?w.logCount:20),o=[];
+      for(var i=0;i<dd.length&&o.length<mx;i++){var ms=dd[i][0],val=dd[i][1],dt=new Date(ms),col=_stlColor(w,val)||'var(--muted)',lab=_slogLabel(w,val);
+        var tt=('0'+dt.getHours()).slice(-2)+':'+('0'+dt.getMinutes()).slice(-2)+':'+('0'+dt.getSeconds()).slice(-2);
+        o.push('<div class="slog-row"><span class="slog-dot" style="background:'+col+'"></span><span class="slog-lbl">'+esc(lab)+'</span><span class="slog-t">'+tt+'</span></div>');}
+      lb.innerHTML=o.length?o.join(''):'<div class="slog-empty">keine Wechsel</div>';
+    }}
   }
   var _stlT={};
   defWidget('statetl',{
     label:'Zustands-Timeline', paletteIcon:'wchart', size:[320,150],
-    defaults:function(w){w.hours=24;w.orient='h';w.items=[{vid:0,label:'Signal 1'}];w.states=[{v:'1',color:'#39d08a',label:'Ein'},{v:'0',color:'',label:'Aus'}];},
+    defaults:function(w){w.hours=24;w.orient='h';w.items=[{vid:0,label:'Signal 1'}];w.states=[{v:'1',color:'ok',label:'Ein'},{v:'0',color:'',label:'Aus'}];},
     render:function(w){
-      var leg=(w.states||[]).filter(function(s){return s.color;}).map(function(s){return '<span class="stl-leg"><i style="background:'+esc(s.color)+'"></i>'+esc(s.label||String(s.v))+'</span>';}).join('');
-      return '<div class="wstatetl" style="position:absolute;inset:0;padding:8px 10px;box-sizing:border-box"><div class="stl-head">'+(w.label?'<span class="stl-title">'+esc(w.label)+'</span>':'')+'<span class="stl-legs">'+leg+'</span></div><div data-role="stl" style="position:absolute;inset:24px 10px 6px 10px"></div></div>';
+      var leg=(w.states||[]).filter(function(s){return s.color;}).map(function(s){return '<span class="stl-leg"><i style="background:'+_skinColor(s.color)+'"></i>'+esc(s.label||String(s.v))+'</span>';}).join('');
+      var head='<div class="stl-head">'+(w.label?'<span class="stl-title">'+esc(w.label)+'</span>':'')+'<span class="stl-legs">'+leg+'</span></div>';
+      if(w.showLog){ // HA-Ansicht: Balken oben + Verlaufsliste darunter (eine Kachel)
+        return '<div class="wstatetl wstatetl-log" style="position:absolute;inset:0;padding:8px 10px;box-sizing:border-box">'+head+'<div class="stl-barbox"><div data-role="stl" style="position:absolute;inset:0"></div></div><div data-role="slog" class="slog-list"></div></div>';
+      }
+      return '<div class="wstatetl" style="position:absolute;inset:0;padding:8px 10px;box-sizing:border-box">'+head+'<div data-role="stl" style="position:absolute;inset:24px 10px 6px 10px"></div></div>';
     },
     mount:function(w){_stlFetch(w);},
-    props:function(w){return row('Stunden','<input id="pStlH" type="number" min="1" value="'+(w.hours>0?w.hours:24)+'">')
+    props:function(w){return winCtl(w)
       +row('Orientierung','<select id="pStlO"><option value="h"'+((w.orient||'h')==='h'?' selected':'')+'>horizontal (Zeit →)</option><option value="v"'+(w.orient==='v'?' selected':'')+'>vertikal (Zeit ↑)</option></select>')
-      +listEditor(w,'states','Zustände: Wert · Farbe · Name (leer = transparent)',[{k:'v',ph:'Wert'},{k:'color',ph:'#hex'},{k:'label',ph:'Name'}])
+      +row('Verlaufsliste','<input type="checkbox" id="pStlLog"'+(w.showLog?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">Aktivitätsliste unter dem Balken</span>')
+      +(w.showLog?row('Max. Einträge','<input id="pStlLogN" type="number" min="1" value="'+(w.logCount>0?w.logCount:20)+'">'):'')
+      +listEditor(w,'states','Zustände: Wert · Farbe · Name (leer = transparent)',[{k:'v',ph:'Wert'},{k:'color',type:'skincolor'},{k:'label',ph:'Name'}])
       +'<button class="btn" id="pStlFill" style="margin:-2px 0 8px;padding:4px 8px;font-size:11px">Zustände aus Profil füllen</button>'
       +listEditor(w,'items','Signale (Zustands-Variablen)',[{k:'vid',ph:'ID'},{k:'label',ph:'Name'}]);},
     wire:function(w){
-      if($('#pStlH'))$('#pStlH').oninput=function(){w.hours=parseInt(this.value)||24;_stlFetch(w);commit();};
+      winWire(w,function(){_stlFetch(w);commit();});
       if($('#pStlO'))$('#pStlO').onchange=function(){w.orient=this.value;_stlDraw(w);commit();};
+      if($('#pStlLog'))$('#pStlLog').onchange=function(){w.showLog=this.checked||undefined;render();renderProps();_stlFetch(w);commit();};
+      if($('#pStlLogN'))$('#pStlLogN').oninput=function(){w.logCount=parseInt(this.value)||20;_stlDraw(w);commit();};
       if($('#pStlFill'))$('#pStlFill').onclick=function(){
         var first=(w.items||[]).filter(function(o){return o&&o.vid;})[0];
         if(!first){toast('Erst ein Signal mit Variable hinzufügen');return;}

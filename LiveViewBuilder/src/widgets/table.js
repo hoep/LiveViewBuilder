@@ -31,7 +31,7 @@
     var numc=[];for(var ci=0;ci<cols;ci++){var alln=body.length>0;for(var ri=0;ri<body.length;ri++){if(!_tblIsNum(body[ri][ci]!=null?body[ri][ci]:'')){alln=false;break;}}numc[ci]=alln;}
     // Kopf: Titel + Zähler + rechts Seg-Toggle + Pager
     var pager=(ps>0&&total>ps)?('<div class="tbl-pager"><button class="tbl-pg" data-tbl-page="prev"'+(page<=0?' disabled':'')+'>&#8249;</button><span class="tbl-pgtxt">'+from+'&ndash;'+to+' von '+total+'</span><button class="tbl-pg" data-tbl-page="next"'+(page>=pages-1?' disabled':'')+'>&#8250;</button></div>'):'';
-    var seg='<div class="seg"><button class="seg-b'+(view==='table'?' on':'')+'" data-tbl-view="table">Tabelle</button><button class="seg-b'+(view==='cards'?' on':'')+'" data-tbl-view="cards">Karten</button></div>';
+    var seg=w.hideToggle?'':('<div class="seg"><button class="seg-b'+(view==='table'?' on':'')+'" data-tbl-view="table">Tabelle</button><button class="seg-b'+(view==='cards'?' on':'')+'" data-tbl-view="cards">Karten</button></div>');
     var ph='<div class="ph"><div><h3>'+esc(w.label||'Tabelle')+'</h3><div class="ph-sub">'+total+' '+(total===1?'Eintrag':'Einträge')+'</div></div><div class="ph-right">'+seg+pager+'</div></div>';
     var bodyHtml;
     if(!rows.length||!cols){bodyHtml='<div class="tbl-empty">'+(w.varId?'Keine Daten (Zeile 0 = Spaltenkopf, JSON o. serialisiertes Array)':'Variable wählen')+'</div>';}
@@ -52,10 +52,12 @@
     mount:function(w){_tblLoad(w);},
     props:function(w){return row('Zeilen/Seite','<input id="pTblPS" type="number" min="0" value="'+(w.pageSize>0?w.pageSize:0)+'" title="0 = keine Paginierung">')
       +row('Start-Ansicht','<select id="pTblView"><option value="table"'+((w.tblView||'table')==='table'?' selected':'')+'>Tabelle</option><option value="cards"'+(w.tblView==='cards'?' selected':'')+'>Karten</option></select>')
+      +row('Umschalter ausblenden','<input type="checkbox" id="pTblNoSw"'+(w.hideToggle?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">feste Start-Ansicht</span>')
       +'<div class="hint" style="font-size:11px;margin-top:6px">Quelle: Text-Variable mit <b>JSON</b> oder <b>serialisiertem Array</b> im Format [Zeile][Spalte]. <b>Zeile 0 = Spaltenkopf</b>.</div>';},
     wire:function(w){
       if($('#pTblPS'))$('#pTblPS').oninput=function(){w.pageSize=parseInt(this.value)||0;w._tblPage=0;_tblDraw(w);commit();};
       if($('#pTblView'))$('#pTblView').onchange=function(){w.tblView=this.value;w._tblView=this.value;_tblDraw(w);commit();};
+      if($('#pTblNoSw'))$('#pTblNoSw').onchange=function(){w.hideToggle=this.checked||undefined;_tblDraw(w);commit();};
     },
     click:function(w,el,e){
       var sb=e.target.closest('[data-tbl-sort]');if(sb){var i=parseInt(sb.getAttribute('data-tbl-sort'));if(w._tblSortCol===i){w._tblSortDir=(w._tblSortDir==='asc')?'desc':'asc';}else{w._tblSortCol=i;w._tblSortDir='asc';}w._tblPage=0;_tblDraw(w);return true;}
