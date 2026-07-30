@@ -3519,6 +3519,33 @@
     var k=s.toLowerCase();return m[k]?('var('+m[k]+')'):s;}
   // Nur echte Farbwerte durchlassen - ein unbekanntes Stichwort darf keine CSS-Variable kaputtmachen.
   function _cssColorOrEmpty(c){var v=_skinColor(c);return (/^var\(--[\w-]+\)$/.test(v)||/^#[0-9a-fA-F]{3,8}$/.test(v)||/^(rgb|hsl|color-mix)\(/.test(v))?v:'';}
+  // ---- Zustandsvergleich: EINE Implementierung fuer ALLE Widgets --------------------
+  // Lag vorher als privater Helfer im Zustands-Widget, waehrend Wert-, Wertkarten-,
+  // Timeline- und Status-Bild-Widget je einen eigenen, nur exakten Vergleich hatten.
+  // Wer im Zustands-Widget ">0" gelernt hatte, stand beim Wert-Widget vor einer Liste,
+  // die nur Gleichheit kennt - und bekam wortlos keine Farbe.
+  function _assocEq(a,b){if(String(a)===String(b))return true;var t=function(x){return x===true||x===1||x==='1'||x==='true';},f=function(x){return x===false||x===0||x==='0'||x==='false';};return (t(a)&&t(b))||(f(a)&&f(b));}
+  // Erweiterter Vergleich: Operatoren (>0 >=1 <5 <=3 !=0 =2), Bereiche (1..5 / 1:5) und Platzhalter (* / else). Sonst exakter/boolescher Vergleich.
+  function _assocMatch(pat,v){
+    if(pat==null)return false;var p=String(pat).trim();
+    if(p==='')return false;                                     // leere Zeile matcht nichts
+    if(p==='*'||/^(else|sonst|default|rest|any)$/i.test(p))return true;  // expliziter Platzhalter
+    var num=function(x){return parseFloat(String(x).replace(',','.'));},n=num(v);
+    var op=p.match(/^(>=|<=|!=|<>|>|<|=)\s*(-?\d+(?:[.,]\d+)?)$/);
+    if(op){if(isNaN(n))return false;var t=num(op[2]);switch(op[1]){case '>':return n>t;case '<':return n<t;case '>=':return n>=t;case '<=':return n<=t;case '!=':case '<>':return n!==t;case '=':return n===t;}}
+    var rg=p.match(/^(-?\d+(?:[.,]\d+)?)\s*(?:\.\.|:)\s*(-?\d+(?:[.,]\d+)?)$/);
+    if(rg){if(isNaN(n))return false;var a=num(rg[1]),b=num(rg[2]);return n>=Math.min(a,b)&&n<=Math.max(a,b);}
+    return _assocEq(pat,v);
+  }
+  /** Ersten passenden Eintrag einer Zustandsliste finden: exakt zuerst, dann Muster. */
+  function stateHit(list,v,key){
+    if(!list||!list.length)return null;
+    var k=key||'v',i;
+    for(i=0;i<list.length;i++){if(list[i]&&_assocEq(list[i][k],v))return list[i];}
+    for(i=0;i<list.length;i++){if(list[i]&&_assocMatch(list[i][k],v))return list[i];}
+    return null;
+  }
+
   var _assocData={};   // varId -> {assocs:[{v,name,icon,color}], picon}
   var _assocPick=null; // {wid,key} während Icon-Auswahl für eine Assoziation
   var _iconPick=null;  // {wid,field} generische Icon-Auswahl in ein beliebiges Widget-Feld (z. B. Switch On/Off-Icon)
@@ -4379,27 +4406,13 @@
   });
   // ===== Widget: Zustand (assoc) — zeigt den aktuellen Zustand als Icon und/oder Text =====
   // Nutzt manuelle Zuordnungen (amap: Wert·Icon·Text·Farbe) und/oder die Profil-Assoziationen der Variable.
-  function _assocEq(a,b){if(String(a)===String(b))return true;var t=function(x){return x===true||x===1||x==='1'||x==='true';},f=function(x){return x===false||x===0||x==='0'||x==='false';};return (t(a)&&t(b))||(f(a)&&f(b));}
-  // Erweiterter Vergleich: Operatoren (>0 >=1 <5 <=3 !=0 =2), Bereiche (1..5 / 1:5) und Platzhalter (* / else). Sonst exakter/boolescher Vergleich.
-  function _assocMatch(pat,v){
-    if(pat==null)return false;var p=String(pat).trim();
-    if(p==='')return false;                                     // leere Zeile matcht nichts
-    if(p==='*'||/^(else|sonst|default|rest|any)$/i.test(p))return true;  // expliziter Platzhalter
-    var num=function(x){return parseFloat(String(x).replace(',','.'));},n=num(v);
-    var op=p.match(/^(>=|<=|!=|<>|>|<|=)\s*(-?\d+(?:[.,]\d+)?)$/);
-    if(op){if(isNaN(n))return false;var t=num(op[2]);switch(op[1]){case '>':return n>t;case '<':return n<t;case '>=':return n>=t;case '<=':return n<=t;case '!=':case '<>':return n!==t;case '=':return n===t;}}
-    var rg=p.match(/^(-?\d+(?:[.,]\d+)?)\s*(?:\.\.|:)\s*(-?\d+(?:[.,]\d+)?)$/);
-    if(rg){if(isNaN(n))return false;var a=num(rg[1]),b=num(rg[2]);return n>=Math.min(a,b)&&n<=Math.max(a,b);}
-    return _assocEq(pat,v);
-  }
   // Kontrasttext (weiß/dunkel) für eine (auch als var(--x) angegebene) Farbe via YIQ-Helligkeit
   var _ascProbe;
   function _contrastText(col){try{if(!_ascProbe){_ascProbe=document.createElement('span');_ascProbe.style.cssText='position:absolute;left:-9999px;top:-9999px';document.body.appendChild(_ascProbe);}_ascProbe.style.color='#7f7f7f';_ascProbe.style.color=col;var m=getComputedStyle(_ascProbe).color.match(/(\d+)\D+(\d+)\D+(\d+)/);if(!m)return '#ffffff';var yiq=(+m[1]*299+ +m[2]*587+ +m[3]*114)/1000;return yiq>=150?'#141414':'#ffffff';}catch(e){return '#ffffff';}}
   function _chevSVG(c){return '<svg viewBox="0 0 24 24" style="width:16px;height:16px;fill:none;stroke:'+c+';stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="M9 6l6 6l-6 6"/></svg>';}
   function _assocWid(w){var el=$('.w[data-id="'+w.id+'"]',canvas);if(!el)return;
     var d=w.varId&&_lastVals[w.varId],v=d?d.v:null;
-    var m=(w.amap||[]).filter(function(e){return _assocEq(e.v,v);})[0]      // exakter Treffer zuerst
-        ||(w.amap||[]).filter(function(e){return _assocMatch(e.v,v);})[0];   // dann Operator/Bereich/Platzhalter
+    var m=stateHit(w.amap,v);   // exakt zuerst, dann Operator/Bereich/Platzhalter (Kern)
     var a=(!m)?assocFor(w,v):null,rr=a?assocResolved(w,a):null;
     var icon=(m&&m.icon)||(rr&&rr.icon)||w.icon||'';
     var ovc=(m&&m.color)||(a&&w.assocMap&&w.assocMap[String(a.v)]?w.assocMap[String(a.v)].color:'');
@@ -6105,14 +6118,8 @@ defWidget('meterlist',{
   });
   // ===== Widget: Zustands-Timeline (statetl) — gefüllte Zeitbalken, je Zustand eigene Farbe, mehrere Signale =====
   // items: [{vid,label}], states: [{v,color,label}] (Wert->Farbe), hours = Fenster, orient = 'h'|'v'
-  function _stlMatch(sv,val){
-    if(String(sv)===String(val))return true;
-    var a=parseFloat(String(sv).replace(',','.')),b=parseFloat(String(val).replace(',','.'));
-    if(!isNaN(a)&&!isNaN(b)&&a===b)return true;
-    if((val===true||val==='true')&&(sv==='1'||sv===1))return true;
-    if((val===false||val==='false')&&(sv==='0'||sv===0))return true;
-    return false;
-  }
+  // Vergleich zentral: Operatoren, Bereiche, Platzhalter (siehe _assocMatch/stateHit)
+  function _stlMatch(sv,val){return _assocMatch(sv,val);}
   function _stlColor(w,val){ // Farbe für einen Segmentwert, '' = transparent (keine Definition)
     var st=w.states||[];
     for(var i=0;i<st.length;i++){if(_stlMatch(st[i].v,val))return st[i].color?_skinColor(st[i].color):'';}
@@ -6217,17 +6224,13 @@ defWidget('statusgrid',{
   props:function(w){return (w.type==='statusgrid'?listEditor(w,'items','Zeilen: Icon · Name · Status · Text · ID',[{k:'icon',ph:'icon'},{k:'label',ph:'Name'},{k:'state',ph:'ok/warn/off'},{k:'text',ph:'Text'},{k:'vid',ph:'ID'}]):'');}
 });
   // ===== Widget: Status-Bild (statusimage) — Media je Zustand; "off" = Farbbild in Graustufe (spart ein zweites Media) =====
-  function _siMatch(sv,dv){ // boolean-tolerant: "1"/1/true bzw. "0"/0/false gelten als gleich
-    if(String(sv)===String(dv))return true;
-    var t=function(x){return x===true||x===1||x==='1'||x==='true';};
-    var f=function(x){return x===false||x===0||x==='0'||x==='false';};
-    return (t(sv)&&t(dv))||(f(sv)&&f(dv));
-  }
+  // Vergleich zentral: Operatoren, Bereiche, Platzhalter (siehe _assocMatch/stateHit)
+  function _siMatch(sv,dv){return _assocMatch(sv,dv);}
   function _siSrc(mid){return mid?('?api=media&id='+mid):'';}
   function _siColorMid(w){var m=parseInt(w.mediaId)||0;if(m)return m;var r=0;(w.states||[]).forEach(function(s){var x=parseInt(s.mediaId)||0;if(x&&!r)r=x;});return r;} // Farb-/„Ein"-Bild
   function _siState(w,v){ // -> {src, gray}
     var color=_siColorMid(w),match=null;
-    (w.states||[]).forEach(function(s){if(_siMatch(s.value,v))match=s;});
+    match=stateHit(w.states,v,'value');   // exakt zuerst, dann Muster (vorher gewann der LETZTE Treffer)
     if(match){var raw=(''+(match.mediaId==null?'':match.mediaId)).trim().toLowerCase();
       if(/^(off|grau|gray|grey|bw|sw|s\/w)$/.test(raw))return {src:_siSrc(color),gray:true}; // Graustufe des Farbbilds
       var m=parseInt(match.mediaId)||0;return {src:_siSrc(m||color),gray:false};
@@ -6627,7 +6630,7 @@ defWidget('statuslist',{
       +((!w.colThr&&(w.t1!=null||w.t2!=null))?'<div style="font-size:11px;color:var(--warn);margin:-2px 2px 4px">Schwellenwerte sind gesetzt ('+(w.t1!=null?w.t1:'-')+' / '+(w.t2!=null?w.t2:'-')+'), wirken aber nicht: \u201eAktiv\u201c ist aus.</div>':'')
       +(w.colThr?(row('Grün bis','<input id="pVT1" type="number" value="'+(w.t1!=null?w.t1:'')+'" placeholder="Schwelle">')+row('Gelb bis','<input id="pVT2" type="number" value="'+(w.t2!=null?w.t2:'')+'" placeholder="Schwelle">')+row('Invertieren','<input type="checkbox" id="pThrInv"'+(w.thrInvert?' checked':'')+'>')):'')
       +'<div class="pgh">Farbe nach Zustand</div>'
-      +'<div style="font-size:11px;color:var(--muted);margin:-2px 2px 4px">Je Zustand eine Farbe (überschreibt die Schwellenfarbe). Der Wert muss EXAKT übereinstimmen — für Messwerte wie Prozent stattdessen „Farbe nach Schwelle\u201c benutzen. Bool: 1/0 bzw. true/false.</div>'
+      +'<div style="font-size:11px;color:var(--muted);margin:-2px 2px 4px">Je Zustand eine Farbe (überschreibt die Schwellenfarbe). Erlaubt: exakte Werte, Operatoren (&gt;0, &lt;=25, !=3), Bereiche (0..25) und * für „alles andere“. Bool: 1/0 bzw. true/false.</div>'
       +listEditor(w,'vassoc','Zustand · Text · Farbe',[{k:'v',ph:'Wert (z. B. 1)'},{k:'text',ph:'Text (optional)'},{k:'color',type:'skin'}])
       +row('Ganze Kachel einfärben','<input type="checkbox" id="pVaFill"'+(w.vaFill?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">statt nur des Werts</span>');},
     wire:function(w){
@@ -6654,7 +6657,7 @@ defWidget('statuslist',{
           if(w.thrInvert)c=(n<=t1?'--crit':(n<=t2?'--warm':'--ok'));
           _col=cssv(c);}}
       var _match=null;
-      if(w.vassoc&&w.vassoc.length){_match=w.vassoc.filter(function(a){return String(a.v)===String(d.v);})[0];
+      if(w.vassoc&&w.vassoc.length){_match=stateHit(w.vassoc,d.v);
         if(_match){if(_match.text!=null&&_match.text!=='')v.textContent=(w.pre||'')+_match.text+(w.suf||'');
           if(_match.color)_col=_skinColor(_match.color)||_match.color;}}   // Zustand schlaegt Schwelle
       if(w.vaFill&&_col){ // ganze Kachel toenen - jetzt auch mit Schwellenfarbe
@@ -6680,7 +6683,7 @@ defWidget('statuslist',{
   function _vcState(w,el){
     if(!(w.vassoc&&w.vassoc.length))return;
     var srcs=[w.varId2,w.varId],m=null,i,j;
-    for(i=0;i<srcs.length&&!m;i++){if(!srcs[i]||!_lastVals[srcs[i]])continue;var sv=_vcNorm(_lastVals[srcs[i]].v);for(j=0;j<w.vassoc.length;j++){if(_vcNorm(w.vassoc[j].v)===sv){m=w.vassoc[j];break;}}}
+    for(i=0;i<srcs.length&&!m;i++){if(!srcs[i]||!_lastVals[srcs[i]])continue;m=stateHit(w.vassoc,_lastVals[srcs[i]].v);}   // zentraler Vergleicher statt nur Gleichheit
     var v=$('[data-role=val]',el),c=(m&&m.color)?(_skinColor(m.color)||m.color):'';
     if(w.vaFill){el.classList.remove('vc-acc'); // übernimmt die Kachelfarbe (statt v2acc)
       if(c){el.style.background='color-mix(in oklab,'+c+' 16%,var(--surface))';el.style.borderColor='color-mix(in oklab,'+c+' 45%,var(--line))';if(v)v.style.color='color-mix(in oklab,'+c+' 85%,var(--text))';}

@@ -8,7 +8,7 @@
   function _vcState(w,el){
     if(!(w.vassoc&&w.vassoc.length))return;
     var srcs=[w.varId2,w.varId],m=null,i,j;
-    for(i=0;i<srcs.length&&!m;i++){if(!srcs[i]||!_lastVals[srcs[i]])continue;var sv=_vcNorm(_lastVals[srcs[i]].v);for(j=0;j<w.vassoc.length;j++){if(_vcNorm(w.vassoc[j].v)===sv){m=w.vassoc[j];break;}}}
+    for(i=0;i<srcs.length&&!m;i++){if(!srcs[i]||!_lastVals[srcs[i]])continue;m=stateHit(w.vassoc,_lastVals[srcs[i]].v);}   // zentraler Vergleicher statt nur Gleichheit
     var v=$('[data-role=val]',el),c=(m&&m.color)?(_skinColor(m.color)||m.color):'';
     if(w.vaFill){el.classList.remove('vc-acc'); // übernimmt die Kachelfarbe (statt v2acc)
       if(c){el.style.background='color-mix(in oklab,'+c+' 16%,var(--surface))';el.style.borderColor='color-mix(in oklab,'+c+' 45%,var(--line))';if(v)v.style.color='color-mix(in oklab,'+c+' 85%,var(--text))';}

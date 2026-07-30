@@ -10,6 +10,33 @@
     var k=s.toLowerCase();return m[k]?('var('+m[k]+')'):s;}
   // Nur echte Farbwerte durchlassen - ein unbekanntes Stichwort darf keine CSS-Variable kaputtmachen.
   function _cssColorOrEmpty(c){var v=_skinColor(c);return (/^var\(--[\w-]+\)$/.test(v)||/^#[0-9a-fA-F]{3,8}$/.test(v)||/^(rgb|hsl|color-mix)\(/.test(v))?v:'';}
+  // ---- Zustandsvergleich: EINE Implementierung fuer ALLE Widgets --------------------
+  // Lag vorher als privater Helfer im Zustands-Widget, waehrend Wert-, Wertkarten-,
+  // Timeline- und Status-Bild-Widget je einen eigenen, nur exakten Vergleich hatten.
+  // Wer im Zustands-Widget ">0" gelernt hatte, stand beim Wert-Widget vor einer Liste,
+  // die nur Gleichheit kennt - und bekam wortlos keine Farbe.
+  function _assocEq(a,b){if(String(a)===String(b))return true;var t=function(x){return x===true||x===1||x==='1'||x==='true';},f=function(x){return x===false||x===0||x==='0'||x==='false';};return (t(a)&&t(b))||(f(a)&&f(b));}
+  // Erweiterter Vergleich: Operatoren (>0 >=1 <5 <=3 !=0 =2), Bereiche (1..5 / 1:5) und Platzhalter (* / else). Sonst exakter/boolescher Vergleich.
+  function _assocMatch(pat,v){
+    if(pat==null)return false;var p=String(pat).trim();
+    if(p==='')return false;                                     // leere Zeile matcht nichts
+    if(p==='*'||/^(else|sonst|default|rest|any)$/i.test(p))return true;  // expliziter Platzhalter
+    var num=function(x){return parseFloat(String(x).replace(',','.'));},n=num(v);
+    var op=p.match(/^(>=|<=|!=|<>|>|<|=)\s*(-?\d+(?:[.,]\d+)?)$/);
+    if(op){if(isNaN(n))return false;var t=num(op[2]);switch(op[1]){case '>':return n>t;case '<':return n<t;case '>=':return n>=t;case '<=':return n<=t;case '!=':case '<>':return n!==t;case '=':return n===t;}}
+    var rg=p.match(/^(-?\d+(?:[.,]\d+)?)\s*(?:\.\.|:)\s*(-?\d+(?:[.,]\d+)?)$/);
+    if(rg){if(isNaN(n))return false;var a=num(rg[1]),b=num(rg[2]);return n>=Math.min(a,b)&&n<=Math.max(a,b);}
+    return _assocEq(pat,v);
+  }
+  /** Ersten passenden Eintrag einer Zustandsliste finden: exakt zuerst, dann Muster. */
+  function stateHit(list,v,key){
+    if(!list||!list.length)return null;
+    var k=key||'v',i;
+    for(i=0;i<list.length;i++){if(list[i]&&_assocEq(list[i][k],v))return list[i];}
+    for(i=0;i<list.length;i++){if(list[i]&&_assocMatch(list[i][k],v))return list[i];}
+    return null;
+  }
+
   var _assocData={};   // varId -> {assocs:[{v,name,icon,color}], picon}
   var _assocPick=null; // {wid,key} während Icon-Auswahl für eine Assoziation
   var _iconPick=null;  // {wid,field} generische Icon-Auswahl in ein beliebiges Widget-Feld (z. B. Switch On/Off-Icon)

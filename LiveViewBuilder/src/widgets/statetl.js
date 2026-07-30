@@ -1,13 +1,7 @@
   // ===== Widget: Zustands-Timeline (statetl) — gefüllte Zeitbalken, je Zustand eigene Farbe, mehrere Signale =====
   // items: [{vid,label}], states: [{v,color,label}] (Wert->Farbe), hours = Fenster, orient = 'h'|'v'
-  function _stlMatch(sv,val){
-    if(String(sv)===String(val))return true;
-    var a=parseFloat(String(sv).replace(',','.')),b=parseFloat(String(val).replace(',','.'));
-    if(!isNaN(a)&&!isNaN(b)&&a===b)return true;
-    if((val===true||val==='true')&&(sv==='1'||sv===1))return true;
-    if((val===false||val==='false')&&(sv==='0'||sv===0))return true;
-    return false;
-  }
+  // Vergleich zentral: Operatoren, Bereiche, Platzhalter (siehe _assocMatch/stateHit)
+  function _stlMatch(sv,val){return _assocMatch(sv,val);}
   function _stlColor(w,val){ // Farbe für einen Segmentwert, '' = transparent (keine Definition)
     var st=w.states||[];
     for(var i=0;i<st.length;i++){if(_stlMatch(st[i].v,val))return st[i].color?_skinColor(st[i].color):'';}
