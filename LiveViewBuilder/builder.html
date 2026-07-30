@@ -177,6 +177,17 @@
   .hstime{font-family:var(--fm);font-size:var(--wf-txt);font-weight:600}.hslbl{font-size:var(--wf-lbl);color:var(--muted)}
   .hwf{height:100%;display:flex;flex-direction:column;gap:8px;padding:10px 12px;overflow:hidden}
   .w.no-frame{background:transparent;border-color:transparent} /* Kachel-Rahmen/Hintergrund aus */
+  /* Hintergrund transparent, unabhaengig vom Rahmen. Viele Widgets malen INNEN eine eigene
+     Karte (.hsrow/.hmeter/.hinfo/.tbl-card/.panel ...). Statt jede einzeln aufzuzaehlen -
+     was bei jedem neuen Widget vergessen wuerde - werden hier die Flaechen-Token neutralisiert:
+     --tile und --surface tragen die Karten, --surface-2 bleibt bewusst erhalten, damit
+     Balkenspuren, Chips und Schalter sichtbar bleiben. */
+  .w.bg-t{background:transparent!important;--tile:transparent;--surface:transparent}
+  /* Die aeussere Huelle des Widget-Inhalts (.htick, .hvcard, .hinfo, .panel ...) malt oft
+     selbst Hintergrund UND Rahmen - die Laufzeile etwa einen Verlauf surface->surface-2 mit
+     1px Linie. Nur dieses eine direkte Kind wird mit neutralisiert; alles darunter
+     (Balkenspuren, Chips, Fuellungen) bleibt unangetastet. */
+  .w.bg-t>.winner>*{background:transparent!important;border-color:transparent!important;box-shadow:none!important}
   body.wglow .w:not(.sel):not(.no-frame){box-shadow:0 0 15px color-mix(in oklab,var(--accent) 20%,transparent)} /* optionaler Widget-Glow in Akzentfarbe */
   /* Typografie erzwingen (auch auf Elemente mit eigener Schrift wie Uhr/KPI) */
   .w.tw-ff,.w.tw-ff *{font-family:var(--w-ff)!important}
@@ -425,6 +436,10 @@
   .htick .htm.info .htic{color:var(--info)} .htick .htm.info .htdot{background:var(--info)}
   .htick .htm b{font-weight:600} .htick .htm small{color:var(--muted)}
   .htick .htm::after{content:"";width:.42em;height:.42em;border-radius:50%;background:var(--line);margin:0 1.7em;flex:none}
+  /* Punkte aus: Stufen-Punkt weg, Trennpunkt nur unsichtbar - der Abstand zwischen den
+     Eintraegen muss bleiben, sonst kleben sie im umlaufenden Band aneinander. */
+  .htick.nodots .htm .htdot{display:none}
+  .htick.nodots .htm::after{background:transparent}
   @keyframes htmarq{to{transform:translateX(-50%)}}
   @keyframes htpulse{0%,100%{opacity:1}50%{opacity:.35}}
   /* Gemeinsame Pill */
@@ -1559,13 +1574,14 @@
       var d=document.createElement('div');d.className='w t-'+w.type+(sel[w.id]?' sel':'')+(w.anim?' anim-'+w.anim:'')+(w.lineMode?' wline':'');d.dataset.id=w.id;
       d.style.left=w.x+'px';d.style.top=w.y+'px';d.style.width=w.w+'px';d.style.height=w.h+'px';
       var _frameOn=(w.frame!=null)?w.frame:!state.page.noframe;if(!_frameOn)d.classList.add('no-frame'); // Kachel-Rahmen: Widget-Override sonst Ansicht-Standard
+      if(w.bgT)d.classList.add('bg-t'); // Hintergrund transparent (Rahmen bleibt davon unberuehrt)
       var _ak=_wActionKind(w);if(_ak)d.classList.add(_ak); // Hover-Affordance: tap/hold/both (CSS greift nur ausserhalb Edit)
       if(w.name&&_refSet[w.name])d.classList.add('ref-hidden'); // in Laufzeile referenziert -> immer aus (bearbeiten über die Laufzeile)
       else if(w.hidden)d.classList.add('run-hidden'); // manuell versteckt -> im Run aus, im Edit gestrichelt sichtbar (CSS)
       var _inner;try{_inner=widgetInner(w);}catch(_e){_inner='<div style="padding:6px;font-size:11px;color:var(--crit)">⚠ '+esc(w.type||'?')+'</div>';} // ein defektes Widget darf das Rendern nicht abbrechen
       d.innerHTML='<div class="winner">'+_inner+'</div><div class="rz rz-n" data-rz="n"></div><div class="rz rz-s" data-rz="s"></div><div class="rz rz-e" data-rz="e"></div><div class="rz rz-w" data-rz="w"></div><div class="rz rz-ne" data-rz="ne"></div><div class="rz rz-nw" data-rz="nw"></div><div class="rz rz-se" data-rz="se"></div><div class="rz rz-sw" data-rz="sw"></div>';
       if(w.type==='value'&&w.valfs){var v=$('.v',d);if(v)v.style.fontSize=w.valfs+'px';}
-      if(w.bg)d.style.background=w.bg;if(w.fg){var _rf=_readableFg(w.fg,w.bg);if(_rf)d.style.color=_rf;}
+      if(w.bg&&!w.bgT)d.style.background=w.bg;if(w.fg){var _rf=_readableFg(w.fg,(w.bgT?null:w.bg));if(_rf)d.style.color=_rf;}
       if(w.iconColor)d.style.setProperty('--wicon',_skinColor(w.iconColor)||w.iconColor); // zentrale Icon-Farbe
       if(w.ff){d.style.setProperty('--w-ff',w.ff);d.classList.add('tw-ff');}if(w.fwt){d.style.setProperty('--w-fwt',w.fwt);d.classList.add('tw-fwt');}if(w.fsty){d.style.setProperty('--w-fsty',w.fsty);d.classList.add('tw-fsty');}if(w.fsz){d.style.setProperty('--w-fsz',w.fsz+'px');d.classList.add('tw-fsz');} // Typografie: auf innere Elemente erzwingen
       return d;
@@ -2474,7 +2490,8 @@
       dd.style.left=w.x+'px';dd.style.top=w.y+'px';dd.style.width=w.w+'px';dd.style.height=w.h+'px';
       dd.innerHTML='<div class="winner">'+widgetInner(w)+'</div>';
       if(w.type==='value'&&w.valfs){var vv=$('.v',dd);if(vv)vv.style.fontSize=w.valfs+'px';}
-      if(w.bg)dd.style.background=w.bg;if(w.fg){var _rf2=_readableFg(w.fg,w.bg);if(_rf2)dd.style.color=_rf2;}
+      if(w.bgT)dd.classList.add('bg-t'); // Hintergrund transparent, auch im Popup
+      if(w.bg&&!w.bgT)dd.style.background=w.bg;if(w.fg){var _rf2=_readableFg(w.fg,(w.bgT?null:w.bg));if(_rf2)dd.style.color=_rf2;}
       if(w.iconColor)dd.style.setProperty('--wicon',_skinColor(w.iconColor)||w.iconColor);
       oc.appendChild(dd);
     });
@@ -2500,7 +2517,7 @@
     function mp(id){return (id&&map[id]!=null)?map[id]:id;}
     var inner='<div class="compinner" style="position:absolute;left:0;top:0;width:'+sw+'px;height:'+sh+'px;transform-origin:top left;transform:scale('+sc+');pointer-events:'+(mode==='edit'?'none':'auto')+'">';
     (src.widgets||[]).forEach(function(mw){var c={};for(var k in mw)c[k]=mw[k];c.id=w.id+'__'+mw.id;c.varId=mp(c.varId);c.varId2=mp(c.varId2);c.varId3=mp(c.varId3);if(c.visVar)c.visVar=mp(c.visVar);
-      inner+='<div class="w t-'+c.type+(c.lineMode?' wline':'')+'" data-id="'+c.id+'" style="position:absolute;left:'+c.x+'px;top:'+c.y+'px;width:'+c.w+'px;height:'+c.h+'px'+(c.bg?';background:'+c.bg:'')+(c.fg?(function(){var r=_readableFg(c.fg,c.bg);return r?';color:'+r:'';})():'')+'"><div class="winner">'+widgetInner(c)+'</div></div>';
+      inner+='<div class="w t-'+c.type+(c.lineMode?' wline':'')+(c.bgT?' bg-t':'')+'" data-id="'+c.id+'" style="position:absolute;left:'+c.x+'px;top:'+c.y+'px;width:'+c.w+'px;height:'+c.h+'px'+((c.bg&&!c.bgT)?';background:'+c.bg:'')+(c.fg?(function(){var r=_readableFg(c.fg,(c.bgT?null:c.bg));return r?';color:'+r:'';})():'')+'"><div class="winner">'+widgetInner(c)+'</div></div>';
       _compKids.push(c);});
     host.innerHTML=inner+'</div>';}
   // Wert-Format pro Widget
@@ -2647,6 +2664,7 @@
       +(lbl3?row(lbl3,'<input id="pVar3" value="'+(w.varId3||'')+'" placeholder="ID"> <button class="btn" id="pPick3" style="padding:6px 8px">wählen</button>'):'')
       +(w.type!=='line'?row('Farben','<input id="pFg" type="color" value="'+(w.fg||'#e7eef0')+'" title="Textfarbe"> <input id="pBg" type="color" value="'+(w.bg||'#141c1f')+'" title="Hintergrund"> <button class="btn" id="pClr" style="padding:5px 8px" title="Farben zurücksetzen"><svg class="i"><use href="#ic-minus"/></svg></button>'):'')
       +(w.type!=='line'&&w.type!=='shape'?row('Rahmen','<select id="pFrame"><option value=""'+(w.frame==null?' selected':'')+'>Ansicht-Standard</option><option value="1"'+(w.frame===true?' selected':'')+'>An</option><option value="0"'+(w.frame===false?' selected':'')+'>Aus</option></select>'):'')
+      +(w.type!=='line'?row('Hintergrund','<select id="pBgT"><option value=""'+(!w.bgT?' selected':'')+'>Deckend</option><option value="1"'+(w.bgT?' selected':'')+'>Transparent</option></select>'):'')
       +(w.type!=='line'&&w.type!=='shape'?('<div class="pgh">Typografie</div>'
         +row('Schrift','<select id="pFf"><option value=""'+(!w.ff?' selected':'')+'>Standard</option>'+[['system-ui,-apple-system,sans-serif','Sans'],['Georgia,\'Times New Roman\',serif','Serif'],['var(--fm)','Mono'],['\'Segoe UI\',Arial,sans-serif','Segoe/Arial'],['\'Courier New\',monospace','Courier'],['Verdana,sans-serif','Verdana']].map(function(o){return '<option value="'+esc(o[0])+'"'+(w.ff===o[0]?' selected':'')+'>'+o[1]+'</option>';}).join('')+'</select>')
         +row('Gewicht','<select id="pFwt"><option value=""'+(!w.fwt?' selected':'')+'>Standard</option>'+['300','400','500','600','700','800'].map(function(x){return '<option value="'+x+'"'+(w.fwt===x?' selected':'')+'>'+x+'</option>';}).join('')+'</select>')
@@ -2686,8 +2704,9 @@
     if($('#pColor'))$('#pColor').oninput=function(){w.color=this.value;render();};
     if($('#pFg'))$('#pFg').oninput=function(){w.fg=this.value;render();};
     if($('#pBg'))$('#pBg').oninput=function(){w.bg=this.value;render();};
-    if($('#pClr'))$('#pClr').onclick=function(){delete w.fg;delete w.bg;render();renderProps();};
+    if($('#pClr'))$('#pClr').onclick=function(){delete w.fg;delete w.bg;delete w.bgT;render();renderProps();};
     if($('#pFrame'))$('#pFrame').onchange=function(){w.frame=(this.value===''?undefined:(this.value==='1'));render();commit();};
+    if($('#pBgT'))$('#pBgT').onchange=function(){w.bgT=(this.value==='1')||undefined;render();commit();};
     if($('#pFf'))$('#pFf').onchange=function(){w.ff=this.value||undefined;render();commit();};
     if($('#pFwt'))$('#pFwt').onchange=function(){w.fwt=this.value||undefined;render();commit();};
     if($('#pFsty'))$('#pFsty').onchange=function(){w.fsty=this.value||undefined;render();commit();};
@@ -3727,11 +3746,14 @@
     if(!document.body.classList.contains('run'))return;
     var p=state.page,mode=effFit(p),vw=window.innerWidth,vh=window.innerHeight;
     if(bcfg().mobileOpt!==false&&isMobile()&&mode!=='reflow')mode='auto'; // Mobil: automatisch — Hochformat->Reflow (stapeln), Querformat->SmartFit (skaliert)
-    if(mode==='letterbox'||!p||p.w<=0||p.h<=0||vw<8||vh<8||!state.widgets.length){document.body.classList.remove('reflow');return letterboxFit();}
+    if(mode==='letterbox'||!p||p.w<=0||p.h<=0||vw<8||vh<8||!state.widgets.length){document.body.classList.remove('reflow');if(typeof chromeFitReset==='function')chromeFitReset();return letterboxFit();}
     var m=(mode==='auto')?sfPick(vw,vh,p):mode;
     canvas.style.transform='none';canvas.style.transformOrigin='top left';canvas.style.left='0';canvas.style.top='0';canvas.style.width=vw+'px';
-    if(m==='reflow'){document.body.classList.add('reflow');canvas.style.position='relative';return reflowFit(vw,vh);}
-    document.body.classList.remove('reflow');canvas.style.position='absolute';canvas.style.height=vh+'px';smartFit(vw,vh);
+    // Leisten auf Geraetemasse; ab hier wird INNERHALB des Inhaltsrechtecks gerechnet
+    var CR=(typeof chromeFitViewport==='function')?chromeFitViewport(vw,vh):{x:0,y:0,w:vw,h:vh};
+    if(m==='reflow'){document.body.classList.add('reflow');canvas.style.position='relative';return reflowFit(CR.w,CR.h,CR);}
+    document.body.classList.remove('reflow');canvas.style.position='absolute';canvas.style.height=vh+'px';smartFit(CR.w,CR.h);
+    if(typeof chromeFitBottom==='function')chromeFitBottom(vh);
   }
   function sfPick(vw,vh,p){var c=sfCfg(p),ad=p.w/p.h,av=vw/vh,lo=c.reflowLo+(_scMode==='reflow'?0.08:0),r=(av/ad<lo)||vw<c.phoneW;_scMode=r?'reflow':'anchor';return _scMode;}
 
@@ -3772,7 +3794,7 @@
       if(ix>0&&iy>0&&ix*iy>=wa*0.7)return true;}
     return false;
   }
-  function reflowFit(vw,vh){
+  function reflowFit(vw,vh,CR){
     var p=state.page,S=sfStructure(p),c=sfCfg(p),order=[],stretched=[],ALL=state.widgets;
     S.bands.forEach(function(b){order=order.concat(b);});
     order=order.filter(function(w){return !w.reflowHide&&(!!w.group||!_reflowOverlay(w,ALL));}); // Overlays raus – ausser gruppiert (Kinder bleiben am Master)
@@ -3782,8 +3804,14 @@
     order.forEach(function(w){
       if(w.group){ if(seen[w.group])return; seen[w.group]=1;
         var mem=order.filter(function(x){return x.group===w.group;});
-        if(mem.length>1){var mst=_grpMaster(mem);
-          units.push({grp:1,mem:mem,x0:mst.x,y0:mst.y,gw:mst.w,gh:mst.h});return;} // Slot = Master-Groesse; Kinder duerfen ueberlappen
+        if(mem.length>1){
+          // Slot = HUELLBOX aller Mitglieder, nicht die Master-Groesse. Sonst bekommt die
+          // Gruppe zu wenig Platz und Mitglieder links/oberhalb des Masters landen mit
+          // negativem Abstand im vorherigen Widget - sie ueberzeichnen sich dann.
+          var gx0=mem[0].x,gy0=mem[0].y,gx1=mem[0].x+mem[0].w,gy1=mem[0].y+mem[0].h;
+          mem.forEach(function(m){if(m.x<gx0)gx0=m.x;if(m.y<gy0)gy0=m.y;
+            if(m.x+m.w>gx1)gx1=m.x+m.w;if(m.y+m.h>gy1)gy1=m.y+m.h;});
+          units.push({grp:1,mem:mem,x0:gx0,y0:gy0,gw:(gx1-gx0),gh:(gy1-gy0)});return;}
       }
       units.push({grp:0,w:w,gw:w.w,gh:w.h});
     });
@@ -3809,7 +3837,16 @@
       });
       y+=rowH+G;
     });
-    canvas.style.height=Math.max(vh,y-G+M)+'px';sfPropagate(stretched);
+    // Gestapelter Inhalt darf hoeher werden als das Band zwischen den Leisten: .cwrap
+    // mitwachsen lassen und die Buehne um Leistenhoehen ergaenzen, sonst wird unten
+    // abgeschnitten (overflow der .cwrap ist in diesem Modus auf sichtbar gesetzt).
+    var contentH=Math.max(vh,y-G+M);
+    var cw=$('.cwrap',canvas);if(cw)cw.style.height=contentH+'px';
+    var offY=(CR&&CR.y)||0,botH=(typeof chromeBottomH==='function')?chromeBottomH():0;
+    var total=offY+contentH+botH;
+    canvas.style.height=total+'px';
+    if(typeof chromeFitBottom==='function')chromeFitBottom(total);
+    sfPropagate(stretched);
   }
   function sfPropagate(list){requestAnimationFrame(function(){list.forEach(function(w){var e=_ec[w.id];if(e)e.resize();if(w.type==='html')applyHtmlScale(w);});});}
   // ---- Struktur-Overlay (zeigt erkanntes SmartFit-Raster im Editor) ----
@@ -3901,6 +3938,63 @@
 
   var _chromeGeo=null; // zuletzt gezeichnete Geometrie (fuer Drop/Marquee-Umrechnung)
   function chromeContent(){return (_chromeGeo&&_chromeGeo.content)||{x:0,y:0,w:(state.page&&state.page.w)||1440,h:(state.page&&state.page.h)||900};}
+
+  // ---- Leisten in den viewportbasierten Modi (SmartFit/Reflow) ----------------------
+  // Letterbox skaliert die ganze Buehne, dort passen die Seiten-Koordinaten aus
+  // chromeLayout(). SmartFit und Reflow rechnen dagegen in Geraetepixeln: dann muessen
+  // die Leisten auf Geraetebreite und der Inhalts-Container .cwrap auf echte Masse.
+  // Ohne diese Umrechnung bleibt .cwrap seitenbreit (z. B. 1470 px) und - schlimmer -
+  // seitenhoch mit overflow:hidden, wodurch gestapelte Inhalte unten abgeschnitten werden.
+  function _chromeEl(b){return $('.chrome[data-chrome="'+b.id+'"]',canvas);}
+  function _chromePut(b,x,y,w,h){var e=_chromeEl(b);if(!e)return;
+    e.style.left=x+'px';e.style.top=y+'px';e.style.width=w+'px';e.style.height=h+'px';}
+
+  /** Leisten auf Viewport-Masse bringen; liefert das Inhaltsrechteck in Geraetepixeln. */
+  function chromeFitViewport(vw,vh){
+    var res={x:0,y:0,w:vw,h:vh};
+    var cw=$('.cwrap',canvas);
+    if(!cw||!chromeOn())return res;                  // keine Leisten -> unveraendert
+    var list=chromeList();
+    function pick(k,s){return list.filter(function(b){return b.kind===k&&(b.side||'')===s;});}
+    var y=0;
+    pick('bar','top').forEach(function(b){var h=chromeSize(b);_chromePut(b,0,y,vw,h);y+=h;});
+    var topH=y,botH=0;
+    pick('bar','bottom').forEach(function(b){botH+=chromeSize(b);}); // Platz reservieren, Position folgt in chromeFitBottom
+    var bandY=topH,bandH=Math.max(0,vh-topH-botH);
+    var x=0;
+    pick('sidebar','left').forEach(function(b){var wd=chromeSize(b);_chromePut(b,x,bandY,wd,bandH);x+=wd;});
+    var leftW=x,xr=vw;
+    pick('sidebar','right').forEach(function(b){var wd=chromeSize(b);xr-=wd;_chromePut(b,xr,bandY,wd,bandH);});
+    res={x:leftW,y:bandY,w:Math.max(0,vw-leftW-(vw-xr)),h:bandH};
+    cw.style.left=res.x+'px';cw.style.top=res.y+'px';
+    cw.style.width=res.w+'px';cw.style.height=res.h+'px';
+    cw.style.overflow='visible';                     // Reflow darf hoeher werden als das Band
+    return res;
+  }
+
+  /** Gesamthoehe der unteren Leisten (Reflow muss diesen Platz unten freihalten). */
+  function chromeBottomH(){
+    if(!chromeOn())return 0;
+    var h=0;chromeList().forEach(function(b){if(b.kind==='bar'&&(b.side||'')==='bottom')h+=chromeSize(b);});
+    return h;
+  }
+
+  /** Untere Leisten ans Ende der tatsaechlichen Gesamthoehe setzen (Reflow kann wachsen). */
+  function chromeFitBottom(totalH){
+    if(!chromeOn())return;
+    var yb=totalH;
+    chromeList().filter(function(b){return b.kind==='bar'&&(b.side||'')==='bottom';})
+      .forEach(function(b){var h=chromeSize(b);yb-=h;_chromePut(b,0,yb,(window.innerWidth||totalH),h);});
+  }
+
+  /** Zurueck auf Seiten-Koordinaten (Letterbox skaliert die Buehne als Ganzes). */
+  function chromeFitReset(){
+    var cw=$('.cwrap',canvas);if(!cw||!_chromeGeo)return;
+    _chromeGeo.bars.forEach(function(g){_chromePut(g.def,g.x,g.y,g.w,g.h);});
+    var c=_chromeGeo.content;
+    cw.style.left=c.x+'px';cw.style.top=c.y+'px';cw.style.width=c.w+'px';cw.style.height=c.h+'px';
+    cw.style.overflow='hidden';
+  }
 
   /** Leisten-Container zeichnen; liefert den Host, in den der Seiteninhalt gehoert. */
   function chromeRender(){
@@ -6376,7 +6470,7 @@ defWidget('statuslist',{
       }).join('');};
       var itm=band(''),itm2=band('b');
       var lead=w.hideLead?'':'<div class="htlead"><span class="htpulse"></span>'+esc(w.label||'Alarm')+(w.hideCount?'':'<span class="htcnt">'+crit+'</span>')+'</div>';
-      return '<div class="htick'+(crit===0?' ok':'')+'">'+lead+'<div class="httrack"><div class="htmove" style="animation-duration:'+(w.speed||46)+'s">'+itm+itm2+'</div></div></div>';
+      return '<div class="htick'+(crit===0?' ok':'')+(w.hideDots?' nodots':'')+'">'+lead+'<div class="httrack"><div class="htmove" style="animation-duration:'+(w.speed||46)+'s">'+itm+itm2+'</div></div></div>';
     },
     props:function(w){
       var names=namedWidgets(w.id);
@@ -6409,6 +6503,7 @@ defWidget('statuslist',{
       }).join('');
       return row('Tempo (s)','<input id="pSpeed" type="number" min="8" value="'+(w.speed||46)+'">')
         +row('Titel anzeigen','<input type="checkbox" id="pTkLead"'+(w.hideLead?'':' checked')+'>')
+        +row('Punkte anzeigen','<input type="checkbox" id="pTkDots"'+(w.hideDots?'':' checked')+'>')
         +(w.hideLead?'':row('Anzahl-Badge','<input type="checkbox" id="pTkCount"'+(w.hideCount?'':' checked')+'>'))
         +'<div class="prop" style="margin-top:8px"><div style="font-size:11px;color:var(--muted);margin-bottom:5px">Elemente — Typ wählen: Text · <b>Widget (Referenz)</b> = vorhandenes Widget per Name · oder inline-Widget. Widget-Zeilen laufen live mit.</div>'+_hint+rows+'<button class="btn" data-tkadd><svg class="i"><use href="#ic-plus"/></svg> Element</button></div>';
     },
@@ -6416,6 +6511,7 @@ defWidget('statuslist',{
       if($('#pSpeed'))$('#pSpeed').oninput=function(){w.speed=parseInt(this.value)||46;render();};
       if($('#pTkLead'))$('#pTkLead').onchange=function(){w.hideLead=this.checked?undefined:true;render();renderProps();commit();};
       if($('#pTkCount'))$('#pTkCount').onchange=function(){w.hideCount=this.checked?undefined:true;render();commit();};
+      if($('#pTkDots'))$('#pTkDots').onchange=function(){w.hideDots=this.checked?undefined:true;render();commit();};
       $$('#props [data-tk]').forEach(function(inp){inp.oninput=inp.onchange=function(){
         var pr=inp.dataset.tk.split('.'),k=pr[0],i=+pr[1];if(!w.items||!w.items[i])return;
         if(k==='__type'){ // Typwechsel: Text / Referenz / inline-Widget

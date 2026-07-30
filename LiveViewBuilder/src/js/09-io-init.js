@@ -218,11 +218,14 @@
     if(!document.body.classList.contains('run'))return;
     var p=state.page,mode=effFit(p),vw=window.innerWidth,vh=window.innerHeight;
     if(bcfg().mobileOpt!==false&&isMobile()&&mode!=='reflow')mode='auto'; // Mobil: automatisch — Hochformat->Reflow (stapeln), Querformat->SmartFit (skaliert)
-    if(mode==='letterbox'||!p||p.w<=0||p.h<=0||vw<8||vh<8||!state.widgets.length){document.body.classList.remove('reflow');return letterboxFit();}
+    if(mode==='letterbox'||!p||p.w<=0||p.h<=0||vw<8||vh<8||!state.widgets.length){document.body.classList.remove('reflow');if(typeof chromeFitReset==='function')chromeFitReset();return letterboxFit();}
     var m=(mode==='auto')?sfPick(vw,vh,p):mode;
     canvas.style.transform='none';canvas.style.transformOrigin='top left';canvas.style.left='0';canvas.style.top='0';canvas.style.width=vw+'px';
-    if(m==='reflow'){document.body.classList.add('reflow');canvas.style.position='relative';return reflowFit(vw,vh);}
-    document.body.classList.remove('reflow');canvas.style.position='absolute';canvas.style.height=vh+'px';smartFit(vw,vh);
+    // Leisten auf Geraetemasse; ab hier wird INNERHALB des Inhaltsrechtecks gerechnet
+    var CR=(typeof chromeFitViewport==='function')?chromeFitViewport(vw,vh):{x:0,y:0,w:vw,h:vh};
+    if(m==='reflow'){document.body.classList.add('reflow');canvas.style.position='relative';return reflowFit(CR.w,CR.h,CR);}
+    document.body.classList.remove('reflow');canvas.style.position='absolute';canvas.style.height=vh+'px';smartFit(CR.w,CR.h);
+    if(typeof chromeFitBottom==='function')chromeFitBottom(vh);
   }
   function sfPick(vw,vh,p){var c=sfCfg(p),ad=p.w/p.h,av=vw/vh,lo=c.reflowLo+(_scMode==='reflow'?0.08:0),r=(av/ad<lo)||vw<c.phoneW;_scMode=r?'reflow':'anchor';return _scMode;}
 
@@ -263,7 +266,7 @@
       if(ix>0&&iy>0&&ix*iy>=wa*0.7)return true;}
     return false;
   }
-  function reflowFit(vw,vh){
+  function reflowFit(vw,vh,CR){
     var p=state.page,S=sfStructure(p),c=sfCfg(p),order=[],stretched=[],ALL=state.widgets;
     S.bands.forEach(function(b){order=order.concat(b);});
     order=order.filter(function(w){return !w.reflowHide&&(!!w.group||!_reflowOverlay(w,ALL));}); // Overlays raus – ausser gruppiert (Kinder bleiben am Master)
@@ -273,8 +276,14 @@
     order.forEach(function(w){
       if(w.group){ if(seen[w.group])return; seen[w.group]=1;
         var mem=order.filter(function(x){return x.group===w.group;});
-        if(mem.length>1){var mst=_grpMaster(mem);
-          units.push({grp:1,mem:mem,x0:mst.x,y0:mst.y,gw:mst.w,gh:mst.h});return;} // Slot = Master-Groesse; Kinder duerfen ueberlappen
+        if(mem.length>1){
+          // Slot = HUELLBOX aller Mitglieder, nicht die Master-Groesse. Sonst bekommt die
+          // Gruppe zu wenig Platz und Mitglieder links/oberhalb des Masters landen mit
+          // negativem Abstand im vorherigen Widget - sie ueberzeichnen sich dann.
+          var gx0=mem[0].x,gy0=mem[0].y,gx1=mem[0].x+mem[0].w,gy1=mem[0].y+mem[0].h;
+          mem.forEach(function(m){if(m.x<gx0)gx0=m.x;if(m.y<gy0)gy0=m.y;
+            if(m.x+m.w>gx1)gx1=m.x+m.w;if(m.y+m.h>gy1)gy1=m.y+m.h;});
+          units.push({grp:1,mem:mem,x0:gx0,y0:gy0,gw:(gx1-gx0),gh:(gy1-gy0)});return;}
       }
       units.push({grp:0,w:w,gw:w.w,gh:w.h});
     });
@@ -300,7 +309,16 @@
       });
       y+=rowH+G;
     });
-    canvas.style.height=Math.max(vh,y-G+M)+'px';sfPropagate(stretched);
+    // Gestapelter Inhalt darf hoeher werden als das Band zwischen den Leisten: .cwrap
+    // mitwachsen lassen und die Buehne um Leistenhoehen ergaenzen, sonst wird unten
+    // abgeschnitten (overflow der .cwrap ist in diesem Modus auf sichtbar gesetzt).
+    var contentH=Math.max(vh,y-G+M);
+    var cw=$('.cwrap',canvas);if(cw)cw.style.height=contentH+'px';
+    var offY=(CR&&CR.y)||0,botH=(typeof chromeBottomH==='function')?chromeBottomH():0;
+    var total=offY+contentH+botH;
+    canvas.style.height=total+'px';
+    if(typeof chromeFitBottom==='function')chromeFitBottom(total);
+    sfPropagate(stretched);
   }
   function sfPropagate(list){requestAnimationFrame(function(){list.forEach(function(w){var e=_ec[w.id];if(e)e.resize();if(w.type==='html')applyHtmlScale(w);});});}
   // ---- Struktur-Overlay (zeigt erkanntes SmartFit-Raster im Editor) ----
