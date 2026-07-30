@@ -80,6 +80,46 @@ class LiveViewBuilder extends IPSModule
     // Gleicht die im Formular verwaltete Views-Liste mit layouts.json ab.
     // SCHUTZ: Bei leerer Property wird NICHT geloescht (verhindert Massen-Loeschung bei frisch aktualisierter Instanz).
     // Umbenennen passiert im Builder (Name = Pfad = Identitaet). Inhalt/Widgets bleiben Sache von layouts.json.
+    // Store so zusammensetzen, wie es die Laufzeit tut: index.json + seiten/<slug>.json.
+    // layouts.json ist nur noch Spiegel und darf nicht die Wahrheit sein.
+    private function storeAssembled(): array
+    {
+        $dir = $this->dataDir();
+        $idx = json_decode((string) @file_get_contents($dir . '/index.json'), true);
+        if (is_array($idx) && isset($idx['views']) && is_array($idx['views'])) {
+            $store          = $idx;
+            $store['views'] = [];
+            foreach ($idx['views'] as $name => $ref) {
+                $slug                        = is_array($ref) ? (string) ($ref['file'] ?? '') : '';
+                $v                           = $slug !== '' ? json_decode((string) @file_get_contents($dir . '/seiten/seite-' . $slug . '.json'), true) : null;
+                $store['views'][(string) $name] = is_array($v) ? $v : ['page' => ['w' => 1440, 'h' => 900], 'widgets' => []];
+            }
+            return $store;
+        }
+        $m = json_decode((string) @file_get_contents($dir . '/layouts.json'), true);
+        return is_array($m) ? $m : ['views' => []];
+    }
+
+    // Popups sind keine Seiten der Navigation: Sie werden von Widgets per popupTo/longPopup
+    // geoeffnet und im Builder gepflegt. Im Instanz-Formular haben sie nichts zu suchen - und
+    // sie duerfen beim Speichern NICHT geloescht werden, nur weil sie nicht in der Liste stehen.
+    private function popupPages(): array
+    {
+        $out   = [];
+        $store = $this->storeAssembled();
+        foreach (($store['views'] ?? []) as $v) {
+            foreach ((($v['widgets'] ?? []) ?: []) as $w) {
+                foreach (['popupTo', 'longPopup'] as $k) {
+                    $n = trim((string) ($w[$k] ?? ''));
+                    if ($n !== '') {
+                        $out[$n] = true;
+                    }
+                }
+            }
+        }
+        return $out;
+    }
+
     private function syncViews(): void
     {
         $rows = json_decode($this->ReadPropertyString('Views'), true);
@@ -117,8 +157,9 @@ class LiveViewBuilder extends IPSModule
             }
         }
         // Loeschen: in layouts vorhanden, aber nicht in der Liste
+        $popups = $this->popupPages();
         foreach (array_keys($store['views']) as $nm) {
-            if (!isset($want[$nm])) {
+            if (!isset($want[$nm]) && !isset($popups[$nm])) {   // Popups nie ueber die Liste loeschen
                 unset($store['views'][$nm]);
             }
         }
@@ -280,7 +321,11 @@ class LiveViewBuilder extends IPSModule
         $store = json_decode((string) @file_get_contents($this->dataDir() . '/layouts.json'), true);
         $home  = is_array($store) ? (string) ($store['home'] ?? '') : '';
         $viewValues = [];
+        $popups = $this->popupPages();
         foreach ($views as $nm => $cnt) {
+            if (isset($popups[(string) $nm])) {
+                continue;   // Popup, keine navigierbare Seite -> gehoert nicht in die Seitenliste
+            }
             $viewValues[] = ['Name' => (string) $nm, 'Widgets' => (int) $cnt, 'Home' => ((string) $nm === $home)];
         }
 
