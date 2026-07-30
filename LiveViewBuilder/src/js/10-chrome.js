@@ -41,6 +41,63 @@
   var _chromeGeo=null; // zuletzt gezeichnete Geometrie (fuer Drop/Marquee-Umrechnung)
   function chromeContent(){return (_chromeGeo&&_chromeGeo.content)||{x:0,y:0,w:(state.page&&state.page.w)||1440,h:(state.page&&state.page.h)||900};}
 
+  // ---- Leisten in den viewportbasierten Modi (SmartFit/Reflow) ----------------------
+  // Letterbox skaliert die ganze Buehne, dort passen die Seiten-Koordinaten aus
+  // chromeLayout(). SmartFit und Reflow rechnen dagegen in Geraetepixeln: dann muessen
+  // die Leisten auf Geraetebreite und der Inhalts-Container .cwrap auf echte Masse.
+  // Ohne diese Umrechnung bleibt .cwrap seitenbreit (z. B. 1470 px) und - schlimmer -
+  // seitenhoch mit overflow:hidden, wodurch gestapelte Inhalte unten abgeschnitten werden.
+  function _chromeEl(b){return $('.chrome[data-chrome="'+b.id+'"]',canvas);}
+  function _chromePut(b,x,y,w,h){var e=_chromeEl(b);if(!e)return;
+    e.style.left=x+'px';e.style.top=y+'px';e.style.width=w+'px';e.style.height=h+'px';}
+
+  /** Leisten auf Viewport-Masse bringen; liefert das Inhaltsrechteck in Geraetepixeln. */
+  function chromeFitViewport(vw,vh){
+    var res={x:0,y:0,w:vw,h:vh};
+    var cw=$('.cwrap',canvas);
+    if(!cw||!chromeOn())return res;                  // keine Leisten -> unveraendert
+    var list=chromeList();
+    function pick(k,s){return list.filter(function(b){return b.kind===k&&(b.side||'')===s;});}
+    var y=0;
+    pick('bar','top').forEach(function(b){var h=chromeSize(b);_chromePut(b,0,y,vw,h);y+=h;});
+    var topH=y,botH=0;
+    pick('bar','bottom').forEach(function(b){botH+=chromeSize(b);}); // Platz reservieren, Position folgt in chromeFitBottom
+    var bandY=topH,bandH=Math.max(0,vh-topH-botH);
+    var x=0;
+    pick('sidebar','left').forEach(function(b){var wd=chromeSize(b);_chromePut(b,x,bandY,wd,bandH);x+=wd;});
+    var leftW=x,xr=vw;
+    pick('sidebar','right').forEach(function(b){var wd=chromeSize(b);xr-=wd;_chromePut(b,xr,bandY,wd,bandH);});
+    res={x:leftW,y:bandY,w:Math.max(0,vw-leftW-(vw-xr)),h:bandH};
+    cw.style.left=res.x+'px';cw.style.top=res.y+'px';
+    cw.style.width=res.w+'px';cw.style.height=res.h+'px';
+    cw.style.overflow='visible';                     // Reflow darf hoeher werden als das Band
+    return res;
+  }
+
+  /** Gesamthoehe der unteren Leisten (Reflow muss diesen Platz unten freihalten). */
+  function chromeBottomH(){
+    if(!chromeOn())return 0;
+    var h=0;chromeList().forEach(function(b){if(b.kind==='bar'&&(b.side||'')==='bottom')h+=chromeSize(b);});
+    return h;
+  }
+
+  /** Untere Leisten ans Ende der tatsaechlichen Gesamthoehe setzen (Reflow kann wachsen). */
+  function chromeFitBottom(totalH){
+    if(!chromeOn())return;
+    var yb=totalH;
+    chromeList().filter(function(b){return b.kind==='bar'&&(b.side||'')==='bottom';})
+      .forEach(function(b){var h=chromeSize(b);yb-=h;_chromePut(b,0,yb,(window.innerWidth||totalH),h);});
+  }
+
+  /** Zurueck auf Seiten-Koordinaten (Letterbox skaliert die Buehne als Ganzes). */
+  function chromeFitReset(){
+    var cw=$('.cwrap',canvas);if(!cw||!_chromeGeo)return;
+    _chromeGeo.bars.forEach(function(g){_chromePut(g.def,g.x,g.y,g.w,g.h);});
+    var c=_chromeGeo.content;
+    cw.style.left=c.x+'px';cw.style.top=c.y+'px';cw.style.width=c.w+'px';cw.style.height=c.h+'px';
+    cw.style.overflow='hidden';
+  }
+
   /** Leisten-Container zeichnen; liefert den Host, in den der Seiteninhalt gehoert. */
   function chromeRender(){
     $$('.chrome,.cwrap',canvas).forEach(function(e){e.remove();});
