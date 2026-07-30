@@ -6645,13 +6645,30 @@ defWidget('statuslist',{
       if($('#pVaFill'))$('#pVaFill').onchange=function(){w.vaFill=this.checked||undefined;relive();};
     },
     live:function(w,el,id,d,base,txt,on){var v=$('[data-role=val]',el);if(!v)return;v.textContent=txt;
-      if(w.colThr){var n=parseFloat(String(d.v).replace(',','.'));if(!isNaN(n)){var t1=(w.t1!=null?w.t1:0),t2=(w.t2!=null?w.t2:0),c=n<=t1?'--ok':(n<=t2?'--warm':'--crit');if(w.thrInvert)c=(n<=t1?'--crit':(n<=t2?'--warm':'--ok'));v.style.color=cssv(c);}}
-      else v.style.color='';
-      var _match=null;if(w.vassoc&&w.vassoc.length){_match=w.vassoc.filter(function(a){return String(a.v)===String(d.v);})[0];if(_match){if(_match.text!=null&&_match.text!=='')v.textContent=(w.pre||'')+_match.text+(w.suf||'');if(_match.color){var _mc=_skinColor(_match.color)||_match.color;v.style.color=_mc;}}}
-      if(w.vaFill){ // ganze Kachel in der Zustandsfarbe tönen
-        if(_match&&_match.color){var _c=_skinColor(_match.color)||_match.color;el.style.background='color-mix(in oklab,'+_c+' 16%,var(--surface))';el.style.borderColor='color-mix(in oklab,'+_c+' 45%,var(--line))';v.style.color='color-mix(in oklab,'+_c+' 85%,var(--text))';}
-        else{el.style.background=w.bg||'';el.style.borderColor='';}
-      }}
+      // EINE wirksame Farbe bestimmen, dann ueberall gleich anwenden. Vorher wurde die
+      // Schwellenfarbe nur auf den Zahlenwert gesetzt, waehrend das Toenen der Kachel allein
+      // an der Zustandsliste hing - mit Schwellen und ohne Zustandstreffer tat es gar nichts.
+      var _col='';
+      if(w.colThr){var n=parseFloat(String(d.v).replace(',','.'));
+        if(!isNaN(n)){var t1=(w.t1!=null?w.t1:0),t2=(w.t2!=null?w.t2:0),c=n<=t1?'--ok':(n<=t2?'--warm':'--crit');
+          if(w.thrInvert)c=(n<=t1?'--crit':(n<=t2?'--warm':'--ok'));
+          _col=cssv(c);}}
+      var _match=null;
+      if(w.vassoc&&w.vassoc.length){_match=w.vassoc.filter(function(a){return String(a.v)===String(d.v);})[0];
+        if(_match){if(_match.text!=null&&_match.text!=='')v.textContent=(w.pre||'')+_match.text+(w.suf||'');
+          if(_match.color)_col=_skinColor(_match.color)||_match.color;}}   // Zustand schlaegt Schwelle
+      if(w.vaFill&&_col){ // ganze Kachel toenen - jetzt auch mit Schwellenfarbe
+        el.style.background='color-mix(in oklab,'+_col+' 16%,var(--surface))';
+        el.style.borderColor='color-mix(in oklab,'+_col+' 45%,var(--line))';
+        v.style.color='color-mix(in oklab,'+_col+' 85%,var(--text))';
+      }else{
+        if(w.vaFill){el.style.background=w.bg||'';el.style.borderColor='';}
+        v.style.color=_col||'';
+      }
+      // Icon folgt der Wertfarbe. Eine ausdruecklich gesetzte Icon-Farbe hat Vorrang, sonst
+      // waere die bewusste Wahl im Editor wirkungslos.
+      if(!w.iconColor)el.style.setProperty('--wicon',_col||'');
+    }
   });
   // ===== Widget: Wertkarte (valuecard) — generische Karte =====
   //  Slots: Icon/Titel (oben-links) · Badge ODER Toggle (oben-rechts) · Großwert+Einheit
