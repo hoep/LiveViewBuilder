@@ -160,8 +160,11 @@
     if($('#pVisMode'))$('#pVisMode').onchange=function(){w.visMode=this.value;render();renderProps();};
     if($('#pVisVal'))$('#pVisVal').oninput=function(){w.visVal=this.value;render();};
     if($('#pAnim'))$('#pAnim').onchange=function(){w.anim=this.value||undefined;render();commit();};
-    if($('#pZFront'))$('#pZFront').onclick=function(){var i=state.widgets.indexOf(w);if(i>=0){state.widgets.splice(i,1);state.widgets.push(w);}render();select(w.id);commit();};
-    if($('#pZBack'))$('#pZBack').onclick=function(){var i=state.widgets.indexOf(w);if(i>=0){state.widgets.splice(i,1);state.widgets.unshift(w);}render();select(w.id);commit();};
+    // Z-Reihenfolge = Position in der jeweiligen Liste. Leisten-Kinder liegen in ihrer Leiste,
+    // Seiten-Widgets in state.widgets - sonst waere die Umsortierung wirkungslos.
+    function _zList(x){var ow=(typeof chromeOwnerOf==='function')?chromeOwnerOf(x.id):null;return (ow&&ow.widgets)?ow.widgets:state.widgets;}
+    if($('#pZFront'))$('#pZFront').onclick=function(){var L=_zList(w),i=L.indexOf(w);if(i>=0){L.splice(i,1);L.push(w);}render();select(w.id);commit();};
+    if($('#pZBack'))$('#pZBack').onclick=function(){var L=_zList(w),i=L.indexOf(w);if(i>=0){L.splice(i,1);L.unshift(w);}render();select(w.id);commit();};
     try{if(WIDGETS[w.type]&&WIDGETS[w.type].wire)WIDGETS[w.type].wire(w);}catch(_e){console.error('wire('+w.type+')',_e);} // ein defekter wire-Hook darf die Auswahl nicht blockieren
     if(w.type!=='button'&&w.type!=='tile')popupWire(w); // universelle Popup/Interaktion-Verdrahtung (Kachel/Button haben eigene Nav/Popup-Konfig)
     }catch(_ep){console.error('renderProps('+(w&&w.type)+')',_ep);p.innerHTML='<div class="hint" style="color:var(--crit);font-size:12px;white-space:pre-wrap">Eigenschaften-Fehler bei „'+esc(w.type)+'":\n'+esc((_ep&&_ep.message)||String(_ep))+'</div>';} // Panel zeigt den Fehler direkt an
