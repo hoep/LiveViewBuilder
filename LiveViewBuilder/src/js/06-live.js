@@ -98,11 +98,15 @@
   function refreshMedia(mid){var u='?api=media&id='+mid+'&t='+Date.now();$$('img[data-media="'+mid+'"]',canvas).forEach(function(e){e.src=u;});var ov=$('#ovcanvas');if(ov)$$('img[data-media="'+mid+'"]',ov).forEach(function(e){e.src=u;});} // Kamera bei MM_UPDATE-Push neu laden
   function wsConnect(){
     if(!WS_PORT)return;                       // leer -> reines Polling
-    if(_wsTries>=5)return;                    // Server nicht verfügbar/lehnt ab -> aufgeben (kein Reconnect-Sturm/Log-Flut)
+    // KEIN endgueltiges Aufgeben: vorher wurde nach 5 Fehlversuchen dauerhaft auf Poll
+    // zurueckgefallen, bis jemand die Seite neu laedt. Schon ein Neustart des Push-Moduls
+    // oder eine Minute Funkloch degradierte den Client damit stillschweigend fuer immer.
+    // Stattdessen unbegrenzt weiterversuchen, Abstand aber bei 30 s deckeln - das sind
+    // zwei Versuche pro Minute, also weder Reconnect-Sturm noch Log-Flut.
     try{_ws=new WebSocket('ws://'+location.hostname+':'+WS_PORT);}catch(e){return;}
     _ws.onopen=function(){try{_ws.send('hello');}catch(e){}};
     _ws.onmessage=function(ev){_wsOK=true;_wsTries=0;if(bcfg().noSafetyPoll)stopPV();else startPV(5000);try{var j=JSON.parse(ev.data);if(j&&j.reload&&RUN){location.reload();return;}if(j&&j.values){_liveSrc='ws';for(var k in j.values){var d=j.values[k];if(d&&d.id)applyVal(d.id,d);}}if(j&&j.media&&j.media.length)j.media.forEach(function(mid){refreshMedia(mid);});}catch(e){}}; // Werte + Kamera-Medien-Push
-    _ws.onclose=function(){_wsOK=false;startPV(1200);_wsTries++;if(_wsTries<5)setTimeout(wsConnect,Math.min(60000,8000*_wsTries));}; // Backoff, max. 5 Versuche
+    _ws.onclose=function(){_wsOK=false;startPV(1200);_wsTries++;setTimeout(wsConnect,Math.min(30000,2000*_wsTries));}; // Backoff 2s,4s,6s... gedeckelt auf 30s, ohne Obergrenze der Versuche
     _ws.onerror=function(){try{_ws.close();}catch(e){}};
   }
   startPV();wsConnect();
