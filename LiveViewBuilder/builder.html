@@ -1542,7 +1542,9 @@
     disposeCharts();
     _tickKids=[];   // verschachtelte Ticker-Widgets werden während des Render-Laufs neu gesammelt
     $$('.w',canvas).forEach(function(e){e.remove();});
-    var _refSet={};state.widgets.forEach(function(t){if(t.type==='ticker'&&t.items)t.items.forEach(function(m){if(m.ref)_refSet[m.ref]=1;});}); // von einer Laufzeile referenzierte Namen -> auf der Seite ausblenden
+    // Laufzeilen koennen auch IN einer Leiste liegen - dann muessen die von ihnen referenzierten
+    // Widgets auf der Seite trotzdem ausgeblendet werden, sonst stehen sie doppelt.
+    var _refSet={};allWidgets().forEach(function(t){if(t.type==='ticker'&&t.items)t.items.forEach(function(m){if(m.ref)_refSet[m.ref]=1;});}); // von einer Laufzeile referenzierte Namen -> auf der Seite ausblenden
     var _chrome=chromeRender();          // Leisten zeichnen; liefert den Host für den Seiteninhalt
     state.widgets.forEach(function(w){try{
       _chrome.host.appendChild(_mkWidgetEl(w,_refSet));
@@ -1586,7 +1588,7 @@
       var _mwr=WIDGETS[w.type];if(_mwr&&_mwr.mount)_mwr.mount(w); // Registry-Post-Render-Hook (z.B. Canvas zeichnen)
       }catch(_e){} // ein defektes Widget darf Init/Interaktion der anderen nicht blockieren
     });
-    _compKids=[];state.widgets.forEach(function(w){if(w.type==='component')expandComponent(w);}); // M3: Komponenten-Instanzen expandieren
+    _compKids=[];allWidgets().forEach(function(w){if(w.type==='component')expandComponent(w);}); // M3: Komponenten-Instanzen expandieren
     // mount-Hooks auch für Klone (Laufband/Komponenten) + Werte aus Cache spiegeln -> Status-Bild/Wetter/cval usw. erscheinen sofort, nicht erst bei Wertänderung
     function _mountKid(w){try{var _mw=WIDGETS[w.type];if(_mw&&_mw.mount)_mw.mount(w);}catch(e){}}
     if(_compKids&&_compKids.length)_compKids.forEach(_mountKid);
@@ -1679,7 +1681,12 @@
   }
   function disposeCharts(){for(var k in _ec){try{_ec[k].dispose();}catch(e){}}_ec={};}
   // Responsive ECharts-Schrift: Basisgröße x Skalierung nach Kachelgröße (Referenz 300x180, geklemmt 0.8..1.7)
-  function _ecFS(w,base){var sc=Math.min((w&&w.w?w.w:300)/300,(w&&w.h?w.h:180)/180);sc=Math.max(0.8,Math.min(1.7,sc));return Math.round(base*sc*10)/10;}
+  // ECharts zeichnet auf ein Canvas - die zentrale Typografie (CSS-Variablen --w-fsz) erreicht es
+  // NICHT. Deshalb wird w.fsz hier ausgewertet: sie skaliert alle Diagrammschriften gemeinsam
+  // (12px = Normalmass), zusaetzlich zur Skalierung nach Kachelgroesse.
+  function _ecFS(w,base){var sc=Math.min((w&&w.w?w.w:300)/300,(w&&w.h?w.h:180)/180);sc=Math.max(0.8,Math.min(1.7,sc));
+    if(w&&w.fsz>0)sc*=(parseFloat(w.fsz)/12);
+    return Math.round(base*sc*10)/10;}
   // Wasserfall: Muster-Schritte lazy saeen. addWidget ruft defaults() VOR dem Setzen von ctype,
   // deshalb kann die Saat nicht in chart.defaults() liegen — sie passiert im pCType-Wechsel und hier defensiv.
   function _wfSeed(w){
@@ -1714,11 +1721,14 @@
       barD.push({value:h,itemStyle:{color:col,borderRadius:br}});
     });
     var unit=_wfUnit(w); // eigene Einheit (nicht w.yunit - das gehoert dem Achsensystem/Kalenderjahr-Balken)
-    var lbl=w.labels?{show:true,position:'top',fontSize:_ecFS(w,9),color:cssv('--muted'),formatter:function(p){return (p.value==null)?'':(Math.round(p.value*100)/100);}}:{show:false};
+    var lbl=w.labels?{show:true,position:'top',fontSize:_ecF(w,'label',9),color:cssv('--muted'),formatter:function(p){return (p.value==null)?'':_chNum(w,p.value);}}:{show:false};
     var series=[{type:'bar',stack:'wf',silent:true,itemStyle:{color:'transparent'},emphasis:{disabled:true},data:baseD},
                 {type:'bar',stack:'wf',data:barD,label:lbl}];
     if(w.wfConnect!==false&&cats.length>1){ // gestrichelte Verbindungslinien auf Saldo-Hoehe zwischen den Balken
-      series.push({type:'custom',silent:true,z:1,data:cats.map(function(_,i){return i;}),
+      // Daten sind die Saldo-Werte, NICHT die Indizes: renderItem braucht nur params.dataIndex,
+      // aber ECharts zieht die Werte JEDER Serie in die Achsenskalierung ein. Mit Indizes
+      // (0..n-1) waere das Achsenmaximum bei 13 Schritten faelschlich 12 statt ~6.
+      series.push({type:'custom',silent:true,z:1,data:levels.map(function(v){return (v==null?0:v);}),
         renderItem:function(params,api){
           var i=params.dataIndex;if(i>=levels.length-1||levels[i]==null)return;
           var pA=api.coord([i,levels[i]]),pB=api.coord([i+1,levels[i]]),band=api.size([1,0])[0],half=band*0.4;
@@ -1728,9 +1738,9 @@
     var axw=_axShow(w);
     ec.setOption({backgroundColor:'transparent',animation:!!bcfg().chartAnim,grid:{left:8,right:10,top:6+_titleSpace(w),bottom:4,containLabel:true},
       title:_titleOpt(w),
-      tooltip:{trigger:'axis',axisPointer:{type:'shadow'},formatter:function(ps){var p=ps&&ps.length?ps[ps.length-1]:null;if(!p)return '';return (p.name||'')+': '+(Math.round(p.value*100)/100)+(unit?(' '+unit):'');}},
-      xAxis:{type:'category',data:cats,axisTick:{show:axw.ticks},axisLine:{show:axw.line,lineStyle:{color:cssv('--line')}},axisLabel:{show:axw.xLab,color:cssv('--faint'),fontSize:_ecFS(w,9),interval:0},splitLine:{show:axw.xGrid,lineStyle:{color:cssv('--line-soft')}}},
-      yAxis:{type:'value',name:unit,nameTextStyle:{color:cssv('--muted'),fontSize:_ecFS(w,9)},nameGap:7,axisLine:{show:axw.line,lineStyle:{color:cssv('--line')}},axisTick:{show:axw.ticks},axisLabel:{show:axw.yLab,color:cssv('--faint'),fontSize:_ecFS(w,9)},splitLine:{show:axw.yGrid,lineStyle:{color:cssv('--line-soft')}}},
+      tooltip:{trigger:'axis',axisPointer:{type:'shadow'},formatter:function(ps){var p=ps&&ps.length?ps[ps.length-1]:null;if(!p)return '';return (p.name||'')+': '+_chNum(w,p.value);}},
+      xAxis:{type:'category',data:cats,axisTick:{show:axw.ticks},axisLine:{show:axw.line,lineStyle:{color:cssv('--line')}},axisLabel:{show:axw.xLab,color:cssv('--faint'),fontSize:_axFs(w),interval:0},splitLine:{show:axw.xGrid,lineStyle:{color:cssv('--line-soft')}}},
+      yAxis:{type:'value',name:unit,nameTextStyle:{color:cssv('--muted'),fontSize:_ecF(w,'axname',9)},nameGap:7,axisLine:{show:axw.line,lineStyle:{color:cssv('--line')}},axisTick:{show:axw.ticks},axisLabel:{show:axw.yLab,color:cssv('--faint'),fontSize:_axFs(w)},splitLine:{show:axw.yGrid,lineStyle:{color:cssv('--line-soft')}}},
       series:series},true);
   }
   function initEChart(w){
@@ -1806,11 +1816,11 @@
     var tSp=_titleSpace(w),lpP=w.legend?(w.legPos||'bottom'):'';
     // Mittelpunkt nach unten schieben, wenn Titel oben Platz braucht bzw. Legende oben/unten sitzt
     var cy=50+(tSp?5:0)+(lpP==='top'?4:0)-(lpP==='bottom'?5:0);
-    ec.setOption({backgroundColor:'transparent',animation:!!bcfg().chartAnim,tooltip:{trigger:'item',valueFormatter:function(v){return (Math.round(v*100)/100);}},
+    ec.setOption({backgroundColor:'transparent',animation:!!bcfg().chartAnim,tooltip:{trigger:'item',valueFormatter:function(v){return _chNum(w,v);}},
       title:_titleOpt(w),
       legend:_legendOpt(w,w.legend),
       series:[{type:'pie',roseType:(rose?'radius':false),radius:rose?['22%','74%']:(donut?['46%','72%']:'70%'),center:['50%',cy+'%'],data:data,
-        label:{color:cssv('--text'),fontSize:_ecFS(w,10),formatter:(w.labels?'{b}\n{d}%':'{d}%')},labelLine:{length:6,length2:6,lineStyle:{color:cssv('--line')}},
+        label:{color:cssv('--text'),fontSize:_ecF(w,'label',10),formatter:(w.labels?'{b}\n{d}%':'{d}%')},labelLine:{length:6,length2:6,lineStyle:{color:cssv('--line')}},
         itemStyle:{borderColor:cssv('--bg'),borderWidth:2,borderRadius:((donut||rose)?3:0)},minAngle:3}]},true);}
   function chartSeries(w){return (_hist[w.id]&&_hist[w.id].series)?_hist[w.id].series:[];}
   // Sparkline (ctype 'spark') — kompakte Verlaufskurve: keine Achsen, kein Titel, keine Legende.
@@ -1849,8 +1859,8 @@
     var titOff=isHalf?[0,'14%']:(style==='ring'?[0,'40%']:[0,'72%']);
     var width=isFill?13:11;
     var ser={type:'gauge',min:mn,max:mx,startAngle:ANG[0],endAngle:ANG[1],center:center,radius:radius,
-      axisTick:{show:!!w.gticks,distance:2,splitNumber:4,length:4,lineStyle:{color:cssv('--faint'),width:1}},splitLine:{show:!!w.gticks,length:8,lineStyle:{color:cssv('--faint'),width:1}},axisLabel:{show:!!w.gticks,color:cssv('--faint'),fontSize:_ecFS(w,8),distance:12},anchor:{show:!!w.gknob,showAbove:true,size:9,itemStyle:{color:cssv('--text')}},
-      title:{show:!!w.label,offsetCenter:titOff,color:cssv('--muted'),fontSize:_ecFS(w,10)},
+      axisTick:{show:!!w.gticks,distance:2,splitNumber:4,length:4,lineStyle:{color:cssv('--faint'),width:1}},splitLine:{show:!!w.gticks,length:8,lineStyle:{color:cssv('--faint'),width:1}},axisLabel:{show:!!w.gticks,color:cssv('--faint'),fontSize:_ecF(w,'axis',8),distance:12},anchor:{show:!!w.gknob,showAbove:true,size:9,itemStyle:{color:cssv('--text')}},
+      title:{show:!!w.label,offsetCenter:titOff,color:cssv('--muted'),fontSize:_ecF(w,'label',10)},
       detail:{show:(w.gvShow!==false),valueAnimation:true,fontSize:(w.gvsz||(isFill?20:19)),fontWeight:(w.gvfwt||'normal'),fontStyle:(w.gvsty||'normal'),fontFamily:(w.gvff||'ui-monospace,monospace'),offsetCenter:detOff,color:cssv('--text'),formatter:((w.dec!=null||(w.gvUnit!=null&&w.gvUnit!==''))?function(v){var hasU=(w.gvUnit!=null&&w.gvUnit!=='');var num=(w.dec!=null)?(isNaN(v)?v:Number(v).toFixed(w.dec).replace('.',',')):(hasU?((d&&d.v!=null)?String(d.v).replace('.',','):v):((d&&d.f)?String(d.f):v));var u=hasU?w.gvUnit:((w.dec!=null&&d&&d.u)?String(d.u):'');return num+u;}:((d&&d.f)?String(d.f):'{value}'))},
       data:[{value:val,name:w.label||''}]};
     if(cmode==='graded'&&!isFill){ // Zonen entlang des Bogens, Zeiger zeigt Wert
@@ -1867,16 +1877,37 @@
   function autoColorHex(i){return [cssv('--accent'),cssv('--info'),cssv('--warm')][i%3]||'#00cdab';}
   function _legendOpt(w,on){ // Legende inkl. Position (top/bottom/left/right) — von setLine & setCalBar genutzt
     if(!on)return {show:false};
-    var p=w.legPos||'top',o={show:true,textStyle:{color:cssv('--muted'),fontSize:_ecFS(w,9)},itemWidth:11,itemHeight:8,orient:(p==='left'||p==='right')?'vertical':'horizontal'};
+    var p=w.legPos||'top',o={show:true,textStyle:{color:cssv('--muted'),fontSize:_ecF(w,'legend',9)},itemWidth:11,itemHeight:8,orient:(p==='left'||p==='right')?'vertical':'horizontal'};
     if(p==='top')o.top=0;else if(p==='bottom')o.bottom=0;else if(p==='left'){o.left=0;o.top='middle';}else{o.right=4;o.top='middle';}
     return o;}
   // ---- Anzeige-Optionen zentral (setLine und setCalBar nutzen dieselben Regeln) ----
   function _axShow(w){return {line:!!w.axLine,ticks:!!w.axTicks,xLab:(w.xLabels!==false),yLab:(w.yLabels!==false),
     xGrid:!!w.xgrid,yGrid:(w.ygrid!==false)};}
+  // ---- Schriftgrößen je Textart -----------------------------------------------------------
+  // Jede Textart kann einzeln fest gesetzt werden; ohne Wert wächst sie mit der Kachel (_ecFS)
+  // und folgt der zentralen Typografie (w.fsz). Alle Renderer MÜSSEN _ecF() benutzen, damit
+  // die Einstellungen für jeden Diagrammtyp gleich wirken.
+  var _EC_FS={title:'fsTitle',legend:'fsLegend',axis:'axFs',axname:'fsAxName',label:'fsLabel'};
+  function _ecF(w,kind,base){var k=_EC_FS[kind],v=(w&&k)?w[k]:null;return (v>0)?parseFloat(v):_ecFS(w,base);}
+  // ---- Zahlformat fuer Datenlabels und Tooltips ---------------------------------------------
+  // Nachkommastellen aus w.dec (leer = automatisch nach Groessenordnung), Einheit aus w.chUnit
+  // (Wasserfall faellt auf seine eigene Einheit zurueck). Dezimaltrennzeichen ist das Komma.
+  function _chUnit(w){var u=(w&&w.chUnit!=null&&w.chUnit!=='')?w.chUnit:((w&&(w.ctype==='waterfall'||w.type==='waterfall'))?_wfUnit(w):'');return u||'';}
+  function _chDec(w,v){
+    if(w&&w.dec!=null&&w.dec!=='')return Math.max(0,Math.min(6,parseInt(w.dec)));
+    var a=Math.abs(v||0);return (a<10)?2:((a<100)?1:0);      // automatisch: kleine Werte feiner
+  }
+  function _chNum(w,v,withUnit){
+    if(v==null||isNaN(v))return '–';
+    var s=Number(v).toFixed(_chDec(w,v)).replace('.',',');
+    var u=(withUnit===false)?'':_chUnit(w);
+    return u?(s+' '+u):s;
+  }
+  function _axFs(w){return _ecF(w,'axis',9);}   // Kurzform für die Achsen-Skalenwerte
   function _titleOn(w){var t=(w.showTitle!=null)?w.showTitle:(!w.legend&&!!w.label);return !!(t&&(w.label||'')!=='');}
   function _titleOpt(w){
     if(!_titleOn(w))return {show:false};
-    var o={text:w.label||'',top:2,textStyle:{color:cssv('--muted'),fontSize:_ecFS(w,11),fontWeight:'normal'}};
+    var o={text:w.label||'',top:2,textStyle:{color:cssv('--muted'),fontSize:_ecF(w,'title',11),fontWeight:'normal'}};
     var p=w.titlePos||'left';
     if(p==='center')o.left='center';else if(p==='right')o.right=6;else o.left=4;
     return o;}
@@ -1884,7 +1915,7 @@
   function setLine(w){
     var ec=_ec[w.id];if(!ec)return;var ct=w.ctype||'area',hs=chartSeries(w),defs=_chSeries(w);
     var forceStack=(ct==='barstack'),stacked=(w.stack||forceStack),anyBar=false,yaxes=_chYAxes(w);
-    var lbl=w.labels?{show:true,fontSize:_ecFS(w,9),color:cssv('--muted'),position:'top'}:{show:false};
+    var lbl=w.labels?{show:true,fontSize:_ecF(w,'label',9),color:cssv('--muted'),position:'top'}:{show:false};
     function _rt(d){return (d&&d.type)?d.type:ct;} // effektiver Typ: Serie-Override oder Chart-Default (Mixed-Chart)
     var series=hs.map(function(s,i){
       var d=defs[i]||{},col=_chColor(d.color,i),nm=d.name||s.name||(i===0?(w.label||'Serie 1'):'Serie '+(i+1)),ax=Math.min(Math.max(parseInt(d.axis)||0,0),yaxes.length-1);
@@ -1902,17 +1933,17 @@
     var ax0=_axShow(w);
     var nL=0,nR=0;yaxes.forEach(function(a){if(a.side==='R')nR++;else nL++;});var iL=0,iR=0;
     var yA=yaxes.map(function(a,ix){var right=(a.side==='R'),off=right?(iR++*48):(iL++*48);
-      return {type:'value',position:(right?'right':'left'),offset:off,name:(a.name||''),nameTextStyle:{color:cssv('--muted'),fontSize:_ecFS(w,9)},nameGap:7,
+      return {type:'value',position:(right?'right':'left'),offset:off,name:(a.name||''),nameTextStyle:{color:cssv('--muted'),fontSize:_ecF(w,'axname',9)},nameGap:7,
         scale:(a.min==null||a.min===''),min:(a.min!=null&&a.min!==''?parseFloat(a.min):null),max:(a.max!=null&&a.max!==''?parseFloat(a.max):null),
-        axisLine:{show:ax0.line,lineStyle:{color:cssv('--line')}},axisTick:{show:ax0.ticks,lineStyle:{color:cssv('--line')}},axisLabel:{show:ax0.yLab,color:cssv('--faint'),fontSize:_ecFS(w,9)},splitLine:{show:(ax0.yGrid&&ix===0),lineStyle:{color:cssv('--line-soft')}},splitNumber:(w.gridDivs>0?parseInt(w.gridDivs):null)};});
+        axisLine:{show:ax0.line,lineStyle:{color:cssv('--line')}},axisTick:{show:ax0.ticks,lineStyle:{color:cssv('--line')}},axisLabel:{show:ax0.yLab,color:cssv('--faint'),fontSize:_axFs(w)},splitLine:{show:(ax0.yGrid&&ix===0),lineStyle:{color:cssv('--line-soft')}},splitNumber:(w.gridDivs>0?parseInt(w.gridDivs):null)};});
     var lp=w.legend?(w.legPos||'top'):''; // Legende reserviert Platz am jeweiligen Rand (sonst Ueberlappung)
     var opt={backgroundColor:'transparent',animation:!!bcfg().chartAnim,grid:{left:6+Math.max(0,nL-1)*48+(lp==='left'?60:0),right:8+Math.max(0,nR-1)*48+(lp==='right'?60:0),top:6+_titleSpace(w)+(lp==='top'?20:0),bottom:(w.zoom?34:14)+(lp==='bottom'?18:0),containLabel:true},tooltip:{trigger:'axis'},
       legend:_legendOpt(w,w.legend),
       title:_titleOpt(w),
-      xAxis:{type:'time',boundaryGap:anyBar,axisLine:{show:ax0.line,lineStyle:{color:cssv('--line')}},axisTick:{show:ax0.ticks},axisLabel:{show:ax0.xLab,color:cssv('--faint'),fontSize:_ecFS(w,9)},splitLine:{show:ax0.xGrid,lineStyle:{color:cssv('--line-soft')}}},
+      xAxis:{type:'time',boundaryGap:anyBar,axisLine:{show:ax0.line,lineStyle:{color:cssv('--line')}},axisTick:{show:ax0.ticks},axisLabel:{show:ax0.xLab,color:cssv('--faint'),fontSize:_axFs(w)},splitLine:{show:ax0.xGrid,lineStyle:{color:cssv('--line-soft')}}},
       yAxis:yA,series:series};
-    if(w.zoom)opt.dataZoom=[{type:'inside'},{type:'slider',height:13,bottom:4,borderColor:'transparent',backgroundColor:accA(.06),fillerColor:accA(.18),handleStyle:{color:cssv('--accent')},dataBackground:{lineStyle:{color:cssv('--line')},areaStyle:{color:accA(.08)}},textStyle:{color:cssv('--faint'),fontSize:_ecFS(w,8)}}];
-    if(w.extrema&&series[0]&&(ct==='line'||ct==='area'||ct==='bar'||ct==='step')){series[0].markPoint={symbol:'pin',symbolSize:32,data:[{type:'max',name:'Max'},{type:'min',name:'Min'}],label:{fontSize:_ecFS(w,8),color:cssv('--text')},itemStyle:{color:accA(.55)}};}
+    if(w.zoom)opt.dataZoom=[{type:'inside'},{type:'slider',height:13,bottom:4,borderColor:'transparent',backgroundColor:accA(.06),fillerColor:accA(.18),handleStyle:{color:cssv('--accent')},dataBackground:{lineStyle:{color:cssv('--line')},areaStyle:{color:accA(.08)}},textStyle:{color:cssv('--faint'),fontSize:_ecF(w,'axis',8)}}];
+    if(w.extrema&&series[0]&&(ct==='line'||ct==='area'||ct==='bar'||ct==='step')){series[0].markPoint={symbol:'pin',symbolSize:32,data:[{type:'max',name:'Max'},{type:'min',name:'Min'}],label:{fontSize:_ecF(w,'label',8),color:cssv('--text')},itemStyle:{color:accA(.55)}};}
     ec.setOption(opt,true);
   }
   // Kalenderjahr-Modus (Balken, Monatlich): x = Jän–Dez, exaktes Jahr (+ Vorjahr bei Vergleich), via generische ?api=aggregated
@@ -1922,19 +1953,19 @@
     var ML=['Jän','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'];
     var acc=cssv('--accent'),prevCol=darken(acc,(w.cmpShade!=null?w.cmpShade:55)/100);
     var unit=(w.yunit||''),br=parseFloat(w.barRadius!=null?w.barRadius:3);
-    var lbl=w.labels?{show:true,fontSize:_ecFS(w,8),color:cssv('--muted'),position:'top',formatter:function(p){return (p.value==null)?'':Math.round(p.value);}}:{show:false};
+    var lbl=w.labels?{show:true,fontSize:_ecF(w,'label',8),color:cssv('--muted'),position:'top',formatter:function(p){return (p.value==null)?'':_chNum(w,p.value,false);}}:{show:false};
     var showLeg=(w.legend!==false),series=[];
     if(w.cmpOn)series.push({type:'bar',name:String(m.prevY||'Vorjahr'),itemStyle:{color:prevCol,borderRadius:br},data:m.prev,label:lbl});
     series.push({type:'bar',name:String(m.curY||'Jahr'),itemStyle:{color:acc,borderRadius:br},data:m.cur,label:lbl});
     var lp=showLeg?(w.legPos||'top'):'',axc=_axShow(w);
     ec.setOption({backgroundColor:'transparent',animation:!!bcfg().chartAnim,grid:{left:8+(lp==='left'?60:0),right:10+(lp==='right'?60:0),top:6+_titleSpace(w)+(lp==='top'?20:0),bottom:4+(lp==='bottom'?18:0),containLabel:true},
-      tooltip:{trigger:'axis',valueFormatter:function(v){return (v==null)?'–':((Math.round(v*10)/10)+(unit?(' '+unit):''));}},
+      tooltip:{trigger:'axis',valueFormatter:function(v){return _chNum(w,v);}},
       legend:_legendOpt(w,showLeg),
       title:_titleOpt(w),
-      xAxis:{type:'category',data:ML,axisTick:{show:axc.ticks},axisLine:{show:axc.line,lineStyle:{color:cssv('--line')}},axisLabel:{show:axc.xLab,color:cssv('--faint'),fontSize:_ecFS(w,9)},splitLine:{show:axc.xGrid,lineStyle:{color:cssv('--line-soft')}}},
-      yAxis:{type:'value',name:unit,nameTextStyle:{color:cssv('--muted'),fontSize:_ecFS(w,9)},nameGap:7,
+      xAxis:{type:'category',data:ML,axisTick:{show:axc.ticks},axisLine:{show:axc.line,lineStyle:{color:cssv('--line')}},axisLabel:{show:axc.xLab,color:cssv('--faint'),fontSize:_axFs(w)},splitLine:{show:axc.xGrid,lineStyle:{color:cssv('--line-soft')}}},
+      yAxis:{type:'value',name:unit,nameTextStyle:{color:cssv('--muted'),fontSize:_ecF(w,'axname',9)},nameGap:7,
         min:(w.ymin!=null&&w.ymin!==''?parseFloat(w.ymin):null),max:(w.ymax!=null&&w.ymax!==''?parseFloat(w.ymax):null),
-        axisLine:{show:axc.line,lineStyle:{color:cssv('--line')}},axisTick:{show:axc.ticks},axisLabel:{show:axc.yLab,color:cssv('--faint'),fontSize:_ecFS(w,9)},
+        axisLine:{show:axc.line,lineStyle:{color:cssv('--line')}},axisTick:{show:axc.ticks},axisLabel:{show:axc.yLab,color:cssv('--faint'),fontSize:_axFs(w)},
         splitLine:{show:axc.yGrid,lineStyle:{color:cssv('--line-soft')}},splitNumber:(w.gridDivs>0?parseInt(w.gridDivs):null)},
       series:series},true);
   }
@@ -2043,7 +2074,7 @@
   function setDaylight(w){
     var ec=_ec[w.id];if(!ec)return;
     var D=(_hist[w.id]&&_hist[w.id].dl)||null;
-    if(!D){ec.setOption({backgroundColor:'transparent',title:{text:(_hist[w.id]&&_hist[w.id].err)||'Standort fehlt',left:'center',top:'middle',textStyle:{color:cssv('--faint'),fontSize:_ecFS(w,11),fontWeight:'normal'}},xAxis:{show:false},yAxis:{show:false},series:[]},true);return;}
+    if(!D){ec.setOption({backgroundColor:'transparent',title:{text:(_hist[w.id]&&_hist[w.id].err)||'Standort fehlt',left:'center',top:'middle',textStyle:{color:cssv('--faint'),fontSize:_ecF(w,'title',11),fontWeight:'normal'}},xAxis:{show:false},yAxis:{show:false},series:[]},true);return;}
     var ax=_axShow(w);
     var cSet=_skinToCss(w.dlSet)||cssv('--warn'),cRise=_skinToCss(w.dlRise)||cssv('--muted');
     var cFill=_skinToCss(w.dlFill)||cSet;
@@ -2066,7 +2097,7 @@
           lineStyle:{color:cssv('--text'),width:1.5,type:'solid',opacity:.85},
           label:{show:true,position:'insideEndTop',formatter:('0'+now.getDate()).slice(-2)+'.'+('0'+(now.getMonth()+1)).slice(-2),
                  color:cssv('--text'),backgroundColor:cssv('--surface-2'),borderColor:cssv('--line'),borderWidth:1,
-                 padding:[3,6],borderRadius:4,fontSize:_ecFS(w,10)},
+                 padding:[3,6],borderRadius:4,fontSize:_ecF(w,'label',10)},
           data:[{xAxis:tx}]};
       }
     }
@@ -2084,11 +2115,11 @@
             +(lenH!=null?('<br>Tageslänge '+_dlFmt(lenH)):'');
         }},
       xAxis:{type:'time',axisLine:{show:ax.line,lineStyle:{color:cssv('--line')}},axisTick:{show:ax.ticks},
-        axisLabel:{show:ax.xLab,color:cssv('--faint'),fontSize:_ecFS(w,9),formatter:'{MMM}'},
+        axisLabel:{show:ax.xLab,color:cssv('--faint'),fontSize:_axFs(w),formatter:'{MMM}'},
         splitLine:{show:ax.xGrid,lineStyle:{color:cssv('--line-soft')}}},
       yAxis:{type:'value',min:(w.dlYMin!=null&&w.dlYMin!==''?parseFloat(w.dlYMin):0),max:(w.dlYMax!=null&&w.dlYMax!==''?parseFloat(w.dlYMax):24),interval:6,
         axisLine:{show:ax.line,lineStyle:{color:cssv('--line')}},axisTick:{show:ax.ticks},
-        axisLabel:{show:ax.yLab,color:cssv('--faint'),fontSize:_ecFS(w,9),formatter:function(v){return ('0'+v).slice(-2)+':00';}},
+        axisLabel:{show:ax.yLab,color:cssv('--faint'),fontSize:_axFs(w),formatter:function(v){return ('0'+v).slice(-2)+':00';}},
         splitLine:{show:ax.yGrid,lineStyle:{color:cssv('--line-soft')}}},
       series:series},true);
   }
@@ -2216,12 +2247,20 @@
       updateTherm(w);
     });
   }
-  function refreshCam(w){var el=$('.w[data-id="'+w.id+'"] [data-role=cam]',canvas);if(el&&w.mediaId)el.src='?api=media&id='+w.mediaId+'&t='+Date.now();}
+  // Kamerabild aktualisieren. NUR fuer Einzelbilder (Media-Objekt): ein MJPEG-Stream laeuft
+  // dauerhaft in derselben <img>-Verbindung - ein erneutes Setzen von src wuerde ihn abreissen
+  // und neu verbinden lassen (sichtbares Ruckeln, unnoetige Last auf der Kamera).
+  function _camMode(w){return w.camSrc||'media';}
+  function refreshCam(w){
+    if(_camMode(w)!=='media')return;                       // Stream selbst versorgt sich
+    var el=$('.w[data-id="'+w.id+'"] [data-role=cam]',canvas);
+    if(el&&w.mediaId)el.src='?api=media&id='+w.mediaId+'&t='+Date.now();
+  }
   function setSankey(w){
     var ec=_ec[w.id];if(!ec)return;var nodesSet={},links=[];
     (w.links||[]).forEach(function(l){if(!l.from||!l.to)return;nodesSet[l.from]=1;nodesSet[l.to]=1;var v=(_lastVals[l.vid]!=null)?parseFloat(_lastVals[l.vid].v):0;if(isNaN(v))v=0;links.push({source:l.from,target:l.to,value:Math.max(0.001,Math.abs(v))});});
     var nodes=Object.keys(nodesSet).map(function(n){return {name:n};});
-    ec.setOption({backgroundColor:'transparent',animation:!!bcfg().chartAnim,title:_titleOpt(w),series:[{type:'sankey',orient:(w.snOrient==='v'?'vertical':'horizontal'),left:4,right:4,top:8+_titleSpace(w),bottom:8,data:nodes,links:links,nodeGap:10,nodeWidth:12,emphasis:{focus:'adjacency'},label:{show:(w.snLabels!==false),color:cssv('--text'),fontSize:_ecFS(w,10)},edgeLabel:{show:!!w.snVal,color:cssv('--muted'),fontSize:_ecFS(w,9),formatter:function(p){return (Math.round((p.value||0)*10)/10);}},itemStyle:{color:(_skinToCss(w.snNode)||cssv('--accent')),borderColor:'transparent'},lineStyle:{color:'gradient',opacity:(w.snOpacity!=null?w.snOpacity/100:.35),curveness:(w.snCurve!=null?w.snCurve/100:.5)}}]},true);
+    ec.setOption({backgroundColor:'transparent',animation:!!bcfg().chartAnim,title:_titleOpt(w),series:[{type:'sankey',orient:(w.snOrient==='v'?'vertical':'horizontal'),left:4,right:4,top:8+_titleSpace(w),bottom:8,data:nodes,links:links,nodeGap:10,nodeWidth:12,emphasis:{focus:'adjacency'},label:{show:(w.snLabels!==false),color:cssv('--text'),fontSize:_ecF(w,'label',10)},edgeLabel:{show:!!w.snVal,color:cssv('--muted'),fontSize:_ecF(w,'label',9),formatter:function(p){return (Math.round((p.value||0)*10)/10);}},itemStyle:{color:(_skinToCss(w.snNode)||cssv('--accent')),borderColor:'transparent'},lineStyle:{color:'gradient',opacity:(w.snOpacity!=null?w.snOpacity/100:.35),curveness:(w.snCurve!=null?w.snCurve/100:.5)}}]},true);
   }
   function powerflowSVG(w){
     var src=w.src||[],snk=w.snk||[],W=400,rows=Math.max(src.length,snk.length,1),H=Math.max(150,rows*56+16),cy=H/2;
@@ -2243,8 +2282,8 @@
     ec.setOption({animation:!!bcfg().chartAnim,series:[{type:'gauge',min:mn,max:mx,radius:'92%',
       axisLine:{lineStyle:{width:9,color:[[f1,cssv('--ok')],[f2,cssv('--warm')],[1,cssv('--crit')]]}},
       pointer:{width:4,length:'60%',itemStyle:{color:cssv('--text')}},progress:{show:false},axisTick:{show:false},
-      splitLine:{length:9,lineStyle:{color:cssv('--faint'),width:1}},axisLabel:{color:cssv('--faint'),fontSize:_ecFS(w,9),distance:12},anchor:{show:false},
-      title:{show:true,offsetCenter:[0,'72%'],color:cssv('--muted'),fontSize:_ecFS(w,10)},
+      splitLine:{length:9,lineStyle:{color:cssv('--faint'),width:1}},axisLabel:{color:cssv('--faint'),fontSize:_ecF(w,'axis',9),distance:12},anchor:{show:false},
+      title:{show:true,offsetCenter:[0,'72%'],color:cssv('--muted'),fontSize:_ecF(w,'label',10)},
       detail:{valueAnimation:true,fontSize:19,offsetCenter:[0,'38%'],color:cssv('--text'),fontFamily:'ui-monospace,monospace',formatter:(d&&d.f)?String(d.f):'{value}'},
       data:[{value:val,name:w.label||''}]}]},true);
   }
@@ -2290,7 +2329,7 @@
       if(w.type==='clock'){var t=$('[data-role=time]',el);if(t)t.textContent=p(now.getHours())+':'+p(now.getMinutes());var dt=$('[data-role=date]',el);if(dt)dt.textContent=['So','Mo','Di','Mi','Do','Fr','Sa'][now.getDay()]+', '+now.getDate()+'.'+(now.getMonth()+1)+'.';}
       else{var d=_lastVals[w.varId];if(!d)return;var v=parseFloat(d.v);if(isNaN(v))return;var rem=v>1e9?Math.max(0,v-Math.floor(now.getTime()/1000)):Math.max(0,v);var mm=Math.floor(rem/60),ss=Math.floor(rem%60),tt=$('[data-role=time]',el);if(tt)tt.textContent=(mm>=60?Math.floor(mm/60)+':'+p(mm%60):p(mm))+':'+p(ss);var tot=w.max||3600,bar=$('[data-role=bar]',el);if(bar)bar.style.width=Math.max(0,Math.min(100,rem/tot*100))+'%';}
     }
-    state.widgets.forEach(_one);
+    allWidgets().forEach(_one);   // Seiteninhalt UND Leisten (Uhr/Timer/Sonne)
     if(_compKids&&_compKids.length)_compKids.forEach(_one); // Uhr/Timer/Sonne in Komponenten
     if(_tickKids&&_tickKids.length)_tickKids.forEach(_one); // ... und in der Laufzeile
   }
@@ -2361,8 +2400,8 @@
       var z=(w.htmlZoom||100)/100;if(z!==1)wrap.style.transform='scale('+z+')';
     }
   }
-  setInterval(function(){state.widgets.forEach(function(w){if((w.type==='chart'||w.type==='spark')&&w.ctype!=='waterfall'&&!(_wsOK&&bcfg().noSafetyPoll))fetchHist(w);if(w.type==='html'&&w.htmlSrc!=='custom')fetchHtml(w);if(w.type==='weekplan')fetchWeekplan(w);if(w.type==='calendar')fetchCalEvents(w);if(w.type==='eventctl')fetchEvent(w);if(w.type==='objinfo')fetchObjInfo(w);if(w.type==='statetl')_stlFetch(w);if(w.type==='statelog')_slogFetch(w);if(w.type==='table')_tblLoad(w);});},60000);
-  setInterval(function(){var now=Date.now();state.widgets.forEach(function(w){if(w.type==='camera'||w.type==='campro'){var iv=((w.refresh>0)?w.refresh:15)*1000;if(!w._lastCam||now-w._lastCam>=iv){w._lastCam=now;refreshCam(w);}}});},1000);
+  setInterval(function(){allWidgets().forEach(function(w){if((w.type==='chart'||w.type==='spark')&&w.ctype!=='waterfall'&&!(_wsOK&&bcfg().noSafetyPoll))fetchHist(w);if(w.type==='html'&&w.htmlSrc!=='custom')fetchHtml(w);if(w.type==='weekplan')fetchWeekplan(w);if(w.type==='calendar')fetchCalEvents(w);if(w.type==='eventctl')fetchEvent(w);if(w.type==='objinfo')fetchObjInfo(w);if(w.type==='statetl')_stlFetch(w);if(w.type==='statelog')_slogFetch(w);if(w.type==='table')_tblLoad(w);});},60000);
+  setInterval(function(){var now=Date.now();allWidgets().forEach(function(w){if(w.type==='camera'||w.type==='campro'){var iv=((w.refresh>0)?w.refresh:15)*1000;if(!w._lastCam||now-w._lastCam>=iv){w._lastCam=now;refreshCam(w);}}});},1000);
 
   // ---------- Auswahl & Eigenschaften ----------
   var sel={},clip=[];
@@ -2399,8 +2438,14 @@
     else{sel={};var _sw=widget(id);if(_sw&&_sw.group){state.widgets.forEach(function(x){if(x.group===_sw.group)sel[x.id]=true;});}else sel[id]=true;selId=id;} // Gruppe: ganze Gruppe wählen
     markSel();try{renderProps();}catch(_e){console.error('renderProps',_e);}if(id!=null&&!additive)showTab('props'); // renderProps darf Auswahl/Drag nie blockieren
   }
-  function namedWidgets(excludeId){var out=[];for(var vn in store.views){(store.views[vn].widgets||[]).forEach(function(x){if(x.name&&x.id!==excludeId)out.push({name:x.name,type:x.type,view:vn,id:x.id});});}return out;} // alle benannten Widgets (alle Ansichten)
-  function widgetByName(name){if(!name)return null;for(var vn in store.views){var f=(store.views[vn].widgets||[]).filter(function(x){return x.name===name;})[0];if(f)return f;}return null;}
+  function namedWidgets(excludeId){var out=[];for(var vn in store.views){(store.views[vn].widgets||[]).forEach(function(x){if(x.name&&x.id!==excludeId)out.push({name:x.name,type:x.type,view:vn,id:x.id});});}
+    // Leisten-Kinder gehoeren zu keiner Ansicht - ohne sie liessen sich Widgets aus Bar/Sidebar
+    // nicht in einer Laufzeile referenzieren.
+    try{chromeList().forEach(function(b){(b.widgets||[]).forEach(function(x){if(x.name&&x.id!==excludeId)out.push({name:x.name,type:x.type,view:(b.name||'Leiste'),id:x.id});});});}catch(e){}
+    return out;} // alle benannten Widgets (alle Ansichten)
+  function widgetByName(name){if(!name)return null;for(var vn in store.views){var f=(store.views[vn].widgets||[]).filter(function(x){return x.name===name;})[0];if(f)return f;}
+    try{var k=chromeAllKids().filter(function(x){return x.name===name;})[0];if(k)return k;}catch(e){}
+    return null;}
   function widget(id){var w=state.widgets.filter(function(x){return x.id===id;})[0];if(w)return w;
     var ck0=chromeAllKids().filter(function(x){return x.id===id;})[0];if(ck0)return ck0; /* Widget in einer Leiste */
     var cd0=chromeDef(id);if(cd0)return cd0; /* die Leiste selbst (fuer Auswahl + Eigenschaften) */
@@ -2577,7 +2622,10 @@
     var typeOpts=Object.keys(TYPES).map(function(t){return '<option value="'+t+'">'+TYPES[t]+'</option>';}).join('');
     var lbl2={thermostat:'Ziel-Var',light:'Helligkeit',cover:'Stop-Var',weather:'Vorhersage (JSON)',weatherpro:'Vorhersage (JSON)',sun:'Untergang',suncard:'Untergang',media:'Zustand',room:'Metrik 2',vacuum:'Batterie',valuecard:'Toggle/Akzent-Var'}[w.type];
     var lbl3={media:'Lautstärke',room:'Metrik 3',vacuum:'Start/Stop',thermostat:'Modus/Profil-Var',valuecard:'Balken-Var'}[w.type];
+    var _inBar=(typeof chromeOwnerOf==='function')?chromeOwnerOf(w.id):null;
     p.innerHTML=(Object.keys(sel).length>=2?alignSection():'')
+      +(_inBar?('<div class="prop" style="border-color:var(--accent)"><div style="font-size:11px;color:var(--muted);margin-bottom:5px">Liegt in der Leiste <b>'+esc(_inBar.name||'Leiste')+'</b> — erscheint damit auf allen Seiten.</div>'
+        +'<button class="btn" id="pChOut" style="padding:5px 9px">Zurück auf die Seite</button></div>'):'')
       +'<div class="prop">'
       +row('Typ','<select id="pType">'+typeOpts+'</select>')
       +row('Label','<input id="pLabel" value="'+esc(w.label||'')+'">')
@@ -2590,7 +2638,7 @@
         +(w.cmpOn?(row('Aggregationsstufe',stageSel('pCmpStage',cmpStage(w)))+row('Zählervariable','<input type="checkbox" id="pCmpCnt"'+(w.cmpCounter?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">Verbrauch je Periode</span>')+(!w.cmpCounter?row('Periodenmittel','<input type="checkbox" id="pCmpAvg"'+(w.cmpAvg?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">Mittel über die Periode statt Punktwert</span>'):'')+row('Anzeige','<select id="pCmpMode"><option value="pct"'+((w.cmpMode||'pct')==='pct'?' selected':'')+'>Prozent</option><option value="abs"'+(w.cmpMode==='abs'?' selected':'')+'>Absolut</option></select>')+row('Veränderung invertieren','<input type="checkbox" id="pCmpInv"'+(w.cmpInvert?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">Rückgang = gut (z. B. Verbrauch) — nur Farbe dreht, Pfeil bleibt</span>')):'')
       ):'')
       +(FMT_TYPES.indexOf(w.type)>=0?row('Format','<select id="pFmt">'+fmtOpts(w.fmt)+'</select>'):'')
-      +(['value','kpi','valuecard','bar','gauge','gaugepro','tempbar','dial','chip','cval','sval','delta','room','meterlist','marquee','raincard','rangebtn','assoc'].indexOf(w.type)>=0?row('Nachkommastellen','<input id="pDec" type="number" min="0" max="6" value="'+(w.dec!=null?w.dec:'')+'" placeholder="Standard">'):'')
+      +(['value','kpi','valuecard','bar','gauge','gaugepro','tempbar','dial','chip','cval','sval','delta','room','meterlist','marquee','raincard','rangebtn','assoc','chart'].indexOf(w.type)>=0?row('Nachkommastellen','<input id="pDec" type="number" min="0" max="6" value="'+(w.dec!=null?w.dec:'')+'" placeholder="Standard">'):'')
       +(['value','valuecard','bar','assoc','cval','sval','delta','tempbar'].indexOf(w.type)>=0?row('Einzeilig bei geringer Höhe','<input type="checkbox" id="pLineMode"'+(w.lineMode?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">flach gezogen → alles in eine Zeile</span>'):'')
       +((w.type==='chart'||w.type==='spark')?(function(){if(w.type==='chart'&&(['pie','donut','rose','waterfall','daylight'].indexOf(w.ctype||'area')>=0))return ''; /* Anteils-Charts und Wasserfall haben keine Zeitachse */var r=_chRange(w);var U=[['raw','Roh'],['min','Minuten'],['hour','Stunden'],['day','Tage'],['week','Wochen'],['month','Monate'],['year','Jahre']];var sel='<select id="pRUnit">'+U.map(function(u){return '<option value="'+u[0]+'"'+(r.unit===u[0]?' selected':'')+'>'+u[1]+'</option>';}).join('')+'</select>';var s=row('Zeitraum','<input id="pRN" type="number" min="1" style="width:64px" value="'+(r.n||24)+'"> '+sel);if(r.unit==='raw')s+=row('Fenster-Einheit','<select id="pRRawU"><option value="hour"'+((r.rawUnit||'hour')==='hour'?' selected':'')+'>Stunden</option><option value="day"'+(r.rawUnit==='day'?' selected':'')+'>Tage</option></select>');else s+=row('Wert','<select id="pRAggF"><option value="avg"'+((r.aggF||'avg')==='avg'?' selected':'')+'>Mittel</option><option value="sum"'+(r.aggF==='sum'?' selected':'')+'>Summe</option></select> <span style="font-size:11px;color:var(--muted)">Z&#228;hler: &#8222;Mittel&#8220;=Verbrauch/Bucket</span>');if(r.unit==='month'&&w.type==='chart'&&w.ctype!=='spark')s+=row('Zeitmodus','<select id="pRCal"><option value=""'+(!r.cal?' selected':'')+'>Rollierend</option><option value="1"'+(r.cal?' selected':'')+'>Kalenderjahr (J&#228;n&#8211;Dez)</option></select>');return s;})():'')
       +(['bar','gauge','slider','thermostat','gaugepro','timer','tempbar','dial'].indexOf(w.type)>=0?(row('Min','<input id="pMin" type="number" value="'+(w.min!=null?w.min:0)+'">')+row('Max','<input id="pMax" type="number" value="'+(w.max!=null?w.max:100)+'">')):'')
@@ -2613,7 +2661,7 @@
       +((w.type!=='button'&&w.type!=='tile')?popupSection(w):'')
       +(w.type!=='blank'?('<div class="pgh">Sichtbarkeit</div>'
         +row('Zur Laufzeit','<input type="checkbox" id="pRunVis"'+(w.hidden?'':' checked')+'> <span style="font-size:11px;color:var(--muted)">im Betrieb anzeigen</span>')
-        +(w.type!=='ticker'?(function(){var inT=w.name&&state.widgets.some(function(t){return t.type==='ticker'&&t.items&&t.items.some(function(m){return m.ref===w.name;});});if(inT)return row('Laufzeile','<button class="btn" id="pFromTicker" style="padding:5px 8px">← aus Laufzeile holen</button>');if(state.widgets.some(function(x){return x.type==='ticker';}))return row('Laufzeile','<button class="btn" id="pToTicker" style="padding:5px 8px">→ in Laufzeile verschieben</button>');return '';})():'')
+        +(w.type!=='ticker'?(function(){var inT=w.name&&allWidgets().some(function(t){return t.type==='ticker'&&t.items&&t.items.some(function(m){return m.ref===w.name;});});if(inT)return row('Laufzeile','<button class="btn" id="pFromTicker" style="padding:5px 8px">← aus Laufzeile holen</button>');if(state.widgets.some(function(x){return x.type==='ticker';}))return row('Laufzeile','<button class="btn" id="pToTicker" style="padding:5px 8px">→ in Laufzeile verschieben</button>');return '';})():'')
         +row('Steuer-Var','<input id="pVisVar" value="'+(w.visVar||'')+'" placeholder="ID (leer=immer)"> <button class="btn" id="pVisPick" style="padding:6px 8px">wählen</button>')
         +(w.visVar?(row('Zeigen wenn','<select id="pVisMode"><option value="truthy"'+((w.visMode||'truthy')==='truthy'?' selected':'')+'>wahr / ≠0</option><option value="eq"'+(w.visMode==='eq'?' selected':'')+'>= Wert</option><option value="ne"'+(w.visMode==='ne'?' selected':'')+'>≠ Wert</option><option value="ge"'+(w.visMode==='ge'?' selected':'')+'>≥ Wert</option><option value="le"'+(w.visMode==='le'?' selected':'')+'>≤ Wert</option></select>')+((w.visMode&&w.visMode!=='truthy')?row('Wert','<input id="pVisVal" value="'+esc(w.visVal!=null?w.visVal:'')+'">'):'')):'')):'')
       +(w.type!=='blank'?row('Animation','<select id="pAnim"><option value=""'+(!w.anim?' selected':'')+'>keine</option><option value="fade"'+(w.anim==='fade'?' selected':'')+'>Fade</option><option value="scale"'+(w.anim==='scale'?' selected':'')+'>Scale</option><option value="slide"'+(w.anim==='slide'?' selected':'')+'>SlideUp</option></select>'):'')
@@ -2624,7 +2672,14 @@
     $('#pType').value=w.type;
     $('#pType').onchange=function(){w.type=this.value;render();renderProps();};
     $('#pLabel').oninput=function(){w.label=this.value;render();};
-    if($('#pName'))$('#pName').onchange=function(){var nm=this.value.trim();if(nm&&namedWidgets(w.id).some(function(o){return o.name===nm;})){toast('Name bereits vergeben');this.value=w.name||'';return;}w.name=nm||undefined;commit();};
+    if($('#pChOut'))$('#pChOut').onclick=function(){chromeMoveOut([w.id]);};
+    if($('#pName'))$('#pName').onchange=function(){var nm=this.value.trim();
+      // Doppelte Namen abweisen - aber SAGEN, wo der Name schon liegt. Sonst sucht man ihn
+      // vergeblich, denn er kann auch in einer Leiste stecken und ist von hier nicht sichtbar.
+      var _clash=nm?namedWidgets(w.id).filter(function(o){return o.name===nm;})[0]:null;
+      if(_clash){toast('Name „'+nm+'\u201c ist bereits vergeben: '+_clash.type+' in '+(_clash.view||'?'));
+        this.select();return;}   // Eingabe stehen lassen und markieren, nicht loeschen
+      w.name=nm||undefined;render();}; // render() aktualisiert Laufzeilen-Referenzen und ruft intern schon commit(). KEIN renderProps() hier - das wuerde das Panel mitten im change-Handler neu aufbauen und das Eingabefeld zerstoeren.
     if($('#pVar'))$('#pVar').onchange=function(){w.varId=parseInt(this.value)||0;delete _hist[w.id];render();renderProps();};
     if($('#pPick'))$('#pPick').onclick=function(){showTab('vars');toast('Variable im Baum anklicken — bindet an dieses Element');_bindTarget=w.id;};
     if($('#pMedia'))$('#pMedia').onchange=function(){w.mediaId=parseInt(this.value)||0;render();};
@@ -2675,7 +2730,7 @@
     if($('#pVar3'))$('#pVar3').onchange=function(){w.varId3=parseInt(this.value)||0;delete _hist[w.id];render();};
     if($('#pPick3'))$('#pPick3').onclick=function(){showTab('vars');toast('Untergang-Variable im Baum anklicken');_bindTarget3=w.id;};
     ['pX','pY','pW','pH'].forEach(function(k){var el=$('#'+k);el.oninput=function(){var v=parseInt(el.value)||0;if(k==='pX')w.x=v;if(k==='pY')w.y=v;if(k==='pW')w.w=Math.max(40,v);if(k==='pH')w.h=Math.max(28,v);render();};});
-    $('#pDel').onclick=function(){var ids=Object.keys(sel).length?Object.keys(sel):[w.id];state.widgets=state.widgets.filter(function(x){return ids.indexOf(x.id)<0;});selClear();render();renderProps();};
+    $('#pDel').onclick=function(){var ids=Object.keys(sel).length?Object.keys(sel):[w.id];state.widgets=state.widgets.filter(function(x){return ids.indexOf(x.id)<0;});if(typeof chromeList==='function')chromeList().forEach(function(_b){if(_b.widgets)_b.widgets=_b.widgets.filter(function(x){return ids.indexOf(x.id)<0;});});selClear();render();renderProps();};
     $$('[data-al]',p).forEach(function(bt){bt.onclick=function(){var a=bt.dataset.al;if(a==='disth')distributeSel('h');else if(a==='distv')distributeSel('v');else if(a==='group')groupSel();else if(a==='ungroup')ungroupSel();else alignSel(a);};});
     $$('[data-fc]',p).forEach(function(inp){inp.oninput=inp.onchange=function(){var pr=inp.dataset.fc.split('.'),i=+pr[0],k=pr[1];if(!w.fc||!w.fc[i])return;w.fc[i][k]=(k==='hi'||k==='lo'||k==='pq')?(parseInt(inp.value)||0):inp.value;render();};});
     $$('[data-fcdel]',p).forEach(function(b){b.onclick=function(){w.fc.splice(+b.dataset.fcdel,1);render();renderProps();};});
@@ -2702,14 +2757,15 @@
   }
   function row(l,html){return '<div class="prow"><label>'+l+'</label>'+html+'</div>';}
   function moveToTicker(w){ // Widget benennen, in erste Laufzeile referenzieren, auf der Seite ausblenden
-    var tk=state.widgets.filter(function(x){return x.type==='ticker';})[0];
+    // Laufzeile auch in einer Leiste suchen - dort liegt sie beim gemeinsamen Kopfbereich.
+    var tk=allWidgets().filter(function(x){return x.type==='ticker';})[0];
     if(!tk){toast('Keine Laufzeile auf dieser Seite');return;}
     if(!w.name){var base=(w.label||w.type||'widget').toString().replace(/\s+/g,'-').toLowerCase(),nm=base,n=2;while(namedWidgets(w.id).some(function(o){return o.name===nm;})){nm=base+'-'+(n++);}w.name=nm;}
     tk.items=tk.items||[];if(!tk.items.some(function(m){return m.ref===w.name;}))tk.items.push({ref:w.name});
     w.hidden=true;render();select(tk.id);toast('„'+w.name+'" in Laufzeile verschoben');commit();
   }
   function removeFromTicker(w){ // alle Referenzen entfernen und Widget wieder auf der Seite anzeigen (nicht löschen)
-    state.widgets.forEach(function(t){if(t.type==='ticker'&&t.items)t.items=t.items.filter(function(m){return m.ref!==w.name;});});
+    allWidgets().forEach(function(t){if(t.type==='ticker'&&t.items)t.items=t.items.filter(function(m){return m.ref!==w.name;});});
     w.hidden=undefined;render();select(w.id);renderProps();toast('„'+(w.name||w.type)+'" zurück auf die Seite');commit();
   }
   function fieldPick(w,path,label){var v=getPath(w,path)||''; // Variable an ein beliebiges Feld (Pfad) binden: Eingabe + wählen + entfernen
@@ -2831,10 +2887,13 @@
         if(ay===null&&Math.abs((o.y-gap)-(ny+w.h))<=TH){ay=(o.y-gap-w.h)-it.oy;gy=o.y;}
       }
     });
-    // Zusätzlich an den Kanten und der Mitte der Leiste selbst einrasten
+    // Zusätzlich an den Kanten und der Mitte der Leiste einrasten — aber nur, wenn in der
+    // jeweiligen Achse genug Luft bleibt. In einer schmalen Bar (z. B. 56 px hoch) liegen
+    // Oberkante, Mitte und Unterkante sonst so dicht, dass jede Position einrastet und sich
+    // das Widget gar nicht mehr frei setzen lässt.
     if(owner&&gW!=null&&gH!=null){
-      [0,gW,gW/2].forEach(function(px){xs.forEach(function(q){if(ax===null&&Math.abs(px-q[0])<=TH){ax=px-q[1]-it.ox;gx=px;}});});
-      [0,gH,gH/2].forEach(function(py){ys.forEach(function(q){if(ay===null&&Math.abs(py-q[0])<=TH){ay=py-q[1]-it.oy;gy=py;}});});
+      if((gW-w.w)>4*TH)[0,gW,gW/2].forEach(function(px){xs.forEach(function(q){if(ax===null&&Math.abs(px-q[0])<=TH){ax=px-q[1]-it.ox;gx=px;}});});
+      if((gH-w.h)>4*TH)[0,gH,gH/2].forEach(function(py){ys.forEach(function(q){if(ay===null&&Math.abs(py-q[0])<=TH){ay=py-q[1]-it.oy;gy=py;}});});
     }
     clearGuides();
     var fdx=(ax!==null)?ax:(gridOn?snap(dx):Math.round(dx));
@@ -2939,8 +2998,22 @@
     badge(e,Math.round(drag.items[0].w.x)+' , '+Math.round(drag.items[0].w.y));
   });
   function badge(e,txt){var b=$('#selbadge');b.textContent=txt;b.style.left=(e.clientX+16)+'px';b.style.top=(e.clientY+16)+'px';b.style.display='block';}
-  window.addEventListener('mouseup',function(){
+  window.addEventListener('mouseup',function(e){
     $('#selbadge').style.display='none';
+    // Ein gezogenes Seiten-Widget ueber einer Leiste loslassen -> dorthin verschieben.
+    // Ohne das koennte man Widgets nur aus der Palette in eine Leiste bekommen.
+    if(drag&&drag.mode==='mv'&&drag.items&&drag.items.length&&typeof chromeHitTest==='function'){
+      var _r=canvas.getBoundingClientRect(),_px=(e.clientX-_r.left)/zoom,_py=(e.clientY-_r.top)/zoom;
+      var _hit=chromeHitTest(_px,_py);
+      var _ids=drag.items.map(function(it){return it.w.id;});
+      var _onPage=_ids.filter(function(id){return state.widgets.some(function(x){return x.id===id;});});
+      if(_hit&&_onPage.length){
+        clearGuides();drag=null;
+        var _n=chromeMoveIn(_hit.def.id,_onPage);
+        if(_n&&typeof toast==='function')toast(_n+' Widget(s) in „'+(_hit.def.name||'Leiste')+'" verschoben');
+        return;
+      }
+    }
     if(marq){var rc=marq.rect;if(rc){var _co=chromeContent(); // Seiten-Widgets liegen relativ zur (geschrumpften) Inhaltsflaeche
       state.widgets.forEach(function(w){var wx=w.x+_co.x,wy=w.y+_co.y;if(wx<rc.R&&wx+w.w>rc.L&&wy<rc.B&&wy+w.h>rc.T)sel[w.id]=true;});}marq.el.remove();marq=null;selId=Object.keys(sel).slice(-1)[0]||null;markSel();renderProps();return;}
     if(drag){clearGuides();renderProps();drag=null;commit();drawStructure();}
@@ -2949,22 +3022,22 @@
   function _inTextField(){var ae=document.activeElement,tn=((ae&&ae.tagName)||'').toLowerCase();return tn==='input'||tn==='textarea';}
   function _clone(id){return JSON.parse(JSON.stringify(widget(id)));}
   document.addEventListener('keydown',function(e){
-    var ctrl=e.ctrlKey||e.metaKey,k=(e.key||'').toLowerCase(),ids=Object.keys(sel);
+    var ctrl=e.ctrlKey||e.metaKey,ek=(e.key||''),k=ek.toLowerCase(),ids=Object.keys(sel); // ek: e.key kann fehlen (Dead Keys, IME, synthetische Events) -> nie direkt ansprechen
     // Widget-Copy/Cut/Paste ZUERST (funktioniert auch bei Fokus auf Select/Body/nach Seitenwechsel); Textfeld/Textauswahl bleibt normales Text-Copy
     if(ctrl&&k==='c'&&!_hasTextSel()){if(ids.length){clip=ids.map(_clone);toast(clip.length+' kopiert');e.preventDefault();}return;}
     if(ctrl&&k==='x'&&!_hasTextSel()){if(ids.length){clip=ids.map(_clone);state.widgets=state.widgets.filter(function(w){return !sel[w.id];});selClear();render();renderProps();commit();e.preventDefault();}return;}
     if(ctrl&&k==='v'&&!_inTextField()){if(clip&&clip.length){addCopies(clip);e.preventDefault();}return;}
-    if((e.key==='Delete'||e.key==='Backspace')&&!_inTextField()){if(ids.length){state.widgets=state.widgets.filter(function(w){return !sel[w.id];});selClear();render();renderProps();commit();e.preventDefault();}return;} // löschen auch bei Fokus auf Select/Body (nach Seitenwechsel)
-    if(e.key.indexOf('Arrow')===0&&ids.length&&!_inTextField()){var dd0=e.shiftKey?GS:1,dx0=e.key==='ArrowLeft'?-dd0:e.key==='ArrowRight'?dd0:0,dy0=e.key==='ArrowUp'?-dd0:e.key==='ArrowDown'?dd0:0;ids.forEach(function(id){var w=widget(id);w.x=Math.max(0,w.x+dx0);w.y=Math.max(0,w.y+dy0);applyGeom(w);});e.preventDefault();commit();return;} // verschieben auch bei Select/Body-Fokus
+    if((ek==='Delete'||ek==='Backspace')&&!_inTextField()){if(ids.length){state.widgets=state.widgets.filter(function(w){return !sel[w.id];});if(typeof chromeList==='function')chromeList().forEach(function(_b){if(_b.widgets)_b.widgets=_b.widgets.filter(function(w){return !sel[w.id];});});selClear();render();renderProps();commit();e.preventDefault();}return;} // löschen auch bei Fokus auf Select/Body (nach Seitenwechsel)
+    if(ek.indexOf('Arrow')===0&&ids.length&&!_inTextField()){var dd0=e.shiftKey?GS:1,dx0=ek==='ArrowLeft'?-dd0:ek==='ArrowRight'?dd0:0,dy0=ek==='ArrowUp'?-dd0:ek==='ArrowDown'?dd0:0;ids.forEach(function(id){var w=widget(id);w.x=Math.max(0,w.x+dx0);w.y=Math.max(0,w.y+dy0);applyGeom(w);});e.preventDefault();commit();return;} // verschieben auch bei Select/Body-Fokus
     var tn=((e.target&&e.target.tagName)||'').toLowerCase();if(tn==='input'||tn==='select'||tn==='textarea')return;
     if(ctrl&&k==='g'){e.preventDefault();if(e.shiftKey)ungroupSel();else groupSel();return;}
     if(ctrl&&k==='d'){e.preventDefault();addCopies(ids.map(widget));}
     else if(ctrl&&k==='z'){e.preventDefault();if(e.shiftKey)redo();else undo();}
     else if(ctrl&&k==='y'){e.preventDefault();redo();}
-    else if(ctrl&&(e.key==='+'||e.key==='=')){e.preventDefault();setZoom(zoom*1.15);}
-    else if(ctrl&&(e.key==='-'||e.key==='_')){e.preventDefault();setZoom(zoom/1.15);}
-    else if(ctrl&&e.key==='0'){e.preventDefault();setZoom(1);}
-    else if(ctrl&&e.key==='9'){e.preventDefault();setZoom(fitZoom());}
+    else if(ctrl&&(ek==='+'||ek==='=')){e.preventDefault();setZoom(zoom*1.15);}
+    else if(ctrl&&(ek==='-'||ek==='_')){e.preventDefault();setZoom(zoom/1.15);}
+    else if(ctrl&&ek==='0'){e.preventDefault();setZoom(1);}
+    else if(ctrl&&ek==='9'){e.preventDefault();setZoom(fitZoom());}
   });
 
   // Vorschau/Runtime: interaktive Widgets schreiben
@@ -2998,7 +3071,7 @@
   (function(){var _ovc=document.getElementById('ovcanvas');if(_ovc)_ovc.addEventListener('click',_wClick);
     var _ob=document.getElementById('ovbackdrop');if(_ob)_ob.addEventListener('click',function(){closePopup();});
     var _ox=document.getElementById('ovclose');if(_ox)_ox.addEventListener('click',function(){closePopup();});
-    document.addEventListener('keydown',function(e){if(e.key==='Escape'&&_popup)closePopup();});
+    document.addEventListener('keydown',function(e){if((e.key||'')==='Escape'&&_popup)closePopup();});
   })();
   // O1: Long-Press an button/tile -> Popup
   document.addEventListener('pointerdown',function(e){
@@ -3076,6 +3149,9 @@
   function allViewIds(){ // Vereinigung ALLER Variablen-IDs über alle Ansichten -> Poll hält den Cache für jede Seite warm
     if(_allIds)return _allIds;var set={};
     try{Object.keys(store.views||{}).forEach(function(vn){var v=store.views[vn];((v&&v.widgets)||[]).forEach(function(w){_collectIds(w,function(id){if(id)set[id]=1;});});});}catch(e){}
+    // Leisten-Widgets (store.chrome) gehoeren zu KEINER Ansicht - ohne sie wuerde der Poll
+    // ihre Variablen nie abfragen und die Kacheln blieben dauerhaft auf "-".
+    try{if(typeof chromeAllKids==='function')chromeAllKids().forEach(function(w){_collectIds(w,function(id){if(id)set[id]=1;});});}catch(e){}
     _allIds=Object.keys(set);return _allIds;
   }
   function invalidateAllIds(){_allIds=null;}
@@ -3085,6 +3161,9 @@
   function buildVidx(){
     _vidx={};
     state.widgets.forEach(function(w){_vidxOne(w,canvas);});
+    // Widgets in den Leisten (bar/sidebar) - sie liegen NICHT in state.widgets, wuerden also
+    // sonst nie Live-Werte bekommen (weder im Builder noch im Run).
+    if(typeof chromeAllKids==='function')chromeAllKids().forEach(function(w){_vidxOne(w,canvas);});
     if(_compKids&&_compKids.length)_compKids.forEach(function(w){_vidxOne(w,canvas);});
     if(_tickKids&&_tickKids.length)_tickKids.forEach(function(w){_vidxOne(w,canvas);});
     if(_popup&&_popup.widgets){var _ov=$('#ovcanvas');if(_ov)_popup.widgets.forEach(function(w){_vidxOne(w,_ov);});}
@@ -3279,7 +3358,7 @@
     document.body.classList.toggle('wglow',!!(store.cfg&&store.cfg.wglow)); // optionaler Widget-Glow (Akzentfarbe)
     updateSkinSwitches();
     // HTML-Inhalte neu rendern -> Skin-Enforcer zieht Schrift/Farben ans neue Theme nach (Shadow/iframe rechnen Farben beim Rendern)
-    try{var _re=function(w){if(w&&w.type==='html'){if(w.htmlSrc==='custom')setHtmlContent(w,w.html||'');else fetchHtml(w);}};if(typeof state!=='undefined'&&state.widgets)state.widgets.forEach(_re);if(typeof _tickKids!=='undefined'&&_tickKids)_tickKids.forEach(_re);}catch(e){}
+    try{var _re=function(w){if(w&&w.type==='html'){if(w.htmlSrc==='custom')setHtmlContent(w,w.html||'');else fetchHtml(w);}};if(typeof state!=='undefined'&&state.widgets)allWidgets().forEach(_re);if(typeof _tickKids!=='undefined'&&_tickKids)_tickKids.forEach(_re);}catch(e){}
   }
   function updateSkinSwitches(){$$('.hskwb').forEach(function(b){b.classList.toggle('on',b.getAttribute('data-skw')===(store.theme||'dark'));});$$('[data-role=skwsel]',canvas).forEach(function(s){s.value=store.skin||'Standard';});}
   function editSkinToken(k,val){var a=store.skin;if(BUILTIN[a]||!store.skins||!store.skins[a])return;var th=(store.theme==='light'?'light':'dark');store.skins[a][th]=store.skins[a][th]||{};store.skins[a][th][k]=val;applySkin();commit();}
@@ -3826,7 +3905,7 @@
     var geo=chromeLayout();_chromeGeo=geo;
     geo.bars.forEach(function(g){
       var b=g.def,d=document.createElement('div');
-      d.className='chrome ch-'+b.kind+' ch-'+(b.side||'')+((mode==='edit'&&_chromeEdit===b.id)?' ch-active':'');
+      d.className='chrome ch-'+b.kind+' ch-'+(b.side||'');
       d.dataset.chrome=b.id;
       d.style.left=g.x+'px';d.style.top=g.y+'px';d.style.width=g.w+'px';d.style.height=g.h+'px';
       if(b.bg)d.style.background=b.bg;
@@ -3857,6 +3936,17 @@
   function chromeAllKids(){
     var out=[];chromeList().forEach(function(b){(b.widgets||[]).forEach(function(w){out.push(w);});});return out;
   }
+  /**
+   * ALLE Widgets der aktuellen Darstellung: Seiteninhalt PLUS Leisten-Inhalt.
+   * Jeder zyklische Aktualisierer (Uhr, Timer, Kamera, Chart-Nachladen, HTML) MUSS diese Liste
+   * benutzen und nicht state.widgets - Leisten-Kinder liegen in store.chrome und wuerden sonst
+   * nie aktualisiert (die Uhr blieb deshalb dauerhaft auf "-").
+   * NICHT verwenden fuer: SmartFit-Layout und reseq() - dort geht es ausschliesslich um die Seite.
+   */
+  function allWidgets(){
+    var s=(typeof state!=='undefined'&&state&&state.widgets)?state.widgets:[];
+    return s.concat(chromeAllKids());
+  }
   /** Leiste, zu der ein Widget gehoert (oder null). */
   function chromeOwnerOf(id){
     var list=chromeList();
@@ -3866,13 +3956,12 @@
   }
 
   // ---- Bearbeiten ----
-  var _chromeEdit=null;   // Leiste, in die neue Widgets fallen (per Klick in der Verwaltung gesetzt)
 
   function chromeAdd(kind,side){
     var b={id:'ch'+Math.random().toString(36).slice(2,8),kind:kind,side:side,
       type:(kind==='bar'?'chromebar':'chromesidebar'),   // damit das Eigenschaften-Panel greift
       size:(kind==='bar'?56:120),name:(kind==='bar'?'Leiste':'Seitenleiste'),widgets:[]};
-    chromeList().push(b);_chromeEdit=b.id;render();chromeUI();select(b.id);commit();return b;
+    chromeList().push(b);render();chromeUI();select(b.id);commit();return b;
   }
   /** Aus der Palette gezogen: 'chromebar' / 'chromesidebar' erzeugen eine globale Leiste. */
   function chromeIsBarType(t){return t==='chromebar'||t==='chromesidebar';}
@@ -3889,7 +3978,10 @@
       +row('Seite','<select id="pChSide">'+S.map(function(o){return '<option value="'+o[0]+'"'+((b.side||'')===o[0]?' selected':'')+'>'+o[1]+'</option>';}).join('')+'</select>')
       +row((b.kind==='bar'?'Höhe (px)':'Breite (px)'),'<input id="pChSize" type="number" min="8" value="'+chromeSize(b)+'">')
       +row('Hintergrund','<input id="pChBg" type="color" value="'+(/^#[0-9a-fA-F]{6}$/.test(b.bg||'')?b.bg:'#141c1f')+'"> <button class="btn" id="pChBgX" style="padding:4px 8px">Standard</button>')
-      +row('Als Ziel','<input type="checkbox" id="pChTgt"'+(_chromeEdit===b.id?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">neue Widgets landen hier</span>')
+      +(function(){var n=chromeSelOnPage().length;
+        return row('Auswahl','<button class="btn" id="pChMoveIn"'+(n?'':' disabled')+' style="padding:5px 9px">'
+          +(n?('Ausgewählte '+n+' Widget'+(n>1?'s':'')+' hierher verschieben'):'Auf der Seite Widgets auswählen')
+          +'</button>');})()
       +'<div style="font-size:11px;color:var(--muted);margin:6px 2px">'
         +(g?('Fläche '+Math.round(g.w)+'×'+Math.round(g.h)+' px · '):'')
         +((b.widgets||[]).length)+' Widget(s) darin · erscheint auf allen Seiten (nicht in Popups)</div>'
@@ -3903,12 +3995,13 @@
     if($('#pChSize'))$('#pChSize').oninput=function(){b.size=parseInt(this.value)||56;up();};
     if($('#pChBg'))$('#pChBg').oninput=function(){b.bg=this.value;up();};
     if($('#pChBgX'))$('#pChBgX').onclick=function(){delete b.bg;up();renderProps();};
-    if($('#pChTgt'))$('#pChTgt').onchange=function(){_chromeEdit=this.checked?b.id:null;render();chromeUI();};
+    if($('#pChMoveIn'))$('#pChMoveIn').onclick=function(){var ids=chromeSelOnPage();if(!ids.length)return;
+      var n=chromeMoveIn(b.id,ids);if(typeof toast==='function')toast(n+' Widget(s) in „'+(b.name||'Leiste')+'" verschoben');};
     if($('#pChDel'))$('#pChDel').onclick=function(){chromeDel(b.id);};
   }
   function chromeDel(id){
     var l=chromeList(),i=l.map(function(b){return b.id;}).indexOf(id);
-    if(i<0)return;l.splice(i,1);if(_chromeEdit===id)_chromeEdit=null;render();chromeUI();renderProps();commit();
+    if(i<0)return;l.splice(i,1);render();chromeUI();renderProps();commit();
   }
   function chromeMove(id,dir){
     var l=chromeList(),i=l.map(function(b){return b.id;}).indexOf(id),j=i+dir;
@@ -3922,7 +4015,7 @@
     var reg=WIDGETS[type],sz=(reg&&reg.size)||[140,80];
     var g=(_chromeGeo?_chromeGeo.bars.filter(function(x){return x.def.id===barId;})[0]:null);
     var maxX=g?Math.max(0,g.w-sz[0]):0,maxY=g?Math.max(0,g.h-sz[1]):0;
-    var w={id:uid(),type:type,x:Math.max(0,Math.min(snap(px||0),maxX)),y:Math.max(0,Math.min(snap(py||0),maxY)),
+    var w={id:chromeUid(),type:type,x:Math.max(0,Math.min(snap(px||0),maxX)),y:Math.max(0,Math.min(snap(py||0),maxY)),
       w:sz[0],h:sz[1],label:(type==='switch'?'Schalter':(type==='text'?'Text':'Label'))};
     if(reg&&reg.defaults)reg.defaults(w);
     if(!b.widgets)b.widgets=[];
@@ -3933,6 +4026,76 @@
   function _chromeGeoOf(id){
     if(!_chromeGeo)return null;
     return _chromeGeo.bars.filter(function(g){return g.def.id===id;})[0]||null;
+  }
+
+  // ---- IDs -----------------------------------------------------------------------------------
+  // Leisten-Kinder leben GLOBAL (ueber allen Seiten), Seiten-IDs ('w1','w2', …) sind dagegen nur
+  // je Ansicht eindeutig - dieselbe 'w7' darf auf mehreren Seiten liegen. Beides im selben
+  // Namensraum fuehrt zu Chaos: sel[] trifft beide, widget() liefert das falsche Objekt,
+  // chromeOwnerOf haelt ein Seiten-Widget fuer ein Leisten-Kind. Leisten-Kinder bekommen daher
+  // einen EIGENEN Namensraum 'c1','c2', … - eine Kollision ist damit ausgeschlossen.
+  function chromeUid(){
+    var mx=0;
+    chromeAllKids().forEach(function(w){var n=parseInt(String(w.id||'').replace(/^c/,''))||0;if(n>mx)mx=n;});
+    return 'c'+(mx+1);
+  }
+  /** Einmalige Bereinigung: Alt-IDs und Doppelte in den Leisten auf den c-Namensraum umstellen. */
+  function chromeFixIds(){
+    var seen={},fixed=0;
+    chromeList().forEach(function(b){
+      (b.widgets||[]).forEach(function(w){
+        var bad=(!/^c[0-9]+$/.test(String(w.id||''))) || seen[w.id];
+        if(bad){w.id=chromeUid();fixed++;}
+        seen[w.id]=1;
+        // Gruppen sind ein Seiten-Konzept: eine Gruppe ueber Seite und Leiste hinweg ergibt
+        // keinen Sinn und wuerde die Auswahl beider verketten.
+        if(w.group){delete w.group;delete w.gmaster;fixed++;}
+      });
+    });
+    return fixed;
+  }
+
+  /** Ausgewählte Seiten-Widgets in eine Leiste verschieben (Koordinaten werden umgerechnet). */
+  function chromeMoveIn(barId,ids){
+    var b=chromeById(barId);if(!b)return 0;
+    var g=_chromeGeoOf(barId),co=chromeContent();
+    if(!b.widgets)b.widgets=[];
+    var moved=0;
+    (ids||[]).forEach(function(id){
+      var i=state.widgets.map(function(x){return x.id;}).indexOf(id);
+      if(i<0)return;                                  // liegt nicht auf der Seite (evtl. schon in einer Leiste)
+      var w=state.widgets.splice(i,1)[0];
+      w.id=chromeUid();                              // eigener Namensraum, sonst Kollision mit Seiten-IDs
+      if(w.group){delete w.group;delete w.gmaster;}  // Gruppen gelten nur innerhalb einer Seite
+      if(g){ // Seiten- in Leisten-Koordinaten: Inhaltsversatz drauf, Leistenposition ab, dann begrenzen
+        w.x=Math.max(0,Math.min(Math.round(w.x+co.x-g.x),Math.max(0,g.w-w.w)));
+        w.y=Math.max(0,Math.min(Math.round(w.y+co.y-g.y),Math.max(0,g.h-w.h)));
+      }else{w.x=0;w.y=0;}
+      b.widgets.push(w);moved++;
+    });
+    if(moved){selClear();render();chromeUI();renderProps();commit();}
+    return moved;
+  }
+  /** Widgets aus ihrer Leiste zurück auf die Seite holen. */
+  function chromeMoveOut(ids){
+    var co=chromeContent(),moved=0;
+    (ids||[]).forEach(function(id){
+      var b=chromeOwnerOf(id);if(!b)return;
+      var g=_chromeGeoOf(b.id);
+      var i=b.widgets.map(function(x){return x.id;}).indexOf(id);
+      var w=b.widgets.splice(i,1)[0];
+      w.id=uid();                                    // zurueck in den Seiten-Namensraum
+      if(g){w.x=Math.max(0,Math.round(w.x+g.x-co.x));w.y=Math.max(0,Math.round(w.y+g.y-co.y));}
+      state.widgets.push(w);moved++;
+    });
+    if(moved){selClear();render();chromeUI();renderProps();commit();}
+    return moved;
+  }
+  /** IDs der aktuellen Auswahl, die auf der SEITE liegen (nicht in einer Leiste). */
+  function chromeSelOnPage(){
+    return Object.keys(sel).filter(function(id){
+      return state.widgets.some(function(x){return x.id===id;});
+    });
   }
 
   /** Liegt der Punkt (Seiten-Koordinaten) in einer Leiste? */
@@ -3956,8 +4119,7 @@
       +'<button class="btn" id="chAddSide">+ Sidebar (vertikal)</button></div>';
     if(!l.length)h+='<div style="font-size:11px;color:var(--faint)">Noch keine Leiste angelegt.</div>';
     l.forEach(function(b,i){
-      var act=(_chromeEdit===b.id);
-      h+='<div class="chrow'+(act?' on':'')+'" data-chid="'+b.id+'">'
+      h+='<div class="chrow" data-chid="'+b.id+'">'
         +'<div style="display:flex;gap:5px;align-items:center;margin-bottom:4px">'
         +'<b style="font-size:11px">'+(b.kind==='bar'?'Bar':'Sidebar')+'</b>'
         +'<input data-chf="name" value="'+esc(b.name||'')+'" style="flex:1;min-width:0">'
@@ -3968,7 +4130,7 @@
         +'<select data-chf="side">'+SIDES[b.kind].map(function(o){return '<option value="'+o[0]+'"'+((b.side||'')===o[0]?' selected':'')+'>'+o[1]+'</option>';}).join('')+'</select>'
         +'<input data-chf="size" type="number" min="8" value="'+chromeSize(b)+'" style="width:64px" title="'+(b.kind==='bar'?'Höhe':'Breite')+' in px">'
         +'<span style="font-size:11px;color:var(--muted)">'+(b.kind==='bar'?'Höhe':'Breite')+'</span>'
-        +'<button class="btn" data-chsel="'+b.id+'" style="margin-left:auto;padding:3px 7px">'+(act?'Zielleiste ✓':'als Ziel')+'</button>'
+
         +'</div><div style="font-size:11px;color:var(--faint);margin-top:3px">'+((b.widgets||[]).length)+' Widget(s) darin</div></div>';
     });
     box.innerHTML=h;
@@ -3977,7 +4139,7 @@
     $$('[data-chdel]',box).forEach(function(x){x.onclick=function(){chromeDel(x.dataset.chdel);};});
     $$('[data-chup]',box).forEach(function(x){x.onclick=function(){chromeMove(x.dataset.chup,-1);};});
     $$('[data-chdn]',box).forEach(function(x){x.onclick=function(){chromeMove(x.dataset.chdn,1);};});
-    $$('[data-chsel]',box).forEach(function(x){x.onclick=function(){_chromeEdit=(_chromeEdit===x.dataset.chsel)?null:x.dataset.chsel;render();chromeUI();};});
+
     $$('[data-chf]',box).forEach(function(inp){
       inp.oninput=inp.onchange=function(){
         var id=inp.closest('.chrow').dataset.chid,b=chromeById(id);if(!b)return;
@@ -4052,6 +4214,12 @@
     var n=0;
     try{n=migSweep(st,0);}catch(e){try{console.debug('LVB-Migration abgebrochen:',e);}catch(_){}return 0;}
     if(n){try{console.debug('LVB: '+n+' Widget(s) auf zusammengelegte Typen migriert');}catch(_){}}
+    // Leisten-Kinder in ihren eigenen ID-Namensraum ('c1','c2', …) bringen. Seiten-IDs sind nur
+    // je Ansicht eindeutig; lagen beide im gleichen Namensraum, wurden Seiten-Widget und
+    // Leisten-Kind gemeinsam ausgewaehlt und liessen sich nicht mehr sauber verschieben.
+    try{if(typeof chromeFixIds==='function'){var f=chromeFixIds();
+      if(f)try{console.debug('LVB: '+f+' Leisten-Kind(er) auf eigenen ID-Namensraum umgestellt');}catch(_){}}
+    }catch(e){}
     return n;
   }
   // ===== Widget: Alarm =====
@@ -4229,7 +4397,13 @@ defWidget('calendar',{
     if($('#pCalView'))$('#pCalView').onchange=function(){w.calview=this.value;render();};
   }
 });
-  // ===== Widget: Kamera — Live-Media-Bild (Kern-refreshCam-Intervall aktualisiert data-role="cam") =====
+  // ===== Widget: Kamera — Einzelbild (Media-Objekt) oder Live-Stream =====
+  // Quellen (w.camSrc):
+  //   'media'  : Media-Objekt aus Symcon, wird zyklisch neu geladen (Kern-Intervall -> refreshCam)
+  //   'mjpeg'  : MJPEG-Endlosstream der Kamera, direkt vom Browser geladen - die VM ist NICHT
+  //              beteiligt und wird dadurch auch nicht belastet.
+  //   'go2rtc' : RTSP/RTSPS ueber das go2rtc-Gateway. Browser koennen RTSP nicht selbst abspielen;
+  //              go2rtc setzt es auf ein browsertaugliches Format um.
   // Gemeinsame Kamera-Helfer (auch von campro genutzt):
   function _camFitCSS(w){return (w.camFit==='cover')?'cover':'contain';}       // 'aspect' zeigt ebenfalls das ganze Bild -> contain
   function _camFitSel(w){return row('Bild','<select id="pCamFit"><option value="contain"'+((w.camFit||'contain')==='contain'?' selected':'')+'>Ganzes Bild</option><option value="cover"'+(w.camFit==='cover'?' selected':'')+'>Füllen (beschnitten)</option><option value="aspect"'+(w.camFit==='aspect'?' selected':'')+'>An Bild anpassen (Höhe folgt b/h)</option></select>');}
@@ -4242,11 +4416,49 @@ defWidget('calendar',{
     var fn=function(){if(!img.naturalWidth||!img.naturalHeight)return;var nh=Math.round(w.w*img.naturalHeight/img.naturalWidth);if(nh>0&&Math.abs(nh-(w.h||0))>1){w.h=nh;applyGeom(w);commit();}};
     img.onload=fn;if(img.complete)fn();
   }
+  // Quelle des <img>-Elements je nach Modus
+  function _camImgSrc(w){
+    var m=w.camSrc||'media';
+    if(m==='mjpeg')return w.camUrl||'';
+    if(m==='media')return w.mediaId?('?api=media&id='+w.mediaId):'';
+    return '';
+  }
   defWidget('camera',{
     label:'Kamera', paletteIcon:'camera', size:[260,160],
-    render:function(w){return '<div class="wcam"><img data-role="cam"'+(w.mediaId?' data-media="'+esc(String(w.mediaId))+'"':'')+' alt="'+esc(w.label||'')+'" style="object-fit:'+_camFitCSS(w)+'" src="'+(w.mediaId?('?api=media&id='+w.mediaId):'')+'"><div class="wcamnm">'+esc(w.label||'')+'</div></div>';},
-    props:function(w){return _camFitSel(w)+row('Aktualisierung (s)','<input id="pCamRef" type="number" min="1" value="'+(w.refresh||15)+'">');},
-    wire:function(w){_camFitWire(w);if($('#pCamRef'))$('#pCamRef').oninput=function(){w.refresh=parseInt(this.value)||15;};},
+    render:function(w){
+      var m=w.camSrc||'media',fit=_camFitCSS(w),nm='<div class="wcamnm">'+esc(w.label||'')+'</div>';
+      if(m==='go2rtc'){
+        var base=(w.g2Base||'').replace(/\/+$/,''),strm=encodeURIComponent(w.g2Stream||'');
+        if(!base||!w.g2Stream)return '<div class="wcam"><div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--faint);text-align:center;padding:8px">go2rtc: Adresse und Stream-Name setzen</div>'+nm+'</div>';
+        // go2rtc liefert eine fertige Player-Seite je Stream; als iframe eingebettet bleibt das Widget schlank
+        var mo=(w.g2Mode||'webrtc');
+        return '<div class="wcam"><iframe data-role="camframe" src="'+esc(base+'/stream.html?src='+strm+'&mode='+mo)+'" style="position:absolute;inset:0;width:100%;height:100%;border:0;background:#000" allow="autoplay; fullscreen" referrerpolicy="no-referrer"></iframe>'+nm+'</div>';
+      }
+      return '<div class="wcam"><img data-role="cam"'+((m==='media'&&w.mediaId)?' data-media="'+esc(String(w.mediaId))+'"':'')+' alt="'+esc(w.label||'')+'" style="object-fit:'+fit+'" src="'+esc(_camImgSrc(w))+'">'+nm+'</div>';
+    },
+    props:function(w){
+      var m=w.camSrc||'media';
+      var h=row('Quelle','<select id="pCamSrc">'
+          +'<option value="media"'+(m==='media'?' selected':'')+'>Media-Objekt (Einzelbild)</option>'
+          +'<option value="mjpeg"'+(m==='mjpeg'?' selected':'')+'>MJPEG-Stream (URL)</option>'
+          +'<option value="go2rtc"'+(m==='go2rtc'?' selected':'')+'>RTSP über go2rtc</option></select>');
+      if(m==='media')h+=row('Aktualisierung (s)','<input id="pCamRef" type="number" min="1" value="'+(w.refresh||15)+'">');
+      if(m==='mjpeg')h+=row('MJPEG-URL','<input id="pCamUrl" value="'+esc(w.camUrl||'')+'" placeholder="http://kamera/…/mjpeg" style="width:100%">')
+        +'<div style="font-size:11px;color:var(--muted);margin:-2px 2px 5px">Der Browser holt den Stream direkt von der Kamera — die VM ist nicht beteiligt. Für mehrere Kacheln den 640er Substream der Kamera verwenden.</div>';
+      if(m==='go2rtc')h+=row('go2rtc-Adresse','<input id="pG2Base" value="'+esc(w.g2Base||'')+'" placeholder="http://10.10.20.250:1984" style="width:100%">')
+        +row('Stream-Name','<input id="pG2Stream" value="'+esc(w.g2Stream||'')+'" placeholder="wie in go2rtc.yaml">')
+        +row('Verfahren','<select id="pG2Mode"><option value="webrtc"'+((w.g2Mode||'webrtc')==='webrtc'?' selected':'')+'>WebRTC (geringste Verzögerung)</option><option value="mse"'+(w.g2Mode==='mse'?' selected':'')+'>MSE (kompatibler)</option><option value="mjpeg"'+(w.g2Mode==='mjpeg'?' selected':'')+'>MJPEG (am genügsamsten im Browser)</option></select>');
+      return h+_camFitSel(w);
+    },
+    wire:function(w){
+      _camFitWire(w);
+      if($('#pCamSrc'))$('#pCamSrc').onchange=function(){w.camSrc=this.value;render();renderProps();commit();};
+      if($('#pCamRef'))$('#pCamRef').oninput=function(){w.refresh=parseInt(this.value)||15;commit();};
+      if($('#pCamUrl'))$('#pCamUrl').onchange=function(){w.camUrl=this.value||undefined;render();commit();};
+      if($('#pG2Base'))$('#pG2Base').onchange=function(){w.g2Base=this.value||undefined;render();commit();};
+      if($('#pG2Stream'))$('#pG2Stream').onchange=function(){w.g2Stream=this.value||undefined;render();commit();};
+      if($('#pG2Mode'))$('#pG2Mode').onchange=function(){w.g2Mode=this.value;render();commit();};
+    },
     mount:function(w){_camAspect(w);}
   });
   // ===== Widget: Kamera+ (campro) — nutzt die gemeinsamen Kamera-Helfer aus camera.js =====
@@ -4343,6 +4555,17 @@ defWidget('calendar',{
         h+='<div class="pgh">Titel</div>'+row('Titel anzeigen','<input type="checkbox" id="pShowT"'+(_tOn?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">Label als Titel</span>')
           +(_tOn?row('Titel-Position','<select id="pTitlePos"><option value="left"'+((w.titlePos||'left')==='left'?' selected':'')+'>links</option><option value="center"'+(w.titlePos==='center'?' selected':'')+'>zentriert</option><option value="right"'+(w.titlePos==='right'?' selected':'')+'>rechts</option></select>'+(((w.label||'')==='')?' <span style="font-size:11px;color:var(--warm)">— Label ist leer, es erscheint nichts</span>':'')):'');
       }
+      // ---- Schriftgrößen je Textart (leer = wächst mit der Kachel und folgt der zentralen Typografie) ----
+      var _fsRow=function(id,lbl,val){return row(lbl,'<input id="'+id+'" type="number" min="5" max="40" step="0.5" style="width:64px" value="'+(val||'')+'" placeholder="auto">');};
+      // Einheit fuer Datenlabels und Tooltips (Nachkommastellen kommen aus der zentralen Zeile)
+      h+=row('Einheit (Werte)','<input id="pChUnit" value="'+esc(w.chUnit||'')+'" style="width:90px" placeholder="z. B. kWh"> <span style="font-size:11px;color:var(--muted)">an Datenlabels und Tooltip</span>');
+      h+='<div class="pgh">Schriftgrößen (px)</div>'
+        +'<div style="font-size:11px;color:var(--muted);margin:-2px 2px 5px">Leer = automatisch: wächst mit der Kachelgröße und folgt der Schriftgröße aus „Typografie".</div>'
+        +(V.title?_fsRow('pFsTitle','Titel',w.fsTitle):'')
+        +(V.leg?_fsRow('pFsLegend','Legende',w.fsLegend):'')
+        +(V.ax?_fsRow('pAxFs','Achsen (Skalenwerte)',w.axFs):'')
+        +(V.ax?_fsRow('pFsAxName','Achsentitel / Einheit',w.fsAxName):'')
+        +_fsRow('pFsLabel','Datenlabels',w.fsLabel);
       if(V.ax){
         h+='<div class="pgh">Achsen & Raster</div>'+row('Y-Beschriftung','<input type="checkbox" id="pYLab"'+(w.yLabels!==false?' checked':'')+'>')+row('X-Beschriftung','<input type="checkbox" id="pXLab"'+(w.xLabels!==false?' checked':'')+'>')+row('Y-Hilfslinien','<input type="checkbox" id="pYg"'+(w.ygrid!==false?' checked':'')+'>')+row('X-Hilfslinien','<input type="checkbox" id="pXg"'+(w.xgrid?' checked':'')+'>')+row('Achslinien','<input type="checkbox" id="pAxLine"'+(w.axLine?' checked':'')+'>')+row('Tickmarks','<input type="checkbox" id="pAxTicks"'+(w.axTicks?' checked':'')+'>');
         if(V.axPlus)h+=row('Raster-Teilung','<input id="pGridDivs" type="number" min="0" style="width:56px" value="'+(w.gridDivs||'')+'" placeholder="auto"> <span style="font-size:11px;color:var(--muted)">Y-Achse: Anzahl</span>');
@@ -4401,6 +4624,10 @@ defWidget('calendar',{
       if($('#pXg'))$('#pXg').onchange=function(){w.xgrid=this.checked||undefined;reChart();};
       if($('#pAxLine'))$('#pAxLine').onchange=function(){w.axLine=this.checked||undefined;reChart();};
       if($('#pAxTicks'))$('#pAxTicks').onchange=function(){w.axTicks=this.checked||undefined;reChart();};
+      if($('#pChUnit'))$('#pChUnit').oninput=function(){w.chUnit=this.value||undefined;reChart();};
+      [['pFsTitle','fsTitle'],['pFsLegend','fsLegend'],['pAxFs','axFs'],['pFsAxName','fsAxName'],['pFsLabel','fsLabel']].forEach(function(o){
+        var e=$('#'+o[0]);if(e)e.oninput=function(){w[o[1]]=(this.value===''?undefined:parseFloat(this.value));reChart();};
+      });
       if($('#pGridDivs'))$('#pGridDivs').oninput=function(){w.gridDivs=this.value===''?undefined:parseInt(this.value);reChart();};
       if($('#pStack'))$('#pStack').onchange=function(){w.stack=this.checked;reChart();};
       if($('#pZoom'))$('#pZoom').onchange=function(){w.zoom=this.checked;reChart();};
@@ -4465,7 +4692,7 @@ defWidget('chip',{
   function _clkUpd(w,now){var el=$('.w[data-id="'+w.id+'"]',canvas);if(!el)return;var t=$('[data-role=ctime]',el);if(t)t.textContent=_clkFmt(w,now||new Date());}
   if(!window._clkTimer){window._clkTimer=setInterval(function(){ // aktualisiert nur „erweiterte" Uhren (Sekunden/12h)
     if(typeof state==='undefined'||!state.widgets)return;var now=new Date();
-    state.widgets.forEach(function(w){if(w.type==='clock'&&(w.showSec||w.h12))_clkUpd(w,now);});},1000);}
+    allWidgets().forEach(function(w){if(w.type==='clock'&&(w.showSec||w.h12))_clkUpd(w,now);});},1000);}
   defWidget('clock',{
     label:'Uhr', paletteIcon:'clock', size:[170,84],
     defaults:function(w){w.clkShow='both';},
@@ -5303,7 +5530,7 @@ defWidget('meterlist',{
   // Basis-Tick 1 s; jedes msglog aktualisiert gemäß eigenem refreshSec, sonst globaler Vorgabe (bcfg().refreshSec). Deckt Haupt-, Ticker- und Popup-Widgets ab.
   setInterval(function(){if(typeof state==='undefined'||!state.widgets)return;var now=Date.now(),gdef=((typeof bcfg==='function'&&bcfg().refreshSec)||15);
     function tick(w){if(!w||w.type!=='msglog')return;if(now-(w._lastAuto||0)>=(w.refreshSec||gdef)*1000){w._lastAuto=now;fetchMsgs(w);}}
-    state.widgets.forEach(tick);
+    allWidgets().forEach(tick);
     if(typeof _tickKids!=='undefined'&&_tickKids)_tickKids.forEach(tick);
     if(typeof _popup!=='undefined'&&_popup&&_popup.widgets)_popup.widgets.forEach(tick);
   },1000);
@@ -6150,6 +6377,7 @@ defWidget('statuslist',{
     },
     props:function(w){
       var names=namedWidgets(w.id);
+      var _hint='<div style="font-size:11px;color:var(--muted);margin:2px 2px 5px">Referenzierbar sind nur Widgets mit gesetztem <b>Namen</b> (Eigenschaften \u2192 Name). Aktuell '+names.length+' verf\u00fcgbar \u2014 auch aus Bar und Sidebar.</div>';
       var rows=(w.items||[]).map(function(m,i){
         var isRef=(m.ref!=null),isW=!!m.wtype;
         var typeSel='<select data-tk="__type.'+i+'"><option value=""'+(!isW&&!isRef?' selected':'')+'>— Text —</option>'
@@ -6157,8 +6385,10 @@ defWidget('statuslist',{
           +_TICK_TYPES.map(function(t){return '<option value="'+t[0]+'"'+(m.wtype===t[0]?' selected':'')+'>'+t[1]+'</option>';}).join('')+'</select>';
         var fields;
         if(isRef){
-          fields='<select data-tk="ref.'+i+'"><option value="">— Widget wählen —</option>'
-            +names.map(function(n){return '<option value="'+esc(n.name)+'"'+(m.ref===n.name?' selected':'')+'>'+esc(n.name)+' ('+esc(n.type)+')</option>';}).join('')+'</select>'
+          // Nur Widgets MIT gesetztem Namen sind referenzierbar - ohne Hinweis wirkt die Liste
+          // grundlos leer. Herkunft (Seite bzw. Leiste) mit anzeigen, damit Gleichnamiges unterscheidbar bleibt.
+          fields='<select data-tk="ref.'+i+'"><option value="">'+(names.length?'— Widget wählen —':'— kein benanntes Widget vorhanden —')+'</option>'
+            +names.map(function(n){return '<option value="'+esc(n.name)+'"'+(m.ref===n.name?' selected':'')+'>'+esc(n.name)+' ('+esc(n.type)+(n.view?' · '+esc(n.view):'')+')</option>';}).join('')+'</select>'
             +'<input data-tk="w.'+i+'" value="'+esc(m.w||'')+'" placeholder="Breite" style="width:56px">';
         } else if(isW){
           fields='<input data-tk="varId.'+i+'" value="'+esc(m.varId!=null?m.varId:'')+'" placeholder="VarID" style="width:64px">'
@@ -6177,7 +6407,7 @@ defWidget('statuslist',{
       return row('Tempo (s)','<input id="pSpeed" type="number" min="8" value="'+(w.speed||46)+'">')
         +row('Titel anzeigen','<input type="checkbox" id="pTkLead"'+(w.hideLead?'':' checked')+'>')
         +(w.hideLead?'':row('Anzahl-Badge','<input type="checkbox" id="pTkCount"'+(w.hideCount?'':' checked')+'>'))
-        +'<div class="prop" style="margin-top:8px"><div style="font-size:11px;color:var(--muted);margin-bottom:5px">Elemente — Typ wählen: Text · <b>Widget (Referenz)</b> = vorhandenes Widget per Name · oder inline-Widget. Widget-Zeilen laufen live mit.</div>'+rows+'<button class="btn" data-tkadd><svg class="i"><use href="#ic-plus"/></svg> Element</button></div>';
+        +'<div class="prop" style="margin-top:8px"><div style="font-size:11px;color:var(--muted);margin-bottom:5px">Elemente — Typ wählen: Text · <b>Widget (Referenz)</b> = vorhandenes Widget per Name · oder inline-Widget. Widget-Zeilen laufen live mit.</div>'+_hint+rows+'<button class="btn" data-tkadd><svg class="i"><use href="#ic-plus"/></svg> Element</button></div>';
     },
     wire:function(w){
       if($('#pSpeed'))$('#pSpeed').oninput=function(){w.speed=parseInt(this.value)||46;render();};
@@ -6200,7 +6430,7 @@ defWidget('statuslist',{
         render();
       };});
       $$('#props [data-tkdel]').forEach(function(b){b.onclick=function(){var it=w.items[+b.dataset.tkdel];w.items.splice(+b.dataset.tkdel,1);
-        if(it&&it.ref){var cnt=0;state.widgets.forEach(function(t){if(t.type==='ticker'&&t.items)t.items.forEach(function(m){if(m.ref===it.ref)cnt++;});});if(cnt===0){var tw=state.widgets.filter(function(x){return x.name===it.ref;})[0];if(tw&&tw.hidden)tw.hidden=undefined;}} // Referenz entfernt -> Widget wieder sichtbar
+        if(it&&it.ref){var cnt=0;allWidgets().forEach(function(t){if(t.type==='ticker'&&t.items)t.items.forEach(function(m){if(m.ref===it.ref)cnt++;});});if(cnt===0){var tw=allWidgets().filter(function(x){return x.name===it.ref;})[0];if(tw&&tw.hidden)tw.hidden=undefined;}} // Referenz entfernt -> Widget wieder sichtbar
         render();renderProps();commit();};});
       var add=$('#props [data-tkadd]');if(add)add.onclick=function(){w.items=w.items||[];w.items.push({ref:''});render();renderProps();};
     }
@@ -6697,7 +6927,7 @@ defWidget('webview',{
       if($('#pWsIds'))$('#pWsIds').oninput=function(){w.onlyId=this.value.trim()||undefined;rz();};},
     mount:function(w){drawWsmon(w);var oc0=document.getElementById('ovcanvas');if(oc0)drawWsmon(w,oc0); // Popup-Fall: falls das Widget im Overlay liegt
       if(!window._wsmonTimer){window._wsmonTimer=setInterval(function(){try{
-        state.widgets.forEach(function(x){if(x.type==='wsmon')drawWsmon(x);});
+        allWidgets().forEach(function(x){if(x.type==='wsmon')drawWsmon(x);});
         if(typeof _tickKids!=='undefined'&&_tickKids)_tickKids.forEach(function(x){if(x.type==='wsmon')drawWsmon(x);});
         var oc=document.getElementById('ovcanvas');
         if(typeof _popup!=='undefined'&&_popup&&_popup.widgets&&oc)_popup.widgets.forEach(function(x){if(x.type==='wsmon')drawWsmon(x,oc);}); // Popup-Widgets live halten

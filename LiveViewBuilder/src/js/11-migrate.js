@@ -63,5 +63,11 @@
     var n=0;
     try{n=migSweep(st,0);}catch(e){try{console.debug('LVB-Migration abgebrochen:',e);}catch(_){}return 0;}
     if(n){try{console.debug('LVB: '+n+' Widget(s) auf zusammengelegte Typen migriert');}catch(_){}}
+    // Leisten-Kinder in ihren eigenen ID-Namensraum ('c1','c2', …) bringen. Seiten-IDs sind nur
+    // je Ansicht eindeutig; lagen beide im gleichen Namensraum, wurden Seiten-Widget und
+    // Leisten-Kind gemeinsam ausgewaehlt und liessen sich nicht mehr sauber verschieben.
+    try{if(typeof chromeFixIds==='function'){var f=chromeFixIds();
+      if(f)try{console.debug('LVB: '+f+' Leisten-Kind(er) auf eigenen ID-Namensraum umgestellt');}catch(_){}}
+    }catch(e){}
     return n;
   }
