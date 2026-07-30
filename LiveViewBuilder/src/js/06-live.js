@@ -94,22 +94,68 @@
   document.addEventListener('visibilitychange',function(){if(document.hidden){stopPV();}else{_pvSince=0;pollVals();startPV(_wsOK?5000:1200);}});
 
   // ===== WebSocket-Push (deckt MAP-Variablen sofort; Poll bleibt für alle Bindungen) =====
-  var WS_PORT="__LV_WSPORT__",_ws=null,_wsOK=false,_wsTries=0;
+  var WS_PORT="__LV_WSPORT__",WS_URL="__LV_WSURL__",_ws=null,_wsOK=false,_wsTries=0,_wsLast=0,_wsWd=null,_wsWhy='';
+  // Adresse des Push-Servers. Es gibt keinen Weg, der ueberall stimmt, also werden mehrere
+  // durchprobiert und der erste behalten, der antwortet:
+  //   1. ausdruecklich konfigurierte Adresse (Instanz -> WebSocket-Adresse) - gewinnt immer
+  //   2. bei HTTPS: gleiche Herkunft ohne Port, Pfad /wss  (der TLS-Endpunkt reicht durch)
+  //   3. Host der Seite mit dem konfigurierten Port, Schema passend zur Seite
+  // Warum das noetig ist: "ws://<Seiten-Host>:<Port>" geht nur im direkten LAN auf. Hinter
+  // einem Proxy zeigt der Hostname auf den Proxy, der Port 8082 nicht veroeffentlicht; und aus
+  // einer ueber HTTPS geladenen Seite verweigern Browser jedes unverschluesselte ws:// - der
+  // Konstruktor wirft dann sofort, ohne dass ein Paket fliegt. Beides sieht von aussen gleich
+  // aus, darum wird durchgetauscht statt geraten.
+  function wsCandidates(){
+    var out=[],sec=(location.protocol==='https:'),port=(WS_PORT&&WS_PORT.indexOf('__LV_')!==0)?WS_PORT:'';
+    if(WS_URL&&WS_URL.indexOf('__LV_')!==0)out.push(WS_URL);
+    if(sec){
+      out.push('wss://'+location.host+'/wss');
+      if(port)out.push('wss://'+location.hostname+':'+port);
+    }else{
+      if(port)out.push('ws://'+location.hostname+':'+port);
+      out.push('ws://'+location.host+'/wss');
+    }
+    return out;
+  }
+  var _wsIdx=0,_wsGood='';
   function refreshMedia(mid){var u='?api=media&id='+mid+'&t='+Date.now();$$('img[data-media="'+mid+'"]',canvas).forEach(function(e){e.src=u;});var ov=$('#ovcanvas');if(ov)$$('img[data-media="'+mid+'"]',ov).forEach(function(e){e.src=u;});} // Kamera bei MM_UPDATE-Push neu laden
   function wsConnect(){
-    if(!WS_PORT)return;                       // leer -> reines Polling
+    var list=wsCandidates();
+    if(!list.length){_wsWhy='WebSocket ungenutzt: keine Adresse ermittelbar. Live-Werte kommen per Poll.';return;}
+    var u=_wsGood||list[_wsIdx%list.length];
     // KEIN endgueltiges Aufgeben: vorher wurde nach 5 Fehlversuchen dauerhaft auf Poll
     // zurueckgefallen, bis jemand die Seite neu laedt. Schon ein Neustart des Push-Moduls
     // oder eine Minute Funkloch degradierte den Client damit stillschweigend fuer immer.
     // Stattdessen unbegrenzt weiterversuchen, Abstand aber bei 30 s deckeln - das sind
     // zwei Versuche pro Minute, also weder Reconnect-Sturm noch Log-Flut.
-    try{_ws=new WebSocket('ws://'+location.hostname+':'+WS_PORT);}catch(e){return;}
-    _ws.onopen=function(){try{_ws.send('hello');}catch(e){}};
-    _ws.onmessage=function(ev){_wsOK=true;_wsTries=0;if(bcfg().noSafetyPoll)stopPV();else startPV(5000);try{var j=JSON.parse(ev.data);if(j&&j.reload&&RUN){location.reload();return;}if(j&&j.values){_liveSrc='ws';for(var k in j.values){var d=j.values[k];if(d&&d.id)applyVal(d.id,d);}}if(j&&j.media&&j.media.length)j.media.forEach(function(mid){refreshMedia(mid);});}catch(e){}}; // Werte + Kamera-Medien-Push
-    _ws.onclose=function(){_wsOK=false;startPV(1200);_wsTries++;setTimeout(wsConnect,Math.min(30000,2000*_wsTries));}; // Backoff 2s,4s,6s... gedeckelt auf 30s, ohne Obergrenze der Versuche
+    // Fehler NICHT stillschweigend verschlucken - genau das hat den Mixed-Content-Fall
+    // lange unauffindbar gemacht: kein Socket, keine Meldung, nur traeges Polling.
+    // Wirft der Konstruktor (typisch: ws:// aus einer HTTPS-Seite), sofort den naechsten
+    // Kandidaten nehmen statt still ins Polling zu fallen.
+    try{_ws=new WebSocket(u);}catch(e){
+      _wsWhy='WebSocket abgelehnt ('+u+'): '+(e&&e.message?e.message:e);
+      _wsGood='';_wsIdx++;_wsTries++;setTimeout(wsConnect,Math.min(30000,2000*_wsTries));return;}
+    _ws.onopen=function(){_wsLast=Date.now();try{_ws.send('hello');}catch(e){}};
+    _ws.onmessage=function(ev){_wsOK=true;_wsTries=0;_wsLast=Date.now();_wsGood=u;_wsWhy='';if(bcfg().noSafetyPoll)stopPV();else startPV(5000);try{var j=JSON.parse(ev.data);if(j&&j.reload&&RUN){location.reload();return;}if(j&&j.values){_liveSrc='ws';for(var k in j.values){var d=j.values[k];if(d&&d.id)applyVal(d.id,d);}}if(j&&j.media&&j.media.length)j.media.forEach(function(mid){refreshMedia(mid);});}catch(e){}}; // Werte + Kamera-Medien-Push
+    _ws.onclose=function(){_wsOK=false;startPV(1200);_wsTries++;
+      if(!_wsGood){_wsIdx++;_wsWhy='WebSocket ohne Antwort ueber '+u+', versuche naechste Adresse.';} // nie etwas empfangen -> naechster Kandidat
+      setTimeout(wsConnect,Math.min(30000,2000*_wsTries));}; // Backoff 2s,4s,6s... gedeckelt auf 30s, ohne Obergrenze der Versuche
     _ws.onerror=function(){try{_ws.close();}catch(e){}};
   }
-  startPV();wsConnect();
+  // Wachhund gegen halbtote Verbindungen. Bleibt der Socket auf TCP-Ebene offen, waehrend
+  // der Server nicht mehr hineinschreibt (beobachtet nach IPS_ApplyChanges auf der
+  // Push-Instanz: Client-Liste neu aufgebaut, alte Sockets nicht geschlossen), dann kommt
+  // WEDER onclose NOCH onerror. Der Client haelt sich fuer verbunden, der Reconnect greift
+  // nie und die Anzeige lebt still von Poll weiter. Also selbst nachsehen: kommt lange
+  // nichts, die Verbindung zwangsweise schliessen - das loest onclose und damit den
+  // Reconnect aus. Schwelle bewusst gross, damit ein ruhiges Haus keinen Neuaufbau ausloest.
+  function wsWatchdog(){
+    if(!wsCandidates().length)return;
+    if(_ws&&_ws.readyState===1&&_wsLast&&(Date.now()-_wsLast)>120000){
+      try{_ws.close();}catch(e){}                 // onclose uebernimmt den Wiederaufbau
+    }
+  }
+  startPV();wsConnect();_wsWd=setInterval(wsWatchdog,30000);
   function setVar(id,val){fetch('?api=setvar&id='+id+'&value='+encodeURIComponent(val)+'&key='+encodeURIComponent(TOKEN),{cache:'no-store'}).then(function(){setTimeout(pollVals,250);});}
 
   // ---------- Variablen-Baum ----------
