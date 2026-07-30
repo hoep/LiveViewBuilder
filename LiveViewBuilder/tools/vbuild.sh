@@ -73,6 +73,30 @@ if fehlt:
 print('Kernfunktionen vollstaendig')
 PYX
 [ $? -ne 0 ] && { echo "CORE FAIL"; exit 1; }
+
+# Doppelte Schluessel in ICONS/AICONS. In einem Objektliteral ist das gueltiges JS -
+# der spaetere Eintrag ueberschreibt den frueheren stillschweigend. Genau so habe ich
+# sechs bestehende adaptive Icons versehentlich verdeckt; node --check sieht das nicht.
+python3 - <<'PYX'
+import re,sys
+s=open('builder.html',encoding='utf-8').read()
+bad=[]
+for reg,pat in (('AICONS',r"(?<![A-Za-z0-9_])([a-z0-9_-]+):\{k:'\w+'"),
+                ('ICONS', r"(?<![A-Za-z0-9_])([a-z0-9_-]+):\['[^']*','")):
+    i=s.find('var %s='%reg)
+    if i<0: continue
+    j=s.find('var AICONS=',i+5) if reg=='ICONS' else s.find('function iconSVG',i)
+    blk=s[i:j if j>i else len(s)]
+    seen={}
+    for k in re.findall(pat,blk):
+        seen[k]=seen.get(k,0)+1
+    d=sorted(k for k,n in seen.items() if n>1)
+    if d: bad.append('%s: %s'%(reg,', '.join(d)))
+if bad:
+    print('DOPPELTE ICON-SCHLUESSEL -> ' + ' | '.join(bad)); sys.exit(4)
+print('Icon-Schluessel eindeutig')
+PYX
+[ $? -ne 0 ] && { echo "ICON DUP FAIL"; exit 1; }
 for f in handler.php module.php store.inc.php; do
   t=/var/lib/symcon/modules/LiveViewBuilder/LiveViewBuilder/$f
   [ -f "$t" ] || continue
