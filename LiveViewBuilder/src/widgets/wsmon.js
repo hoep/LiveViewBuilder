@@ -23,8 +23,9 @@
     if(box._sig===sig)return;
     var wasBottom=(box._sig===undefined)||(box.scrollTop+box.clientHeight>=box.scrollHeight-8);
     box._sig=sig;
-    if(!arr.length){box.innerHTML='<div class="hwse">warte auf Updates …</div>';return;}
-    box.innerHTML=arr.map(function(e){
+    var why=(typeof _wsWhy==='string'&&_wsWhy)?'<div class="hwse" style="color:var(--warn)">'+esc(_wsWhy)+'</div>':'';
+    if(!arr.length){box.innerHTML=why||'<div class="hwse">warte auf Updates …</div>';return;}
+    box.innerHTML=why+arr.map(function(e){
       var d=new Date(e.t),p=function(n){return ('0'+n).slice(-2);},tm=p(d.getHours())+':'+p(d.getMinutes())+':'+p(d.getSeconds());
       var v=String(e.v==null?'':e.v);if(v.length>44)v=v.slice(0,44)+'…';
       return '<div class="hwsrow"><span class="hwsd '+(e.src==='ws'?'ws':'poll')+'" title="'+(e.src==='ws'?'WebSocket':'Poll')+'"></span><span class="hwst">'+tm+'</span><span class="hwsid">#'+e.id+'</span><span class="hwsv">'+esc(v)+'</span></div>';

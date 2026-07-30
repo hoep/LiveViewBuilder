@@ -28,6 +28,10 @@ class LiveViewBuilder extends IPSModule
         $this->RegisterPropertyString('Site', '');          // Label im Pfad /hook/builder/<Site>
         $this->RegisterPropertyString('BaseUrl', '');       // z. B. http://10.0.0.5:3777 (für klickbare Links)
         $this->RegisterPropertyString('WsPort', '');        // optional: WebSocket-Push-Port
+        $this->RegisterPropertyString('WsUrl', '');         // optional: vollstaendige WebSocket-Adresse, schlaegt WsPort
+                                                            // Noetig hinter einem Reverse Proxy: eine ueber HTTPS geladene
+                                                            // Seite darf kein ws:// oeffnen, und ein fester Port ist dort
+                                                            // meist nicht veroeffentlicht. Beispiel: wss://host/wss
         $this->RegisterPropertyString('IPSViewPath', '');   // optional: Fallback-Quelle für Import
         $this->RegisterPropertyString('Views', '[]');       // Ansichten-Liste (Modul-verwaltet): [{Name, Home}]
         $this->RegisterAttributeString('Token', '');        // Schreib-Token (auto)
@@ -155,6 +159,11 @@ class LiveViewBuilder extends IPSModule
         $DIR     = __DIR__;                 // Modulcode: builder.html, assets/echarts
         $DATADIR = $this->dataDir();        // Daten: layouts.json
         $WSPORT  = $this->ReadPropertyString('WsPort');
+        // NICHT ueber ReadPropertyString: eine neu hinzugefuegte Eigenschaft ist erst nach einem
+        // Modul-Neuladen registriert. Vorher warnt Symcon, die Warnung geht VOR den HTTP-Headern
+        // raus und zerlegt die ausgelieferte Seite. Aus der Konfiguration lesen warnt nie.
+        $_cfg    = json_decode((string) @IPS_GetConfiguration($this->InstanceID), true);
+        $WSURL   = is_array($_cfg) ? (string) ($_cfg['WsUrl'] ?? '') : '';
         include __DIR__ . '/handler.php';
     }
 
@@ -290,6 +299,7 @@ class LiveViewBuilder extends IPSModule
                 ['type' => 'ValidationTextBox', 'name' => 'BaseUrl', 'caption' => 'Basis-URL (z. B. http://10.0.0.5:3777) — für klickbare Links'],
                 ['type' => 'ValidationTextBox', 'name' => 'BasePath', 'caption' => 'Datenordner (leer = automatisch, je Instanz)'],
                 ['type' => 'ValidationTextBox', 'name' => 'WsPort', 'caption' => 'WebSocket-Port (optional)'],
+                ['type' => 'ValidationTextBox', 'name' => 'WsUrl', 'caption' => 'WebSocket-Adresse (optional, z. B. wss://host/wss) - noetig hinter Reverse Proxy / HTTPS'],
                 ['type' => 'ValidationTextBox', 'name' => 'IPSViewPath', 'caption' => 'IPSView-Fallbackpfad (optional)'],
                 ['type' => 'ValidationTextBox', 'name' => 'Site', 'caption' => 'View-Name (= Ordner livebuilder/<Name> und URL-Pfad /hook/run/<Name>/...) — leer = Instanzname'],
                 ['type' => 'Label', 'caption' => 'Datenordner aktiv: ' . $this->dataDir()],

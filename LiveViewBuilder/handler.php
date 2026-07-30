@@ -914,6 +914,7 @@ if ($html === false) {
 }
 $html = str_replace('__LV_TOKEN__', $TOKEN, $html);
 $html = str_replace('__LV_WSPORT__', (string) ($WSPORT ?? ''), $html);     // WebSocket-Push optional (Property)
+$html = str_replace('__LV_WSURL__', (string) ($WSURL ?? ''), $html);       // volle wss-Adresse (Reverse Proxy) - schlaegt den Port
 $html = str_replace('__LV_RUN__', ($LV_MODE === 'run' ? '1' : ''), $html); // /hook/run/<site> -> Laufzeit
 header('Content-Type: text/html; charset=utf-8');
 header('Cache-Control: no-store, no-cache, must-revalidate'); // Builder nie cachen -> nach Rebuild immer frisch
