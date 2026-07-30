@@ -2,22 +2,22 @@
   function _inTextField(){var ae=document.activeElement,tn=((ae&&ae.tagName)||'').toLowerCase();return tn==='input'||tn==='textarea';}
   function _clone(id){return JSON.parse(JSON.stringify(widget(id)));}
   document.addEventListener('keydown',function(e){
-    var ctrl=e.ctrlKey||e.metaKey,k=(e.key||'').toLowerCase(),ids=Object.keys(sel);
+    var ctrl=e.ctrlKey||e.metaKey,ek=(e.key||''),k=ek.toLowerCase(),ids=Object.keys(sel); // ek: e.key kann fehlen (Dead Keys, IME, synthetische Events) -> nie direkt ansprechen
     // Widget-Copy/Cut/Paste ZUERST (funktioniert auch bei Fokus auf Select/Body/nach Seitenwechsel); Textfeld/Textauswahl bleibt normales Text-Copy
     if(ctrl&&k==='c'&&!_hasTextSel()){if(ids.length){clip=ids.map(_clone);toast(clip.length+' kopiert');e.preventDefault();}return;}
     if(ctrl&&k==='x'&&!_hasTextSel()){if(ids.length){clip=ids.map(_clone);state.widgets=state.widgets.filter(function(w){return !sel[w.id];});selClear();render();renderProps();commit();e.preventDefault();}return;}
     if(ctrl&&k==='v'&&!_inTextField()){if(clip&&clip.length){addCopies(clip);e.preventDefault();}return;}
-    if((e.key==='Delete'||e.key==='Backspace')&&!_inTextField()){if(ids.length){state.widgets=state.widgets.filter(function(w){return !sel[w.id];});selClear();render();renderProps();commit();e.preventDefault();}return;} // löschen auch bei Fokus auf Select/Body (nach Seitenwechsel)
-    if(e.key.indexOf('Arrow')===0&&ids.length&&!_inTextField()){var dd0=e.shiftKey?GS:1,dx0=e.key==='ArrowLeft'?-dd0:e.key==='ArrowRight'?dd0:0,dy0=e.key==='ArrowUp'?-dd0:e.key==='ArrowDown'?dd0:0;ids.forEach(function(id){var w=widget(id);w.x=Math.max(0,w.x+dx0);w.y=Math.max(0,w.y+dy0);applyGeom(w);});e.preventDefault();commit();return;} // verschieben auch bei Select/Body-Fokus
+    if((ek==='Delete'||ek==='Backspace')&&!_inTextField()){if(ids.length){state.widgets=state.widgets.filter(function(w){return !sel[w.id];});if(typeof chromeList==='function')chromeList().forEach(function(_b){if(_b.widgets)_b.widgets=_b.widgets.filter(function(w){return !sel[w.id];});});selClear();render();renderProps();commit();e.preventDefault();}return;} // löschen auch bei Fokus auf Select/Body (nach Seitenwechsel)
+    if(ek.indexOf('Arrow')===0&&ids.length&&!_inTextField()){var dd0=e.shiftKey?GS:1,dx0=ek==='ArrowLeft'?-dd0:ek==='ArrowRight'?dd0:0,dy0=ek==='ArrowUp'?-dd0:ek==='ArrowDown'?dd0:0;ids.forEach(function(id){var w=widget(id);w.x=Math.max(0,w.x+dx0);w.y=Math.max(0,w.y+dy0);applyGeom(w);});e.preventDefault();commit();return;} // verschieben auch bei Select/Body-Fokus
     var tn=((e.target&&e.target.tagName)||'').toLowerCase();if(tn==='input'||tn==='select'||tn==='textarea')return;
     if(ctrl&&k==='g'){e.preventDefault();if(e.shiftKey)ungroupSel();else groupSel();return;}
     if(ctrl&&k==='d'){e.preventDefault();addCopies(ids.map(widget));}
     else if(ctrl&&k==='z'){e.preventDefault();if(e.shiftKey)redo();else undo();}
     else if(ctrl&&k==='y'){e.preventDefault();redo();}
-    else if(ctrl&&(e.key==='+'||e.key==='=')){e.preventDefault();setZoom(zoom*1.15);}
-    else if(ctrl&&(e.key==='-'||e.key==='_')){e.preventDefault();setZoom(zoom/1.15);}
-    else if(ctrl&&e.key==='0'){e.preventDefault();setZoom(1);}
-    else if(ctrl&&e.key==='9'){e.preventDefault();setZoom(fitZoom());}
+    else if(ctrl&&(ek==='+'||ek==='=')){e.preventDefault();setZoom(zoom*1.15);}
+    else if(ctrl&&(ek==='-'||ek==='_')){e.preventDefault();setZoom(zoom/1.15);}
+    else if(ctrl&&ek==='0'){e.preventDefault();setZoom(1);}
+    else if(ctrl&&ek==='9'){e.preventDefault();setZoom(fitZoom());}
   });
 
   // Vorschau/Runtime: interaktive Widgets schreiben
@@ -51,7 +51,7 @@
   (function(){var _ovc=document.getElementById('ovcanvas');if(_ovc)_ovc.addEventListener('click',_wClick);
     var _ob=document.getElementById('ovbackdrop');if(_ob)_ob.addEventListener('click',function(){closePopup();});
     var _ox=document.getElementById('ovclose');if(_ox)_ox.addEventListener('click',function(){closePopup();});
-    document.addEventListener('keydown',function(e){if(e.key==='Escape'&&_popup)closePopup();});
+    document.addEventListener('keydown',function(e){if((e.key||'')==='Escape'&&_popup)closePopup();});
   })();
   // O1: Long-Press an button/tile -> Popup
   document.addEventListener('pointerdown',function(e){
