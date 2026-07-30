@@ -33,7 +33,10 @@
     var typeOpts=Object.keys(TYPES).map(function(t){return '<option value="'+t+'">'+TYPES[t]+'</option>';}).join('');
     var lbl2={thermostat:'Ziel-Var',light:'Helligkeit',cover:'Stop-Var',weather:'Vorhersage (JSON)',weatherpro:'Vorhersage (JSON)',sun:'Untergang',suncard:'Untergang',media:'Zustand',room:'Metrik 2',vacuum:'Batterie',valuecard:'Toggle/Akzent-Var'}[w.type];
     var lbl3={media:'Lautstärke',room:'Metrik 3',vacuum:'Start/Stop',thermostat:'Modus/Profil-Var',valuecard:'Balken-Var'}[w.type];
+    var _inBar=(typeof chromeOwnerOf==='function')?chromeOwnerOf(w.id):null;
     p.innerHTML=(Object.keys(sel).length>=2?alignSection():'')
+      +(_inBar?('<div class="prop" style="border-color:var(--accent)"><div style="font-size:11px;color:var(--muted);margin-bottom:5px">Liegt in der Leiste <b>'+esc(_inBar.name||'Leiste')+'</b> — erscheint damit auf allen Seiten.</div>'
+        +'<button class="btn" id="pChOut" style="padding:5px 9px">Zurück auf die Seite</button></div>'):'')
       +'<div class="prop">'
       +row('Typ','<select id="pType">'+typeOpts+'</select>')
       +row('Label','<input id="pLabel" value="'+esc(w.label||'')+'">')
@@ -46,7 +49,7 @@
         +(w.cmpOn?(row('Aggregationsstufe',stageSel('pCmpStage',cmpStage(w)))+row('Zählervariable','<input type="checkbox" id="pCmpCnt"'+(w.cmpCounter?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">Verbrauch je Periode</span>')+(!w.cmpCounter?row('Periodenmittel','<input type="checkbox" id="pCmpAvg"'+(w.cmpAvg?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">Mittel über die Periode statt Punktwert</span>'):'')+row('Anzeige','<select id="pCmpMode"><option value="pct"'+((w.cmpMode||'pct')==='pct'?' selected':'')+'>Prozent</option><option value="abs"'+(w.cmpMode==='abs'?' selected':'')+'>Absolut</option></select>')+row('Veränderung invertieren','<input type="checkbox" id="pCmpInv"'+(w.cmpInvert?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">Rückgang = gut (z. B. Verbrauch) — nur Farbe dreht, Pfeil bleibt</span>')):'')
       ):'')
       +(FMT_TYPES.indexOf(w.type)>=0?row('Format','<select id="pFmt">'+fmtOpts(w.fmt)+'</select>'):'')
-      +(['value','kpi','valuecard','bar','gauge','gaugepro','tempbar','dial','chip','cval','sval','delta','room','meterlist','marquee','raincard','rangebtn','assoc'].indexOf(w.type)>=0?row('Nachkommastellen','<input id="pDec" type="number" min="0" max="6" value="'+(w.dec!=null?w.dec:'')+'" placeholder="Standard">'):'')
+      +(['value','kpi','valuecard','bar','gauge','gaugepro','tempbar','dial','chip','cval','sval','delta','room','meterlist','marquee','raincard','rangebtn','assoc','chart'].indexOf(w.type)>=0?row('Nachkommastellen','<input id="pDec" type="number" min="0" max="6" value="'+(w.dec!=null?w.dec:'')+'" placeholder="Standard">'):'')
       +(['value','valuecard','bar','assoc','cval','sval','delta','tempbar'].indexOf(w.type)>=0?row('Einzeilig bei geringer Höhe','<input type="checkbox" id="pLineMode"'+(w.lineMode?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">flach gezogen → alles in eine Zeile</span>'):'')
       +((w.type==='chart'||w.type==='spark')?(function(){if(w.type==='chart'&&(['pie','donut','rose','waterfall','daylight'].indexOf(w.ctype||'area')>=0))return ''; /* Anteils-Charts und Wasserfall haben keine Zeitachse */var r=_chRange(w);var U=[['raw','Roh'],['min','Minuten'],['hour','Stunden'],['day','Tage'],['week','Wochen'],['month','Monate'],['year','Jahre']];var sel='<select id="pRUnit">'+U.map(function(u){return '<option value="'+u[0]+'"'+(r.unit===u[0]?' selected':'')+'>'+u[1]+'</option>';}).join('')+'</select>';var s=row('Zeitraum','<input id="pRN" type="number" min="1" style="width:64px" value="'+(r.n||24)+'"> '+sel);if(r.unit==='raw')s+=row('Fenster-Einheit','<select id="pRRawU"><option value="hour"'+((r.rawUnit||'hour')==='hour'?' selected':'')+'>Stunden</option><option value="day"'+(r.rawUnit==='day'?' selected':'')+'>Tage</option></select>');else s+=row('Wert','<select id="pRAggF"><option value="avg"'+((r.aggF||'avg')==='avg'?' selected':'')+'>Mittel</option><option value="sum"'+(r.aggF==='sum'?' selected':'')+'>Summe</option></select> <span style="font-size:11px;color:var(--muted)">Z&#228;hler: &#8222;Mittel&#8220;=Verbrauch/Bucket</span>');if(r.unit==='month'&&w.type==='chart'&&w.ctype!=='spark')s+=row('Zeitmodus','<select id="pRCal"><option value=""'+(!r.cal?' selected':'')+'>Rollierend</option><option value="1"'+(r.cal?' selected':'')+'>Kalenderjahr (J&#228;n&#8211;Dez)</option></select>');return s;})():'')
       +(['bar','gauge','slider','thermostat','gaugepro','timer','tempbar','dial'].indexOf(w.type)>=0?(row('Min','<input id="pMin" type="number" value="'+(w.min!=null?w.min:0)+'">')+row('Max','<input id="pMax" type="number" value="'+(w.max!=null?w.max:100)+'">')):'')
@@ -69,7 +72,7 @@
       +((w.type!=='button'&&w.type!=='tile')?popupSection(w):'')
       +(w.type!=='blank'?('<div class="pgh">Sichtbarkeit</div>'
         +row('Zur Laufzeit','<input type="checkbox" id="pRunVis"'+(w.hidden?'':' checked')+'> <span style="font-size:11px;color:var(--muted)">im Betrieb anzeigen</span>')
-        +(w.type!=='ticker'?(function(){var inT=w.name&&state.widgets.some(function(t){return t.type==='ticker'&&t.items&&t.items.some(function(m){return m.ref===w.name;});});if(inT)return row('Laufzeile','<button class="btn" id="pFromTicker" style="padding:5px 8px">← aus Laufzeile holen</button>');if(state.widgets.some(function(x){return x.type==='ticker';}))return row('Laufzeile','<button class="btn" id="pToTicker" style="padding:5px 8px">→ in Laufzeile verschieben</button>');return '';})():'')
+        +(w.type!=='ticker'?(function(){var inT=w.name&&allWidgets().some(function(t){return t.type==='ticker'&&t.items&&t.items.some(function(m){return m.ref===w.name;});});if(inT)return row('Laufzeile','<button class="btn" id="pFromTicker" style="padding:5px 8px">← aus Laufzeile holen</button>');if(state.widgets.some(function(x){return x.type==='ticker';}))return row('Laufzeile','<button class="btn" id="pToTicker" style="padding:5px 8px">→ in Laufzeile verschieben</button>');return '';})():'')
         +row('Steuer-Var','<input id="pVisVar" value="'+(w.visVar||'')+'" placeholder="ID (leer=immer)"> <button class="btn" id="pVisPick" style="padding:6px 8px">wählen</button>')
         +(w.visVar?(row('Zeigen wenn','<select id="pVisMode"><option value="truthy"'+((w.visMode||'truthy')==='truthy'?' selected':'')+'>wahr / ≠0</option><option value="eq"'+(w.visMode==='eq'?' selected':'')+'>= Wert</option><option value="ne"'+(w.visMode==='ne'?' selected':'')+'>≠ Wert</option><option value="ge"'+(w.visMode==='ge'?' selected':'')+'>≥ Wert</option><option value="le"'+(w.visMode==='le'?' selected':'')+'>≤ Wert</option></select>')+((w.visMode&&w.visMode!=='truthy')?row('Wert','<input id="pVisVal" value="'+esc(w.visVal!=null?w.visVal:'')+'">'):'')):'')):'')
       +(w.type!=='blank'?row('Animation','<select id="pAnim"><option value=""'+(!w.anim?' selected':'')+'>keine</option><option value="fade"'+(w.anim==='fade'?' selected':'')+'>Fade</option><option value="scale"'+(w.anim==='scale'?' selected':'')+'>Scale</option><option value="slide"'+(w.anim==='slide'?' selected':'')+'>SlideUp</option></select>'):'')
@@ -80,7 +83,14 @@
     $('#pType').value=w.type;
     $('#pType').onchange=function(){w.type=this.value;render();renderProps();};
     $('#pLabel').oninput=function(){w.label=this.value;render();};
-    if($('#pName'))$('#pName').onchange=function(){var nm=this.value.trim();if(nm&&namedWidgets(w.id).some(function(o){return o.name===nm;})){toast('Name bereits vergeben');this.value=w.name||'';return;}w.name=nm||undefined;commit();};
+    if($('#pChOut'))$('#pChOut').onclick=function(){chromeMoveOut([w.id]);};
+    if($('#pName'))$('#pName').onchange=function(){var nm=this.value.trim();
+      // Doppelte Namen abweisen - aber SAGEN, wo der Name schon liegt. Sonst sucht man ihn
+      // vergeblich, denn er kann auch in einer Leiste stecken und ist von hier nicht sichtbar.
+      var _clash=nm?namedWidgets(w.id).filter(function(o){return o.name===nm;})[0]:null;
+      if(_clash){toast('Name „'+nm+'\u201c ist bereits vergeben: '+_clash.type+' in '+(_clash.view||'?'));
+        this.select();return;}   // Eingabe stehen lassen und markieren, nicht loeschen
+      w.name=nm||undefined;render();}; // render() aktualisiert Laufzeilen-Referenzen und ruft intern schon commit(). KEIN renderProps() hier - das wuerde das Panel mitten im change-Handler neu aufbauen und das Eingabefeld zerstoeren.
     if($('#pVar'))$('#pVar').onchange=function(){w.varId=parseInt(this.value)||0;delete _hist[w.id];render();renderProps();};
     if($('#pPick'))$('#pPick').onclick=function(){showTab('vars');toast('Variable im Baum anklicken — bindet an dieses Element');_bindTarget=w.id;};
     if($('#pMedia'))$('#pMedia').onchange=function(){w.mediaId=parseInt(this.value)||0;render();};
@@ -131,7 +141,7 @@
     if($('#pVar3'))$('#pVar3').onchange=function(){w.varId3=parseInt(this.value)||0;delete _hist[w.id];render();};
     if($('#pPick3'))$('#pPick3').onclick=function(){showTab('vars');toast('Untergang-Variable im Baum anklicken');_bindTarget3=w.id;};
     ['pX','pY','pW','pH'].forEach(function(k){var el=$('#'+k);el.oninput=function(){var v=parseInt(el.value)||0;if(k==='pX')w.x=v;if(k==='pY')w.y=v;if(k==='pW')w.w=Math.max(40,v);if(k==='pH')w.h=Math.max(28,v);render();};});
-    $('#pDel').onclick=function(){var ids=Object.keys(sel).length?Object.keys(sel):[w.id];state.widgets=state.widgets.filter(function(x){return ids.indexOf(x.id)<0;});selClear();render();renderProps();};
+    $('#pDel').onclick=function(){var ids=Object.keys(sel).length?Object.keys(sel):[w.id];state.widgets=state.widgets.filter(function(x){return ids.indexOf(x.id)<0;});if(typeof chromeList==='function')chromeList().forEach(function(_b){if(_b.widgets)_b.widgets=_b.widgets.filter(function(x){return ids.indexOf(x.id)<0;});});selClear();render();renderProps();};
     $$('[data-al]',p).forEach(function(bt){bt.onclick=function(){var a=bt.dataset.al;if(a==='disth')distributeSel('h');else if(a==='distv')distributeSel('v');else if(a==='group')groupSel();else if(a==='ungroup')ungroupSel();else alignSel(a);};});
     $$('[data-fc]',p).forEach(function(inp){inp.oninput=inp.onchange=function(){var pr=inp.dataset.fc.split('.'),i=+pr[0],k=pr[1];if(!w.fc||!w.fc[i])return;w.fc[i][k]=(k==='hi'||k==='lo'||k==='pq')?(parseInt(inp.value)||0):inp.value;render();};});
     $$('[data-fcdel]',p).forEach(function(b){b.onclick=function(){w.fc.splice(+b.dataset.fcdel,1);render();renderProps();};});
@@ -158,14 +168,15 @@
   }
   function row(l,html){return '<div class="prow"><label>'+l+'</label>'+html+'</div>';}
   function moveToTicker(w){ // Widget benennen, in erste Laufzeile referenzieren, auf der Seite ausblenden
-    var tk=state.widgets.filter(function(x){return x.type==='ticker';})[0];
+    // Laufzeile auch in einer Leiste suchen - dort liegt sie beim gemeinsamen Kopfbereich.
+    var tk=allWidgets().filter(function(x){return x.type==='ticker';})[0];
     if(!tk){toast('Keine Laufzeile auf dieser Seite');return;}
     if(!w.name){var base=(w.label||w.type||'widget').toString().replace(/\s+/g,'-').toLowerCase(),nm=base,n=2;while(namedWidgets(w.id).some(function(o){return o.name===nm;})){nm=base+'-'+(n++);}w.name=nm;}
     tk.items=tk.items||[];if(!tk.items.some(function(m){return m.ref===w.name;}))tk.items.push({ref:w.name});
     w.hidden=true;render();select(tk.id);toast('„'+w.name+'" in Laufzeile verschoben');commit();
   }
   function removeFromTicker(w){ // alle Referenzen entfernen und Widget wieder auf der Seite anzeigen (nicht löschen)
-    state.widgets.forEach(function(t){if(t.type==='ticker'&&t.items)t.items=t.items.filter(function(m){return m.ref!==w.name;});});
+    allWidgets().forEach(function(t){if(t.type==='ticker'&&t.items)t.items=t.items.filter(function(m){return m.ref!==w.name;});});
     w.hidden=undefined;render();select(w.id);renderProps();toast('„'+(w.name||w.type)+'" zurück auf die Seite');commit();
   }
   function fieldPick(w,path,label){var v=getPath(w,path)||''; // Variable an ein beliebiges Feld (Pfad) binden: Eingabe + wählen + entfernen
@@ -287,10 +298,13 @@
         if(ay===null&&Math.abs((o.y-gap)-(ny+w.h))<=TH){ay=(o.y-gap-w.h)-it.oy;gy=o.y;}
       }
     });
-    // Zusätzlich an den Kanten und der Mitte der Leiste selbst einrasten
+    // Zusätzlich an den Kanten und der Mitte der Leiste einrasten — aber nur, wenn in der
+    // jeweiligen Achse genug Luft bleibt. In einer schmalen Bar (z. B. 56 px hoch) liegen
+    // Oberkante, Mitte und Unterkante sonst so dicht, dass jede Position einrastet und sich
+    // das Widget gar nicht mehr frei setzen lässt.
     if(owner&&gW!=null&&gH!=null){
-      [0,gW,gW/2].forEach(function(px){xs.forEach(function(q){if(ax===null&&Math.abs(px-q[0])<=TH){ax=px-q[1]-it.ox;gx=px;}});});
-      [0,gH,gH/2].forEach(function(py){ys.forEach(function(q){if(ay===null&&Math.abs(py-q[0])<=TH){ay=py-q[1]-it.oy;gy=py;}});});
+      if((gW-w.w)>4*TH)[0,gW,gW/2].forEach(function(px){xs.forEach(function(q){if(ax===null&&Math.abs(px-q[0])<=TH){ax=px-q[1]-it.ox;gx=px;}});});
+      if((gH-w.h)>4*TH)[0,gH,gH/2].forEach(function(py){ys.forEach(function(q){if(ay===null&&Math.abs(py-q[0])<=TH){ay=py-q[1]-it.oy;gy=py;}});});
     }
     clearGuides();
     var fdx=(ax!==null)?ax:(gridOn?snap(dx):Math.round(dx));
@@ -395,8 +409,22 @@
     badge(e,Math.round(drag.items[0].w.x)+' , '+Math.round(drag.items[0].w.y));
   });
   function badge(e,txt){var b=$('#selbadge');b.textContent=txt;b.style.left=(e.clientX+16)+'px';b.style.top=(e.clientY+16)+'px';b.style.display='block';}
-  window.addEventListener('mouseup',function(){
+  window.addEventListener('mouseup',function(e){
     $('#selbadge').style.display='none';
+    // Ein gezogenes Seiten-Widget ueber einer Leiste loslassen -> dorthin verschieben.
+    // Ohne das koennte man Widgets nur aus der Palette in eine Leiste bekommen.
+    if(drag&&drag.mode==='mv'&&drag.items&&drag.items.length&&typeof chromeHitTest==='function'){
+      var _r=canvas.getBoundingClientRect(),_px=(e.clientX-_r.left)/zoom,_py=(e.clientY-_r.top)/zoom;
+      var _hit=chromeHitTest(_px,_py);
+      var _ids=drag.items.map(function(it){return it.w.id;});
+      var _onPage=_ids.filter(function(id){return state.widgets.some(function(x){return x.id===id;});});
+      if(_hit&&_onPage.length){
+        clearGuides();drag=null;
+        var _n=chromeMoveIn(_hit.def.id,_onPage);
+        if(_n&&typeof toast==='function')toast(_n+' Widget(s) in „'+(_hit.def.name||'Leiste')+'" verschoben');
+        return;
+      }
+    }
     if(marq){var rc=marq.rect;if(rc){var _co=chromeContent(); // Seiten-Widgets liegen relativ zur (geschrumpften) Inhaltsflaeche
       state.widgets.forEach(function(w){var wx=w.x+_co.x,wy=w.y+_co.y;if(wx<rc.R&&wx+w.w>rc.L&&wy<rc.B&&wy+w.h>rc.T)sel[w.id]=true;});}marq.el.remove();marq=null;selId=Object.keys(sel).slice(-1)[0]||null;markSel();renderProps();return;}
     if(drag){clearGuides();renderProps();drag=null;commit();drawStructure();}

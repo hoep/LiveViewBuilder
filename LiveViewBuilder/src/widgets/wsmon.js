@@ -49,7 +49,7 @@
       if($('#pWsIds'))$('#pWsIds').oninput=function(){w.onlyId=this.value.trim()||undefined;rz();};},
     mount:function(w){drawWsmon(w);var oc0=document.getElementById('ovcanvas');if(oc0)drawWsmon(w,oc0); // Popup-Fall: falls das Widget im Overlay liegt
       if(!window._wsmonTimer){window._wsmonTimer=setInterval(function(){try{
-        state.widgets.forEach(function(x){if(x.type==='wsmon')drawWsmon(x);});
+        allWidgets().forEach(function(x){if(x.type==='wsmon')drawWsmon(x);});
         if(typeof _tickKids!=='undefined'&&_tickKids)_tickKids.forEach(function(x){if(x.type==='wsmon')drawWsmon(x);});
         var oc=document.getElementById('ovcanvas');
         if(typeof _popup!=='undefined'&&_popup&&_popup.widgets&&oc)_popup.widgets.forEach(function(x){if(x.type==='wsmon')drawWsmon(x,oc);}); // Popup-Widgets live halten

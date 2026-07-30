@@ -47,7 +47,7 @@
     var geo=chromeLayout();_chromeGeo=geo;
     geo.bars.forEach(function(g){
       var b=g.def,d=document.createElement('div');
-      d.className='chrome ch-'+b.kind+' ch-'+(b.side||'')+((mode==='edit'&&_chromeEdit===b.id)?' ch-active':'');
+      d.className='chrome ch-'+b.kind+' ch-'+(b.side||'');
       d.dataset.chrome=b.id;
       d.style.left=g.x+'px';d.style.top=g.y+'px';d.style.width=g.w+'px';d.style.height=g.h+'px';
       if(b.bg)d.style.background=b.bg;
@@ -78,6 +78,17 @@
   function chromeAllKids(){
     var out=[];chromeList().forEach(function(b){(b.widgets||[]).forEach(function(w){out.push(w);});});return out;
   }
+  /**
+   * ALLE Widgets der aktuellen Darstellung: Seiteninhalt PLUS Leisten-Inhalt.
+   * Jeder zyklische Aktualisierer (Uhr, Timer, Kamera, Chart-Nachladen, HTML) MUSS diese Liste
+   * benutzen und nicht state.widgets - Leisten-Kinder liegen in store.chrome und wuerden sonst
+   * nie aktualisiert (die Uhr blieb deshalb dauerhaft auf "-").
+   * NICHT verwenden fuer: SmartFit-Layout und reseq() - dort geht es ausschliesslich um die Seite.
+   */
+  function allWidgets(){
+    var s=(typeof state!=='undefined'&&state&&state.widgets)?state.widgets:[];
+    return s.concat(chromeAllKids());
+  }
   /** Leiste, zu der ein Widget gehoert (oder null). */
   function chromeOwnerOf(id){
     var list=chromeList();
@@ -87,13 +98,12 @@
   }
 
   // ---- Bearbeiten ----
-  var _chromeEdit=null;   // Leiste, in die neue Widgets fallen (per Klick in der Verwaltung gesetzt)
 
   function chromeAdd(kind,side){
     var b={id:'ch'+Math.random().toString(36).slice(2,8),kind:kind,side:side,
       type:(kind==='bar'?'chromebar':'chromesidebar'),   // damit das Eigenschaften-Panel greift
       size:(kind==='bar'?56:120),name:(kind==='bar'?'Leiste':'Seitenleiste'),widgets:[]};
-    chromeList().push(b);_chromeEdit=b.id;render();chromeUI();select(b.id);commit();return b;
+    chromeList().push(b);render();chromeUI();select(b.id);commit();return b;
   }
   /** Aus der Palette gezogen: 'chromebar' / 'chromesidebar' erzeugen eine globale Leiste. */
   function chromeIsBarType(t){return t==='chromebar'||t==='chromesidebar';}
@@ -110,7 +120,10 @@
       +row('Seite','<select id="pChSide">'+S.map(function(o){return '<option value="'+o[0]+'"'+((b.side||'')===o[0]?' selected':'')+'>'+o[1]+'</option>';}).join('')+'</select>')
       +row((b.kind==='bar'?'Höhe (px)':'Breite (px)'),'<input id="pChSize" type="number" min="8" value="'+chromeSize(b)+'">')
       +row('Hintergrund','<input id="pChBg" type="color" value="'+(/^#[0-9a-fA-F]{6}$/.test(b.bg||'')?b.bg:'#141c1f')+'"> <button class="btn" id="pChBgX" style="padding:4px 8px">Standard</button>')
-      +row('Als Ziel','<input type="checkbox" id="pChTgt"'+(_chromeEdit===b.id?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">neue Widgets landen hier</span>')
+      +(function(){var n=chromeSelOnPage().length;
+        return row('Auswahl','<button class="btn" id="pChMoveIn"'+(n?'':' disabled')+' style="padding:5px 9px">'
+          +(n?('Ausgewählte '+n+' Widget'+(n>1?'s':'')+' hierher verschieben'):'Auf der Seite Widgets auswählen')
+          +'</button>');})()
       +'<div style="font-size:11px;color:var(--muted);margin:6px 2px">'
         +(g?('Fläche '+Math.round(g.w)+'×'+Math.round(g.h)+' px · '):'')
         +((b.widgets||[]).length)+' Widget(s) darin · erscheint auf allen Seiten (nicht in Popups)</div>'
@@ -124,12 +137,13 @@
     if($('#pChSize'))$('#pChSize').oninput=function(){b.size=parseInt(this.value)||56;up();};
     if($('#pChBg'))$('#pChBg').oninput=function(){b.bg=this.value;up();};
     if($('#pChBgX'))$('#pChBgX').onclick=function(){delete b.bg;up();renderProps();};
-    if($('#pChTgt'))$('#pChTgt').onchange=function(){_chromeEdit=this.checked?b.id:null;render();chromeUI();};
+    if($('#pChMoveIn'))$('#pChMoveIn').onclick=function(){var ids=chromeSelOnPage();if(!ids.length)return;
+      var n=chromeMoveIn(b.id,ids);if(typeof toast==='function')toast(n+' Widget(s) in „'+(b.name||'Leiste')+'" verschoben');};
     if($('#pChDel'))$('#pChDel').onclick=function(){chromeDel(b.id);};
   }
   function chromeDel(id){
     var l=chromeList(),i=l.map(function(b){return b.id;}).indexOf(id);
-    if(i<0)return;l.splice(i,1);if(_chromeEdit===id)_chromeEdit=null;render();chromeUI();renderProps();commit();
+    if(i<0)return;l.splice(i,1);render();chromeUI();renderProps();commit();
   }
   function chromeMove(id,dir){
     var l=chromeList(),i=l.map(function(b){return b.id;}).indexOf(id),j=i+dir;
@@ -143,7 +157,7 @@
     var reg=WIDGETS[type],sz=(reg&&reg.size)||[140,80];
     var g=(_chromeGeo?_chromeGeo.bars.filter(function(x){return x.def.id===barId;})[0]:null);
     var maxX=g?Math.max(0,g.w-sz[0]):0,maxY=g?Math.max(0,g.h-sz[1]):0;
-    var w={id:uid(),type:type,x:Math.max(0,Math.min(snap(px||0),maxX)),y:Math.max(0,Math.min(snap(py||0),maxY)),
+    var w={id:chromeUid(),type:type,x:Math.max(0,Math.min(snap(px||0),maxX)),y:Math.max(0,Math.min(snap(py||0),maxY)),
       w:sz[0],h:sz[1],label:(type==='switch'?'Schalter':(type==='text'?'Text':'Label'))};
     if(reg&&reg.defaults)reg.defaults(w);
     if(!b.widgets)b.widgets=[];
@@ -154,6 +168,76 @@
   function _chromeGeoOf(id){
     if(!_chromeGeo)return null;
     return _chromeGeo.bars.filter(function(g){return g.def.id===id;})[0]||null;
+  }
+
+  // ---- IDs -----------------------------------------------------------------------------------
+  // Leisten-Kinder leben GLOBAL (ueber allen Seiten), Seiten-IDs ('w1','w2', …) sind dagegen nur
+  // je Ansicht eindeutig - dieselbe 'w7' darf auf mehreren Seiten liegen. Beides im selben
+  // Namensraum fuehrt zu Chaos: sel[] trifft beide, widget() liefert das falsche Objekt,
+  // chromeOwnerOf haelt ein Seiten-Widget fuer ein Leisten-Kind. Leisten-Kinder bekommen daher
+  // einen EIGENEN Namensraum 'c1','c2', … - eine Kollision ist damit ausgeschlossen.
+  function chromeUid(){
+    var mx=0;
+    chromeAllKids().forEach(function(w){var n=parseInt(String(w.id||'').replace(/^c/,''))||0;if(n>mx)mx=n;});
+    return 'c'+(mx+1);
+  }
+  /** Einmalige Bereinigung: Alt-IDs und Doppelte in den Leisten auf den c-Namensraum umstellen. */
+  function chromeFixIds(){
+    var seen={},fixed=0;
+    chromeList().forEach(function(b){
+      (b.widgets||[]).forEach(function(w){
+        var bad=(!/^c[0-9]+$/.test(String(w.id||''))) || seen[w.id];
+        if(bad){w.id=chromeUid();fixed++;}
+        seen[w.id]=1;
+        // Gruppen sind ein Seiten-Konzept: eine Gruppe ueber Seite und Leiste hinweg ergibt
+        // keinen Sinn und wuerde die Auswahl beider verketten.
+        if(w.group){delete w.group;delete w.gmaster;fixed++;}
+      });
+    });
+    return fixed;
+  }
+
+  /** Ausgewählte Seiten-Widgets in eine Leiste verschieben (Koordinaten werden umgerechnet). */
+  function chromeMoveIn(barId,ids){
+    var b=chromeById(barId);if(!b)return 0;
+    var g=_chromeGeoOf(barId),co=chromeContent();
+    if(!b.widgets)b.widgets=[];
+    var moved=0;
+    (ids||[]).forEach(function(id){
+      var i=state.widgets.map(function(x){return x.id;}).indexOf(id);
+      if(i<0)return;                                  // liegt nicht auf der Seite (evtl. schon in einer Leiste)
+      var w=state.widgets.splice(i,1)[0];
+      w.id=chromeUid();                              // eigener Namensraum, sonst Kollision mit Seiten-IDs
+      if(w.group){delete w.group;delete w.gmaster;}  // Gruppen gelten nur innerhalb einer Seite
+      if(g){ // Seiten- in Leisten-Koordinaten: Inhaltsversatz drauf, Leistenposition ab, dann begrenzen
+        w.x=Math.max(0,Math.min(Math.round(w.x+co.x-g.x),Math.max(0,g.w-w.w)));
+        w.y=Math.max(0,Math.min(Math.round(w.y+co.y-g.y),Math.max(0,g.h-w.h)));
+      }else{w.x=0;w.y=0;}
+      b.widgets.push(w);moved++;
+    });
+    if(moved){selClear();render();chromeUI();renderProps();commit();}
+    return moved;
+  }
+  /** Widgets aus ihrer Leiste zurück auf die Seite holen. */
+  function chromeMoveOut(ids){
+    var co=chromeContent(),moved=0;
+    (ids||[]).forEach(function(id){
+      var b=chromeOwnerOf(id);if(!b)return;
+      var g=_chromeGeoOf(b.id);
+      var i=b.widgets.map(function(x){return x.id;}).indexOf(id);
+      var w=b.widgets.splice(i,1)[0];
+      w.id=uid();                                    // zurueck in den Seiten-Namensraum
+      if(g){w.x=Math.max(0,Math.round(w.x+g.x-co.x));w.y=Math.max(0,Math.round(w.y+g.y-co.y));}
+      state.widgets.push(w);moved++;
+    });
+    if(moved){selClear();render();chromeUI();renderProps();commit();}
+    return moved;
+  }
+  /** IDs der aktuellen Auswahl, die auf der SEITE liegen (nicht in einer Leiste). */
+  function chromeSelOnPage(){
+    return Object.keys(sel).filter(function(id){
+      return state.widgets.some(function(x){return x.id===id;});
+    });
   }
 
   /** Liegt der Punkt (Seiten-Koordinaten) in einer Leiste? */
@@ -177,8 +261,7 @@
       +'<button class="btn" id="chAddSide">+ Sidebar (vertikal)</button></div>';
     if(!l.length)h+='<div style="font-size:11px;color:var(--faint)">Noch keine Leiste angelegt.</div>';
     l.forEach(function(b,i){
-      var act=(_chromeEdit===b.id);
-      h+='<div class="chrow'+(act?' on':'')+'" data-chid="'+b.id+'">'
+      h+='<div class="chrow" data-chid="'+b.id+'">'
         +'<div style="display:flex;gap:5px;align-items:center;margin-bottom:4px">'
         +'<b style="font-size:11px">'+(b.kind==='bar'?'Bar':'Sidebar')+'</b>'
         +'<input data-chf="name" value="'+esc(b.name||'')+'" style="flex:1;min-width:0">'
@@ -189,7 +272,7 @@
         +'<select data-chf="side">'+SIDES[b.kind].map(function(o){return '<option value="'+o[0]+'"'+((b.side||'')===o[0]?' selected':'')+'>'+o[1]+'</option>';}).join('')+'</select>'
         +'<input data-chf="size" type="number" min="8" value="'+chromeSize(b)+'" style="width:64px" title="'+(b.kind==='bar'?'Höhe':'Breite')+' in px">'
         +'<span style="font-size:11px;color:var(--muted)">'+(b.kind==='bar'?'Höhe':'Breite')+'</span>'
-        +'<button class="btn" data-chsel="'+b.id+'" style="margin-left:auto;padding:3px 7px">'+(act?'Zielleiste ✓':'als Ziel')+'</button>'
+
         +'</div><div style="font-size:11px;color:var(--faint);margin-top:3px">'+((b.widgets||[]).length)+' Widget(s) darin</div></div>';
     });
     box.innerHTML=h;
@@ -198,7 +281,7 @@
     $$('[data-chdel]',box).forEach(function(x){x.onclick=function(){chromeDel(x.dataset.chdel);};});
     $$('[data-chup]',box).forEach(function(x){x.onclick=function(){chromeMove(x.dataset.chup,-1);};});
     $$('[data-chdn]',box).forEach(function(x){x.onclick=function(){chromeMove(x.dataset.chdn,1);};});
-    $$('[data-chsel]',box).forEach(function(x){x.onclick=function(){_chromeEdit=(_chromeEdit===x.dataset.chsel)?null:x.dataset.chsel;render();chromeUI();};});
+
     $$('[data-chf]',box).forEach(function(inp){
       inp.oninput=inp.onchange=function(){
         var id=inp.closest('.chrow').dataset.chid,b=chromeById(id);if(!b)return;

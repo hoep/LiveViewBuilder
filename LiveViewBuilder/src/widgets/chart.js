@@ -84,6 +84,17 @@
         h+='<div class="pgh">Titel</div>'+row('Titel anzeigen','<input type="checkbox" id="pShowT"'+(_tOn?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">Label als Titel</span>')
           +(_tOn?row('Titel-Position','<select id="pTitlePos"><option value="left"'+((w.titlePos||'left')==='left'?' selected':'')+'>links</option><option value="center"'+(w.titlePos==='center'?' selected':'')+'>zentriert</option><option value="right"'+(w.titlePos==='right'?' selected':'')+'>rechts</option></select>'+(((w.label||'')==='')?' <span style="font-size:11px;color:var(--warm)">— Label ist leer, es erscheint nichts</span>':'')):'');
       }
+      // ---- Schriftgrößen je Textart (leer = wächst mit der Kachel und folgt der zentralen Typografie) ----
+      var _fsRow=function(id,lbl,val){return row(lbl,'<input id="'+id+'" type="number" min="5" max="40" step="0.5" style="width:64px" value="'+(val||'')+'" placeholder="auto">');};
+      // Einheit fuer Datenlabels und Tooltips (Nachkommastellen kommen aus der zentralen Zeile)
+      h+=row('Einheit (Werte)','<input id="pChUnit" value="'+esc(w.chUnit||'')+'" style="width:90px" placeholder="z. B. kWh"> <span style="font-size:11px;color:var(--muted)">an Datenlabels und Tooltip</span>');
+      h+='<div class="pgh">Schriftgrößen (px)</div>'
+        +'<div style="font-size:11px;color:var(--muted);margin:-2px 2px 5px">Leer = automatisch: wächst mit der Kachelgröße und folgt der Schriftgröße aus „Typografie".</div>'
+        +(V.title?_fsRow('pFsTitle','Titel',w.fsTitle):'')
+        +(V.leg?_fsRow('pFsLegend','Legende',w.fsLegend):'')
+        +(V.ax?_fsRow('pAxFs','Achsen (Skalenwerte)',w.axFs):'')
+        +(V.ax?_fsRow('pFsAxName','Achsentitel / Einheit',w.fsAxName):'')
+        +_fsRow('pFsLabel','Datenlabels',w.fsLabel);
       if(V.ax){
         h+='<div class="pgh">Achsen & Raster</div>'+row('Y-Beschriftung','<input type="checkbox" id="pYLab"'+(w.yLabels!==false?' checked':'')+'>')+row('X-Beschriftung','<input type="checkbox" id="pXLab"'+(w.xLabels!==false?' checked':'')+'>')+row('Y-Hilfslinien','<input type="checkbox" id="pYg"'+(w.ygrid!==false?' checked':'')+'>')+row('X-Hilfslinien','<input type="checkbox" id="pXg"'+(w.xgrid?' checked':'')+'>')+row('Achslinien','<input type="checkbox" id="pAxLine"'+(w.axLine?' checked':'')+'>')+row('Tickmarks','<input type="checkbox" id="pAxTicks"'+(w.axTicks?' checked':'')+'>');
         if(V.axPlus)h+=row('Raster-Teilung','<input id="pGridDivs" type="number" min="0" style="width:56px" value="'+(w.gridDivs||'')+'" placeholder="auto"> <span style="font-size:11px;color:var(--muted)">Y-Achse: Anzahl</span>');
@@ -142,6 +153,10 @@
       if($('#pXg'))$('#pXg').onchange=function(){w.xgrid=this.checked||undefined;reChart();};
       if($('#pAxLine'))$('#pAxLine').onchange=function(){w.axLine=this.checked||undefined;reChart();};
       if($('#pAxTicks'))$('#pAxTicks').onchange=function(){w.axTicks=this.checked||undefined;reChart();};
+      if($('#pChUnit'))$('#pChUnit').oninput=function(){w.chUnit=this.value||undefined;reChart();};
+      [['pFsTitle','fsTitle'],['pFsLegend','fsLegend'],['pAxFs','axFs'],['pFsAxName','fsAxName'],['pFsLabel','fsLabel']].forEach(function(o){
+        var e=$('#'+o[0]);if(e)e.oninput=function(){w[o[1]]=(this.value===''?undefined:parseFloat(this.value));reChart();};
+      });
       if($('#pGridDivs'))$('#pGridDivs').oninput=function(){w.gridDivs=this.value===''?undefined:parseInt(this.value);reChart();};
       if($('#pStack'))$('#pStack').onchange=function(){w.stack=this.checked;reChart();};
       if($('#pZoom'))$('#pZoom').onchange=function(){w.zoom=this.checked;reChart();};

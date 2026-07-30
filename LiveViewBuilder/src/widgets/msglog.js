@@ -51,7 +51,7 @@
   // Basis-Tick 1 s; jedes msglog aktualisiert gemäß eigenem refreshSec, sonst globaler Vorgabe (bcfg().refreshSec). Deckt Haupt-, Ticker- und Popup-Widgets ab.
   setInterval(function(){if(typeof state==='undefined'||!state.widgets)return;var now=Date.now(),gdef=((typeof bcfg==='function'&&bcfg().refreshSec)||15);
     function tick(w){if(!w||w.type!=='msglog')return;if(now-(w._lastAuto||0)>=(w.refreshSec||gdef)*1000){w._lastAuto=now;fetchMsgs(w);}}
-    state.widgets.forEach(tick);
+    allWidgets().forEach(tick);
     if(typeof _tickKids!=='undefined'&&_tickKids)_tickKids.forEach(tick);
     if(typeof _popup!=='undefined'&&_popup&&_popup.widgets)_popup.widgets.forEach(tick);
   },1000);

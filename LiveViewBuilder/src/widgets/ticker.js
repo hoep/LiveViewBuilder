@@ -41,6 +41,7 @@
     },
     props:function(w){
       var names=namedWidgets(w.id);
+      var _hint='<div style="font-size:11px;color:var(--muted);margin:2px 2px 5px">Referenzierbar sind nur Widgets mit gesetztem <b>Namen</b> (Eigenschaften \u2192 Name). Aktuell '+names.length+' verf\u00fcgbar \u2014 auch aus Bar und Sidebar.</div>';
       var rows=(w.items||[]).map(function(m,i){
         var isRef=(m.ref!=null),isW=!!m.wtype;
         var typeSel='<select data-tk="__type.'+i+'"><option value=""'+(!isW&&!isRef?' selected':'')+'>— Text —</option>'
@@ -48,8 +49,10 @@
           +_TICK_TYPES.map(function(t){return '<option value="'+t[0]+'"'+(m.wtype===t[0]?' selected':'')+'>'+t[1]+'</option>';}).join('')+'</select>';
         var fields;
         if(isRef){
-          fields='<select data-tk="ref.'+i+'"><option value="">— Widget wählen —</option>'
-            +names.map(function(n){return '<option value="'+esc(n.name)+'"'+(m.ref===n.name?' selected':'')+'>'+esc(n.name)+' ('+esc(n.type)+')</option>';}).join('')+'</select>'
+          // Nur Widgets MIT gesetztem Namen sind referenzierbar - ohne Hinweis wirkt die Liste
+          // grundlos leer. Herkunft (Seite bzw. Leiste) mit anzeigen, damit Gleichnamiges unterscheidbar bleibt.
+          fields='<select data-tk="ref.'+i+'"><option value="">'+(names.length?'— Widget wählen —':'— kein benanntes Widget vorhanden —')+'</option>'
+            +names.map(function(n){return '<option value="'+esc(n.name)+'"'+(m.ref===n.name?' selected':'')+'>'+esc(n.name)+' ('+esc(n.type)+(n.view?' · '+esc(n.view):'')+')</option>';}).join('')+'</select>'
             +'<input data-tk="w.'+i+'" value="'+esc(m.w||'')+'" placeholder="Breite" style="width:56px">';
         } else if(isW){
           fields='<input data-tk="varId.'+i+'" value="'+esc(m.varId!=null?m.varId:'')+'" placeholder="VarID" style="width:64px">'
@@ -68,7 +71,7 @@
       return row('Tempo (s)','<input id="pSpeed" type="number" min="8" value="'+(w.speed||46)+'">')
         +row('Titel anzeigen','<input type="checkbox" id="pTkLead"'+(w.hideLead?'':' checked')+'>')
         +(w.hideLead?'':row('Anzahl-Badge','<input type="checkbox" id="pTkCount"'+(w.hideCount?'':' checked')+'>'))
-        +'<div class="prop" style="margin-top:8px"><div style="font-size:11px;color:var(--muted);margin-bottom:5px">Elemente — Typ wählen: Text · <b>Widget (Referenz)</b> = vorhandenes Widget per Name · oder inline-Widget. Widget-Zeilen laufen live mit.</div>'+rows+'<button class="btn" data-tkadd><svg class="i"><use href="#ic-plus"/></svg> Element</button></div>';
+        +'<div class="prop" style="margin-top:8px"><div style="font-size:11px;color:var(--muted);margin-bottom:5px">Elemente — Typ wählen: Text · <b>Widget (Referenz)</b> = vorhandenes Widget per Name · oder inline-Widget. Widget-Zeilen laufen live mit.</div>'+_hint+rows+'<button class="btn" data-tkadd><svg class="i"><use href="#ic-plus"/></svg> Element</button></div>';
     },
     wire:function(w){
       if($('#pSpeed'))$('#pSpeed').oninput=function(){w.speed=parseInt(this.value)||46;render();};
@@ -91,7 +94,7 @@
         render();
       };});
       $$('#props [data-tkdel]').forEach(function(b){b.onclick=function(){var it=w.items[+b.dataset.tkdel];w.items.splice(+b.dataset.tkdel,1);
-        if(it&&it.ref){var cnt=0;state.widgets.forEach(function(t){if(t.type==='ticker'&&t.items)t.items.forEach(function(m){if(m.ref===it.ref)cnt++;});});if(cnt===0){var tw=state.widgets.filter(function(x){return x.name===it.ref;})[0];if(tw&&tw.hidden)tw.hidden=undefined;}} // Referenz entfernt -> Widget wieder sichtbar
+        if(it&&it.ref){var cnt=0;allWidgets().forEach(function(t){if(t.type==='ticker'&&t.items)t.items.forEach(function(m){if(m.ref===it.ref)cnt++;});});if(cnt===0){var tw=allWidgets().filter(function(x){return x.name===it.ref;})[0];if(tw&&tw.hidden)tw.hidden=undefined;}} // Referenz entfernt -> Widget wieder sichtbar
         render();renderProps();commit();};});
       var add=$('#props [data-tkadd]');if(add)add.onclick=function(){w.items=w.items||[];w.items.push({ref:''});render();renderProps();};
     }

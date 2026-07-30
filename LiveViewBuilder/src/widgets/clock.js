@@ -7,7 +7,7 @@
   function _clkUpd(w,now){var el=$('.w[data-id="'+w.id+'"]',canvas);if(!el)return;var t=$('[data-role=ctime]',el);if(t)t.textContent=_clkFmt(w,now||new Date());}
   if(!window._clkTimer){window._clkTimer=setInterval(function(){ // aktualisiert nur „erweiterte" Uhren (Sekunden/12h)
     if(typeof state==='undefined'||!state.widgets)return;var now=new Date();
-    state.widgets.forEach(function(w){if(w.type==='clock'&&(w.showSec||w.h12))_clkUpd(w,now);});},1000);}
+    allWidgets().forEach(function(w){if(w.type==='clock'&&(w.showSec||w.h12))_clkUpd(w,now);});},1000);}
   defWidget('clock',{
     label:'Uhr', paletteIcon:'clock', size:[170,84],
     defaults:function(w){w.clkShow='both';},

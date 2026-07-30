@@ -32,6 +32,9 @@
   function allViewIds(){ // Vereinigung ALLER Variablen-IDs über alle Ansichten -> Poll hält den Cache für jede Seite warm
     if(_allIds)return _allIds;var set={};
     try{Object.keys(store.views||{}).forEach(function(vn){var v=store.views[vn];((v&&v.widgets)||[]).forEach(function(w){_collectIds(w,function(id){if(id)set[id]=1;});});});}catch(e){}
+    // Leisten-Widgets (store.chrome) gehoeren zu KEINER Ansicht - ohne sie wuerde der Poll
+    // ihre Variablen nie abfragen und die Kacheln blieben dauerhaft auf "-".
+    try{if(typeof chromeAllKids==='function')chromeAllKids().forEach(function(w){_collectIds(w,function(id){if(id)set[id]=1;});});}catch(e){}
     _allIds=Object.keys(set);return _allIds;
   }
   function invalidateAllIds(){_allIds=null;}
@@ -41,6 +44,9 @@
   function buildVidx(){
     _vidx={};
     state.widgets.forEach(function(w){_vidxOne(w,canvas);});
+    // Widgets in den Leisten (bar/sidebar) - sie liegen NICHT in state.widgets, wuerden also
+    // sonst nie Live-Werte bekommen (weder im Builder noch im Run).
+    if(typeof chromeAllKids==='function')chromeAllKids().forEach(function(w){_vidxOne(w,canvas);});
     if(_compKids&&_compKids.length)_compKids.forEach(function(w){_vidxOne(w,canvas);});
     if(_tickKids&&_tickKids.length)_tickKids.forEach(function(w){_vidxOne(w,canvas);});
     if(_popup&&_popup.widgets){var _ov=$('#ovcanvas');if(_ov)_popup.widgets.forEach(function(w){_vidxOne(w,_ov);});}
@@ -235,7 +241,7 @@
     document.body.classList.toggle('wglow',!!(store.cfg&&store.cfg.wglow)); // optionaler Widget-Glow (Akzentfarbe)
     updateSkinSwitches();
     // HTML-Inhalte neu rendern -> Skin-Enforcer zieht Schrift/Farben ans neue Theme nach (Shadow/iframe rechnen Farben beim Rendern)
-    try{var _re=function(w){if(w&&w.type==='html'){if(w.htmlSrc==='custom')setHtmlContent(w,w.html||'');else fetchHtml(w);}};if(typeof state!=='undefined'&&state.widgets)state.widgets.forEach(_re);if(typeof _tickKids!=='undefined'&&_tickKids)_tickKids.forEach(_re);}catch(e){}
+    try{var _re=function(w){if(w&&w.type==='html'){if(w.htmlSrc==='custom')setHtmlContent(w,w.html||'');else fetchHtml(w);}};if(typeof state!=='undefined'&&state.widgets)allWidgets().forEach(_re);if(typeof _tickKids!=='undefined'&&_tickKids)_tickKids.forEach(_re);}catch(e){}
   }
   function updateSkinSwitches(){$$('.hskwb').forEach(function(b){b.classList.toggle('on',b.getAttribute('data-skw')===(store.theme||'dark'));});$$('[data-role=skwsel]',canvas).forEach(function(s){s.value=store.skin||'Standard';});}
   function editSkinToken(k,val){var a=store.skin;if(BUILTIN[a]||!store.skins||!store.skins[a])return;var th=(store.theme==='light'?'light':'dark');store.skins[a][th]=store.skins[a][th]||{};store.skins[a][th][k]=val;applySkin();commit();}

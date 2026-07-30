@@ -18,7 +18,9 @@
     disposeCharts();
     _tickKids=[];   // verschachtelte Ticker-Widgets werden während des Render-Laufs neu gesammelt
     $$('.w',canvas).forEach(function(e){e.remove();});
-    var _refSet={};state.widgets.forEach(function(t){if(t.type==='ticker'&&t.items)t.items.forEach(function(m){if(m.ref)_refSet[m.ref]=1;});}); // von einer Laufzeile referenzierte Namen -> auf der Seite ausblenden
+    // Laufzeilen koennen auch IN einer Leiste liegen - dann muessen die von ihnen referenzierten
+    // Widgets auf der Seite trotzdem ausgeblendet werden, sonst stehen sie doppelt.
+    var _refSet={};allWidgets().forEach(function(t){if(t.type==='ticker'&&t.items)t.items.forEach(function(m){if(m.ref)_refSet[m.ref]=1;});}); // von einer Laufzeile referenzierte Namen -> auf der Seite ausblenden
     var _chrome=chromeRender();          // Leisten zeichnen; liefert den Host für den Seiteninhalt
     state.widgets.forEach(function(w){try{
       _chrome.host.appendChild(_mkWidgetEl(w,_refSet));
@@ -62,7 +64,7 @@
       var _mwr=WIDGETS[w.type];if(_mwr&&_mwr.mount)_mwr.mount(w); // Registry-Post-Render-Hook (z.B. Canvas zeichnen)
       }catch(_e){} // ein defektes Widget darf Init/Interaktion der anderen nicht blockieren
     });
-    _compKids=[];state.widgets.forEach(function(w){if(w.type==='component')expandComponent(w);}); // M3: Komponenten-Instanzen expandieren
+    _compKids=[];allWidgets().forEach(function(w){if(w.type==='component')expandComponent(w);}); // M3: Komponenten-Instanzen expandieren
     // mount-Hooks auch für Klone (Laufband/Komponenten) + Werte aus Cache spiegeln -> Status-Bild/Wetter/cval usw. erscheinen sofort, nicht erst bei Wertänderung
     function _mountKid(w){try{var _mw=WIDGETS[w.type];if(_mw&&_mw.mount)_mw.mount(w);}catch(e){}}
     if(_compKids&&_compKids.length)_compKids.forEach(_mountKid);
@@ -155,7 +157,12 @@
   }
   function disposeCharts(){for(var k in _ec){try{_ec[k].dispose();}catch(e){}}_ec={};}
   // Responsive ECharts-Schrift: Basisgröße x Skalierung nach Kachelgröße (Referenz 300x180, geklemmt 0.8..1.7)
-  function _ecFS(w,base){var sc=Math.min((w&&w.w?w.w:300)/300,(w&&w.h?w.h:180)/180);sc=Math.max(0.8,Math.min(1.7,sc));return Math.round(base*sc*10)/10;}
+  // ECharts zeichnet auf ein Canvas - die zentrale Typografie (CSS-Variablen --w-fsz) erreicht es
+  // NICHT. Deshalb wird w.fsz hier ausgewertet: sie skaliert alle Diagrammschriften gemeinsam
+  // (12px = Normalmass), zusaetzlich zur Skalierung nach Kachelgroesse.
+  function _ecFS(w,base){var sc=Math.min((w&&w.w?w.w:300)/300,(w&&w.h?w.h:180)/180);sc=Math.max(0.8,Math.min(1.7,sc));
+    if(w&&w.fsz>0)sc*=(parseFloat(w.fsz)/12);
+    return Math.round(base*sc*10)/10;}
   // Wasserfall: Muster-Schritte lazy saeen. addWidget ruft defaults() VOR dem Setzen von ctype,
   // deshalb kann die Saat nicht in chart.defaults() liegen — sie passiert im pCType-Wechsel und hier defensiv.
   function _wfSeed(w){
@@ -190,11 +197,14 @@
       barD.push({value:h,itemStyle:{color:col,borderRadius:br}});
     });
     var unit=_wfUnit(w); // eigene Einheit (nicht w.yunit - das gehoert dem Achsensystem/Kalenderjahr-Balken)
-    var lbl=w.labels?{show:true,position:'top',fontSize:_ecFS(w,9),color:cssv('--muted'),formatter:function(p){return (p.value==null)?'':(Math.round(p.value*100)/100);}}:{show:false};
+    var lbl=w.labels?{show:true,position:'top',fontSize:_ecF(w,'label',9),color:cssv('--muted'),formatter:function(p){return (p.value==null)?'':_chNum(w,p.value);}}:{show:false};
     var series=[{type:'bar',stack:'wf',silent:true,itemStyle:{color:'transparent'},emphasis:{disabled:true},data:baseD},
                 {type:'bar',stack:'wf',data:barD,label:lbl}];
     if(w.wfConnect!==false&&cats.length>1){ // gestrichelte Verbindungslinien auf Saldo-Hoehe zwischen den Balken
-      series.push({type:'custom',silent:true,z:1,data:cats.map(function(_,i){return i;}),
+      // Daten sind die Saldo-Werte, NICHT die Indizes: renderItem braucht nur params.dataIndex,
+      // aber ECharts zieht die Werte JEDER Serie in die Achsenskalierung ein. Mit Indizes
+      // (0..n-1) waere das Achsenmaximum bei 13 Schritten faelschlich 12 statt ~6.
+      series.push({type:'custom',silent:true,z:1,data:levels.map(function(v){return (v==null?0:v);}),
         renderItem:function(params,api){
           var i=params.dataIndex;if(i>=levels.length-1||levels[i]==null)return;
           var pA=api.coord([i,levels[i]]),pB=api.coord([i+1,levels[i]]),band=api.size([1,0])[0],half=band*0.4;
@@ -204,9 +214,9 @@
     var axw=_axShow(w);
     ec.setOption({backgroundColor:'transparent',animation:!!bcfg().chartAnim,grid:{left:8,right:10,top:6+_titleSpace(w),bottom:4,containLabel:true},
       title:_titleOpt(w),
-      tooltip:{trigger:'axis',axisPointer:{type:'shadow'},formatter:function(ps){var p=ps&&ps.length?ps[ps.length-1]:null;if(!p)return '';return (p.name||'')+': '+(Math.round(p.value*100)/100)+(unit?(' '+unit):'');}},
-      xAxis:{type:'category',data:cats,axisTick:{show:axw.ticks},axisLine:{show:axw.line,lineStyle:{color:cssv('--line')}},axisLabel:{show:axw.xLab,color:cssv('--faint'),fontSize:_ecFS(w,9),interval:0},splitLine:{show:axw.xGrid,lineStyle:{color:cssv('--line-soft')}}},
-      yAxis:{type:'value',name:unit,nameTextStyle:{color:cssv('--muted'),fontSize:_ecFS(w,9)},nameGap:7,axisLine:{show:axw.line,lineStyle:{color:cssv('--line')}},axisTick:{show:axw.ticks},axisLabel:{show:axw.yLab,color:cssv('--faint'),fontSize:_ecFS(w,9)},splitLine:{show:axw.yGrid,lineStyle:{color:cssv('--line-soft')}}},
+      tooltip:{trigger:'axis',axisPointer:{type:'shadow'},formatter:function(ps){var p=ps&&ps.length?ps[ps.length-1]:null;if(!p)return '';return (p.name||'')+': '+_chNum(w,p.value);}},
+      xAxis:{type:'category',data:cats,axisTick:{show:axw.ticks},axisLine:{show:axw.line,lineStyle:{color:cssv('--line')}},axisLabel:{show:axw.xLab,color:cssv('--faint'),fontSize:_axFs(w),interval:0},splitLine:{show:axw.xGrid,lineStyle:{color:cssv('--line-soft')}}},
+      yAxis:{type:'value',name:unit,nameTextStyle:{color:cssv('--muted'),fontSize:_ecF(w,'axname',9)},nameGap:7,axisLine:{show:axw.line,lineStyle:{color:cssv('--line')}},axisTick:{show:axw.ticks},axisLabel:{show:axw.yLab,color:cssv('--faint'),fontSize:_axFs(w)},splitLine:{show:axw.yGrid,lineStyle:{color:cssv('--line-soft')}}},
       series:series},true);
   }
   function initEChart(w){
@@ -282,11 +292,11 @@
     var tSp=_titleSpace(w),lpP=w.legend?(w.legPos||'bottom'):'';
     // Mittelpunkt nach unten schieben, wenn Titel oben Platz braucht bzw. Legende oben/unten sitzt
     var cy=50+(tSp?5:0)+(lpP==='top'?4:0)-(lpP==='bottom'?5:0);
-    ec.setOption({backgroundColor:'transparent',animation:!!bcfg().chartAnim,tooltip:{trigger:'item',valueFormatter:function(v){return (Math.round(v*100)/100);}},
+    ec.setOption({backgroundColor:'transparent',animation:!!bcfg().chartAnim,tooltip:{trigger:'item',valueFormatter:function(v){return _chNum(w,v);}},
       title:_titleOpt(w),
       legend:_legendOpt(w,w.legend),
       series:[{type:'pie',roseType:(rose?'radius':false),radius:rose?['22%','74%']:(donut?['46%','72%']:'70%'),center:['50%',cy+'%'],data:data,
-        label:{color:cssv('--text'),fontSize:_ecFS(w,10),formatter:(w.labels?'{b}\n{d}%':'{d}%')},labelLine:{length:6,length2:6,lineStyle:{color:cssv('--line')}},
+        label:{color:cssv('--text'),fontSize:_ecF(w,'label',10),formatter:(w.labels?'{b}\n{d}%':'{d}%')},labelLine:{length:6,length2:6,lineStyle:{color:cssv('--line')}},
         itemStyle:{borderColor:cssv('--bg'),borderWidth:2,borderRadius:((donut||rose)?3:0)},minAngle:3}]},true);}
   function chartSeries(w){return (_hist[w.id]&&_hist[w.id].series)?_hist[w.id].series:[];}
   // Sparkline (ctype 'spark') — kompakte Verlaufskurve: keine Achsen, kein Titel, keine Legende.
@@ -325,8 +335,8 @@
     var titOff=isHalf?[0,'14%']:(style==='ring'?[0,'40%']:[0,'72%']);
     var width=isFill?13:11;
     var ser={type:'gauge',min:mn,max:mx,startAngle:ANG[0],endAngle:ANG[1],center:center,radius:radius,
-      axisTick:{show:!!w.gticks,distance:2,splitNumber:4,length:4,lineStyle:{color:cssv('--faint'),width:1}},splitLine:{show:!!w.gticks,length:8,lineStyle:{color:cssv('--faint'),width:1}},axisLabel:{show:!!w.gticks,color:cssv('--faint'),fontSize:_ecFS(w,8),distance:12},anchor:{show:!!w.gknob,showAbove:true,size:9,itemStyle:{color:cssv('--text')}},
-      title:{show:!!w.label,offsetCenter:titOff,color:cssv('--muted'),fontSize:_ecFS(w,10)},
+      axisTick:{show:!!w.gticks,distance:2,splitNumber:4,length:4,lineStyle:{color:cssv('--faint'),width:1}},splitLine:{show:!!w.gticks,length:8,lineStyle:{color:cssv('--faint'),width:1}},axisLabel:{show:!!w.gticks,color:cssv('--faint'),fontSize:_ecF(w,'axis',8),distance:12},anchor:{show:!!w.gknob,showAbove:true,size:9,itemStyle:{color:cssv('--text')}},
+      title:{show:!!w.label,offsetCenter:titOff,color:cssv('--muted'),fontSize:_ecF(w,'label',10)},
       detail:{show:(w.gvShow!==false),valueAnimation:true,fontSize:(w.gvsz||(isFill?20:19)),fontWeight:(w.gvfwt||'normal'),fontStyle:(w.gvsty||'normal'),fontFamily:(w.gvff||'ui-monospace,monospace'),offsetCenter:detOff,color:cssv('--text'),formatter:((w.dec!=null||(w.gvUnit!=null&&w.gvUnit!==''))?function(v){var hasU=(w.gvUnit!=null&&w.gvUnit!=='');var num=(w.dec!=null)?(isNaN(v)?v:Number(v).toFixed(w.dec).replace('.',',')):(hasU?((d&&d.v!=null)?String(d.v).replace('.',','):v):((d&&d.f)?String(d.f):v));var u=hasU?w.gvUnit:((w.dec!=null&&d&&d.u)?String(d.u):'');return num+u;}:((d&&d.f)?String(d.f):'{value}'))},
       data:[{value:val,name:w.label||''}]};
     if(cmode==='graded'&&!isFill){ // Zonen entlang des Bogens, Zeiger zeigt Wert
@@ -343,16 +353,37 @@
   function autoColorHex(i){return [cssv('--accent'),cssv('--info'),cssv('--warm')][i%3]||'#00cdab';}
   function _legendOpt(w,on){ // Legende inkl. Position (top/bottom/left/right) — von setLine & setCalBar genutzt
     if(!on)return {show:false};
-    var p=w.legPos||'top',o={show:true,textStyle:{color:cssv('--muted'),fontSize:_ecFS(w,9)},itemWidth:11,itemHeight:8,orient:(p==='left'||p==='right')?'vertical':'horizontal'};
+    var p=w.legPos||'top',o={show:true,textStyle:{color:cssv('--muted'),fontSize:_ecF(w,'legend',9)},itemWidth:11,itemHeight:8,orient:(p==='left'||p==='right')?'vertical':'horizontal'};
     if(p==='top')o.top=0;else if(p==='bottom')o.bottom=0;else if(p==='left'){o.left=0;o.top='middle';}else{o.right=4;o.top='middle';}
     return o;}
   // ---- Anzeige-Optionen zentral (setLine und setCalBar nutzen dieselben Regeln) ----
   function _axShow(w){return {line:!!w.axLine,ticks:!!w.axTicks,xLab:(w.xLabels!==false),yLab:(w.yLabels!==false),
     xGrid:!!w.xgrid,yGrid:(w.ygrid!==false)};}
+  // ---- Schriftgrößen je Textart -----------------------------------------------------------
+  // Jede Textart kann einzeln fest gesetzt werden; ohne Wert wächst sie mit der Kachel (_ecFS)
+  // und folgt der zentralen Typografie (w.fsz). Alle Renderer MÜSSEN _ecF() benutzen, damit
+  // die Einstellungen für jeden Diagrammtyp gleich wirken.
+  var _EC_FS={title:'fsTitle',legend:'fsLegend',axis:'axFs',axname:'fsAxName',label:'fsLabel'};
+  function _ecF(w,kind,base){var k=_EC_FS[kind],v=(w&&k)?w[k]:null;return (v>0)?parseFloat(v):_ecFS(w,base);}
+  // ---- Zahlformat fuer Datenlabels und Tooltips ---------------------------------------------
+  // Nachkommastellen aus w.dec (leer = automatisch nach Groessenordnung), Einheit aus w.chUnit
+  // (Wasserfall faellt auf seine eigene Einheit zurueck). Dezimaltrennzeichen ist das Komma.
+  function _chUnit(w){var u=(w&&w.chUnit!=null&&w.chUnit!=='')?w.chUnit:((w&&(w.ctype==='waterfall'||w.type==='waterfall'))?_wfUnit(w):'');return u||'';}
+  function _chDec(w,v){
+    if(w&&w.dec!=null&&w.dec!=='')return Math.max(0,Math.min(6,parseInt(w.dec)));
+    var a=Math.abs(v||0);return (a<10)?2:((a<100)?1:0);      // automatisch: kleine Werte feiner
+  }
+  function _chNum(w,v,withUnit){
+    if(v==null||isNaN(v))return '–';
+    var s=Number(v).toFixed(_chDec(w,v)).replace('.',',');
+    var u=(withUnit===false)?'':_chUnit(w);
+    return u?(s+' '+u):s;
+  }
+  function _axFs(w){return _ecF(w,'axis',9);}   // Kurzform für die Achsen-Skalenwerte
   function _titleOn(w){var t=(w.showTitle!=null)?w.showTitle:(!w.legend&&!!w.label);return !!(t&&(w.label||'')!=='');}
   function _titleOpt(w){
     if(!_titleOn(w))return {show:false};
-    var o={text:w.label||'',top:2,textStyle:{color:cssv('--muted'),fontSize:_ecFS(w,11),fontWeight:'normal'}};
+    var o={text:w.label||'',top:2,textStyle:{color:cssv('--muted'),fontSize:_ecF(w,'title',11),fontWeight:'normal'}};
     var p=w.titlePos||'left';
     if(p==='center')o.left='center';else if(p==='right')o.right=6;else o.left=4;
     return o;}
@@ -360,7 +391,7 @@
   function setLine(w){
     var ec=_ec[w.id];if(!ec)return;var ct=w.ctype||'area',hs=chartSeries(w),defs=_chSeries(w);
     var forceStack=(ct==='barstack'),stacked=(w.stack||forceStack),anyBar=false,yaxes=_chYAxes(w);
-    var lbl=w.labels?{show:true,fontSize:_ecFS(w,9),color:cssv('--muted'),position:'top'}:{show:false};
+    var lbl=w.labels?{show:true,fontSize:_ecF(w,'label',9),color:cssv('--muted'),position:'top'}:{show:false};
     function _rt(d){return (d&&d.type)?d.type:ct;} // effektiver Typ: Serie-Override oder Chart-Default (Mixed-Chart)
     var series=hs.map(function(s,i){
       var d=defs[i]||{},col=_chColor(d.color,i),nm=d.name||s.name||(i===0?(w.label||'Serie 1'):'Serie '+(i+1)),ax=Math.min(Math.max(parseInt(d.axis)||0,0),yaxes.length-1);
@@ -378,17 +409,17 @@
     var ax0=_axShow(w);
     var nL=0,nR=0;yaxes.forEach(function(a){if(a.side==='R')nR++;else nL++;});var iL=0,iR=0;
     var yA=yaxes.map(function(a,ix){var right=(a.side==='R'),off=right?(iR++*48):(iL++*48);
-      return {type:'value',position:(right?'right':'left'),offset:off,name:(a.name||''),nameTextStyle:{color:cssv('--muted'),fontSize:_ecFS(w,9)},nameGap:7,
+      return {type:'value',position:(right?'right':'left'),offset:off,name:(a.name||''),nameTextStyle:{color:cssv('--muted'),fontSize:_ecF(w,'axname',9)},nameGap:7,
         scale:(a.min==null||a.min===''),min:(a.min!=null&&a.min!==''?parseFloat(a.min):null),max:(a.max!=null&&a.max!==''?parseFloat(a.max):null),
-        axisLine:{show:ax0.line,lineStyle:{color:cssv('--line')}},axisTick:{show:ax0.ticks,lineStyle:{color:cssv('--line')}},axisLabel:{show:ax0.yLab,color:cssv('--faint'),fontSize:_ecFS(w,9)},splitLine:{show:(ax0.yGrid&&ix===0),lineStyle:{color:cssv('--line-soft')}},splitNumber:(w.gridDivs>0?parseInt(w.gridDivs):null)};});
+        axisLine:{show:ax0.line,lineStyle:{color:cssv('--line')}},axisTick:{show:ax0.ticks,lineStyle:{color:cssv('--line')}},axisLabel:{show:ax0.yLab,color:cssv('--faint'),fontSize:_axFs(w)},splitLine:{show:(ax0.yGrid&&ix===0),lineStyle:{color:cssv('--line-soft')}},splitNumber:(w.gridDivs>0?parseInt(w.gridDivs):null)};});
     var lp=w.legend?(w.legPos||'top'):''; // Legende reserviert Platz am jeweiligen Rand (sonst Ueberlappung)
     var opt={backgroundColor:'transparent',animation:!!bcfg().chartAnim,grid:{left:6+Math.max(0,nL-1)*48+(lp==='left'?60:0),right:8+Math.max(0,nR-1)*48+(lp==='right'?60:0),top:6+_titleSpace(w)+(lp==='top'?20:0),bottom:(w.zoom?34:14)+(lp==='bottom'?18:0),containLabel:true},tooltip:{trigger:'axis'},
       legend:_legendOpt(w,w.legend),
       title:_titleOpt(w),
-      xAxis:{type:'time',boundaryGap:anyBar,axisLine:{show:ax0.line,lineStyle:{color:cssv('--line')}},axisTick:{show:ax0.ticks},axisLabel:{show:ax0.xLab,color:cssv('--faint'),fontSize:_ecFS(w,9)},splitLine:{show:ax0.xGrid,lineStyle:{color:cssv('--line-soft')}}},
+      xAxis:{type:'time',boundaryGap:anyBar,axisLine:{show:ax0.line,lineStyle:{color:cssv('--line')}},axisTick:{show:ax0.ticks},axisLabel:{show:ax0.xLab,color:cssv('--faint'),fontSize:_axFs(w)},splitLine:{show:ax0.xGrid,lineStyle:{color:cssv('--line-soft')}}},
       yAxis:yA,series:series};
-    if(w.zoom)opt.dataZoom=[{type:'inside'},{type:'slider',height:13,bottom:4,borderColor:'transparent',backgroundColor:accA(.06),fillerColor:accA(.18),handleStyle:{color:cssv('--accent')},dataBackground:{lineStyle:{color:cssv('--line')},areaStyle:{color:accA(.08)}},textStyle:{color:cssv('--faint'),fontSize:_ecFS(w,8)}}];
-    if(w.extrema&&series[0]&&(ct==='line'||ct==='area'||ct==='bar'||ct==='step')){series[0].markPoint={symbol:'pin',symbolSize:32,data:[{type:'max',name:'Max'},{type:'min',name:'Min'}],label:{fontSize:_ecFS(w,8),color:cssv('--text')},itemStyle:{color:accA(.55)}};}
+    if(w.zoom)opt.dataZoom=[{type:'inside'},{type:'slider',height:13,bottom:4,borderColor:'transparent',backgroundColor:accA(.06),fillerColor:accA(.18),handleStyle:{color:cssv('--accent')},dataBackground:{lineStyle:{color:cssv('--line')},areaStyle:{color:accA(.08)}},textStyle:{color:cssv('--faint'),fontSize:_ecF(w,'axis',8)}}];
+    if(w.extrema&&series[0]&&(ct==='line'||ct==='area'||ct==='bar'||ct==='step')){series[0].markPoint={symbol:'pin',symbolSize:32,data:[{type:'max',name:'Max'},{type:'min',name:'Min'}],label:{fontSize:_ecF(w,'label',8),color:cssv('--text')},itemStyle:{color:accA(.55)}};}
     ec.setOption(opt,true);
   }
   // Kalenderjahr-Modus (Balken, Monatlich): x = Jän–Dez, exaktes Jahr (+ Vorjahr bei Vergleich), via generische ?api=aggregated
@@ -398,19 +429,19 @@
     var ML=['Jän','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'];
     var acc=cssv('--accent'),prevCol=darken(acc,(w.cmpShade!=null?w.cmpShade:55)/100);
     var unit=(w.yunit||''),br=parseFloat(w.barRadius!=null?w.barRadius:3);
-    var lbl=w.labels?{show:true,fontSize:_ecFS(w,8),color:cssv('--muted'),position:'top',formatter:function(p){return (p.value==null)?'':Math.round(p.value);}}:{show:false};
+    var lbl=w.labels?{show:true,fontSize:_ecF(w,'label',8),color:cssv('--muted'),position:'top',formatter:function(p){return (p.value==null)?'':_chNum(w,p.value,false);}}:{show:false};
     var showLeg=(w.legend!==false),series=[];
     if(w.cmpOn)series.push({type:'bar',name:String(m.prevY||'Vorjahr'),itemStyle:{color:prevCol,borderRadius:br},data:m.prev,label:lbl});
     series.push({type:'bar',name:String(m.curY||'Jahr'),itemStyle:{color:acc,borderRadius:br},data:m.cur,label:lbl});
     var lp=showLeg?(w.legPos||'top'):'',axc=_axShow(w);
     ec.setOption({backgroundColor:'transparent',animation:!!bcfg().chartAnim,grid:{left:8+(lp==='left'?60:0),right:10+(lp==='right'?60:0),top:6+_titleSpace(w)+(lp==='top'?20:0),bottom:4+(lp==='bottom'?18:0),containLabel:true},
-      tooltip:{trigger:'axis',valueFormatter:function(v){return (v==null)?'–':((Math.round(v*10)/10)+(unit?(' '+unit):''));}},
+      tooltip:{trigger:'axis',valueFormatter:function(v){return _chNum(w,v);}},
       legend:_legendOpt(w,showLeg),
       title:_titleOpt(w),
-      xAxis:{type:'category',data:ML,axisTick:{show:axc.ticks},axisLine:{show:axc.line,lineStyle:{color:cssv('--line')}},axisLabel:{show:axc.xLab,color:cssv('--faint'),fontSize:_ecFS(w,9)},splitLine:{show:axc.xGrid,lineStyle:{color:cssv('--line-soft')}}},
-      yAxis:{type:'value',name:unit,nameTextStyle:{color:cssv('--muted'),fontSize:_ecFS(w,9)},nameGap:7,
+      xAxis:{type:'category',data:ML,axisTick:{show:axc.ticks},axisLine:{show:axc.line,lineStyle:{color:cssv('--line')}},axisLabel:{show:axc.xLab,color:cssv('--faint'),fontSize:_axFs(w)},splitLine:{show:axc.xGrid,lineStyle:{color:cssv('--line-soft')}}},
+      yAxis:{type:'value',name:unit,nameTextStyle:{color:cssv('--muted'),fontSize:_ecF(w,'axname',9)},nameGap:7,
         min:(w.ymin!=null&&w.ymin!==''?parseFloat(w.ymin):null),max:(w.ymax!=null&&w.ymax!==''?parseFloat(w.ymax):null),
-        axisLine:{show:axc.line,lineStyle:{color:cssv('--line')}},axisTick:{show:axc.ticks},axisLabel:{show:axc.yLab,color:cssv('--faint'),fontSize:_ecFS(w,9)},
+        axisLine:{show:axc.line,lineStyle:{color:cssv('--line')}},axisTick:{show:axc.ticks},axisLabel:{show:axc.yLab,color:cssv('--faint'),fontSize:_axFs(w)},
         splitLine:{show:axc.yGrid,lineStyle:{color:cssv('--line-soft')}},splitNumber:(w.gridDivs>0?parseInt(w.gridDivs):null)},
       series:series},true);
   }
@@ -519,7 +550,7 @@
   function setDaylight(w){
     var ec=_ec[w.id];if(!ec)return;
     var D=(_hist[w.id]&&_hist[w.id].dl)||null;
-    if(!D){ec.setOption({backgroundColor:'transparent',title:{text:(_hist[w.id]&&_hist[w.id].err)||'Standort fehlt',left:'center',top:'middle',textStyle:{color:cssv('--faint'),fontSize:_ecFS(w,11),fontWeight:'normal'}},xAxis:{show:false},yAxis:{show:false},series:[]},true);return;}
+    if(!D){ec.setOption({backgroundColor:'transparent',title:{text:(_hist[w.id]&&_hist[w.id].err)||'Standort fehlt',left:'center',top:'middle',textStyle:{color:cssv('--faint'),fontSize:_ecF(w,'title',11),fontWeight:'normal'}},xAxis:{show:false},yAxis:{show:false},series:[]},true);return;}
     var ax=_axShow(w);
     var cSet=_skinToCss(w.dlSet)||cssv('--warn'),cRise=_skinToCss(w.dlRise)||cssv('--muted');
     var cFill=_skinToCss(w.dlFill)||cSet;
@@ -542,7 +573,7 @@
           lineStyle:{color:cssv('--text'),width:1.5,type:'solid',opacity:.85},
           label:{show:true,position:'insideEndTop',formatter:('0'+now.getDate()).slice(-2)+'.'+('0'+(now.getMonth()+1)).slice(-2),
                  color:cssv('--text'),backgroundColor:cssv('--surface-2'),borderColor:cssv('--line'),borderWidth:1,
-                 padding:[3,6],borderRadius:4,fontSize:_ecFS(w,10)},
+                 padding:[3,6],borderRadius:4,fontSize:_ecF(w,'label',10)},
           data:[{xAxis:tx}]};
       }
     }
@@ -560,11 +591,11 @@
             +(lenH!=null?('<br>Tageslänge '+_dlFmt(lenH)):'');
         }},
       xAxis:{type:'time',axisLine:{show:ax.line,lineStyle:{color:cssv('--line')}},axisTick:{show:ax.ticks},
-        axisLabel:{show:ax.xLab,color:cssv('--faint'),fontSize:_ecFS(w,9),formatter:'{MMM}'},
+        axisLabel:{show:ax.xLab,color:cssv('--faint'),fontSize:_axFs(w),formatter:'{MMM}'},
         splitLine:{show:ax.xGrid,lineStyle:{color:cssv('--line-soft')}}},
       yAxis:{type:'value',min:(w.dlYMin!=null&&w.dlYMin!==''?parseFloat(w.dlYMin):0),max:(w.dlYMax!=null&&w.dlYMax!==''?parseFloat(w.dlYMax):24),interval:6,
         axisLine:{show:ax.line,lineStyle:{color:cssv('--line')}},axisTick:{show:ax.ticks},
-        axisLabel:{show:ax.yLab,color:cssv('--faint'),fontSize:_ecFS(w,9),formatter:function(v){return ('0'+v).slice(-2)+':00';}},
+        axisLabel:{show:ax.yLab,color:cssv('--faint'),fontSize:_axFs(w),formatter:function(v){return ('0'+v).slice(-2)+':00';}},
         splitLine:{show:ax.yGrid,lineStyle:{color:cssv('--line-soft')}}},
       series:series},true);
   }
@@ -692,12 +723,20 @@
       updateTherm(w);
     });
   }
-  function refreshCam(w){var el=$('.w[data-id="'+w.id+'"] [data-role=cam]',canvas);if(el&&w.mediaId)el.src='?api=media&id='+w.mediaId+'&t='+Date.now();}
+  // Kamerabild aktualisieren. NUR fuer Einzelbilder (Media-Objekt): ein MJPEG-Stream laeuft
+  // dauerhaft in derselben <img>-Verbindung - ein erneutes Setzen von src wuerde ihn abreissen
+  // und neu verbinden lassen (sichtbares Ruckeln, unnoetige Last auf der Kamera).
+  function _camMode(w){return w.camSrc||'media';}
+  function refreshCam(w){
+    if(_camMode(w)!=='media')return;                       // Stream selbst versorgt sich
+    var el=$('.w[data-id="'+w.id+'"] [data-role=cam]',canvas);
+    if(el&&w.mediaId)el.src='?api=media&id='+w.mediaId+'&t='+Date.now();
+  }
   function setSankey(w){
     var ec=_ec[w.id];if(!ec)return;var nodesSet={},links=[];
     (w.links||[]).forEach(function(l){if(!l.from||!l.to)return;nodesSet[l.from]=1;nodesSet[l.to]=1;var v=(_lastVals[l.vid]!=null)?parseFloat(_lastVals[l.vid].v):0;if(isNaN(v))v=0;links.push({source:l.from,target:l.to,value:Math.max(0.001,Math.abs(v))});});
     var nodes=Object.keys(nodesSet).map(function(n){return {name:n};});
-    ec.setOption({backgroundColor:'transparent',animation:!!bcfg().chartAnim,title:_titleOpt(w),series:[{type:'sankey',orient:(w.snOrient==='v'?'vertical':'horizontal'),left:4,right:4,top:8+_titleSpace(w),bottom:8,data:nodes,links:links,nodeGap:10,nodeWidth:12,emphasis:{focus:'adjacency'},label:{show:(w.snLabels!==false),color:cssv('--text'),fontSize:_ecFS(w,10)},edgeLabel:{show:!!w.snVal,color:cssv('--muted'),fontSize:_ecFS(w,9),formatter:function(p){return (Math.round((p.value||0)*10)/10);}},itemStyle:{color:(_skinToCss(w.snNode)||cssv('--accent')),borderColor:'transparent'},lineStyle:{color:'gradient',opacity:(w.snOpacity!=null?w.snOpacity/100:.35),curveness:(w.snCurve!=null?w.snCurve/100:.5)}}]},true);
+    ec.setOption({backgroundColor:'transparent',animation:!!bcfg().chartAnim,title:_titleOpt(w),series:[{type:'sankey',orient:(w.snOrient==='v'?'vertical':'horizontal'),left:4,right:4,top:8+_titleSpace(w),bottom:8,data:nodes,links:links,nodeGap:10,nodeWidth:12,emphasis:{focus:'adjacency'},label:{show:(w.snLabels!==false),color:cssv('--text'),fontSize:_ecF(w,'label',10)},edgeLabel:{show:!!w.snVal,color:cssv('--muted'),fontSize:_ecF(w,'label',9),formatter:function(p){return (Math.round((p.value||0)*10)/10);}},itemStyle:{color:(_skinToCss(w.snNode)||cssv('--accent')),borderColor:'transparent'},lineStyle:{color:'gradient',opacity:(w.snOpacity!=null?w.snOpacity/100:.35),curveness:(w.snCurve!=null?w.snCurve/100:.5)}}]},true);
   }
   function powerflowSVG(w){
     var src=w.src||[],snk=w.snk||[],W=400,rows=Math.max(src.length,snk.length,1),H=Math.max(150,rows*56+16),cy=H/2;
@@ -719,8 +758,8 @@
     ec.setOption({animation:!!bcfg().chartAnim,series:[{type:'gauge',min:mn,max:mx,radius:'92%',
       axisLine:{lineStyle:{width:9,color:[[f1,cssv('--ok')],[f2,cssv('--warm')],[1,cssv('--crit')]]}},
       pointer:{width:4,length:'60%',itemStyle:{color:cssv('--text')}},progress:{show:false},axisTick:{show:false},
-      splitLine:{length:9,lineStyle:{color:cssv('--faint'),width:1}},axisLabel:{color:cssv('--faint'),fontSize:_ecFS(w,9),distance:12},anchor:{show:false},
-      title:{show:true,offsetCenter:[0,'72%'],color:cssv('--muted'),fontSize:_ecFS(w,10)},
+      splitLine:{length:9,lineStyle:{color:cssv('--faint'),width:1}},axisLabel:{color:cssv('--faint'),fontSize:_ecF(w,'axis',9),distance:12},anchor:{show:false},
+      title:{show:true,offsetCenter:[0,'72%'],color:cssv('--muted'),fontSize:_ecF(w,'label',10)},
       detail:{valueAnimation:true,fontSize:19,offsetCenter:[0,'38%'],color:cssv('--text'),fontFamily:'ui-monospace,monospace',formatter:(d&&d.f)?String(d.f):'{value}'},
       data:[{value:val,name:w.label||''}]}]},true);
   }
@@ -766,7 +805,7 @@
       if(w.type==='clock'){var t=$('[data-role=time]',el);if(t)t.textContent=p(now.getHours())+':'+p(now.getMinutes());var dt=$('[data-role=date]',el);if(dt)dt.textContent=['So','Mo','Di','Mi','Do','Fr','Sa'][now.getDay()]+', '+now.getDate()+'.'+(now.getMonth()+1)+'.';}
       else{var d=_lastVals[w.varId];if(!d)return;var v=parseFloat(d.v);if(isNaN(v))return;var rem=v>1e9?Math.max(0,v-Math.floor(now.getTime()/1000)):Math.max(0,v);var mm=Math.floor(rem/60),ss=Math.floor(rem%60),tt=$('[data-role=time]',el);if(tt)tt.textContent=(mm>=60?Math.floor(mm/60)+':'+p(mm%60):p(mm))+':'+p(ss);var tot=w.max||3600,bar=$('[data-role=bar]',el);if(bar)bar.style.width=Math.max(0,Math.min(100,rem/tot*100))+'%';}
     }
-    state.widgets.forEach(_one);
+    allWidgets().forEach(_one);   // Seiteninhalt UND Leisten (Uhr/Timer/Sonne)
     if(_compKids&&_compKids.length)_compKids.forEach(_one); // Uhr/Timer/Sonne in Komponenten
     if(_tickKids&&_tickKids.length)_tickKids.forEach(_one); // ... und in der Laufzeile
   }
@@ -837,8 +876,8 @@
       var z=(w.htmlZoom||100)/100;if(z!==1)wrap.style.transform='scale('+z+')';
     }
   }
-  setInterval(function(){state.widgets.forEach(function(w){if((w.type==='chart'||w.type==='spark')&&w.ctype!=='waterfall'&&!(_wsOK&&bcfg().noSafetyPoll))fetchHist(w);if(w.type==='html'&&w.htmlSrc!=='custom')fetchHtml(w);if(w.type==='weekplan')fetchWeekplan(w);if(w.type==='calendar')fetchCalEvents(w);if(w.type==='eventctl')fetchEvent(w);if(w.type==='objinfo')fetchObjInfo(w);if(w.type==='statetl')_stlFetch(w);if(w.type==='statelog')_slogFetch(w);if(w.type==='table')_tblLoad(w);});},60000);
-  setInterval(function(){var now=Date.now();state.widgets.forEach(function(w){if(w.type==='camera'||w.type==='campro'){var iv=((w.refresh>0)?w.refresh:15)*1000;if(!w._lastCam||now-w._lastCam>=iv){w._lastCam=now;refreshCam(w);}}});},1000);
+  setInterval(function(){allWidgets().forEach(function(w){if((w.type==='chart'||w.type==='spark')&&w.ctype!=='waterfall'&&!(_wsOK&&bcfg().noSafetyPoll))fetchHist(w);if(w.type==='html'&&w.htmlSrc!=='custom')fetchHtml(w);if(w.type==='weekplan')fetchWeekplan(w);if(w.type==='calendar')fetchCalEvents(w);if(w.type==='eventctl')fetchEvent(w);if(w.type==='objinfo')fetchObjInfo(w);if(w.type==='statetl')_stlFetch(w);if(w.type==='statelog')_slogFetch(w);if(w.type==='table')_tblLoad(w);});},60000);
+  setInterval(function(){var now=Date.now();allWidgets().forEach(function(w){if(w.type==='camera'||w.type==='campro'){var iv=((w.refresh>0)?w.refresh:15)*1000;if(!w._lastCam||now-w._lastCam>=iv){w._lastCam=now;refreshCam(w);}}});},1000);
 
   // ---------- Auswahl & Eigenschaften ----------
   var sel={},clip=[];
@@ -875,8 +914,14 @@
     else{sel={};var _sw=widget(id);if(_sw&&_sw.group){state.widgets.forEach(function(x){if(x.group===_sw.group)sel[x.id]=true;});}else sel[id]=true;selId=id;} // Gruppe: ganze Gruppe wählen
     markSel();try{renderProps();}catch(_e){console.error('renderProps',_e);}if(id!=null&&!additive)showTab('props'); // renderProps darf Auswahl/Drag nie blockieren
   }
-  function namedWidgets(excludeId){var out=[];for(var vn in store.views){(store.views[vn].widgets||[]).forEach(function(x){if(x.name&&x.id!==excludeId)out.push({name:x.name,type:x.type,view:vn,id:x.id});});}return out;} // alle benannten Widgets (alle Ansichten)
-  function widgetByName(name){if(!name)return null;for(var vn in store.views){var f=(store.views[vn].widgets||[]).filter(function(x){return x.name===name;})[0];if(f)return f;}return null;}
+  function namedWidgets(excludeId){var out=[];for(var vn in store.views){(store.views[vn].widgets||[]).forEach(function(x){if(x.name&&x.id!==excludeId)out.push({name:x.name,type:x.type,view:vn,id:x.id});});}
+    // Leisten-Kinder gehoeren zu keiner Ansicht - ohne sie liessen sich Widgets aus Bar/Sidebar
+    // nicht in einer Laufzeile referenzieren.
+    try{chromeList().forEach(function(b){(b.widgets||[]).forEach(function(x){if(x.name&&x.id!==excludeId)out.push({name:x.name,type:x.type,view:(b.name||'Leiste'),id:x.id});});});}catch(e){}
+    return out;} // alle benannten Widgets (alle Ansichten)
+  function widgetByName(name){if(!name)return null;for(var vn in store.views){var f=(store.views[vn].widgets||[]).filter(function(x){return x.name===name;})[0];if(f)return f;}
+    try{var k=chromeAllKids().filter(function(x){return x.name===name;})[0];if(k)return k;}catch(e){}
+    return null;}
   function widget(id){var w=state.widgets.filter(function(x){return x.id===id;})[0];if(w)return w;
     var ck0=chromeAllKids().filter(function(x){return x.id===id;})[0];if(ck0)return ck0; /* Widget in einer Leiste */
     var cd0=chromeDef(id);if(cd0)return cd0; /* die Leiste selbst (fuer Auswahl + Eigenschaften) */
