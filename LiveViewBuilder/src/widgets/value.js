@@ -17,10 +17,11 @@
       +(w.icon?row('Icon-X ab links (px)','<input id="pIcx" type="number" value="'+(w.icx!=null?w.icx:'')+'" placeholder="Standard">'):'')
       +'<div class="pgh">Farbe nach Schwelle</div>'
       +row('Aktiv','<input type="checkbox" id="pColThr"'+(w.colThr?' checked':'')+'>')
+      +((!w.colThr&&(w.t1!=null||w.t2!=null))?'<div style="font-size:11px;color:var(--warn);margin:-2px 2px 4px">Schwellenwerte sind gesetzt ('+(w.t1!=null?w.t1:'-')+' / '+(w.t2!=null?w.t2:'-')+'), wirken aber nicht: \u201eAktiv\u201c ist aus.</div>':'')
       +(w.colThr?(row('Grün bis','<input id="pVT1" type="number" value="'+(w.t1!=null?w.t1:'')+'" placeholder="Schwelle">')+row('Gelb bis','<input id="pVT2" type="number" value="'+(w.t2!=null?w.t2:'')+'" placeholder="Schwelle">')+row('Invertieren','<input type="checkbox" id="pThrInv"'+(w.thrInvert?' checked':'')+'>')):'')
       +'<div class="pgh">Farbe nach Zustand</div>'
-      +'<div style="font-size:11px;color:var(--muted);margin:-2px 2px 4px">Je Zustand eine Farbe (überschreibt die Schwellenfarbe). Farbe: #hex oder Skin-Stichwort accent/ok/warn/crit/info. Bool: 1/0 bzw. true/false.</div>'
-      +listEditor(w,'vassoc','Zustand · Text · Farbe',[{k:'v',ph:'Wert (z. B. 1)'},{k:'text',ph:'Text (optional)'},{k:'color',ph:'#hex / accent'}])
+      +'<div style="font-size:11px;color:var(--muted);margin:-2px 2px 4px">Je Zustand eine Farbe (überschreibt die Schwellenfarbe). Der Wert muss EXAKT übereinstimmen — für Messwerte wie Prozent stattdessen „Farbe nach Schwelle\u201c benutzen. Bool: 1/0 bzw. true/false.</div>'
+      +listEditor(w,'vassoc','Zustand · Text · Farbe',[{k:'v',ph:'Wert (z. B. 1)'},{k:'text',ph:'Text (optional)'},{k:'color',type:'skin'}])
       +row('Ganze Kachel einfärben','<input type="checkbox" id="pVaFill"'+(w.vaFill?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">statt nur des Werts</span>');},
     wire:function(w){
       function relive(){if(w.varId&&_lastVals[w.varId])applyVal(w.varId,_lastVals[w.varId]);}
