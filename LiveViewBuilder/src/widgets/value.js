@@ -20,7 +20,7 @@
       +((!w.colThr&&(w.t1!=null||w.t2!=null))?'<div style="font-size:11px;color:var(--warn);margin:-2px 2px 4px">Schwellenwerte sind gesetzt ('+(w.t1!=null?w.t1:'-')+' / '+(w.t2!=null?w.t2:'-')+'), wirken aber nicht: \u201eAktiv\u201c ist aus.</div>':'')
       +(w.colThr?(row('Grün bis','<input id="pVT1" type="number" value="'+(w.t1!=null?w.t1:'')+'" placeholder="Schwelle">')+row('Gelb bis','<input id="pVT2" type="number" value="'+(w.t2!=null?w.t2:'')+'" placeholder="Schwelle">')+row('Invertieren','<input type="checkbox" id="pThrInv"'+(w.thrInvert?' checked':'')+'>')):'')
       +'<div class="pgh">Farbe nach Zustand</div>'
-      +'<div style="font-size:11px;color:var(--muted);margin:-2px 2px 4px">Je Zustand eine Farbe (überschreibt die Schwellenfarbe). Der Wert muss EXAKT übereinstimmen — für Messwerte wie Prozent stattdessen „Farbe nach Schwelle\u201c benutzen. Bool: 1/0 bzw. true/false.</div>'
+      +'<div style="font-size:11px;color:var(--muted);margin:-2px 2px 4px">Je Zustand eine Farbe (überschreibt die Schwellenfarbe). Erlaubt: exakte Werte, Operatoren (&gt;0, &lt;=25, !=3), Bereiche (0..25) und * für „alles andere“. Bool: 1/0 bzw. true/false.</div>'
       +listEditor(w,'vassoc','Zustand · Text · Farbe',[{k:'v',ph:'Wert (z. B. 1)'},{k:'text',ph:'Text (optional)'},{k:'color',type:'skin'}])
       +row('Ganze Kachel einfärben','<input type="checkbox" id="pVaFill"'+(w.vaFill?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">statt nur des Werts</span>');},
     wire:function(w){
@@ -47,7 +47,7 @@
           if(w.thrInvert)c=(n<=t1?'--crit':(n<=t2?'--warm':'--ok'));
           _col=cssv(c);}}
       var _match=null;
-      if(w.vassoc&&w.vassoc.length){_match=w.vassoc.filter(function(a){return String(a.v)===String(d.v);})[0];
+      if(w.vassoc&&w.vassoc.length){_match=stateHit(w.vassoc,d.v);
         if(_match){if(_match.text!=null&&_match.text!=='')v.textContent=(w.pre||'')+_match.text+(w.suf||'');
           if(_match.color)_col=_skinColor(_match.color)||_match.color;}}   // Zustand schlaegt Schwelle
       if(w.vaFill&&_col){ // ganze Kachel toenen - jetzt auch mit Schwellenfarbe

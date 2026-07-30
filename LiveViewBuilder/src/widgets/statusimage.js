@@ -1,15 +1,11 @@
   // ===== Widget: Status-Bild (statusimage) — Media je Zustand; "off" = Farbbild in Graustufe (spart ein zweites Media) =====
-  function _siMatch(sv,dv){ // boolean-tolerant: "1"/1/true bzw. "0"/0/false gelten als gleich
-    if(String(sv)===String(dv))return true;
-    var t=function(x){return x===true||x===1||x==='1'||x==='true';};
-    var f=function(x){return x===false||x===0||x==='0'||x==='false';};
-    return (t(sv)&&t(dv))||(f(sv)&&f(dv));
-  }
+  // Vergleich zentral: Operatoren, Bereiche, Platzhalter (siehe _assocMatch/stateHit)
+  function _siMatch(sv,dv){return _assocMatch(sv,dv);}
   function _siSrc(mid){return mid?('?api=media&id='+mid):'';}
   function _siColorMid(w){var m=parseInt(w.mediaId)||0;if(m)return m;var r=0;(w.states||[]).forEach(function(s){var x=parseInt(s.mediaId)||0;if(x&&!r)r=x;});return r;} // Farb-/„Ein"-Bild
   function _siState(w,v){ // -> {src, gray}
     var color=_siColorMid(w),match=null;
-    (w.states||[]).forEach(function(s){if(_siMatch(s.value,v))match=s;});
+    match=stateHit(w.states,v,'value');   // exakt zuerst, dann Muster (vorher gewann der LETZTE Treffer)
     if(match){var raw=(''+(match.mediaId==null?'':match.mediaId)).trim().toLowerCase();
       if(/^(off|grau|gray|grey|bw|sw|s\/w)$/.test(raw))return {src:_siSrc(color),gray:true}; // Graustufe des Farbbilds
       var m=parseInt(match.mediaId)||0;return {src:_siSrc(m||color),gray:false};
