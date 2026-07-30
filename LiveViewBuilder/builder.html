@@ -3537,6 +3537,22 @@
     if(rg){if(isNaN(n))return false;var a=num(rg[1]),b=num(rg[2]);return n>=Math.min(a,b)&&n<=Math.max(a,b);}
     return _assocEq(pat,v);
   }
+  /**
+   * EINE Rezeptur fuer das Toenen einer Kachel in der Zustandsfarbe. Zustands- und
+   * Wert-Widget hatten getrennte Zahlen (13 gegen 16 Prozent Hintergrund, Wert einmal
+   * in voller Farbe, einmal zu 85 Prozent gemischt) - nebeneinander sah das nach zwei
+   * Gestaltungen aus. Wer die Zahlen aendert, aendert sie ab jetzt fuer alle.
+   */
+  function stateTint(col){
+    return {
+      bg:   'color-mix(in oklab,' + col + ' 13%,var(--surface))',
+      bd:   'color-mix(in oklab,' + col + ' 45%,var(--line))',
+      chip: 'color-mix(in oklab,' + col + ' 22%,transparent)',
+      val:  col,
+      lab:  'color-mix(in oklab,' + col + ' 60%,var(--muted))'
+    };
+  }
+
   /** Ersten passenden Eintrag einer Zustandsliste finden: exakt zuerst, dann Muster. */
   function stateHit(list,v,key){
     if(!list||!list.length)return null;
@@ -4438,8 +4454,8 @@
       S('--asc-barw','clamp(4px,4cqmin,6px)');S('--asc-bar','rgba(255,255,255,.9)');
       if(pill){if(pillTxt){pill.className='hassoc-pill';pill.textContent=pillTxt;S('--asc-pill','rgba(255,255,255,.22)');S('--asc-pilltx','#fff');}else if(nav){pill.className='hassoc-pill chev';pill.innerHTML=_chevSVG('#fff');}else{pill.className='hassoc-pill';pill.textContent='';}}
     }else if(soft){                                           // aktiv: getönter Hintergrund + kräftige farbige linke Kante + Pille
-      el.style.background='color-mix(in oklab,'+sc+' 13%,var(--surface))';el.style.borderColor='color-mix(in oklab,'+sc+' 45%,var(--line))';el.classList.add('assoc-col');
-      S('--asc-chip','color-mix(in oklab,'+sc+' 22%,transparent)');S('--asc-ic',sc);S('--asc-val',sc);S('--asc-lab','color-mix(in oklab,'+sc+' 60%,var(--muted))');
+      var _t=stateTint(sc);el.style.background=_t.bg;el.style.borderColor=_t.bd;el.classList.add('assoc-col');   // Rezeptur zentral
+      S('--asc-chip',_t.chip);S('--asc-ic',sc);S('--asc-val',sc);S('--asc-lab',_t.lab);
       S('--asc-barw','clamp(4px,4cqmin,6px)');S('--asc-bar',sc);
       if(pill){if(pillTxt){pill.className='hassoc-pill';pill.textContent=pillTxt;S('--asc-pill',sc);S('--asc-pilltx',_contrastText(sc));}else if(nav){pill.className='hassoc-pill chev';pill.innerHTML=_chevSVG(sc);}else{pill.className='hassoc-pill';pill.textContent='';}}
     }else{                                                    // normal / standard: neutrale Kachel (keine Kante)
@@ -6660,13 +6676,14 @@ defWidget('statuslist',{
       if(w.vassoc&&w.vassoc.length){_match=stateHit(w.vassoc,d.v);
         if(_match){if(_match.text!=null&&_match.text!=='')v.textContent=(w.pre||'')+_match.text+(w.suf||'');
           if(_match.color)_col=_skinColor(_match.color)||_match.color;}}   // Zustand schlaegt Schwelle
-      if(w.vaFill&&_col){ // ganze Kachel toenen - jetzt auch mit Schwellenfarbe
-        el.style.background='color-mix(in oklab,'+_col+' 16%,var(--surface))';
-        el.style.borderColor='color-mix(in oklab,'+_col+' 45%,var(--line))';
-        v.style.color='color-mix(in oklab,'+_col+' 85%,var(--text))';
+      var _lab=$('.l',el)||$('.wv1l',el);
+      if(w.vaFill&&_col){ // ganze Kachel toenen - dieselbe Rezeptur wie das Zustands-Widget
+        var _t=stateTint(_col);
+        el.style.background=_t.bg;el.style.borderColor=_t.bd;
+        v.style.color=_t.val;if(_lab)_lab.style.color=_t.lab;
       }else{
         if(w.vaFill){el.style.background=w.bg||'';el.style.borderColor='';}
-        v.style.color=_col||'';
+        v.style.color=_col||'';if(_lab)_lab.style.color='';
       }
       // Icon folgt der Wertfarbe. Eine ausdruecklich gesetzte Icon-Farbe hat Vorrang, sonst
       // waere die bewusste Wahl im Editor wirkungslos.
@@ -6686,7 +6703,7 @@ defWidget('statuslist',{
     for(i=0;i<srcs.length&&!m;i++){if(!srcs[i]||!_lastVals[srcs[i]])continue;m=stateHit(w.vassoc,_lastVals[srcs[i]].v);}   // zentraler Vergleicher statt nur Gleichheit
     var v=$('[data-role=val]',el),c=(m&&m.color)?(_skinColor(m.color)||m.color):'';
     if(w.vaFill){el.classList.remove('vc-acc'); // übernimmt die Kachelfarbe (statt v2acc)
-      if(c){el.style.background='color-mix(in oklab,'+c+' 16%,var(--surface))';el.style.borderColor='color-mix(in oklab,'+c+' 45%,var(--line))';if(v)v.style.color='color-mix(in oklab,'+c+' 85%,var(--text))';}
+      if(c){var _t=stateTint(c);el.style.background=_t.bg;el.style.borderColor=_t.bd;if(v)v.style.color=_t.val;}   // Rezeptur zentral (stateTint)
       else{el.style.background=w.bg||'';el.style.borderColor='';if(v)v.style.color='';}
     }else if(v)v.style.color=c;
   }

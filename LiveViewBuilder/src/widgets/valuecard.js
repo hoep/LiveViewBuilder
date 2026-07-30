@@ -11,7 +11,7 @@
     for(i=0;i<srcs.length&&!m;i++){if(!srcs[i]||!_lastVals[srcs[i]])continue;m=stateHit(w.vassoc,_lastVals[srcs[i]].v);}   // zentraler Vergleicher statt nur Gleichheit
     var v=$('[data-role=val]',el),c=(m&&m.color)?(_skinColor(m.color)||m.color):'';
     if(w.vaFill){el.classList.remove('vc-acc'); // übernimmt die Kachelfarbe (statt v2acc)
-      if(c){el.style.background='color-mix(in oklab,'+c+' 16%,var(--surface))';el.style.borderColor='color-mix(in oklab,'+c+' 45%,var(--line))';if(v)v.style.color='color-mix(in oklab,'+c+' 85%,var(--text))';}
+      if(c){var _t=stateTint(c);el.style.background=_t.bg;el.style.borderColor=_t.bd;if(v)v.style.color=_t.val;}   // Rezeptur zentral (stateTint)
       else{el.style.background=w.bg||'';el.style.borderColor='';if(v)v.style.color='';}
     }else if(v)v.style.color=c;
   }

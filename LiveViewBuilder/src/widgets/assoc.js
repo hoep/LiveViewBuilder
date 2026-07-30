@@ -32,8 +32,8 @@
       S('--asc-barw','clamp(4px,4cqmin,6px)');S('--asc-bar','rgba(255,255,255,.9)');
       if(pill){if(pillTxt){pill.className='hassoc-pill';pill.textContent=pillTxt;S('--asc-pill','rgba(255,255,255,.22)');S('--asc-pilltx','#fff');}else if(nav){pill.className='hassoc-pill chev';pill.innerHTML=_chevSVG('#fff');}else{pill.className='hassoc-pill';pill.textContent='';}}
     }else if(soft){                                           // aktiv: getönter Hintergrund + kräftige farbige linke Kante + Pille
-      el.style.background='color-mix(in oklab,'+sc+' 13%,var(--surface))';el.style.borderColor='color-mix(in oklab,'+sc+' 45%,var(--line))';el.classList.add('assoc-col');
-      S('--asc-chip','color-mix(in oklab,'+sc+' 22%,transparent)');S('--asc-ic',sc);S('--asc-val',sc);S('--asc-lab','color-mix(in oklab,'+sc+' 60%,var(--muted))');
+      var _t=stateTint(sc);el.style.background=_t.bg;el.style.borderColor=_t.bd;el.classList.add('assoc-col');   // Rezeptur zentral
+      S('--asc-chip',_t.chip);S('--asc-ic',sc);S('--asc-val',sc);S('--asc-lab',_t.lab);
       S('--asc-barw','clamp(4px,4cqmin,6px)');S('--asc-bar',sc);
       if(pill){if(pillTxt){pill.className='hassoc-pill';pill.textContent=pillTxt;S('--asc-pill',sc);S('--asc-pilltx',_contrastText(sc));}else if(nav){pill.className='hassoc-pill chev';pill.innerHTML=_chevSVG(sc);}else{pill.className='hassoc-pill';pill.textContent='';}}
     }else{                                                    // normal / standard: neutrale Kachel (keine Kante)
