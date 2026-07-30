@@ -22,7 +22,8 @@
       +'<div class="pgh">Farbe nach Zustand</div>'
       +'<div style="font-size:11px;color:var(--muted);margin:-2px 2px 4px">Je Zustand eine Farbe (überschreibt die Schwellenfarbe). Erlaubt: exakte Werte, Operatoren (&gt;0, &lt;=25, !=3), Bereiche (0..25) und * für „alles andere“. Bool: 1/0 bzw. true/false.</div>'
       +listEditor(w,'vassoc','Zustand · Text · Farbe',[{k:'v',ph:'Wert (z. B. 1)'},{k:'text',ph:'Text (optional)'},{k:'color',type:'skin'}])
-      +row('Ganze Kachel einfärben','<input type="checkbox" id="pVaFill"'+(w.vaFill?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">statt nur des Werts</span>');},
+      +row('Ganze Kachel einfärben','<input type="checkbox" id="pVaFill"'+(w.vaFill?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">statt nur des Werts</span>')
+      +(w.vaFill?row('Darstellung','<select id="pFillMode">'+[['','Automatisch (crit füllt)'],['soft','Getönt'],['fill','Vollfläche']].map(function(o){return '<option value="'+o[0]+'"'+((w.fillMode||'')===o[0]?' selected':'')+'>'+o[1]+'</option>';}).join('')+'</select>'):'');},
     wire:function(w){
       function relive(){if(w.varId&&_lastVals[w.varId])applyVal(w.varId,_lastVals[w.varId]);}
       if($('#pFs'))$('#pFs').oninput=function(){w.valfs=parseInt(this.value)||24;render();};
@@ -36,31 +37,32 @@
       if($('#pVT2'))$('#pVT2').oninput=function(){w.t2=this.value===''?undefined:parseFloat(this.value);relive();};
       if($('#pThrInv'))$('#pThrInv').onchange=function(){w.thrInvert=this.checked||undefined;relive();};
       if($('#pVaFill'))$('#pVaFill').onchange=function(){w.vaFill=this.checked||undefined;relive();};
+      if($('#pFillMode'))$('#pFillMode').onchange=function(){w.fillMode=this.value||undefined;render();commit();};
     },
     live:function(w,el,id,d,base,txt,on){var v=$('[data-role=val]',el);if(!v)return;v.textContent=txt;
-      // EINE wirksame Farbe bestimmen, dann ueberall gleich anwenden. Vorher wurde die
-      // Schwellenfarbe nur auf den Zahlenwert gesetzt, waehrend das Toenen der Kachel allein
-      // an der Zustandsliste hing - mit Schwellen und ohne Zustandstreffer tat es gar nichts.
-      var _col='';
+      // Mit dem FARBWORT arbeiten, nicht mit der aufgeloesten Farbe: erst daraus kann
+      // stateLook() die Darstellung ableiten (crit fuellt, sonst toenen) - dieselbe Regel
+      // wie im Zustands-Widget, je Widget ueber "Darstellung" uebersteuerbar.
+      var _key='';
       if(w.colThr){var n=parseFloat(String(d.v).replace(',','.'));
-        if(!isNaN(n)){var t1=(w.t1!=null?w.t1:0),t2=(w.t2!=null?w.t2:0),c=n<=t1?'--ok':(n<=t2?'--warm':'--crit');
-          if(w.thrInvert)c=(n<=t1?'--crit':(n<=t2?'--warm':'--ok'));
-          _col=cssv(c);}}
+        if(!isNaN(n)){var t1=(w.t1!=null?w.t1:0),t2=(w.t2!=null?w.t2:0),c=n<=t1?'ok':(n<=t2?'warm':'crit');
+          if(w.thrInvert)c=(n<=t1?'crit':(n<=t2?'warm':'ok'));
+          _key=c;}}
       var _match=null;
       if(w.vassoc&&w.vassoc.length){_match=stateHit(w.vassoc,d.v);
         if(_match){if(_match.text!=null&&_match.text!=='')v.textContent=(w.pre||'')+_match.text+(w.suf||'');
-          if(_match.color)_col=_skinColor(_match.color)||_match.color;}}   // Zustand schlaegt Schwelle
+          if(_match.color)_key=_match.color;}}   // Zustand schlaegt Schwelle
+      var _L=_key?stateLook(_key,w.fillMode):null;
       var _lab=$('.l',el)||$('.wv1l',el);
-      if(w.vaFill&&_col){ // ganze Kachel toenen - dieselbe Rezeptur wie das Zustands-Widget
-        var _t=stateTint(_col);
-        el.style.background=_t.bg;el.style.borderColor=_t.bd;
-        v.style.color=_t.val;if(_lab)_lab.style.color=_t.lab;
+      if(w.vaFill&&_L&&_L.mode!=='plain'){       // ganze Kachel: gefuellt oder getoent
+        el.style.background=_L.bg;el.style.borderColor=_L.bd;
+        v.style.color=_L.val;if(_lab)_lab.style.color=_L.lab;
+        if(!w.iconColor)el.style.setProperty('--wicon',_L.ic);
       }else{
         if(w.vaFill){el.style.background=w.bg||'';el.style.borderColor='';}
-        v.style.color=_col||'';if(_lab)_lab.style.color='';
+        v.style.color=(_L?_L.sc:'')||'';
+        if(_lab)_lab.style.color='';
+        if(!w.iconColor)el.style.setProperty('--wicon',(_L?_L.sc:'')||'');
       }
-      // Icon folgt der Wertfarbe. Eine ausdruecklich gesetzte Icon-Farbe hat Vorrang, sonst
-      // waere die bewusste Wahl im Editor wirkungslos.
-      if(!w.iconColor)el.style.setProperty('--wicon',_col||'');
     }
   });

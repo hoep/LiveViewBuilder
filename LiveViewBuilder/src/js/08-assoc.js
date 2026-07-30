@@ -29,6 +29,32 @@
     return _assocEq(pat,v);
   }
   /**
+   * Darstellung einer Kachel in der Zustandsfarbe. Bisher entschied das FARBWORT darueber:
+   * hiess die Farbe "crit", wurde die ganze Karte gefuellt, jede andere Farbe wurde nur
+   * getoent. Das stand nirgends im Editor und galt zudem nur fuer das Zustands-Widget -
+   * das Wert-Widget toente immer dezent. Nebeneinander sahen beide Karten deshalb voellig
+   * verschieden aus, obwohl beide auf "crit" standen.
+   * Die Regel ist jetzt hier, gilt fuer alle und laesst sich je Widget uebersteuern:
+   *   mode ''/'auto'  bisheriges Verhalten (crit fuellt)
+   *   mode 'soft'     immer nur toenen
+   *   mode 'fill'     immer fuellen
+   */
+  function stateLook(ovc,mode){
+    var sc=_skinColor(ovc)||'',key=String(ovc||'').toLowerCase();
+    var m=(mode==='fill'||mode==='soft'||mode==='plain')?mode
+         :(/crit|fehler|error|alarm/.test(key)?'fill':((sc&&sc!=='var(--text)')?'soft':'plain'));
+    if(m==='fill'){var f=sc||'var(--crit)';
+      return {mode:'fill',sc:f,bg:f,bd:f,val:'#fff',lab:'rgba(255,255,255,.85)',
+              chip:'rgba(255,255,255,.20)',ic:'#fff',bar:'rgba(255,255,255,.9)',barw:'clamp(4px,4cqmin,6px)',
+              pill:'rgba(255,255,255,.22)',pilltx:'#fff'};}
+    if(m==='soft'&&sc){var t=stateTint(sc);
+      return {mode:'soft',sc:sc,bg:t.bg,bd:t.bd,val:t.val,lab:t.lab,
+              chip:t.chip,ic:sc,bar:sc,barw:'clamp(4px,4cqmin,6px)',
+              pill:sc,pilltx:_contrastText(sc)};}
+    return {mode:'plain',sc:sc,bg:'',bd:'',val:'',lab:'',chip:'',ic:'',bar:'transparent',barw:'0',pill:'',pilltx:''};
+  }
+
+  /**
    * EINE Rezeptur fuer das Toenen einer Kachel in der Zustandsfarbe. Zustands- und
    * Wert-Widget hatten getrennte Zahlen (13 gegen 16 Prozent Hintergrund, Wert einmal
    * in voller Farbe, einmal zu 85 Prozent gemischt) - nebeneinander sah das nach zwei

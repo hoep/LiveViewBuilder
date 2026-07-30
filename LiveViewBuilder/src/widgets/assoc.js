@@ -10,8 +10,8 @@
     var a=(!m)?assocFor(w,v):null,rr=a?assocResolved(w,a):null;
     var icon=(m&&m.icon)||(rr&&rr.icon)||w.icon||'';
     var ovc=(m&&m.color)||(a&&w.assocMap&&w.assocMap[String(a.v)]?w.assocMap[String(a.v)].color:'');
-    var key=String(ovc||'').toLowerCase(),isAlarm=/crit|fehler|error|alarm/.test(key);
-    var sc=_skinColor(ovc),soft=!!sc&&sc!=='var(--text)'&&!isAlarm;   // sanfte Hervorhebung (getönt) vs. Alarm (Vollfläche)
+    var _L=stateLook(ovc,w.fillMode),isAlarm=(_L.mode==='fill');   // Darstellung zentral, je Widget uebersteuerbar
+    var sc=_L.sc,soft=(_L.mode==='soft');
     // Zähler (numerisch): Zahl groß, Zustandstext als Pille. Zustand (Text): Text groß (überschreibbar) ODER als Pille (w.stateAs='pill').
     var asPill=(w.stateAs==='pill');
     var dfTxt=(d&&d.f!=null&&d.f!=='')?String(d.f):'';
@@ -27,14 +27,14 @@
     var pill=el.querySelector('[data-role=apill]');
     var S=function(k,x){el.style.setProperty(k,x);};
     if(isAlarm){                                              // Alarm: Vollfläche in --crit, weiß, kräftige helle Kante
-      el.style.background=sc||'var(--crit)';el.style.borderColor=sc||'var(--crit)';el.classList.add('assoc-col');
-      S('--asc-chip','rgba(255,255,255,.20)');S('--asc-ic','#fff');S('--asc-val','#fff');S('--asc-lab','rgba(255,255,255,.85)');
-      S('--asc-barw','clamp(4px,4cqmin,6px)');S('--asc-bar','rgba(255,255,255,.9)');
+      el.style.background=_L.bg;el.style.borderColor=_L.bd;el.classList.add('assoc-col');
+      S('--asc-chip',_L.chip);S('--asc-ic',_L.ic);S('--asc-val',_L.val);S('--asc-lab',_L.lab);
+      S('--asc-barw',_L.barw);S('--asc-bar',_L.bar);
       if(pill){if(pillTxt){pill.className='hassoc-pill';pill.textContent=pillTxt;S('--asc-pill','rgba(255,255,255,.22)');S('--asc-pilltx','#fff');}else if(nav){pill.className='hassoc-pill chev';pill.innerHTML=_chevSVG('#fff');}else{pill.className='hassoc-pill';pill.textContent='';}}
     }else if(soft){                                           // aktiv: getönter Hintergrund + kräftige farbige linke Kante + Pille
-      var _t=stateTint(sc);el.style.background=_t.bg;el.style.borderColor=_t.bd;el.classList.add('assoc-col');   // Rezeptur zentral
-      S('--asc-chip',_t.chip);S('--asc-ic',sc);S('--asc-val',sc);S('--asc-lab',_t.lab);
-      S('--asc-barw','clamp(4px,4cqmin,6px)');S('--asc-bar',sc);
+      el.style.background=_L.bg;el.style.borderColor=_L.bd;el.classList.add('assoc-col');
+      S('--asc-chip',_L.chip);S('--asc-ic',_L.ic);S('--asc-val',_L.val);S('--asc-lab',_L.lab);
+      S('--asc-barw',_L.barw);S('--asc-bar',_L.bar);
       if(pill){if(pillTxt){pill.className='hassoc-pill';pill.textContent=pillTxt;S('--asc-pill',sc);S('--asc-pilltx',_contrastText(sc));}else if(nav){pill.className='hassoc-pill chev';pill.innerHTML=_chevSVG(sc);}else{pill.className='hassoc-pill';pill.textContent='';}}
     }else{                                                    // normal / standard: neutrale Kachel (keine Kante)
       var neutral=(sc==='var(--text)');                       // Farbe explizit "standard"
@@ -66,7 +66,8 @@
       var lbl=(s!=='icon'&&w.label)?'<div class="hassocl" data-role="alabel">'+esc(w.label)+'</div>':'';
       return '<div class="hassoc" data-role="acard"><div class="hassoc-top">'+chip+pill+'</div><div class="hassoc-btm">'+val+lbl+'</div></div>';},
     props:function(w){var FF=[['system-ui,-apple-system,sans-serif','Sans'],['Georgia,\'Times New Roman\',serif','Serif'],['var(--fm)','Mono'],['\'Segoe UI\',Arial,sans-serif','Segoe/Arial'],['\'Courier New\',monospace','Courier'],['Verdana,sans-serif','Verdana']];
-      return row('Anzeige','<select id="pAsShow"><option value="both"'+((w.assocShow||'both')==='both'?' selected':'')+'>Icon + Wert + Label</option><option value="icon"'+(w.assocShow==='icon'?' selected':'')+'>Nur Icon</option><option value="text"'+(w.assocShow==='text'?' selected':'')+'>Wert + Label</option></select>')
+      return row('Darstellung','<select id="pFillMode">'+[['','Automatisch (crit füllt)'],['soft','Getönt'],['fill','Vollfläche']].map(function(o){return '<option value="'+o[0]+'"'+((w.fillMode||'')===o[0]?' selected':'')+'>'+o[1]+'</option>';}).join('')+'</select>')
+      +row('Anzeige','<select id="pAsShow"><option value="both"'+((w.assocShow||'both')==='both'?' selected':'')+'>Icon + Wert + Label</option><option value="icon"'+(w.assocShow==='icon'?' selected':'')+'>Nur Icon</option><option value="text"'+(w.assocShow==='text'?' selected':'')+'>Wert + Label</option></select>')
       +row('Zustand als','<select id="pStateAs"><option value="value"'+((w.stateAs||'value')==='value'?' selected':'')+'>Großer Wert</option><option value="pill"'+(w.stateAs==='pill'?' selected':'')+'>Pille</option></select>')
       +row('Einheit','<input id="pAsUnit" value="'+esc(w.unit||'')+'" placeholder="z. B. kWh (bei Zählerwerten)">')
       +listEditor(w,'amap','Manuell: Wert · Icon · Text · Farbe',[{k:'v',ph:'0, >0, 1..5, *'},{k:'icon',ph:'z.B. winopen'},{k:'text',ph:'Text (Pille)'},{k:'color',ph:'ok/warn/crit/text'}])
@@ -75,7 +76,8 @@
       +row('Schrift','<select id="pVff"><option value="">Wie Widget</option>'+FF.map(function(o){return '<option value="'+esc(o[0])+'"'+(w.vff===o[0]?' selected':'')+'>'+o[1]+'</option>';}).join('')+'</select>')
       +row('Gewicht','<select id="pVfwt"><option value="">Standard</option>'+['300','400','500','600','700','800'].map(function(x){return '<option value="'+x+'"'+(w.vfwt===x?' selected':'')+'>'+x+'</option>';}).join('')+'</select>')
       +row('Größe (px)','<input id="pVfsz" type="number" min="0" value="'+(w.vfsz||'')+'" placeholder="auto">');},
-    wire:function(w){if($('#pAsShow'))$('#pAsShow').onchange=function(){w.assocShow=this.value;render();refreshAssocLive(w);commit();};
+    wire:function(w){
+      if($('#pFillMode'))$('#pFillMode').onchange=function(){w.fillMode=this.value||undefined;render();commit();};if($('#pAsShow'))$('#pAsShow').onchange=function(){w.assocShow=this.value;render();refreshAssocLive(w);commit();};
       if($('#pStateAs'))$('#pStateAs').onchange=function(){w.stateAs=this.value==='value'?undefined:this.value;render();refreshAssocLive(w);commit();};
       if($('#pAsUnit'))$('#pAsUnit').oninput=function(){w.unit=this.value||undefined;render();refreshAssocLive(w);commit();};
       if($('#pVff'))$('#pVff').onchange=function(){w.vff=this.value||undefined;render();refreshAssocLive(w);commit();};

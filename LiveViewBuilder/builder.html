@@ -3538,6 +3538,32 @@
     return _assocEq(pat,v);
   }
   /**
+   * Darstellung einer Kachel in der Zustandsfarbe. Bisher entschied das FARBWORT darueber:
+   * hiess die Farbe "crit", wurde die ganze Karte gefuellt, jede andere Farbe wurde nur
+   * getoent. Das stand nirgends im Editor und galt zudem nur fuer das Zustands-Widget -
+   * das Wert-Widget toente immer dezent. Nebeneinander sahen beide Karten deshalb voellig
+   * verschieden aus, obwohl beide auf "crit" standen.
+   * Die Regel ist jetzt hier, gilt fuer alle und laesst sich je Widget uebersteuern:
+   *   mode ''/'auto'  bisheriges Verhalten (crit fuellt)
+   *   mode 'soft'     immer nur toenen
+   *   mode 'fill'     immer fuellen
+   */
+  function stateLook(ovc,mode){
+    var sc=_skinColor(ovc)||'',key=String(ovc||'').toLowerCase();
+    var m=(mode==='fill'||mode==='soft'||mode==='plain')?mode
+         :(/crit|fehler|error|alarm/.test(key)?'fill':((sc&&sc!=='var(--text)')?'soft':'plain'));
+    if(m==='fill'){var f=sc||'var(--crit)';
+      return {mode:'fill',sc:f,bg:f,bd:f,val:'#fff',lab:'rgba(255,255,255,.85)',
+              chip:'rgba(255,255,255,.20)',ic:'#fff',bar:'rgba(255,255,255,.9)',barw:'clamp(4px,4cqmin,6px)',
+              pill:'rgba(255,255,255,.22)',pilltx:'#fff'};}
+    if(m==='soft'&&sc){var t=stateTint(sc);
+      return {mode:'soft',sc:sc,bg:t.bg,bd:t.bd,val:t.val,lab:t.lab,
+              chip:t.chip,ic:sc,bar:sc,barw:'clamp(4px,4cqmin,6px)',
+              pill:sc,pilltx:_contrastText(sc)};}
+    return {mode:'plain',sc:sc,bg:'',bd:'',val:'',lab:'',chip:'',ic:'',bar:'transparent',barw:'0',pill:'',pilltx:''};
+  }
+
+  /**
    * EINE Rezeptur fuer das Toenen einer Kachel in der Zustandsfarbe. Zustands- und
    * Wert-Widget hatten getrennte Zahlen (13 gegen 16 Prozent Hintergrund, Wert einmal
    * in voller Farbe, einmal zu 85 Prozent gemischt) - nebeneinander sah das nach zwei
@@ -4432,8 +4458,8 @@
     var a=(!m)?assocFor(w,v):null,rr=a?assocResolved(w,a):null;
     var icon=(m&&m.icon)||(rr&&rr.icon)||w.icon||'';
     var ovc=(m&&m.color)||(a&&w.assocMap&&w.assocMap[String(a.v)]?w.assocMap[String(a.v)].color:'');
-    var key=String(ovc||'').toLowerCase(),isAlarm=/crit|fehler|error|alarm/.test(key);
-    var sc=_skinColor(ovc),soft=!!sc&&sc!=='var(--text)'&&!isAlarm;   // sanfte Hervorhebung (getönt) vs. Alarm (Vollfläche)
+    var _L=stateLook(ovc,w.fillMode),isAlarm=(_L.mode==='fill');   // Darstellung zentral, je Widget uebersteuerbar
+    var sc=_L.sc,soft=(_L.mode==='soft');
     // Zähler (numerisch): Zahl groß, Zustandstext als Pille. Zustand (Text): Text groß (überschreibbar) ODER als Pille (w.stateAs='pill').
     var asPill=(w.stateAs==='pill');
     var dfTxt=(d&&d.f!=null&&d.f!=='')?String(d.f):'';
@@ -4449,14 +4475,14 @@
     var pill=el.querySelector('[data-role=apill]');
     var S=function(k,x){el.style.setProperty(k,x);};
     if(isAlarm){                                              // Alarm: Vollfläche in --crit, weiß, kräftige helle Kante
-      el.style.background=sc||'var(--crit)';el.style.borderColor=sc||'var(--crit)';el.classList.add('assoc-col');
-      S('--asc-chip','rgba(255,255,255,.20)');S('--asc-ic','#fff');S('--asc-val','#fff');S('--asc-lab','rgba(255,255,255,.85)');
-      S('--asc-barw','clamp(4px,4cqmin,6px)');S('--asc-bar','rgba(255,255,255,.9)');
+      el.style.background=_L.bg;el.style.borderColor=_L.bd;el.classList.add('assoc-col');
+      S('--asc-chip',_L.chip);S('--asc-ic',_L.ic);S('--asc-val',_L.val);S('--asc-lab',_L.lab);
+      S('--asc-barw',_L.barw);S('--asc-bar',_L.bar);
       if(pill){if(pillTxt){pill.className='hassoc-pill';pill.textContent=pillTxt;S('--asc-pill','rgba(255,255,255,.22)');S('--asc-pilltx','#fff');}else if(nav){pill.className='hassoc-pill chev';pill.innerHTML=_chevSVG('#fff');}else{pill.className='hassoc-pill';pill.textContent='';}}
     }else if(soft){                                           // aktiv: getönter Hintergrund + kräftige farbige linke Kante + Pille
-      var _t=stateTint(sc);el.style.background=_t.bg;el.style.borderColor=_t.bd;el.classList.add('assoc-col');   // Rezeptur zentral
-      S('--asc-chip',_t.chip);S('--asc-ic',sc);S('--asc-val',sc);S('--asc-lab',_t.lab);
-      S('--asc-barw','clamp(4px,4cqmin,6px)');S('--asc-bar',sc);
+      el.style.background=_L.bg;el.style.borderColor=_L.bd;el.classList.add('assoc-col');
+      S('--asc-chip',_L.chip);S('--asc-ic',_L.ic);S('--asc-val',_L.val);S('--asc-lab',_L.lab);
+      S('--asc-barw',_L.barw);S('--asc-bar',_L.bar);
       if(pill){if(pillTxt){pill.className='hassoc-pill';pill.textContent=pillTxt;S('--asc-pill',sc);S('--asc-pilltx',_contrastText(sc));}else if(nav){pill.className='hassoc-pill chev';pill.innerHTML=_chevSVG(sc);}else{pill.className='hassoc-pill';pill.textContent='';}}
     }else{                                                    // normal / standard: neutrale Kachel (keine Kante)
       var neutral=(sc==='var(--text)');                       // Farbe explizit "standard"
@@ -4488,7 +4514,8 @@
       var lbl=(s!=='icon'&&w.label)?'<div class="hassocl" data-role="alabel">'+esc(w.label)+'</div>':'';
       return '<div class="hassoc" data-role="acard"><div class="hassoc-top">'+chip+pill+'</div><div class="hassoc-btm">'+val+lbl+'</div></div>';},
     props:function(w){var FF=[['system-ui,-apple-system,sans-serif','Sans'],['Georgia,\'Times New Roman\',serif','Serif'],['var(--fm)','Mono'],['\'Segoe UI\',Arial,sans-serif','Segoe/Arial'],['\'Courier New\',monospace','Courier'],['Verdana,sans-serif','Verdana']];
-      return row('Anzeige','<select id="pAsShow"><option value="both"'+((w.assocShow||'both')==='both'?' selected':'')+'>Icon + Wert + Label</option><option value="icon"'+(w.assocShow==='icon'?' selected':'')+'>Nur Icon</option><option value="text"'+(w.assocShow==='text'?' selected':'')+'>Wert + Label</option></select>')
+      return row('Darstellung','<select id="pFillMode">'+[['','Automatisch (crit füllt)'],['soft','Getönt'],['fill','Vollfläche']].map(function(o){return '<option value="'+o[0]+'"'+((w.fillMode||'')===o[0]?' selected':'')+'>'+o[1]+'</option>';}).join('')+'</select>')
+      +row('Anzeige','<select id="pAsShow"><option value="both"'+((w.assocShow||'both')==='both'?' selected':'')+'>Icon + Wert + Label</option><option value="icon"'+(w.assocShow==='icon'?' selected':'')+'>Nur Icon</option><option value="text"'+(w.assocShow==='text'?' selected':'')+'>Wert + Label</option></select>')
       +row('Zustand als','<select id="pStateAs"><option value="value"'+((w.stateAs||'value')==='value'?' selected':'')+'>Großer Wert</option><option value="pill"'+(w.stateAs==='pill'?' selected':'')+'>Pille</option></select>')
       +row('Einheit','<input id="pAsUnit" value="'+esc(w.unit||'')+'" placeholder="z. B. kWh (bei Zählerwerten)">')
       +listEditor(w,'amap','Manuell: Wert · Icon · Text · Farbe',[{k:'v',ph:'0, >0, 1..5, *'},{k:'icon',ph:'z.B. winopen'},{k:'text',ph:'Text (Pille)'},{k:'color',ph:'ok/warn/crit/text'}])
@@ -4497,7 +4524,8 @@
       +row('Schrift','<select id="pVff"><option value="">Wie Widget</option>'+FF.map(function(o){return '<option value="'+esc(o[0])+'"'+(w.vff===o[0]?' selected':'')+'>'+o[1]+'</option>';}).join('')+'</select>')
       +row('Gewicht','<select id="pVfwt"><option value="">Standard</option>'+['300','400','500','600','700','800'].map(function(x){return '<option value="'+x+'"'+(w.vfwt===x?' selected':'')+'>'+x+'</option>';}).join('')+'</select>')
       +row('Größe (px)','<input id="pVfsz" type="number" min="0" value="'+(w.vfsz||'')+'" placeholder="auto">');},
-    wire:function(w){if($('#pAsShow'))$('#pAsShow').onchange=function(){w.assocShow=this.value;render();refreshAssocLive(w);commit();};
+    wire:function(w){
+      if($('#pFillMode'))$('#pFillMode').onchange=function(){w.fillMode=this.value||undefined;render();commit();};if($('#pAsShow'))$('#pAsShow').onchange=function(){w.assocShow=this.value;render();refreshAssocLive(w);commit();};
       if($('#pStateAs'))$('#pStateAs').onchange=function(){w.stateAs=this.value==='value'?undefined:this.value;render();refreshAssocLive(w);commit();};
       if($('#pAsUnit'))$('#pAsUnit').oninput=function(){w.unit=this.value||undefined;render();refreshAssocLive(w);commit();};
       if($('#pVff'))$('#pVff').onchange=function(){w.vff=this.value||undefined;render();refreshAssocLive(w);commit();};
@@ -6648,7 +6676,8 @@ defWidget('statuslist',{
       +'<div class="pgh">Farbe nach Zustand</div>'
       +'<div style="font-size:11px;color:var(--muted);margin:-2px 2px 4px">Je Zustand eine Farbe (überschreibt die Schwellenfarbe). Erlaubt: exakte Werte, Operatoren (&gt;0, &lt;=25, !=3), Bereiche (0..25) und * für „alles andere“. Bool: 1/0 bzw. true/false.</div>'
       +listEditor(w,'vassoc','Zustand · Text · Farbe',[{k:'v',ph:'Wert (z. B. 1)'},{k:'text',ph:'Text (optional)'},{k:'color',type:'skin'}])
-      +row('Ganze Kachel einfärben','<input type="checkbox" id="pVaFill"'+(w.vaFill?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">statt nur des Werts</span>');},
+      +row('Ganze Kachel einfärben','<input type="checkbox" id="pVaFill"'+(w.vaFill?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">statt nur des Werts</span>')
+      +(w.vaFill?row('Darstellung','<select id="pFillMode">'+[['','Automatisch (crit füllt)'],['soft','Getönt'],['fill','Vollfläche']].map(function(o){return '<option value="'+o[0]+'"'+((w.fillMode||'')===o[0]?' selected':'')+'>'+o[1]+'</option>';}).join('')+'</select>'):'');},
     wire:function(w){
       function relive(){if(w.varId&&_lastVals[w.varId])applyVal(w.varId,_lastVals[w.varId]);}
       if($('#pFs'))$('#pFs').oninput=function(){w.valfs=parseInt(this.value)||24;render();};
@@ -6662,32 +6691,33 @@ defWidget('statuslist',{
       if($('#pVT2'))$('#pVT2').oninput=function(){w.t2=this.value===''?undefined:parseFloat(this.value);relive();};
       if($('#pThrInv'))$('#pThrInv').onchange=function(){w.thrInvert=this.checked||undefined;relive();};
       if($('#pVaFill'))$('#pVaFill').onchange=function(){w.vaFill=this.checked||undefined;relive();};
+      if($('#pFillMode'))$('#pFillMode').onchange=function(){w.fillMode=this.value||undefined;render();commit();};
     },
     live:function(w,el,id,d,base,txt,on){var v=$('[data-role=val]',el);if(!v)return;v.textContent=txt;
-      // EINE wirksame Farbe bestimmen, dann ueberall gleich anwenden. Vorher wurde die
-      // Schwellenfarbe nur auf den Zahlenwert gesetzt, waehrend das Toenen der Kachel allein
-      // an der Zustandsliste hing - mit Schwellen und ohne Zustandstreffer tat es gar nichts.
-      var _col='';
+      // Mit dem FARBWORT arbeiten, nicht mit der aufgeloesten Farbe: erst daraus kann
+      // stateLook() die Darstellung ableiten (crit fuellt, sonst toenen) - dieselbe Regel
+      // wie im Zustands-Widget, je Widget ueber "Darstellung" uebersteuerbar.
+      var _key='';
       if(w.colThr){var n=parseFloat(String(d.v).replace(',','.'));
-        if(!isNaN(n)){var t1=(w.t1!=null?w.t1:0),t2=(w.t2!=null?w.t2:0),c=n<=t1?'--ok':(n<=t2?'--warm':'--crit');
-          if(w.thrInvert)c=(n<=t1?'--crit':(n<=t2?'--warm':'--ok'));
-          _col=cssv(c);}}
+        if(!isNaN(n)){var t1=(w.t1!=null?w.t1:0),t2=(w.t2!=null?w.t2:0),c=n<=t1?'ok':(n<=t2?'warm':'crit');
+          if(w.thrInvert)c=(n<=t1?'crit':(n<=t2?'warm':'ok'));
+          _key=c;}}
       var _match=null;
       if(w.vassoc&&w.vassoc.length){_match=stateHit(w.vassoc,d.v);
         if(_match){if(_match.text!=null&&_match.text!=='')v.textContent=(w.pre||'')+_match.text+(w.suf||'');
-          if(_match.color)_col=_skinColor(_match.color)||_match.color;}}   // Zustand schlaegt Schwelle
+          if(_match.color)_key=_match.color;}}   // Zustand schlaegt Schwelle
+      var _L=_key?stateLook(_key,w.fillMode):null;
       var _lab=$('.l',el)||$('.wv1l',el);
-      if(w.vaFill&&_col){ // ganze Kachel toenen - dieselbe Rezeptur wie das Zustands-Widget
-        var _t=stateTint(_col);
-        el.style.background=_t.bg;el.style.borderColor=_t.bd;
-        v.style.color=_t.val;if(_lab)_lab.style.color=_t.lab;
+      if(w.vaFill&&_L&&_L.mode!=='plain'){       // ganze Kachel: gefuellt oder getoent
+        el.style.background=_L.bg;el.style.borderColor=_L.bd;
+        v.style.color=_L.val;if(_lab)_lab.style.color=_L.lab;
+        if(!w.iconColor)el.style.setProperty('--wicon',_L.ic);
       }else{
         if(w.vaFill){el.style.background=w.bg||'';el.style.borderColor='';}
-        v.style.color=_col||'';if(_lab)_lab.style.color='';
+        v.style.color=(_L?_L.sc:'')||'';
+        if(_lab)_lab.style.color='';
+        if(!w.iconColor)el.style.setProperty('--wicon',(_L?_L.sc:'')||'');
       }
-      // Icon folgt der Wertfarbe. Eine ausdruecklich gesetzte Icon-Farbe hat Vorrang, sonst
-      // waere die bewusste Wahl im Editor wirkungslos.
-      if(!w.iconColor)el.style.setProperty('--wicon',_col||'');
     }
   });
   // ===== Widget: Wertkarte (valuecard) — generische Karte =====
