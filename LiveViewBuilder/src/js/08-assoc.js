@@ -28,6 +28,22 @@
     if(rg){if(isNaN(n))return false;var a=num(rg[1]),b=num(rg[2]);return n>=Math.min(a,b)&&n<=Math.max(a,b);}
     return _assocEq(pat,v);
   }
+  /**
+   * EINE Rezeptur fuer das Toenen einer Kachel in der Zustandsfarbe. Zustands- und
+   * Wert-Widget hatten getrennte Zahlen (13 gegen 16 Prozent Hintergrund, Wert einmal
+   * in voller Farbe, einmal zu 85 Prozent gemischt) - nebeneinander sah das nach zwei
+   * Gestaltungen aus. Wer die Zahlen aendert, aendert sie ab jetzt fuer alle.
+   */
+  function stateTint(col){
+    return {
+      bg:   'color-mix(in oklab,' + col + ' 13%,var(--surface))',
+      bd:   'color-mix(in oklab,' + col + ' 45%,var(--line))',
+      chip: 'color-mix(in oklab,' + col + ' 22%,transparent)',
+      val:  col,
+      lab:  'color-mix(in oklab,' + col + ' 60%,var(--muted))'
+    };
+  }
+
   /** Ersten passenden Eintrag einer Zustandsliste finden: exakt zuerst, dann Muster. */
   function stateHit(list,v,key){
     if(!list||!list.length)return null;

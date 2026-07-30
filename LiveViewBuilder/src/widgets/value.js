@@ -50,13 +50,14 @@
       if(w.vassoc&&w.vassoc.length){_match=stateHit(w.vassoc,d.v);
         if(_match){if(_match.text!=null&&_match.text!=='')v.textContent=(w.pre||'')+_match.text+(w.suf||'');
           if(_match.color)_col=_skinColor(_match.color)||_match.color;}}   // Zustand schlaegt Schwelle
-      if(w.vaFill&&_col){ // ganze Kachel toenen - jetzt auch mit Schwellenfarbe
-        el.style.background='color-mix(in oklab,'+_col+' 16%,var(--surface))';
-        el.style.borderColor='color-mix(in oklab,'+_col+' 45%,var(--line))';
-        v.style.color='color-mix(in oklab,'+_col+' 85%,var(--text))';
+      var _lab=$('.l',el)||$('.wv1l',el);
+      if(w.vaFill&&_col){ // ganze Kachel toenen - dieselbe Rezeptur wie das Zustands-Widget
+        var _t=stateTint(_col);
+        el.style.background=_t.bg;el.style.borderColor=_t.bd;
+        v.style.color=_t.val;if(_lab)_lab.style.color=_t.lab;
       }else{
         if(w.vaFill){el.style.background=w.bg||'';el.style.borderColor='';}
-        v.style.color=_col||'';
+        v.style.color=_col||'';if(_lab)_lab.style.color='';
       }
       // Icon folgt der Wertfarbe. Eine ausdruecklich gesetzte Icon-Farbe hat Vorrang, sonst
       // waere die bewusste Wahl im Editor wirkungslos.
