@@ -17,6 +17,8 @@ require_once __DIR__ . '/functions.php';   // LVB_* Helfer (Import-Walk etc.)
  *
  * URLs:  Builder <BaseUrl>/hook/builder/<Site>   ·   Live <BaseUrl>/hook/run/<Site>?view=<Ansicht>
  */
+require_once __DIR__ . '/store.inc.php';   // Ablage-Logik geteilt mit handler.php
+
 class LiveViewBuilder extends IPSModule
 {
     private const WEBHOOK_CONTROL = '{015A6EB8-D6E5-4B93-B496-0D3F77AE9FE1}';
@@ -82,19 +84,13 @@ class LiveViewBuilder extends IPSModule
     // Umbenennen passiert im Builder (Name = Pfad = Identitaet). Inhalt/Widgets bleiben Sache von layouts.json.
     // Store so zusammensetzen, wie es die Laufzeit tut: index.json + seiten/<slug>.json.
     // layouts.json ist nur noch Spiegel und darf nicht die Wahrheit sein.
+    // Store lesen wie die Laufzeit (index.json + seiten/); Spiegel nur als Rueckfallebene.
     private function storeAssembled(): array
     {
         $dir = $this->dataDir();
-        $idx = json_decode((string) @file_get_contents($dir . '/index.json'), true);
-        if (is_array($idx) && isset($idx['views']) && is_array($idx['views'])) {
-            $store          = $idx;
-            $store['views'] = [];
-            foreach ($idx['views'] as $name => $ref) {
-                $slug                        = is_array($ref) ? (string) ($ref['file'] ?? '') : '';
-                $v                           = $slug !== '' ? json_decode((string) @file_get_contents($dir . '/seiten/seite-' . $slug . '.json'), true) : null;
-                $store['views'][(string) $name] = is_array($v) ? $v : ['page' => ['w' => 1440, 'h' => 900], 'widgets' => []];
-            }
-            return $store;
+        $st  = LVB_Assemble($dir);
+        if (is_array($st)) {
+            return $st;
         }
         $m = json_decode((string) @file_get_contents($dir . '/layouts.json'), true);
         return is_array($m) ? $m : ['views' => []];
@@ -130,9 +126,8 @@ class LiveViewBuilder extends IPSModule
         if (!is_dir($dir)) {
             @mkdir($dir, 0775, true);
         }
-        $lf    = $dir . '/layouts.json';
-        $store = json_decode((string) @file_get_contents($lf), true);
-        if (!is_array($store) || !isset($store['views']) || !is_array($store['views'])) {
+        $store = $this->storeAssembled();   // NICHT der Spiegel - der kann veraltet sein
+        if (!isset($store['views']) || !is_array($store['views'])) {
             $store = ['views' => [], 'current' => null];
         }
         $want = [];
@@ -169,7 +164,7 @@ class LiveViewBuilder extends IPSModule
         if (empty($store['current']) || !isset($store['views'][$store['current']])) {
             $store['current'] = array_key_first($store['views']);
         }
-        file_put_contents($lf, json_encode($store, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+        LVB_SaveStore($dir, $store);   // Spiegel UND Einzeldateien: sonst sehen Laufzeit und Push-Modul Verschiedenes
         // Push-Registrierungen sofort nachziehen (neu gebundene/entfallene Variablen), wie beim Layout-Speichern
         $push = IPS_GetInstanceListByModuleID('{7B3E9F21-4C8A-4D6E-B1F5-9A0C2D3E4F60}')[0] ?? 0;
         if ($push && function_exists('LVBP_Sync')) {
@@ -293,9 +288,8 @@ class LiveViewBuilder extends IPSModule
         if (!is_dir($dir)) {
             @mkdir($dir, 0775, true);
         }
-        $lf    = $dir . '/layouts.json';
-        $store = json_decode((string) @file_get_contents($lf), true);
-        if (!is_array($store) || !isset($store['views']) || !is_array($store['views'])) {
+        $store = $this->storeAssembled();   // NICHT der Spiegel - der kann veraltet sein
+        if (!isset($store['views']) || !is_array($store['views'])) {
             $store = ['views' => [], 'current' => null];
         }
         $cnt = 0;
@@ -306,7 +300,7 @@ class LiveViewBuilder extends IPSModule
         if (empty($store['current'])) {
             $store['current'] = array_key_first($store['views']);
         }
-        file_put_contents($lf, json_encode($store, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+        LVB_SaveStore($dir, $store);   // wie oben: beide Ablagen konsistent halten
         $setStatus('✓ ' . $cnt . ' Ansicht(en) importiert. Builder öffnen/neu laden.');
     }
 
@@ -318,8 +312,8 @@ class LiveViewBuilder extends IPSModule
         $bld    = is_array($lib) ? ($lib['build'] ?? '?') : '?';
 
         // Aktuelle Ansichten aus layouts.json in die List einspielen (Name = Pfad, Widgets-Anzahl, Startseite-Flag)
-        $store = json_decode((string) @file_get_contents($this->dataDir() . '/layouts.json'), true);
-        $home  = is_array($store) ? (string) ($store['home'] ?? '') : '';
+        $store = $this->storeAssembled();
+        $home  = (string) ($store['home'] ?? '');
         $viewValues = [];
         $popups = $this->popupPages();
         foreach ($views as $nm => $cnt) {
@@ -465,7 +459,7 @@ class LiveViewBuilder extends IPSModule
 
     private function readViews(): array
     {
-        $store = json_decode((string) @file_get_contents($this->dataDir() . '/layouts.json'), true);
+        $store = $this->storeAssembled();   // echter Datenstand, nicht der Spiegel
         $out   = [];
         if (is_array($store) && isset($store['views']) && is_array($store['views'])) {
             foreach ($store['views'] as $name => $v) {
