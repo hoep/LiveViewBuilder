@@ -8,6 +8,8 @@
  * Layouts liegen als Datei in $DATADIR/layouts.json (transparent, WS-lesbar, backup-bar).
  */
 
+require_once __DIR__ . '/store.inc.php';   // Ablage-Logik geteilt mit module.php
+
 $api = (string) ($_GET['api'] ?? '');
 
 // Modus aus dem Pfad:  /hook/run/<site> -> Laufzeit ; sonst Builder/Editor
@@ -466,41 +468,13 @@ if ($api === 'layout') {
 
     // ---- Speichermodell: index.json + seiten/<slug>.json (eine Datei je Seite) ----
     // layouts.json bleibt als Kompatibilitaets-Spiegel (Push-Modul) und Fallback erhalten. Snapshots (file != '') bleiben kombiniert.
-    $seiteDir = $DATADIR . '/seiten';
-    $idxFile  = $DATADIR . '/index.json';
-    $slugOf   = function (string $name): string {
-        $b = trim((string) preg_replace('/[^A-Za-z0-9_-]+/u', '-', $name), '-');
-        if ($b === '') { $b = 'seite'; }
-        return $b . '-' . substr(md5($name), 0, 6);            // stabil je Name, kollisionsfrei
-    };
-    $splitStore = function (array $store) use ($seiteDir, $idxFile, $DATADIR, $slugOf): void {
-        if (!is_dir($seiteDir)) { @mkdir($seiteDir, 0775, true); }
-        $index = $store;
-        $index['views'] = [];                                   // index.json haelt alles AUSSER dem Seiteninhalt
-        $keep = [];
-        foreach (($store['views'] ?? []) as $name => $v) {
-            $slug = $slugOf((string) $name);
-            $keep['seite-' . $slug . '.json'] = true;
-            $index['views'][(string) $name] = ['file' => $slug];   // Name -> Datei
-            file_put_contents($seiteDir . '/seite-' . $slug . '.json', json_encode($v, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
-        }
-        file_put_contents($idxFile, json_encode($index, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
-        foreach (glob($seiteDir . '/seite-*.json') ?: [] as $p) {   // verwaiste Seiten-Dateien entfernen
-            if (empty($keep[basename($p)])) { @unlink($p); }
-        }
-    };
-    $assembleStore = function () use ($seiteDir, $idxFile, $DATADIR): ?array {
-        $idx = json_decode((string) @file_get_contents($idxFile), true);
-        if (!is_array($idx) || !isset($idx['views']) || !is_array($idx['views'])) { return null; }
-        $store = $idx;
-        $store['views'] = [];
-        foreach ($idx['views'] as $name => $ref) {
-            $slug = is_array($ref) ? (string) ($ref['file'] ?? '') : '';
-            $v    = $slug !== '' ? json_decode((string) @file_get_contents($seiteDir . '/seite-' . $slug . '.json'), true) : null;
-            $store['views'][(string) $name] = is_array($v) ? $v : ['page' => ['w' => 1440, 'h' => 900], 'widgets' => []];
-        }
-        return $store;
-    };
+    // Zerlegen/Zusammensetzen kommen aus store.inc.php - dieselbe Implementierung, die auch
+    // das Instanz-Formular und syncViews benutzen. Vorher lagen sie nur hier als Closures,
+    // waehrend module.php direkt auf layouts.json arbeitete; genau daran lief der Spiegel
+    // auseinander. Die Aufrufstellen unten bleiben unveraendert.
+    $slugOf        = 'LVB_Slug';
+    $splitStore    = function (array $store) use ($DATADIR): void { LVB_Split($DATADIR, $store); };
+    $assembleStore = function () use ($DATADIR): ?array { return LVB_Assemble($DATADIR); };
 
     if ($isSave) {
         if (!hash_equals($TOKEN, (string) ($_GET['key'] ?? ''))) {
