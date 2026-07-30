@@ -168,6 +168,17 @@
   .hstime{font-family:var(--fm);font-size:var(--wf-txt);font-weight:600}.hslbl{font-size:var(--wf-lbl);color:var(--muted)}
   .hwf{height:100%;display:flex;flex-direction:column;gap:8px;padding:10px 12px;overflow:hidden}
   .w.no-frame{background:transparent;border-color:transparent} /* Kachel-Rahmen/Hintergrund aus */
+  /* Hintergrund transparent, unabhaengig vom Rahmen. Viele Widgets malen INNEN eine eigene
+     Karte (.hsrow/.hmeter/.hinfo/.tbl-card/.panel ...). Statt jede einzeln aufzuzaehlen -
+     was bei jedem neuen Widget vergessen wuerde - werden hier die Flaechen-Token neutralisiert:
+     --tile und --surface tragen die Karten, --surface-2 bleibt bewusst erhalten, damit
+     Balkenspuren, Chips und Schalter sichtbar bleiben. */
+  .w.bg-t{background:transparent!important;--tile:transparent;--surface:transparent}
+  /* Die aeussere Huelle des Widget-Inhalts (.htick, .hvcard, .hinfo, .panel ...) malt oft
+     selbst Hintergrund UND Rahmen - die Laufzeile etwa einen Verlauf surface->surface-2 mit
+     1px Linie. Nur dieses eine direkte Kind wird mit neutralisiert; alles darunter
+     (Balkenspuren, Chips, Fuellungen) bleibt unangetastet. */
+  .w.bg-t>.winner>*{background:transparent!important;border-color:transparent!important;box-shadow:none!important}
   body.wglow .w:not(.sel):not(.no-frame){box-shadow:0 0 15px color-mix(in oklab,var(--accent) 20%,transparent)} /* optionaler Widget-Glow in Akzentfarbe */
   /* Typografie erzwingen (auch auf Elemente mit eigener Schrift wie Uhr/KPI) */
   .w.tw-ff,.w.tw-ff *{font-family:var(--w-ff)!important}
@@ -416,6 +427,10 @@
   .htick .htm.info .htic{color:var(--info)} .htick .htm.info .htdot{background:var(--info)}
   .htick .htm b{font-weight:600} .htick .htm small{color:var(--muted)}
   .htick .htm::after{content:"";width:.42em;height:.42em;border-radius:50%;background:var(--line);margin:0 1.7em;flex:none}
+  /* Punkte aus: Stufen-Punkt weg, Trennpunkt nur unsichtbar - der Abstand zwischen den
+     Eintraegen muss bleiben, sonst kleben sie im umlaufenden Band aneinander. */
+  .htick.nodots .htm .htdot{display:none}
+  .htick.nodots .htm::after{background:transparent}
   @keyframes htmarq{to{transform:translateX(-50%)}}
   @keyframes htpulse{0%,100%{opacity:1}50%{opacity:.35}}
   /* Gemeinsame Pill */

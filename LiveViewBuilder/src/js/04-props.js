@@ -58,6 +58,7 @@
       +(lbl3?row(lbl3,'<input id="pVar3" value="'+(w.varId3||'')+'" placeholder="ID"> <button class="btn" id="pPick3" style="padding:6px 8px">wählen</button>'):'')
       +(w.type!=='line'?row('Farben','<input id="pFg" type="color" value="'+(w.fg||'#e7eef0')+'" title="Textfarbe"> <input id="pBg" type="color" value="'+(w.bg||'#141c1f')+'" title="Hintergrund"> <button class="btn" id="pClr" style="padding:5px 8px" title="Farben zurücksetzen"><svg class="i"><use href="#ic-minus"/></svg></button>'):'')
       +(w.type!=='line'&&w.type!=='shape'?row('Rahmen','<select id="pFrame"><option value=""'+(w.frame==null?' selected':'')+'>Ansicht-Standard</option><option value="1"'+(w.frame===true?' selected':'')+'>An</option><option value="0"'+(w.frame===false?' selected':'')+'>Aus</option></select>'):'')
+      +(w.type!=='line'?row('Hintergrund','<select id="pBgT"><option value=""'+(!w.bgT?' selected':'')+'>Deckend</option><option value="1"'+(w.bgT?' selected':'')+'>Transparent</option></select>'):'')
       +(w.type!=='line'&&w.type!=='shape'?('<div class="pgh">Typografie</div>'
         +row('Schrift','<select id="pFf"><option value=""'+(!w.ff?' selected':'')+'>Standard</option>'+[['system-ui,-apple-system,sans-serif','Sans'],['Georgia,\'Times New Roman\',serif','Serif'],['var(--fm)','Mono'],['\'Segoe UI\',Arial,sans-serif','Segoe/Arial'],['\'Courier New\',monospace','Courier'],['Verdana,sans-serif','Verdana']].map(function(o){return '<option value="'+esc(o[0])+'"'+(w.ff===o[0]?' selected':'')+'>'+o[1]+'</option>';}).join('')+'</select>')
         +row('Gewicht','<select id="pFwt"><option value=""'+(!w.fwt?' selected':'')+'>Standard</option>'+['300','400','500','600','700','800'].map(function(x){return '<option value="'+x+'"'+(w.fwt===x?' selected':'')+'>'+x+'</option>';}).join('')+'</select>')
@@ -97,8 +98,9 @@
     if($('#pColor'))$('#pColor').oninput=function(){w.color=this.value;render();};
     if($('#pFg'))$('#pFg').oninput=function(){w.fg=this.value;render();};
     if($('#pBg'))$('#pBg').oninput=function(){w.bg=this.value;render();};
-    if($('#pClr'))$('#pClr').onclick=function(){delete w.fg;delete w.bg;render();renderProps();};
+    if($('#pClr'))$('#pClr').onclick=function(){delete w.fg;delete w.bg;delete w.bgT;render();renderProps();};
     if($('#pFrame'))$('#pFrame').onchange=function(){w.frame=(this.value===''?undefined:(this.value==='1'));render();commit();};
+    if($('#pBgT'))$('#pBgT').onchange=function(){w.bgT=(this.value==='1')||undefined;render();commit();};
     if($('#pFf'))$('#pFf').onchange=function(){w.ff=this.value||undefined;render();commit();};
     if($('#pFwt'))$('#pFwt').onchange=function(){w.fwt=this.value||undefined;render();commit();};
     if($('#pFsty'))$('#pFsty').onchange=function(){w.fsty=this.value||undefined;render();commit();};
