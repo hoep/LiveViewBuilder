@@ -55,8 +55,18 @@
   // Live-Feed (für WS-Monitor-Widget): jeder eingehende Wert wird protokolliert, mit Quelle (poll/ws)
   var _liveFeed=[],_liveSrc='poll';
   function _feedPush(id,d,src){if(src==='cache')return;_liveFeed.push({t:Date.now(),id:id,v:(d.f!=null&&d.f!=='')?d.f:d.v,src:src||'poll'});if(_liveFeed.length>500)_liveFeed.splice(0,_liveFeed.length-500);}
+  // Zeitpunkt der letzten Aenderung je Variable. Der Poll liefert ihn als 'c' mit; der
+  // WebSocket-Push tut das nicht, deshalb wird dort ersatzweise der Moment festgehalten,
+  // in dem sich der Wert tatsaechlich geaendert hat. Ohne beides koennte eine Anzeige wie
+  // "seit 18:12" erst ab dem Laden der Seite zaehlen.
+  var _chgAt={};
+  function changedAt(id){return _chgAt[id]||0;}
   function applyVal(id,d){
-    if(!id||!d)return;_lastVals[id]=d;_feedPush(id,d,_liveSrc);
+    if(!id||!d)return;
+    var _prev=_lastVals[id];
+    if(d.c)_chgAt[id]=d.c*1000;
+    else if(!_prev||String(_prev.v)!==String(d.v))_chgAt[id]=Date.now();
+    _lastVals[id]=d;_feedPush(id,d,_liveSrc);
     var base=(d.f!==''&&d.f!=null)?d.f:d.v,on=(d.v===true||d.v===1||d.v==='1');
     var _bs=String(base),_pu=(d.u!=null)?String(d.u):''; // Profil-Einheit vom Server
     var num=(_pu!==''&&_bs.length>=_pu.length&&_bs.slice(-_pu.length)===_pu)?_bs.slice(0,-_pu.length).replace(/\s+$/,''):_bs; // Wert ohne Profil-Einheit

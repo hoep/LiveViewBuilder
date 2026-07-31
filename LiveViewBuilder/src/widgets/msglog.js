@@ -29,7 +29,7 @@
   defWidget('msglog',{
     label:'Meldungen', paletteIcon:'wticker', size:[460,230], noHover:true, // Chips klicken intern -> kein Ganz-Widget-Hover
     defaults:function(w){w.label='Meldungen';w.max=25;},
-    render:function(w){return '<div class="hmsg"><div class="hmsgtop"><span class="hmsgt">'+esc(w.label||'Meldungen')+'</span><span class="hmsgchips">'+_chips(w)+'</span></div><div class="hmsgl" data-role="msgl"><div class="hmsge">…</div></div></div>';},
+    render:function(w){return '<div class="hmsg"><div class="hmsgtop"><span class="hmsgt">'+escL(w.label||'Meldungen')+'</span><span class="hmsgchips">'+_chips(w)+'</span></div><div class="hmsgl" data-role="msgl"><div class="hmsge">…</div></div></div>';},
     props:function(w){return '<div class="pgh">Standard-Filter (Builder)</div>'
       +'<div style="display:flex;flex-wrap:wrap;gap:6px 12px">'+_SEVS.map(function(s){return '<label style="display:inline-flex;align-items:center;gap:4px;font-size:11px"><input type="checkbox" data-sev="'+s+'"'+(_sevDef(w,s)?' checked':'')+'> <span style="color:'+_SEVCLR[s]+';font-weight:600">'+s+'</span></label>';}).join('')+'</div>'
       +'<div class="hint" style="font-size:11px;color:var(--muted)">Im Live-Modus per Tipp auf die Pills umschaltbar (je Gerät gespeichert).</div>'

@@ -29,9 +29,26 @@ if ($api === 'asset') {
         echo '// not found';
         return;
     }
+    // readfile() schiebt die Datei in 8-KB-Haeppchen durch die Hook-Schicht. Bei echarts
+    // (1 MB) sind das 128 Einzelausgaben zu je rund 59 ms - zusammen ueber 7 Sekunden, in
+    // denen die Hook-Abarbeitung steht. Die parallelen Startanfragen des Builders
+    // (api=layout, api=tree) laufen derweil in den Abbruch, was im Browser als
+    // "TypeError: Failed to fetch" ankommt: leere Oberflaeche ohne erkennbaren Grund.
+    // In EINEM Stueck ausgegeben ist dieselbe Datei in Millisekunden draussen - die
+    // 748-KB-Builderseite nimmt denselben Weg und braucht dafuer 6 ms.
+    $blob = (string) file_get_contents($files[$name]);
+    $etag = '"' . md5($blob) . '"';
     header('Content-Type: application/javascript; charset=utf-8');
     header('Cache-Control: public, max-age=604800');
-    readfile($files[$name]);
+    header('ETag: ' . $etag);
+    // Bei "Neu laden erzwingen" umgeht der Browser den Zwischenspeicher, schickt aber das
+    // ETag mit. Dann genuegt 304 - ohne die 1 MB erneut durch die Hook-Schicht zu pressen.
+    if (trim((string) ($_SERVER['HTTP_IF_NONE_MATCH'] ?? '')) === $etag) {
+        http_response_code(304);
+        return;
+    }
+    header('Content-Length: ' . strlen($blob));
+    echo $blob;
     return;
 }
 
@@ -138,10 +155,14 @@ if ($api === 'val') {
     $out   = [];
     foreach ($ids as $id) {
         if (@IPS_VariableExists($id)) {
-            if ($since > 0 && IPS_GetVariable($id)['VariableChanged'] < $since) {
+            $vi = IPS_GetVariable($id);
+            if ($since > 0 && $vi['VariableChanged'] < $since) {
                 continue;
             }
-            $out[$id] = ['v' => GetValue($id), 'f' => @GetValueFormatted($id), 'u' => $sfx($id)];
+            // 'c' = Zeitpunkt der letzten AENDERUNG. Wird fuer Anzeigen wie "seit 18:12"
+            // gebraucht; ohne ihn koennte der Client nur ab dem eigenen Laden zaehlen.
+            $out[$id] = ['v' => GetValue($id), 'f' => @GetValueFormatted($id), 'u' => $sfx($id),
+                         'c' => (int) $vi['VariableChanged']];
         }
     }
     echo json_encode(['ts' => time(), 'values' => $out]);

@@ -27,7 +27,7 @@
         +'</svg>'
         +'<div style="display:flex;flex-direction:column;justify-content:center;min-width:0;flex:1">'
           +'<div style="display:flex;align-items:baseline;gap:4px"><span data-role="val" style="font-size:30px;font-weight:600;font-family:var(--fm);color:var(--text);line-height:1">–</span><span style="font-size:13px;color:var(--muted)">mm</span></div>'
-          +'<div data-role="sub" style="font-size:12px;color:var(--muted);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(w.label||'Regen heute')+'</div>'
+          +'<div data-role="sub" style="font-size:12px;color:var(--muted);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escL(w.label||'Regen heute')+'</div>'
         +'</div></div>';
     },
     mount:function(w){var el=$('.w[data-id="'+w.id+'"]',canvas);if(el)_rainApply(w,el);},

@@ -166,7 +166,21 @@
       applySkin();GS=bcfg().gs;if(bcfg().sideW){var _sd=$('.side');if(_sd)_sd.style.width=bcfg().sideW+'px';}
       var _sv=VIEWNAME||lvPage();switchView((_sv&&store.views&&store.views[_sv])?_sv:store.current);buildSwatches();buildIconLib();buildBlocks();buildSkins();buildSettings();buildLayoutList();syncPalette();decoratePalette();chromeUI(); // ?view= auch im Edit-Modus berücksichtigen; syncPalette ergänzt fehlende Registry-Widgets
       if(RUN){enterRun();}else{toast('Geladen: '+(_target||'Standard')+' · '+Object.keys(store.views).length+' Ansicht(en)');}
-    }).catch(function(){store={views:{'Ansicht 1':{page:{w:1440,h:900},widgets:[]}},current:'Ansicht 1'};switchView('Ansicht 1');if(RUN)enterRun();});
+    }).catch(function(err){
+      // ACHTUNG: Dieser catch umschliesst die GESAMTE Kette oben - migrateStore, switchView,
+      // buildBlocks, buildIconLib, buildSettings und jedes Widget-render. Frueher nahm er den
+      // Fehler nicht einmal entgegen und ersetzte den Speicher stillschweigend durch eine leere
+      // Ansicht. Sichtbares Ergebnis: leere Arbeitsflaeche, KEINE Meldung, kein roter Balken -
+      // denn eine abgefangene Zurueckweisung loest 'unhandledrejection' nie aus. Ein Boot-Fehler
+      // muss laut sein, sonst sucht man ihn blind. Die leere Ansicht bleibt als Notanker, damit
+      // der Builder bedienbar ist, aber NIE mehr ohne Hinweis.
+      try{console.error('[LVB] load() fehlgeschlagen:',err);}catch(_){}
+      if(!RUN&&window.__diag){
+        window.__diag('LADEFEHLER beim Start: '+((err&&(err.stack||err.message))||err||'?')
+          +'\nDie Arbeitsflaeche ist deshalb leer - der gespeicherte Stand wurde NICHT geaendert.');
+      }
+      store={views:{'Ansicht 1':{page:{w:1440,h:900},widgets:[]}},current:'Ansicht 1'};switchView('Ansicht 1');if(RUN)enterRun();
+    });
   }
 
   // ---------- Runtime (Vollbild-Anzeige) ----------

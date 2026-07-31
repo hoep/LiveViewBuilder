@@ -36,6 +36,7 @@
       d.style.left=w.x+'px';d.style.top=w.y+'px';d.style.width=w.w+'px';d.style.height=w.h+'px';
       var _frameOn=(w.frame!=null)?w.frame:!state.page.noframe;if(!_frameOn)d.classList.add('no-frame'); // Kachel-Rahmen: Widget-Override sonst Ansicht-Standard
       if(w.bgT)d.classList.add('bg-t'); // Hintergrund transparent (Rahmen bleibt davon unberuehrt)
+      if(w.lblWrap)d.classList.add('lbl-wrap'); // Beschriftungen duerfen umbrechen
       var _ak=_wActionKind(w);if(_ak)d.classList.add(_ak); // Hover-Affordance: tap/hold/both (CSS greift nur ausserhalb Edit)
       if(w.name&&_refSet[w.name])d.classList.add('ref-hidden'); // in Laufzeile referenziert -> immer aus (bearbeiten über die Laufzeile)
       else if(w.hidden)d.classList.add('run-hidden'); // manuell versteckt -> im Run aus, im Edit gestrichelt sichtbar (CSS)
@@ -759,7 +760,7 @@
     var s='<svg viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="xMidYMid meet" style="width:100%;height:100%">';
     src.forEach(function(o,i){var y=ny(i,src.length)+22;s+='<path class="pfline" d="M120 '+y+' C160 '+y+' 150 '+cy+' 180 '+cy+'"/><path class="pfline pfdash" d="M120 '+y+' C160 '+y+' 150 '+cy+' 180 '+cy+'"/>';});
     snk.forEach(function(o,i){var y=ny(i,snk.length)+22;s+='<path class="pfline" d="M240 '+cy+' C270 '+cy+' 250 '+y+' 280 '+y+'"/><path class="pfline pfdash" d="M240 '+cy+' C270 '+cy+' 250 '+y+' 280 '+y+'"/>';});
-    s+='<rect class="pfhouse" x="180" y="'+(cy-26)+'" width="60" height="52" rx="10"/><text x="210" y="'+(cy+4)+'" text-anchor="middle" class="pflab">'+esc(w.label||'Haus')+'</text>';
+    s+='<rect class="pfhouse" x="180" y="'+(cy-26)+'" width="60" height="52" rx="10"/><text x="210" y="'+(cy+4)+'" text-anchor="middle" class="pflab">'+escL(w.label||'Haus')+'</text>';
     function node(x,o,i,cnt){var y=ny(i,cnt);return '<rect class="pfnode" x="'+x+'" y="'+y+'" width="110" height="44" rx="9"/><text x="'+(x+11)+'" y="'+(y+18)+'" class="pfnlab">'+esc(o.label||'')+'</text><text x="'+(x+11)+'" y="'+(y+35)+'" class="pfnval"'+(o.vid?' data-vid="'+o.vid+'"':'')+'>–</text>';}
     src.forEach(function(o,i){s+=node(10,o,i,src.length);});
     snk.forEach(function(o,i){s+=node(280,o,i,snk.length);});
@@ -966,6 +967,7 @@
       dd.innerHTML='<div class="winner">'+widgetInner(w)+'</div>';
       if(w.type==='value'&&w.valfs){var vv=$('.v',dd);if(vv)vv.style.fontSize=w.valfs+'px';}
       if(w.bgT)dd.classList.add('bg-t'); // Hintergrund transparent, auch im Popup
+      if(w.lblWrap)dd.classList.add('lbl-wrap');
       if(w.bg&&!w.bgT)dd.style.background=w.bg;if(w.fg){var _rf2=_readableFg(w.fg,(w.bgT?null:w.bg));if(_rf2)dd.style.color=_rf2;}
       if(w.iconColor)dd.style.setProperty('--wicon',_skinColor(w.iconColor)||w.iconColor);
       oc.appendChild(dd);
@@ -996,7 +998,7 @@
     function mp(id){return (id&&map[id]!=null)?map[id]:id;}
     var inner='<div class="compinner" style="position:absolute;left:0;top:0;width:'+sw+'px;height:'+sh+'px;transform-origin:top left;transform:scale('+sc+');pointer-events:'+(mode==='edit'?'none':'auto')+'">';
     (src.widgets||[]).forEach(function(mw){var c={};for(var k in mw)c[k]=mw[k];c.id=w.id+'__'+mw.id;c.varId=mp(c.varId);c.varId2=mp(c.varId2);c.varId3=mp(c.varId3);if(c.visVar)c.visVar=mp(c.visVar);
-      inner+='<div class="w t-'+c.type+(c.lineMode?' wline':'')+(c.bgT?' bg-t':'')+'" data-id="'+c.id+'" style="position:absolute;left:'+c.x+'px;top:'+c.y+'px;width:'+c.w+'px;height:'+c.h+'px'+((c.bg&&!c.bgT)?';background:'+c.bg:'')+(c.fg?(function(){var r=_readableFg(c.fg,(c.bgT?null:c.bg));return r?';color:'+r:'';})():'')+'"><div class="winner">'+widgetInner(c)+'</div></div>';
+      inner+='<div class="w t-'+c.type+(c.lineMode?' wline':'')+(c.bgT?' bg-t':'')+(c.lblWrap?' lbl-wrap':'')+'" data-id="'+c.id+'" style="position:absolute;left:'+c.x+'px;top:'+c.y+'px;width:'+c.w+'px;height:'+c.h+'px'+((c.bg&&!c.bgT)?';background:'+c.bg:'')+(c.fg?(function(){var r=_readableFg(c.fg,(c.bgT?null:c.bg));return r?';color:'+r:'';})():'')+'"><div class="winner">'+widgetInner(c)+'</div></div>';
       _compKids.push(c);});
     host.innerHTML=inner+'</div>';}
   // Wert-Format pro Widget

@@ -63,14 +63,14 @@
       if(w.vfwt){vc+=' tw-vfwt';vst+='--asc-vfwt:'+w.vfwt+';';}
       if(w.vfsz){vc+=' tw-vfsz';vst+='--asc-vfsz:'+w.vfsz+'px;';}
       var val='<div class="'+vc+'" data-role="aval"'+(vst?' style="'+vst+'"':'')+'>–</div>';
-      var lbl=(s!=='icon'&&w.label)?'<div class="hassocl" data-role="alabel">'+esc(w.label)+'</div>':'';
+      var lbl=(s!=='icon'&&w.label)?'<div class="hassocl" data-role="alabel">'+escL(w.label)+'</div>':'';
       return '<div class="hassoc" data-role="acard"><div class="hassoc-top">'+chip+pill+'</div><div class="hassoc-btm">'+val+lbl+'</div></div>';},
     props:function(w){var FF=[['system-ui,-apple-system,sans-serif','Sans'],['Georgia,\'Times New Roman\',serif','Serif'],['var(--fm)','Mono'],['\'Segoe UI\',Arial,sans-serif','Segoe/Arial'],['\'Courier New\',monospace','Courier'],['Verdana,sans-serif','Verdana']];
       return row('Darstellung','<select id="pFillMode">'+[['','Automatisch (crit füllt)'],['soft','Getönt'],['fill','Vollfläche']].map(function(o){return '<option value="'+o[0]+'"'+((w.fillMode||'')===o[0]?' selected':'')+'>'+o[1]+'</option>';}).join('')+'</select>')
       +row('Anzeige','<select id="pAsShow"><option value="both"'+((w.assocShow||'both')==='both'?' selected':'')+'>Icon + Wert + Label</option><option value="icon"'+(w.assocShow==='icon'?' selected':'')+'>Nur Icon</option><option value="text"'+(w.assocShow==='text'?' selected':'')+'>Wert + Label</option></select>')
       +row('Zustand als','<select id="pStateAs"><option value="value"'+((w.stateAs||'value')==='value'?' selected':'')+'>Großer Wert</option><option value="pill"'+(w.stateAs==='pill'?' selected':'')+'>Pille</option></select>')
       +row('Einheit','<input id="pAsUnit" value="'+esc(w.unit||'')+'" placeholder="z. B. kWh (bei Zählerwerten)">')
-      +listEditor(w,'amap','Manuell: Wert · Icon · Text · Farbe',[{k:'v',ph:'0, >0, 1..5, *'},{k:'icon',ph:'z.B. winopen'},{k:'text',ph:'Text (Pille)'},{k:'color',ph:'ok/warn/crit/text'}])
+      +listEditor(w,'amap','Manuell: Wert · Icon · Text · Farbe',[{k:'v',ph:'0, >0, 1..5, *'},{k:'icon',ph:'z.B. winopen'},{k:'text',ph:'Text (Pille)'},{k:'color',type:'skincolor'}])
       +'<div class="hint" style="font-size:11px;color:var(--muted)">Wert: exakt (<b>0</b>, <b>1</b>), Vergleich (<b>&gt;0</b>, <b>&gt;=1</b>, <b>&lt;5</b>, <b>!=0</b>), Bereich (<b>1..5</b>) oder Platzhalter (<b>*</b> = Rest). Exakte Treffer haben Vorrang. Die Spalte <b>Text</b> überschreibt den Zustandstext (Pille) — auch für Profil-Assoziationen (Wert eintragen). Farbe <b>crit</b> = Alarm (rote Vollfläche), sonst getönt mit linker Kante. Icons z. B. winopen/winclosed/wintilt, blindopen/blindclosed, lighton/lightoff.</div>'
       +'<div class="pgh">Schrift Wert</div>'
       +row('Schrift','<select id="pVff"><option value="">Wie Widget</option>'+FF.map(function(o){return '<option value="'+esc(o[0])+'"'+(w.vff===o[0]?' selected':'')+'>'+o[1]+'</option>';}).join('')+'</select>')
