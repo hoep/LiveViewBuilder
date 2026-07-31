@@ -34,10 +34,26 @@
 
   function migIsArr(o){return Object.prototype.toString.call(o)==='[object Array]';}
 
-  /** Ein einzelnes Widget umschreiben. Liefert 1, wenn es ein Alt-Typ war. */
+  // ---- Extrema -> Markenliste -------------------------------------------------------
+  // Frueher markierte w.extrema fest Min UND Max an einer Reihe, in einem Stil. Marken sind
+  // jetzt eine Liste gleichberechtigter Eintraege. Wer die alte Einstellung hatte, bekommt
+  // daraus zwei Eintraege - Aussehen und Verhalten bleiben unveraendert.
+  // Idempotent: greift nur, solange w.extrema ueberhaupt noch gesetzt ist.
+  function migAnns(w){
+    if(!w||!w.extrema||w.anns)return 0;
+    var ser=Math.max(1,parseInt(w.exSer)||1),u=(w.exUnit!=null?w.exUnit:''),
+        st=(w.exLine===false)?'pin':'both';
+    w.anns=[{kind:'max',ser:ser,style:st,color:'crit',unit:u},
+            {kind:'min',ser:ser,style:st,color:'accent',unit:u}];
+    delete w.extrema;delete w.exSer;delete w.exUnit;delete w.exLine;
+    return 1;
+  }
+
+  /** Ein einzelnes Widget umschreiben. Liefert 1, wenn etwas umgeschrieben wurde. */
   function migWidget(w){
     if(!w||typeof w!=='object')return 0;
-    var m=MIG_TYPES[w.type];if(!m)return 0;
+    var n=migAnns(w);                        // Eigenschafts-Migration, unabhaengig vom Typ
+    var m=MIG_TYPES[w.type];if(!m)return n;
     w.type=m.type;
     if(m.key&&w[m.key]==null)w[m.key]=m.val; // vorhandene Variante nie ueberschreiben
     return 1;

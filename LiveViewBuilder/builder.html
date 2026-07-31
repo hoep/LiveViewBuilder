@@ -1840,7 +1840,7 @@
       title:_titleOpt(w),
       tooltip:{trigger:'axis',axisPointer:{type:'shadow'},formatter:function(ps){var p=ps&&ps.length?ps[ps.length-1]:null;if(!p)return '';return (p.name||'')+': '+_chNum(w,p.value);}},
       xAxis:{type:'category',data:cats,axisTick:{show:axw.ticks},axisLine:{show:axw.line,lineStyle:{color:cssv('--line')}},axisLabel:{show:axw.xLab,color:cssv('--faint'),fontSize:_axFs(w),interval:0},splitLine:{show:axw.xGrid,lineStyle:{color:cssv('--line-soft')}}},
-      yAxis:{type:'value',name:unit,nameTextStyle:{color:cssv('--muted'),fontSize:_ecF(w,'axname',9)},nameGap:7,axisLine:{show:axw.line,lineStyle:{color:cssv('--line')}},axisTick:{show:axw.ticks},axisLabel:{show:axw.yLab,color:cssv('--faint'),fontSize:_axFs(w)},splitLine:{show:axw.yGrid,lineStyle:{color:cssv('--line-soft')}}},
+      yAxis:{type:'value',name:unit,nameTextStyle:{color:cssv('--muted'),fontSize:_ecF(w,'axname',9)},nameGap:7,axisLine:{show:axw.line,lineStyle:{color:cssv('--line')}},axisTick:{show:axw.ticks},axisLabel:_axLabY(w,axw),splitLine:{show:axw.yGrid,lineStyle:{color:cssv('--line-soft')}}},
       series:series},true);
   }
   function initEChart(w,root){
@@ -1909,6 +1909,67 @@
     else if(f==='next'||f==='last'){var t=j[f];out=t>0?new Date(t*1000).toLocaleString('de-DE'):'–';}
     vv.textContent=out;
   }).catch(function(){});}
+
+  // ---- Annotationen -----------------------------------------------------------------
+  // Arten und ihre echarts-Entsprechung:
+  //   max/min    markPoint type max|min          (Wert + Zeitpunkt aus den Daten)
+  //   last/first markPoint auf den Rand-Datenpunkt
+  //   avg        markLine  type average          (waagrecht)
+  //   value      markLine  auf einen festen Y-Wert (Schwellwert)
+  var ANN_KINDS=[['max','Maximum'],['min','Minimum'],['last','Aktueller Wert'],
+                 ['first','Erster Wert'],['avg','Mittelwert'],['value','Schwellwert']];
+  // Diagrammarten, bei denen Marken sinnvoll sind. Torte, Zeiger, Sankey und die
+  // Tageslichtkurve haben keine Datenreihe im ueblichen Sinn - dort waere es Unsinn.
+  var ANN_OK={line:1,area:1,areaspline:1,spline:1,bar:1,barstack:1,step:1,steparea:1,scatter:1,waterfall:1};
+  function _annText(w,a,p){
+    var v=(p?p.value:null);
+    if(Object.prototype.toString.call(v)==='[object Array]')v=v[1];
+    if(v==null&&p&&p.data&&p.data.coord)v=p.data.coord[1];
+    var u=(a.unit!=null&&a.unit!=='')?a.unit:'';
+    var s=_chNum(w,v,false);
+    var t=(a.text||'').trim();
+    if(!t)return s+(u?(' '+u):'');
+    return t.replace(/\{v\}/g,s).replace(/\{u\}/g,u).replace(/\{n\}/g,String((p&&p.seriesName)||''));
+  }
+  function _annLbl(w,a,col){
+    return {fontSize:_ecF(w,'label',9),color:(_skinToCss(w.annFg)||'#ffffff'),
+            backgroundColor:col,padding:[2,5],borderRadius:4,
+            formatter:function(p){return _annText(w,a,p);}};
+  }
+  function _annApply(w,series){
+    var list=w.anns||[];
+    if(!list.length)return;
+    list.forEach(function(a){
+      if(!a||a.off)return;
+      var i=Math.min(Math.max((parseInt(a.ser)||1)-1,0),series.length-1);
+      var sr=series[i];if(!sr)return;
+      var col=_skinToCss(a.color)||cssv('--accent');
+      var st=a.style||'pin',wantMark=(st!=='line'),wantLine=(st==='line'||st==='both');
+      var lbl=_annLbl(w,a,col);
+      function ml(){return sr.markLine=sr.markLine||{silent:true,symbol:'none',data:[]};}
+      function mp(){return sr.markPoint=sr.markPoint||{silent:true,symbol:'pin',symbolSize:34,data:[]};}
+      if(a.kind==='avg'){
+        ml().data.push({type:'average',lineStyle:{color:col,type:'dashed',width:1},label:lbl});return;
+      }
+      if(a.kind==='value'){
+        var yv=parseFloat(String(a.val==null?'':a.val).replace(',','.'));
+        if(isNaN(yv))return;
+        ml().data.push({yAxis:yv,lineStyle:{color:col,type:'dashed',width:1},label:lbl});return;
+      }
+      if(wantMark){
+        if(a.kind==='max'||a.kind==='min'){
+          mp().data.push({type:a.kind,itemStyle:{color:col},label:lbl});
+        }else{
+          var d=sr.data||[];if(!d.length)return;
+          mp().data.push({coord:(a.kind==='first'?d[0]:d[d.length-1]),itemStyle:{color:col},label:lbl});
+        }
+      }
+      if(wantLine&&(a.kind==='max'||a.kind==='min')){
+        ml().data.push({type:a.kind,lineStyle:{color:col,width:1,opacity:.55},label:{show:false}});
+      }
+    });
+  }
+
   function renderChartData(w){if(w.ctype==='daylight')setDaylight(w);else if(w.ctype==='spark'||w.type==='spark')setSpark(w);else if(w.ctype==='waterfall'||w.type==='waterfall')setWaterfall(w);else if(w.ctype==='pie'||w.ctype==='donut'||w.ctype==='rose')setPie(w);else if(w.type==='chart'&&w.calYear&&String(w.agg)==='3')setCalBar(w);else setLine(w);}
   function setPie(w){var ec=_ec[w.id];if(!ec)return;var ids=[w.varId,w.varId2,w.varId3].filter(function(x){return x;});
     var data=ids.map(function(id,i){var o=(w.sopt&&w.sopt[i])||{};var lv=_lastVals[id],v=lv?parseFloat(String(lv.v).replace(',','.')):0;if(isNaN(v))v=0;return {name:o.name||(i===0?(w.label||'Serie 1'):'Serie '+(i+1)),value:Math.max(0,v),itemStyle:{color:o.color||autoColorHex(i)}};});
@@ -2004,6 +2065,87 @@
     return u?(s+' '+u):s;
   }
   function _axFs(w){return _ecF(w,'axis',9);}   // Kurzform für die Achsen-Skalenwerte
+
+  // ===== Achsenbeschriftung: DICHTE und FORMAT sind getrennte Fragen ===================
+  // Dichte  = wie viele Beschriftungen erscheinen (sonst ueberschreiben sie sich)
+  // Format  = wie sie geschrieben werden (Zeitmuster bzw. Zahlenformat)
+  // Beide Achsen folgen derselben Struktur, damit man es nur einmal lernen muss.
+  // hideOverlap laeuft IMMER mit: Auch ohne jede Einstellung darf sich nie etwas
+  // ueberschreiben - echarts laesst dann lieber eine Beschriftung weg.
+  var _AXN={
+    D:['So','Mo','Di','Mi','Do','Fr','Sa'],
+    l:['Sonntag','Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag'],
+    M:['Jän','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'],
+    F:['Jänner','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember']
+  };
+  // Zeitmuster in PHP-Schreibweise - dieselbe, die in Symcon-Skripten ohnehin benutzt wird
+  // (H:i, d.m., D H:i ...). Ein Backslash schuetzt ein Zeichen vor der Ersetzung.
+  function _axTime(pat,ts){
+    var d=new Date(ts),p=function(n){return ('0'+n).slice(-2);},out='';
+    for(var i=0;i<pat.length;i++){
+      var c=pat.charAt(i);
+      if(c==='\\'){out+=(pat.charAt(++i)||'');continue;}
+      switch(c){
+        case 'd':out+=p(d.getDate());break;      case 'j':out+=d.getDate();break;
+        case 'm':out+=p(d.getMonth()+1);break;   case 'n':out+=(d.getMonth()+1);break;
+        case 'Y':out+=d.getFullYear();break;     case 'y':out+=p(d.getFullYear()%100);break;
+        case 'H':out+=p(d.getHours());break;     case 'G':out+=d.getHours();break;
+        case 'i':out+=p(d.getMinutes());break;   case 's':out+=p(d.getSeconds());break;
+        case 'D':out+=_AXN.D[d.getDay()];break;  case 'l':out+=_AXN.l[d.getDay()];break;
+        case 'M':out+=_AXN.M[d.getMonth()];break;case 'F':out+=_AXN.F[d.getMonth()];break;
+        default:out+=c;
+      }
+    }
+    return out;
+  }
+  function _axThou(s){var a=s.split('.');a[0]=a[0].replace(/\B(?=(\d{3})+(?!\d))/g,'.');return a.join(',');}
+  function _axNumFmt(w){
+    var m=w.yFmt||'auto',dec=(w.yDec!=null&&w.yDec!=='')?Math.max(0,Math.min(6,parseInt(w.yDec))):null;
+    var suf=w.yUnitLab?(' '+(w.yunit||'')):'';
+    return function(v){
+      if(v==null||isNaN(v))return '';
+      var n=Number(v),a=Math.abs(n),s,pre='';
+      if(m==='compact'){
+        // Der Vorsatz gehoert an die Einheit, nicht als eigenes Wort: "1,2 kW", nicht
+        // "1,2 k W". Unterhalb von tausend bleibt die normale Nachkommalogik - sonst
+        // wuerde aus 0,5 eine 1.
+        if(a>=1e6)      {s=(n/1e6).toFixed(dec==null?1:dec).replace('.',',');pre='M';}
+        else if(a>=1e3) {s=(n/1e3).toFixed(dec==null?1:dec).replace('.',',');pre='k';}
+        else            s=n.toFixed(dec==null?_chDec(w,n):dec).replace('.',',');
+      }else{
+        s=n.toFixed(dec==null?_chDec(w,n):dec);
+        s=(m==='thousand')?_axThou(s):s.replace('.',',');
+      }
+      // Ohne Einheit steht der Vorsatz allein ("1,2 k"), mit Einheit verschmilzt er ("1,2 kW").
+      return s+(pre?((suf?(' '+pre+(w.yunit||'')):(' '+pre))):suf);
+    };
+  }
+  function _axHasNumFmt(w){return !!(w.yFmt&&w.yFmt!=='auto')||!!w.yUnitLab||(w.yDec!=null&&w.yDec!=='');}
+  // Zeitachse: Dichte ueber splitNumber (echarts waehlt die Stuetzstellen selbst, bekommt
+  // aber eine Zielanzahl). Kategorieachse: interval, weil dort jeder Eintrag eine Stelle ist.
+  function _axLabX(w,ax,cat){
+    var o={show:ax.xLab,color:cssv('--faint'),fontSize:_axFs(w),hideOverlap:true};
+    if(w.xFmt)o.formatter=function(v){return _axTime(w.xFmt,v);};
+    if(cat&&w.xTickMode==='every'&&w.xTicks>1)o.interval=parseInt(w.xTicks)-1;
+    return o;
+  }
+  function _axSplitX(w){return (w.xTickMode==='count'&&w.xTicks>0)?parseInt(w.xTicks):null;}
+  // Jede Y-Achse traegt eine andere Groesse - links Verbrauch in kWh, rechts Leistung in W.
+  // Ein gemeinsames Format waere dort zwangslaeufig fuer eine der beiden falsch. Deshalb:
+  // Widget-Einstellung als Vorgabe, Achseneinstellung schlaegt sie.
+  function _axLabY(w,ax,a){
+    var o={show:ax.yLab,color:cssv('--faint'),fontSize:_axFs(w)};
+    // Nur Format und Nachkommastellen sind achsenspezifisch. Der Achsenname ist eine
+    // UEBERSCHRIFT, keine Einheit - ihn an jeden Skalenwert zu haengen ergaebe
+    // "3,0 Verbrauch (kWh)". Einheit bleibt daher Sache der Widget-Einstellung.
+    var eff=(a&&(a.fmt||(a.dec!=null&&a.dec!=='')))
+      ? {yFmt:(a.fmt||w.yFmt),yDec:((a.dec!=null&&a.dec!=='')?a.dec:w.yDec),
+         yUnitLab:w.yUnitLab,yunit:w.yunit,dec:w.dec}
+      : w;
+    if(_axHasNumFmt(eff))o.formatter=_axNumFmt(eff);
+    return o;
+  }
+
   function _titleOn(w){var t=(w.showTitle!=null)?w.showTitle:(!w.legend&&!!w.label);return !!(t&&(w.label||'')!=='');}
   function _titleOpt(w){
     if(!_titleOn(w))return {show:false};
@@ -2039,34 +2181,20 @@
     var yA=yaxes.map(function(a,ix){var right=(a.side==='R'),off=right?(iR++*48):(iL++*48);
       return {type:'value',position:(right?'right':'left'),offset:off,name:(a.name||''),nameTextStyle:{color:cssv('--muted'),fontSize:_ecF(w,'axname',9)},nameGap:7,
         scale:(a.min==null||a.min===''),min:(a.min!=null&&a.min!==''?parseFloat(a.min):null),max:(a.max!=null&&a.max!==''?parseFloat(a.max):null),
-        axisLine:{show:ax0.line,lineStyle:{color:cssv('--line')}},axisTick:{show:ax0.ticks,lineStyle:{color:cssv('--line')}},axisLabel:{show:ax0.yLab,color:cssv('--faint'),fontSize:_axFs(w)},splitLine:{show:(ax0.yGrid&&ix===0),lineStyle:{color:cssv('--line-soft')}},splitNumber:(w.gridDivs>0?parseInt(w.gridDivs):null)};});
+        axisLine:{show:ax0.line,lineStyle:{color:cssv('--line')}},axisTick:{show:ax0.ticks,lineStyle:{color:cssv('--line')}},axisLabel:_axLabY(w,ax0,a),splitLine:{show:(ax0.yGrid&&ix===0),lineStyle:{color:cssv('--line-soft')}},splitNumber:(w.gridDivs>0?parseInt(w.gridDivs):null)};});
     var lp=w.legend?(w.legPos||'top'):''; // Legende reserviert Platz am jeweiligen Rand (sonst Ueberlappung)
     var opt={backgroundColor:'transparent',animation:!!bcfg().chartAnim,grid:{left:6+Math.max(0,nL-1)*48+(lp==='left'?60:0),right:8+Math.max(0,nR-1)*48+(lp==='right'?60:0),top:6+_titleSpace(w)+(lp==='top'?20:0),bottom:(w.zoom?34:14)+(lp==='bottom'?18:0),containLabel:true},tooltip:{trigger:'axis'},
       legend:_legendOpt(w,w.legend),
       title:_titleOpt(w),
-      xAxis:{type:'time',boundaryGap:anyBar,axisLine:{show:ax0.line,lineStyle:{color:cssv('--line')}},axisTick:{show:ax0.ticks},axisLabel:{show:ax0.xLab,color:cssv('--faint'),fontSize:_axFs(w)},splitLine:{show:ax0.xGrid,lineStyle:{color:cssv('--line-soft')}}},
+      xAxis:{type:'time',boundaryGap:anyBar,splitNumber:_axSplitX(w),axisLine:{show:ax0.line,lineStyle:{color:cssv('--line')}},axisTick:{show:ax0.ticks},axisLabel:_axLabX(w,ax0,false),splitLine:{show:ax0.xGrid,lineStyle:{color:cssv('--line-soft')}}},
       yAxis:yA,series:series};
     if(w.zoom)opt.dataZoom=[{type:'inside'},{type:'slider',height:13,bottom:4,borderColor:'transparent',backgroundColor:accA(.06),fillerColor:accA(.18),handleStyle:{color:cssv('--accent')},dataBackground:{lineStyle:{color:cssv('--line')},areaStyle:{color:accA(.08)}},textStyle:{color:cssv('--faint'),fontSize:_ecF(w,'axis',8)}}];
-    // Extremwerte. Frueher fest an series[0] und nur bei bestimmten Diagrammtypen - in einem
-    // gemischten Diagramm ist das aber fast immer die falsche Reihe: Min und Max interessieren
-    // an der Leistungslinie, nicht am Verbrauchsbalken. Jetzt frei waehlbar (w.exSer, 1-basiert
-    // wie im Editor gezaehlt) und ohne Typ-Einschraenkung. Die senkrechte Linie kommt dazu,
-    // damit der Zeitpunkt ablesbar ist und nicht nur der Wert.
-    if(w.extrema){
-      var _xi=Math.min(Math.max((parseInt(w.exSer)||1)-1,0),series.length-1);
-      var _xs=series[_xi];
-      if(_xs){
-        var _xu=(w.exUnit!=null?w.exUnit:(w.yunit||''));
-        var _xf=function(p){return _chNum(w,p.value,false)+(_xu?(' '+_xu):'');};
-        _xs.markPoint={symbol:'pin',symbolSize:34,silent:true,
-          data:[{type:'max',name:'Max'},{type:'min',name:'Min'}],
-          label:{fontSize:_ecF(w,'label',9),color:cssv('--text'),formatter:_xf},
-          itemStyle:{color:accA(.55)}};
-        if(w.exLine!==false)_xs.markLine={silent:true,symbol:'none',
-          lineStyle:{color:cssv('--faint'),width:1,type:'solid',opacity:.55},
-          label:{show:false},data:[{type:'max'},{type:'min'}]};
-      }
-    }
+    // ===== ANNOTATIONEN =========================================================
+    // Frueher gab es genau EINEN Sonderfall: Min und Max, fest an einer Serie, ein Stil.
+    // Jetzt eine Liste gleichberechtigter Marken - dieselbe Bauform wie bei Serien und
+    // Achsen, damit nichts Neues zu lernen ist. Jede Marke sagt: WAS wird markiert
+    // (Art), an WELCHER Reihe, WIE dargestellt und in welcher Farbe.
+    _annApply(w,series);
     ec.setOption(opt,true);
   }
   // Kalenderjahr-Modus (Balken, Monatlich): x = Jän–Dez, exaktes Jahr (+ Vorjahr bei Vergleich), via generische ?api=aggregated
@@ -2081,14 +2209,15 @@
     if(w.cmpOn)series.push({type:'bar',name:String(m.prevY||'Vorjahr'),itemStyle:{color:prevCol,borderRadius:br},data:m.prev,label:lbl});
     series.push({type:'bar',name:String(m.curY||'Jahr'),itemStyle:{color:acc,borderRadius:br},data:m.cur,label:lbl});
     var lp=showLeg?(w.legPos||'top'):'',axc=_axShow(w);
+    _annApply(w,series);   // Kalenderjahr-Balken: Marken gelten hier genauso
     ec.setOption({backgroundColor:'transparent',animation:!!bcfg().chartAnim,grid:{left:8+(lp==='left'?60:0),right:10+(lp==='right'?60:0),top:6+_titleSpace(w)+(lp==='top'?20:0),bottom:4+(lp==='bottom'?18:0),containLabel:true},
       tooltip:{trigger:'axis',valueFormatter:function(v){return _chNum(w,v);}},
       legend:_legendOpt(w,showLeg),
       title:_titleOpt(w),
-      xAxis:{type:'category',data:ML,axisTick:{show:axc.ticks},axisLine:{show:axc.line,lineStyle:{color:cssv('--line')}},axisLabel:{show:axc.xLab,color:cssv('--faint'),fontSize:_axFs(w)},splitLine:{show:axc.xGrid,lineStyle:{color:cssv('--line-soft')}}},
+      xAxis:{type:'category',data:ML,axisTick:{show:axc.ticks},axisLine:{show:axc.line,lineStyle:{color:cssv('--line')}},axisLabel:_axLabX(w,axc,true),splitLine:{show:axc.xGrid,lineStyle:{color:cssv('--line-soft')}}},
       yAxis:{type:'value',name:unit,nameTextStyle:{color:cssv('--muted'),fontSize:_ecF(w,'axname',9)},nameGap:7,
         min:(w.ymin!=null&&w.ymin!==''?parseFloat(w.ymin):null),max:(w.ymax!=null&&w.ymax!==''?parseFloat(w.ymax):null),
-        axisLine:{show:axc.line,lineStyle:{color:cssv('--line')}},axisTick:{show:axc.ticks},axisLabel:{show:axc.yLab,color:cssv('--faint'),fontSize:_axFs(w)},
+        axisLine:{show:axc.line,lineStyle:{color:cssv('--line')}},axisTick:{show:axc.ticks},axisLabel:_axLabY(w,axc),
         splitLine:{show:axc.yGrid,lineStyle:{color:cssv('--line-soft')}},splitNumber:(w.gridDivs>0?parseInt(w.gridDivs):null)},
       series:series},true);
   }
@@ -2669,13 +2798,15 @@
     return h;
   }
   function axesEditor(w){
-    var ax=_ensureYAxes(w),h='<div class="pgh">Y-Achsen (Seite · Name · Min/Max)</div>';
+    var ax=_ensureYAxes(w),h='<div class="pgh">Y-Achsen (Seite · Name · Min/Max · Format)</div>';
     ax.forEach(function(a,i){
       h+='<div class="serow" style="display:flex;flex-wrap:wrap;gap:4px;align-items:center;margin-bottom:5px">'
         +'<select data-af="'+i+'.side"><option value="L"'+((a.side||'L')==='L'?' selected':'')+'>Links</option><option value="R"'+(a.side==='R'?' selected':'')+'>Rechts</option></select>'
         +'<input data-af="'+i+'.name" value="'+esc(a.name||'')+'" placeholder="Name/Einheit" style="flex:1;min-width:66px">'
         +'<input data-af="'+i+'.min" type="number" value="'+(a.min!=null?a.min:'')+'" placeholder="min" style="width:50px">'
         +'<input data-af="'+i+'.max" type="number" value="'+(a.max!=null?a.max:'')+'" placeholder="max" style="width:50px">'
+        +'<select data-af="'+i+'.fmt" title="Zahlenformat dieser Achse"><option value=""'+(!a.fmt?' selected':'')+'>Format …</option><option value="thousand"'+(a.fmt==='thousand'?' selected':'')+'>1.234,5</option><option value="compact"'+(a.fmt==='compact'?' selected':'')+'>1,2k</option></select>'
+        +'<input data-af="'+i+'.dec" type="number" min="0" max="6" value="'+(a.dec!=null?a.dec:'')+'" placeholder="Dez" style="width:44px">'
         +(ax.length>1?'<button class="btn" data-adel="'+i+'" style="padding:2px"><svg class="i"><use href="#ic-minus"/></svg></button>':'')
         +'</div>';
     });
@@ -4579,10 +4710,26 @@
 
   function migIsArr(o){return Object.prototype.toString.call(o)==='[object Array]';}
 
-  /** Ein einzelnes Widget umschreiben. Liefert 1, wenn es ein Alt-Typ war. */
+  // ---- Extrema -> Markenliste -------------------------------------------------------
+  // Frueher markierte w.extrema fest Min UND Max an einer Reihe, in einem Stil. Marken sind
+  // jetzt eine Liste gleichberechtigter Eintraege. Wer die alte Einstellung hatte, bekommt
+  // daraus zwei Eintraege - Aussehen und Verhalten bleiben unveraendert.
+  // Idempotent: greift nur, solange w.extrema ueberhaupt noch gesetzt ist.
+  function migAnns(w){
+    if(!w||!w.extrema||w.anns)return 0;
+    var ser=Math.max(1,parseInt(w.exSer)||1),u=(w.exUnit!=null?w.exUnit:''),
+        st=(w.exLine===false)?'pin':'both';
+    w.anns=[{kind:'max',ser:ser,style:st,color:'crit',unit:u},
+            {kind:'min',ser:ser,style:st,color:'accent',unit:u}];
+    delete w.extrema;delete w.exSer;delete w.exUnit;delete w.exLine;
+    return 1;
+  }
+
+  /** Ein einzelnes Widget umschreiben. Liefert 1, wenn etwas umgeschrieben wurde. */
   function migWidget(w){
     if(!w||typeof w!=='object')return 0;
-    var m=MIG_TYPES[w.type];if(!m)return 0;
+    var n=migAnns(w);                        // Eigenschafts-Migration, unabhaengig vom Typ
+    var m=MIG_TYPES[w.type];if(!m)return n;
     w.type=m.type;
     if(m.key&&w[m.key]==null)w[m.key]=m.val; // vorhandene Variante nie ueberschreiben
     return 1;
@@ -4951,8 +5098,13 @@ defWidget('calendar',{
       if(V.ax){
         h+='<div class="pgh">Achsen & Raster</div>'+row('Y-Beschriftung','<input type="checkbox" id="pYLab"'+(w.yLabels!==false?' checked':'')+'>')+row('X-Beschriftung','<input type="checkbox" id="pXLab"'+(w.xLabels!==false?' checked':'')+'>')+row('Y-Hilfslinien','<input type="checkbox" id="pYg"'+(w.ygrid!==false?' checked':'')+'>')+row('X-Hilfslinien','<input type="checkbox" id="pXg"'+(w.xgrid?' checked':'')+'>')+row('Achslinien','<input type="checkbox" id="pAxLine"'+(w.axLine?' checked':'')+'>')+row('Tickmarks','<input type="checkbox" id="pAxTicks"'+(w.axTicks?' checked':'')+'>');
         if(V.axPlus)h+=row('Raster-Teilung','<input id="pGridDivs" type="number" min="0" style="width:56px" value="'+(w.gridDivs||'')+'" placeholder="auto"> <span style="font-size:11px;color:var(--muted)">Y-Achse: Anzahl</span>');
+        if(V.axPlus)h+='<div class="pgh">Achsenbeschriftung</div>'
+          +row('X: Dichte','<select id="pXTM"><option value=""'+(!w.xTickMode?' selected':'')+'>automatisch</option><option value="count"'+(w.xTickMode==='count'?' selected':'')+'>Anzahl</option><option value="every"'+(w.xTickMode==='every'?' selected':'')+'>jede N-te</option></select> <input id="pXTN" type="number" min="1" style="width:52px" value="'+(w.xTicks||'')+'" placeholder="N">')
+          +row('X: Zeitformat','<input id="pXFmt" style="width:96px" value="'+esc(w.xFmt||'')+'" placeholder="automatisch"> <span style="font-size:11px;color:var(--muted)">z.&nbsp;B. H:i oder d.m.</span>')
+          +row('Y: Zahlenformat','<select id="pYFmt"><option value=""'+(!w.yFmt||w.yFmt==='auto'?' selected':'')+'>automatisch</option><option value="thousand"'+(w.yFmt==='thousand'?' selected':'')+'>1.234,5</option><option value="compact"'+(w.yFmt==='compact'?' selected':'')+'>1,2k / 3,4M</option></select> <input id="pYDec" type="number" min="0" max="6" style="width:46px" value="'+(w.yDec!=null?w.yDec:'')+'" placeholder="Dez">')
+          +row('Y: Einheit anzeigen','<input type="checkbox" id="pYUL"'+(w.yUnitLab?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">an den Skalenwerten</span>');
         if(V.axPlus&&(V.bar||V.line))h+=row('Stapeln','<input type="checkbox" id="pStack"'+(w.stack?' checked':'')+'>');
-        if(V.axPlus)h+=row('Zoom/Scroll','<input type="checkbox" id="pZoom"'+(w.zoom?' checked':'')+'>')+row('Extrema (Max/Min)','<input type="checkbox" id="pExtr"'+(w.extrema?' checked':'')+'>')+(w.extrema?(row('Extrema an Serie','<input id="pExSer" type="number" min="1" style="width:52px" value="'+(w.exSer||1)+'"> <span style="font-size:11px;color:var(--muted)">1 = erste Reihe</span>')+row('Extrema-Einheit','<input id="pExUnit" style="width:70px" value="'+esc(w.exUnit!=null?w.exUnit:'')+'" placeholder="wie Y-Achse">')+row('Extrema-Linie','<input type="checkbox" id="pExLine"'+(w.exLine!==false?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">senkrechte Markierung</span>')):'')+row('Perioden-Navigation','<input type="checkbox" id="pPnav"'+(w.pnav?' checked':'')+'>');
+        if(V.axPlus)h+=row('Zoom/Scroll','<input type="checkbox" id="pZoom"'+(w.zoom?' checked':'')+'>')+row('Marken-Textfarbe',skinSel(w.annFg||'','id="pAnnFg"')+' <span style="font-size:11px;color:var(--muted)">leer = wei&szlig;</span>')+listEditor(w,'anns','Marken: Art · Reihe · Text · Stil · Farbe · Einheit · Schwelle',[{k:'kind',type:'select',def:'max',options:[['max','Maximum'],['min','Minimum'],['last','Aktuell'],['first','Erster'],['avg','Mittel'],['value','Schwelle']]},{k:'ser',ph:'Reihe'},{k:'text',ph:'Text {v}'},{k:'style',type:'select',def:'pin',options:[['pin','Marke'],['line','Linie'],['both','beides']]},{k:'color',type:'skincolor'},{k:'unit',ph:'Einh.'},{k:'val',ph:'Wert'}])+row('Perioden-Navigation','<input type="checkbox" id="pPnav"'+(w.pnav?' checked':'')+'>');
       }
       if(V.cmp)h+='<div class="pgh">Vergleich (Zeitversatz)</div>'+row('Aktiv','<input type="checkbox" id="pCmpOn"'+(w.cmpOn?' checked':'')+'>')+(w.cmpOn?(row('Versatz',offSel('pCmpOff',w.cmpOff))+row('Schatten %','<input id="pCmpShade" type="number" min="0" max="90" value="'+(w.cmpShade!=null?w.cmpShade:55)+'">')):'');
       if(V.ser)h+=seriesEditor(w,V.spark?{max:1,simple:1}:null); // Sparkline zeichnet nur die erste Serie
@@ -5011,12 +5163,15 @@ defWidget('calendar',{
         var e=$('#'+o[0]);if(e)e.oninput=function(){w[o[1]]=(this.value===''?undefined:parseFloat(this.value));reChart();};
       });
       if($('#pGridDivs'))$('#pGridDivs').oninput=function(){w.gridDivs=this.value===''?undefined:parseInt(this.value);reChart();};
+      if($('#pXTM'))$('#pXTM').onchange=function(){w.xTickMode=this.value||undefined;reChart();};
+      if($('#pXTN'))$('#pXTN').oninput=function(){w.xTicks=this.value===''?undefined:Math.max(1,parseInt(this.value)||1);reChart();};
+      if($('#pXFmt'))$('#pXFmt').onchange=function(){w.xFmt=this.value.trim()||undefined;reChart();};
+      if($('#pYFmt'))$('#pYFmt').onchange=function(){w.yFmt=this.value||undefined;reChart();};
+      if($('#pYDec'))$('#pYDec').oninput=function(){w.yDec=this.value===''?undefined:Math.max(0,Math.min(6,parseInt(this.value)||0));reChart();};
+      if($('#pYUL'))$('#pYUL').onchange=function(){w.yUnitLab=this.checked||undefined;reChart();};
       if($('#pStack'))$('#pStack').onchange=function(){w.stack=this.checked;reChart();};
       if($('#pZoom'))$('#pZoom').onchange=function(){w.zoom=this.checked;reChart();};
-      if($('#pExtr'))$('#pExtr').onchange=function(){w.extrema=this.checked||undefined;reChart();renderProps();};
-      if($('#pExSer'))$('#pExSer').onchange=function(){w.exSer=Math.max(1,parseInt(this.value)||1);reChart();};
-      if($('#pExUnit'))$('#pExUnit').onchange=function(){w.exUnit=this.value.trim()||undefined;reChart();};
-      if($('#pExLine'))$('#pExLine').onchange=function(){w.exLine=this.checked?undefined:false;reChart();};
+      if($('#pAnnFg'))$('#pAnnFg').onchange=function(){w.annFg=this.value||undefined;reChart();};
       if($('#pPnav'))$('#pPnav').onchange=function(){w.pnav=this.checked||undefined;render();commit();};
       $$('#props [data-sf]').forEach(function(inp){inp.oninput=inp.onchange=function(){var pr=inp.getAttribute('data-sf').split('.'),i=parseInt(pr[0]),k=pr[1];_ensureSeries(w);w.series[i]=w.series[i]||{};w.series[i][k]=(k==='vid'?(parseInt(inp.value)||0):(k==='axis'?parseInt(inp.value):inp.value));delete _hist[w.id];fetchHist(w);commit();if(inp.tagName==='SELECT')renderProps();};});
       $$('#props [data-spick]').forEach(function(b){b.onclick=function(){showTab('vars');toast('Variable im Baum anklicken');_bindSeries={wid:w.id,idx:parseInt(b.getAttribute('data-spick'))};};});
