@@ -27,7 +27,7 @@
   defWidget('camera',{
     label:'Kamera', paletteIcon:'camera', size:[260,160],
     render:function(w){
-      var m=w.camSrc||'media',fit=_camFitCSS(w),nm='<div class="wcamnm">'+esc(w.label||'')+'</div>';
+      var m=w.camSrc||'media',fit=_camFitCSS(w),nm='<div class="wcamnm">'+escL(w.label||'')+'</div>';
       if(m==='go2rtc'){
         var base=(w.g2Base||'').replace(/\/+$/,''),strm=encodeURIComponent(w.g2Stream||'');
         if(!base||!w.g2Stream)return '<div class="wcam"><div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--faint);text-align:center;padding:8px">go2rtc: Adresse und Stream-Name setzen</div>'+nm+'</div>';

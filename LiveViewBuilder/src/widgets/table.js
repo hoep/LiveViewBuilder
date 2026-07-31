@@ -32,7 +32,7 @@
     // Kopf: Titel + Zähler + rechts Seg-Toggle + Pager
     var pager=(ps>0&&total>ps)?('<div class="tbl-pager"><button class="tbl-pg" data-tbl-page="prev"'+(page<=0?' disabled':'')+'>&#8249;</button><span class="tbl-pgtxt">'+from+'&ndash;'+to+' von '+total+'</span><button class="tbl-pg" data-tbl-page="next"'+(page>=pages-1?' disabled':'')+'>&#8250;</button></div>'):'';
     var seg=w.hideToggle?'':('<div class="seg"><button class="seg-b'+(view==='table'?' on':'')+'" data-tbl-view="table">Tabelle</button><button class="seg-b'+(view==='cards'?' on':'')+'" data-tbl-view="cards">Karten</button></div>');
-    var ph='<div class="ph"><div><h3>'+esc(w.label||'Tabelle')+'</h3><div class="ph-sub">'+total+' '+(total===1?'Eintrag':'Einträge')+'</div></div><div class="ph-right">'+seg+pager+'</div></div>';
+    var ph='<div class="ph"><div><h3>'+escL(w.label||'Tabelle')+'</h3><div class="ph-sub">'+total+' '+(total===1?'Eintrag':'Einträge')+'</div></div><div class="ph-right">'+seg+pager+'</div></div>';
     var bodyHtml;
     if(!rows.length||!cols){bodyHtml='<div class="tbl-empty">'+(w.varId?'Keine Daten (Zeile 0 = Spaltenkopf, JSON o. serialisiertes Array)':'Variable wählen')+'</div>';}
     else if(view==='cards'){

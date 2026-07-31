@@ -36,7 +36,7 @@
           +(m.sub?' <small>'+esc(m.sub)+'</small>':'')+'</span>';
       }).join('');};
       var itm=band(''),itm2=band('b');
-      var lead=w.hideLead?'':'<div class="htlead"><span class="htpulse"></span>'+esc(w.label||'Alarm')+(w.hideCount?'':'<span class="htcnt">'+crit+'</span>')+'</div>';
+      var lead=w.hideLead?'':'<div class="htlead"><span class="htpulse"></span>'+escL(w.label||'Alarm')+(w.hideCount?'':'<span class="htcnt">'+crit+'</span>')+'</div>';
       return '<div class="htick'+(crit===0?' ok':'')+(w.hideDots?' nodots':'')+'">'+lead+'<div class="httrack"><div class="htmove" style="animation-duration:'+(w.speed||46)+'s">'+itm+itm2+'</div></div></div>';
     },
     props:function(w){

@@ -63,7 +63,7 @@
     defaults:function(w){w.hours=24;w.orient='h';w.items=[{vid:0,label:'Signal 1'}];w.states=[{v:'1',color:'ok',label:'Ein'},{v:'0',color:'',label:'Aus'}];},
     render:function(w){
       var leg=(w.states||[]).filter(function(s){return s.color;}).map(function(s){return '<span class="stl-leg"><i style="background:'+_skinColor(s.color)+'"></i>'+esc(s.label||String(s.v))+'</span>';}).join('');
-      var head='<div class="stl-head">'+(w.label?'<span class="stl-title">'+esc(w.label)+'</span>':'')+'<span class="stl-legs">'+leg+'</span></div>';
+      var head='<div class="stl-head">'+(w.label?'<span class="stl-title">'+escL(w.label)+'</span>':'')+'<span class="stl-legs">'+leg+'</span></div>';
       if(w.showLog){ // HA-Ansicht: Balken oben + Verlaufsliste darunter (eine Kachel)
         return '<div class="wstatetl wstatetl-log" style="position:absolute;inset:0;padding:8px 10px;box-sizing:border-box">'+head+'<div class="stl-barbox"><div data-role="stl" style="position:absolute;inset:0"></div></div><div data-role="slog" class="slog-list"></div></div>';
       }

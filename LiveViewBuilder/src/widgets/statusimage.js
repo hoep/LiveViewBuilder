@@ -17,7 +17,7 @@
     label:'Status-Bild', paletteIcon:'wimage', size:[64,64],
     defaults:function(w){w.states=[{value:false,mediaId:'off'},{value:true,mediaId:0}];},
     render:function(w){var lv=w.varId&&_lastVals[w.varId];var st=_siState(w,lv?lv.v:null);
-      return '<div class="hsimg"><img data-role="simg" alt="'+esc(w.label||'')+'" style="'+(st.gray?'filter:grayscale(1) opacity(.6)':'')+'" src="'+st.src+'">'+(w.label?'<span class="hsimlbl">'+esc(w.label)+'</span>':'')+'</div>';},
+      return '<div class="hsimg"><img data-role="simg" alt="'+esc(w.label||'')+'" style="'+(st.gray?'filter:grayscale(1) opacity(.6)':'')+'" src="'+st.src+'">'+(w.label?'<span class="hsimlbl">'+escL(w.label)+'</span>':'')+'</div>';},
     props:function(w){return row('Farbbild (Media)','<input id="pMedia2" value="'+(w.mediaId||'')+'" placeholder="Media-ID">')
       +listEditor(w,'states','Zustände: Wert · Media-ID',[{k:'value',ph:'true/false/0/1'},{k:'mediaId',ph:'ID oder „off"'}])
       +'<div class="hint" style="font-size:11px;color:var(--muted)">Bei Media-ID „<b>off</b>" wird das Farbbild in Graustufen gezeigt.</div>';},
