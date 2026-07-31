@@ -103,7 +103,12 @@ class LiveViewBuilder extends IPSModule
     {
         $out   = [];
         $store = $this->storeAssembled();
-        foreach (($store['views'] ?? []) as $v) {
+        foreach (($store['views'] ?? []) as $_name => $v) {
+            // Ausdrueckliches Kennzeichen an der Seite (Builder: "Popup") zaehlt ebenso wie ein Verweis.
+            if (!empty($v['page']['popup'])) {
+                $out[(string) $_name] = true;
+            }
+
             foreach ((($v['widgets'] ?? []) ?: []) as $w) {
                 foreach (['popupTo', 'longPopup'] as $k) {
                     $n = trim((string) ($w[$k] ?? ''));
