@@ -35,54 +35,193 @@
   }
   // ===== energy-Modus (Power-Flow-Card-Plus-Stil): Home-Knoten + frei konfigurierbare Kreis-Elemente =====
   var _EF_W=400,_EF_H=300,_EF_HX=200,_EF_HY=150,_EF_RH=40,_EF_RN=32;
-  function _et(t){t=(t||'').toString().toLowerCase();return {batterie:'battery',akku:'battery',netz:'grid',solar:'pv',pv:'pv',load:'verbraucher',verbrauch:'verbraucher',consumer:'verbraucher'}[t]||t;}
-  function _efDefIcon(t){return t==='pv'?'solarpanel':t==='grid'?'pylon':t==='battery'?'battery':t==='verbraucher'?'plug':'gauge';}
+    // Kanonischer Typ, durchgehend englisch. Frueher hiess der Verbraucher intern
+  // 'verbraucher' - als einziger deutscher Wert zwischen pv/grid/battery. Wer im Editor
+  // 'consumer' eintrug, bekam still etwas anderes gespeichert, und ohne Namen stand das
+  // deutsche Stichwort als Beschriftung im Bild. Alte Schreibweisen bleiben lesbar.
+  function _et(t){t=(t||'').toString().toLowerCase();
+    // OHNE Typ muss 'consumer' herauskommen. Der Editor zeigt bei leerem Feld "Verbraucher"
+    // an (Vorgabe def:'consumer'), speichert dabei aber nichts. Fiel der leere Wert hier auf
+    // 'other', entschied das Vorzeichen ueber die Richtung - und ein Verbraucher mit
+    // positiver Leistung wurde als Lieferant gezeichnet. Anzeige und Verhalten muessen
+    // dasselbe sagen; 'other' bleibt der ausdruecklich gewaehlten Einstellung vorbehalten.
+    if(t==='')return 'consumer';
+    return {batterie:'battery',akku:'battery',netz:'grid',solar:'pv',pv:'pv',
+            load:'consumer',verbrauch:'consumer',verbraucher:'consumer'}[t]||t;}
+  // Farbe eines Knotens. Der Skin-Waehler speichert einen SCHLUESSEL ('ok', 'accent'),
+  // keine CSS-Farbe. Roh eingesetzt ergab das "stroke:ok" - eine ungueltige Deklaration,
+  // die der Browser verwirft: Ring, Leitung und Laufpunkt blieben unsichtbar, das Element
+  // verschwand komplett. _cssColorOrEmpty laesst nur echte Farben durch, alles andere
+  // faellt sichtbar auf den Akzent zurueck statt lautlos zu verschwinden.
+  function _efCol(c){return _cssColorOrEmpty(c)||'var(--accent)';}
+  function _efDefIcon(t){return t==='pv'?'solarpanel':t==='grid'?'pylon':t==='battery'?'battery':t==='consumer'?'plug':'gauge';}
   function _efIcon(id){var e=ICONS[id]||ICONS.gauge;return e?e[1]:'';}
-  function _energyLayout(w){
-    var els=w.elements||[],by={pv:[],grid:[],battery:[],verbraucher:[],other:[]},pos=[];
+  // Geometrie des Energieflusses. Frueher standen die Baender auf festen Pixelwerten:
+  // pv oben auf 216 px, grid links auf nur 104 px - ab drei Netz-Knoten beruehrten sie
+  // sich, ab fuenf PV-Knoten ebenso. Schlimmer: 'other' lag auf EXAKT demselben Band wie
+  // 'battery' und verdeckte es vollstaendig. Und der Rand galt nur fuer den Kreis, nicht
+  // fuer die Beschriftung darueber, die deshalb oben abgeschnitten wurde.
+  //
+  // Jetzt wird der Platzbedarf gerechnet: Jeder Knoten bekommt Durchmesser plus Abstand,
+  // die Flaeche waechst mit, wenn eine Seite mehr Knoten hat. Beruehrungen sind damit
+  // ausgeschlossen, nicht nur unwahrscheinlich.
+  function _energyGeo(w){
+    var PAD=(w.efPad!=null&&w.efPad!==''?+w.efPad:18);     // Rand ringsum, einstellbar
+    var GAP=(w.efGap!=null&&w.efGap!==''?+w.efGap:16);     // Mindestabstand zwischen Knoten
+    var RN=_EF_RN,RH=_EF_RH;
+    // Hoehe des Textblocks haengt an der Zeilenzahl - ein Name mit \n braucht mehr Platz.
+    function lblH(list){var m=1;(list||[]).forEach(function(o){var n=_efLines(o.e.name).length||1;if(n>m)m=n;});return 9+m*_EF_LH;}
+    // Waagrecht genuegt Durchmesser + Abstand, die Beschriftungen stehen nebeneinander.
+    // SENKRECHT muss der Textblock mitgerechnet werden: Er sitzt bei y = -r - 9 und ist
+    // rund 11 px hoch. Ohne ihn stiess die Beschriftung des unteren Knotens 4 px in die
+    // Unterkante des darueberliegenden - genau die gemeldete Kollision.
+    // REIHENFOLGE BEACHTEN: top/left/right muessen VOR cellL/cellR/lblT stehen. Standen sie
+    // darunter, waren sie durch das Hochziehen von var dort noch undefined - lblH() bekam
+    // nichts, meldete stur eine Zeile, und die ganze Mehrzeilen-Rechnung lief ins Leere.
+    // Hoehe des Wertblocks UNTER den Kreisen. Netz und Batterie zeigen zwei Zeilen
+    // (Bezug/Einspeisung bzw. Laden/Entladen), alle anderen eine.
+    function valH(list){var m=1;(list||[]).forEach(function(o){var n=_efValLines(_et(o.e.type));if(n>m)m=n;});return 13+m*_EF_VLH;}
+    var els=w.elements||[],by={pv:[],grid:[],battery:[],consumer:[],other:[]};
     els.forEach(function(e,i){(by[_et(e.type)]||by.other).push({e:e,i:i});});
-    function sp(n,k,a,b){return n<=1?(a+b)/2:a+(b-a)*k/(n-1);}
-    function place(list,fn){list.forEach(function(o,k){var p=fn(k,list.length);pos[o.i]={x:(o.e.x!=null&&o.e.x!==''?+o.e.x:p.x),y:(o.e.y!=null&&o.e.y!==''?+o.e.y:p.y)};});}
-    place(by.pv,         function(k,n){return {x:sp(n,k,92,308),y:48};});
-    place(by.grid,       function(k,n){return {x:48,y:sp(n,k,98,202)};});
-    place(by.battery,    function(k,n){return {x:sp(n,k,120,280),y:252};});
-    place(by.verbraucher,function(k,n){return {x:352,y:sp(n,k,90,210)};});
-    place(by.other,      function(k,n){return {x:sp(n,k,120,280),y:252};});
-    return pos;
+    var top=by.pv, bot=by.battery.concat(by.other), left=by.grid, right=by.consumer;
+    // Eine Spalte aus vielen Verbrauchern macht das Bild sehr hoch: Jeder Knoten braucht
+    // senkrecht Durchmesser + Abstand + Beschriftung + Wertblock, also rund 125 px. Bei
+    // fuenf Verbrauchern waren das 760 px Hoehe - im Widget auf Briefmarkengroesse
+    // heruntergerechnet. Ueberzaehlige wandern darum in die untere Reihe, wo sie
+    // NEBENeinander stehen und nur Breite kosten.
+    var MAXC=(w.efMaxCol!=null&&w.efMaxCol!==''?+w.efMaxCol:3);
+    if(MAXC>0&&right.length>MAXC){bot=bot.concat(right.slice(MAXC));right=right.slice(0,MAXC);}
+    // Eine Zelle umfasst jetzt BEIDES: Beschriftung darueber und Wertblock darunter. Ohne
+    // den unteren Teil stiess der Wert des einen Knotens in die Beschriftung des naechsten -
+    // derselbe Fehler wie zuvor bei den Beschriftungen, nur am anderen Ende.
+    var cellH=2*RN+GAP;
+    var cellL=2*RN+GAP+lblH(left)+valH(left), cellR=2*RN+GAP+lblH(right)+valH(right);
+    var lblT=Math.max(lblH(top),lblH(left),lblH(right));   // oberer Rand: groesster Textblock
+    var valB=Math.max(valH(bot),valH(left),valH(right));   // unterer Rand: groesster Wertblock
+    function need(n,cell){return n>0?2*RN+(n-1)*(cell||cellH):0;}
+    // Reihen duerfen nicht in die Spalten laufen und umgekehrt - sonst treffen sich
+    // Reihenende und Spaltenanfang in den Ecken. Nur reservieren, wo es die Seite gibt.
+    var res=2*RN+GAP;
+    // Waagrecht bleibt es beim reinen Durchmesser - Beschriftung und Wert stehen mittig
+    // unter- bzw. ueberhalb, sie brauchen keine zusaetzliche BREITE. Senkrecht dagegen
+    // beansprucht die obere Reihe zusaetzlich ihren Wertblock nach unten, die untere Reihe
+    // ihre Beschriftung nach oben.
+    var rL=left.length?res:0, rR=right.length?res:0;
+    var rT=top.length?(2*RN+GAP+valH(top)):0, rB=bot.length?(2*RN+GAP+lblH(bot)):0;
+    var W=Math.max(_EF_W,2*PAD+rL+rR+need(top.length,cellH),2*PAD+rL+rR+need(bot.length,cellH),
+                   2*PAD+4*RN+2*GAP+2*RH);
+    // Der Home-Knoten in der Mitte traegt seinen Wert ebenfalls unter sich.
+    var homeV=13+_EF_VLH;
+    var H=Math.max(_EF_H,2*PAD+lblT+rT+rB+valB+need(left.length,cellL),
+                   2*PAD+lblT+rT+rB+valB+need(right.length,cellR),
+                   2*PAD+lblT+rT+rB+valB+2*RH+homeV+2*GAP);
+    var hx=W/2,hy=H/2,pos=[];
+    function lay(list,along,fixed,lo,hi){                  // zwischen lo und hi zentrieren
+      var cell=(along==='x')?cellH:(fixed<=(W/2)?cellL:cellR);
+      var L=need(list.length,cell),start=lo+((hi-lo)-L)/2+RN;
+      list.forEach(function(o,k){
+        var v=start+k*cell;
+        var p=(along==='x')?{x:v,y:fixed}:{x:fixed,y:v};
+        pos[o.i]={x:(o.e.x!=null&&o.e.x!==''?+o.e.x:p.x),      // frei gesetzte Werte gehen vor
+                  y:(o.e.y!=null&&o.e.y!==''?+o.e.y:p.y)};
+      });
+    }
+    lay(top,  'x',PAD+lblH(top)+RN,        PAD+rL,      W-PAD-rR);
+    lay(bot,  'x',H-PAD-valH(bot)-RN,      PAD+rL,      W-PAD-rR);   // Wertblock bleibt frei
+    lay(left, 'y',PAD+RN,                  PAD+lblT+rT, H-PAD-rB-valB);
+    lay(right,'y',W-PAD-RN,                PAD+lblT+rT, H-PAD-rB-valB);
+    return {pos:pos,W:W,H:H,hx:hx,hy:hy};
   }
-  function _efPath(nx,ny){
-    var dx=_EF_HX-nx,dy=_EF_HY-ny;
-    if(Math.abs(dx)>=Math.abs(dy)){var mx=(nx+_EF_HX)/2;return 'M'+nx+' '+ny+' C'+mx+' '+ny+' '+mx+' '+_EF_HY+' '+_EF_HX+' '+_EF_HY;}
-    var my=(ny+_EF_HY)/2;return 'M'+nx+' '+ny+' C'+nx+' '+my+' '+_EF_HX+' '+my+' '+_EF_HX+' '+_EF_HY;
+  function _efPath(nx,ny,hx,hy){
+    hx=(hx==null?_EF_HX:hx);hy=(hy==null?_EF_HY:hy);
+    var dx=hx-nx,dy=hy-ny;
+    if(Math.abs(dx)>=Math.abs(dy)){var mx=(nx+hx)/2;return 'M'+nx+' '+ny+' C'+mx+' '+ny+' '+mx+' '+hy+' '+hx+' '+hy;}
+    var my=(ny+hy)/2;return 'M'+nx+' '+ny+' C'+nx+' '+my+' '+hx+' '+my+' '+hx+' '+hy;
   }
+  // Beschriftung eines Knotens. In SVG gibt es kein <br>; mehrere Zeilen brauchen
+  // <tspan> mit dy. Die Beschriftung sitzt UEBER dem Kreis, also waechst sie nach oben:
+  // die erste Zeile beginnt entsprechend hoeher, damit die letzte immer denselben
+  // Abstand zum Kreis hat.
+  var _EF_LH=12;                                        // Zeilenhoehe der Beschriftung
+  function _efLines(name){
+    var a=String(name==null?'':name).split(/\\n|\r\n|\r|\n/);
+    while(a.length&&a[a.length-1].trim()==='')a.pop();
+    while(a.length&&a[0].trim()==='')a.shift();
+    return a;
+  }
+  function _efLabel(name,r){
+    var a=_efLines(name);if(!a.length)return '';
+    var y0=-r-9-(a.length-1)*_EF_LH;
+    return '<text class="efname" y="'+y0+'">'+a.map(function(t,i){
+      return '<tspan x="0"'+(i?' dy="'+_EF_LH+'"':'')+'>'+esc(t)+'</tspan>';}).join('')+'</text>';
+  }
+  // Werte stehen UNTER dem Kreis, nicht darin. Innen liegt der Text auf einer Sehne, nicht
+  // auf dem Durchmesser: Bei r=32 sind auf der ersten Wertzeile nur 55 px frei, auf der
+  // zweiten (Netz/Batterie) nur noch 34 px. "→ 1.234 W" braucht 59 px und lief deshalb in
+  // die Kreislinie. Aussen ist der Platz unbegrenzt, der Kreis bleibt fest, und nichts muss
+  // beim Werteumschlag neu skaliert werden. Das Icon rueckt dadurch in die Kreismitte.
+  var _EF_VLH=11;                                       // Zeilenhoehe des Wertblocks
+  function _efValLines(type){return (type==='grid'||type==='battery')?2:1;}
+  function _efValH(type){return 13+_efValLines(type)*_EF_VLH;}   // Hoehe UNTER dem Kreis
   function _efNode(x,y,r,col,icon,name,type,idx){
     var g='<g class="efnode" transform="translate('+x+','+y+')">';
-    g+='<text class="efname" y="'+(-r-9)+'">'+esc(name||'')+'</text>';
-    if(type==='battery')g+='<text class="efsoc" data-role="efsoc-'+idx+'" y="'+(-r*0.5)+'"></text>';
+    g+=_efLabel(name,r);
     g+='<circle class="efring" r="'+r+'" style="stroke:'+col+'"/>';
-    g+='<svg class="eficon" x="-11" y="'+((type==='battery'?-2:-r*0.5-1))+'" width="22" height="22" viewBox="0 0 24 24">'+_efIcon(icon)+'</svg>';
-    g+='<text class="efval" data-role="efval-'+idx+'" y="'+(r*0.5)+'">–</text>';
-    g+='<text class="efval2" data-role="efval2-'+idx+'" y="'+(r*0.5+11)+'"></text>';
+    // Batterie behaelt den Ladestand INNEN - er ist nie laenger als "100%" und passt dort
+    // bequem; das Icon rueckt dafuer etwas nach oben.
+    g+='<svg class="eficon" x="-11" y="'+(type==='battery'?-15:-11)+'" width="22" height="22" viewBox="0 0 24 24">'+_efIcon(icon)+'</svg>';
+    if(type==='battery')g+='<text class="efsoc" data-role="efsoc-'+idx+'" y="18"></text>';
+    g+='<text class="efval" data-role="efval-'+idx+'" y="'+(r+13)+'">–</text>';
+    g+='<text class="efval2" data-role="efval2-'+idx+'" y="'+(r+13+_EF_VLH)+'"></text>';
     return g+'</g>';
   }
   function energySVG(w){
-    var pos=_energyLayout(w),els=w.elements||[];
-    var s='<svg class="efsvg" viewBox="0 0 '+_EF_W+' '+_EF_H+'" preserveAspectRatio="xMidYMid meet">';
-    els.forEach(function(e,i){var p=pos[i];if(!p)return;var col=e.color||'var(--accent)',d=_efPath(p.x,p.y);
+    var G=_energyGeo(w),pos=G.pos,els=w.elements||[];
+    var s='<svg class="efsvg" viewBox="0 0 '+G.W+' '+G.H+'" preserveAspectRatio="xMidYMid meet">';
+    els.forEach(function(e,i){var p=pos[i];if(!p)return;var col=_efCol(e.color),d=_efPath(p.x,p.y,G.hx,G.hy);
       s+='<path class="efwire" d="'+d+'" style="stroke:'+col+'"/>'
         +'<path class="efflow" data-role="efflow-'+i+'" d="'+d+'" style="stroke:'+col+';opacity:0"/>'
         +'<circle class="efdot" data-role="efdot-'+i+'" r="4" style="fill:'+col+';offset-path:path(\''+d+'\');opacity:0"/>';
     });
-    s+=_efNode(_EF_HX,_EF_HY,_EF_RH,(w.homeColor||'var(--accent)'),w.homeIcon||'housepower',w.homeName||'Home','home','h');
-    els.forEach(function(e,i){var p=pos[i];if(!p)return;s+=_efNode(p.x,p.y,_EF_RN,(e.color||'var(--accent)'),e.icon||_efDefIcon(_et(e.type)),e.name||e.type||'',_et(e.type),i);});
+    s+=_efNode(G.hx,G.hy,_EF_RH,_efCol(w.homeColor),w.homeIcon||'housepower',w.homeName||'Home','home','h');
+    els.forEach(function(e,i){var p=pos[i];if(!p)return;s+=_efNode(p.x,p.y,_EF_RN,_efCol(e.color),e.icon||_efDefIcon(_et(e.type)),e.name||'',_et(e.type),i);});
     return s+'</svg>';
   }
   function _efNum(vid){var d=vid&&_lastVals[vid];return d?parseFloat(String(d.v).replace(',','.')):NaN;}
-  function _efFmtW(v){if(v==null||isNaN(v))return '–';try{return Math.round(Math.abs(v)).toLocaleString('de-DE')+' W';}catch(e){return Math.round(Math.abs(v))+' W';}}
+  // Ab 1000 W in kW - "1,2 kW" statt "1.234 W". Das halbiert die Textbreite genau dort, wo
+  // sie bisher aus dem Kreis lief. Ab 10 kW entfaellt die Nachkommastelle, sie traegt dann
+  // keine Information mehr. minimumFractionDigits und maximumFractionDigits duerfen sich
+  // NICHT widersprechen (min > max wirft RangeError), darum zwei getrennte Zweige.
+  function _efFmtW(v){
+    if(v==null||isNaN(v))return '–';
+    var a=Math.abs(v);
+    try{
+      if(a>=10000)return Math.round(a/1000).toLocaleString('de-DE')+' kW';
+      if(a>=1000)return (Math.round(a/100)/10).toLocaleString('de-DE',{minimumFractionDigits:1,maximumFractionDigits:1})+' kW';
+      return Math.round(a).toLocaleString('de-DE')+' W';
+    }catch(e){return Math.round(a)+' W';}
+  }
+  // Richtung eines Elements: PV speist immer ein, Verbraucher zieht immer ab,
+  // bei Netz und Batterie entscheidet das Vorzeichen der Leistung.
+  // 'other' zaehlt bewusst als Verbraucher und NICHT vorzeichengesteuert: Einspeisung ist
+  // durch pv, grid und battery vollstaendig abgedeckt, "Sonstiges" ist in der Praxis immer
+  // ein Abnehmer. Vorher entschied dort das Vorzeichen - eine positive Verbrauchsleistung
+  // wurde damit als Einspeisung gezeichnet, ohne dass das irgendwo ablesbar war.
+  function _efDir(t,p){return (t==='pv')?1:(t==='consumer'||t==='other')?-1:((p<0)?-1:1);}
   function refreshEnergy(w){
     var el=$('.w[data-id="'+w.id+'"]',canvas);if(!el)return;var els=w.elements||[],homeIn=0;
+    // Tempo-Referenz: Summe dessen, was gerade INS Haus fliesst - also alle Lieferanten
+    // zusammen (PV, Netzbezug, Batterie-Entladung). Damit laeuft der groesste Lieferant am
+    // schnellsten und jeder andere anteilig langsamer; ein fester Schwellwert taugt dafuer
+    // nicht, weil er bei wenig Last alles auf Standgas und bei viel Last alles auf Anschlag
+    // setzt. Faellt die Summe auf 0, greift die feste Referenz als Rueckfall.
+    var total=0;
+    if(w.efSpeedAuto!==false)els.forEach(function(e){
+      var p=_efNum(e.vid);if(isNaN(p))return;
+      if(_efDir(_et(e.type),p)>0)total+=Math.abs(p);
+    });
     els.forEach(function(e,i){
-      var t=_et(e.type),p=_efNum(e.vid),mag=isNaN(p)?0:Math.abs(p),dir=(t==='pv')?1:(t==='verbraucher')?-1:((p<0)?-1:1),active=mag>1;
+      var t=_et(e.type),p=_efNum(e.vid),mag=isNaN(p)?0:Math.abs(p),dir=_efDir(t,p),active=mag>1;
       var v1=$('[data-role=efval-'+i+']',el),v2=$('[data-role=efval2-'+i+']',el);
       if(t==='grid'||t==='battery'){var into=Math.max(isNaN(p)?0:p,0),out=Math.max(isNaN(p)?0:-p,0),A=(t==='grid')?['→ ','← ']:['↑ ','↓ '];
         if(v1)v1.textContent=A[0]+_efFmtW(into);if(v2)v2.textContent=A[1]+_efFmtW(out);}
@@ -90,7 +229,15 @@
       if(t==='battery'&&e.socVid){var soc=_efNum(e.socVid),se=$('[data-role=efsoc-'+i+']',el);if(se)se.textContent=isNaN(soc)?'':(Math.round(soc)+'%');}
       var flow=$('[data-role=efflow-'+i+']',el),dot=$('[data-role=efdot-'+i+']',el);
       var spd=e.speedVid?_efNum(e.speedVid):mag;if(isNaN(spd))spd=mag;
-      var ref=e.speedVid?(+e.speedRef||100):(+w.efRef||3000),frac=Math.min(1,Math.abs(spd)/(ref||1)),dur=(2.4-frac*1.9).toFixed(2),rev=(dir<0?'reverse':'normal');
+      var ref=e.speedVid?(+e.speedRef||100)
+             :((w.efSpeedAuto!==false&&total>0)?total:(+w.efRef||3000)),frac=Math.min(1,Math.abs(spd)/(ref||1)),rev=(dir<0?'reverse':'normal');
+      // Nur EIN Wert ist einstellbar: die Umlaufdauer bei vollem Anteil. Alles andere
+      // ergibt sich daraus umgekehrt proportional - halber Anteil, doppelte Dauer. Das ist
+      // die ehrliche Lesart von "relativ": Der Punkt bewegt sich so schnell wie sein
+      // Anteil am Fluss. Nach unten gedeckelt beim Zwanzigfachen der Volldauer: ohne
+      // Deckel braeuchte 1 % Anteil hundert Umlaufdauern und wirkte wie Stillstand.
+      var t100=(w.efDur100!=null&&w.efDur100!==''?+w.efDur100:0.6);
+      var dur=(frac>0?Math.min(t100/frac,t100*20):t100*20).toFixed(2);
       if(flow){flow.style.opacity=active?'':'0';flow.style.animationDuration=dur+'s';flow.style.animationDirection=rev;}
       if(dot){dot.style.opacity=active?'':'0';dot.style.animationDuration=dur+'s';dot.style.animationDirection=rev;}
       if(dir>0)homeIn+=mag;
@@ -110,9 +257,15 @@
         +'<div class="pgh">Home-Knoten</div>'
         +row('Name / Icon','<input id="pEfHN" value="'+esc(w.homeName||'Home')+'" style="width:88px"> <input id="pEfHI" value="'+esc(w.homeIcon||'housepower')+'" placeholder="icon" style="width:88px">')
         +row('Farbe / Wert-ID','<input type="color" id="pEfHC" value="'+(w.homeColor||'#00cdab')+'"> <input id="pEfHV" value="'+(w.homeVid||'')+'" placeholder="leer = Summe" style="width:110px">')
+        +row('Dauer bei 100 % (s)','<input id="pEfDur" type="number" step="0.1" min="0.1" value="'+(w.efDur100!=null?w.efDur100:0.6)+'"> <span style="font-size:11px;color:var(--muted)">halber Anteil = doppelte Dauer</span>')
+        +row('Tempo automatisch','<input type="checkbox" id="pEfAuto"'+(w.efSpeedAuto!==false?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">Referenz = Summe aller Einspeisungen</span>')
+        +(w.efSpeedAuto!==false?'<div style="font-size:11px;color:var(--muted);margin:-2px 2px 5px">Jeder Knoten laeuft anteilig zur Gesamteinspeisung. Der feste Wert unten greift nur, wenn gerade nichts einspeist.</div>':'')
         +row('Referenz-Leistung (Tempo)','<input id="pEfRef" type="number" value="'+(w.efRef||3000)+'" placeholder="W bei max Tempo">')
-        +'<div class="pgh">Elemente — Typ: pv · grid · batterie · verbraucher (Leistung ±: + = →Home)</div>'
-        +listEditor(w,'elements','Typ · Name · Icon · Farbe · Leistung-ID · Speed-ID · SoC-ID',[{k:'type',ph:'typ'},{k:'name',ph:'Name'},{k:'icon',ph:'icon'},{k:'color',ph:'#hex'},{k:'vid',ph:'Leist-ID'},{k:'speedVid',ph:'Speed'},{k:'socVid',ph:'SoC'}]);
+        +row('Rand (px)','<input id="pEfPad" type="number" min="0" value="'+(w.efPad!=null?w.efPad:18)+'">')
+        +row('Knotenabstand (px)','<input id="pEfGap" type="number" min="0" value="'+(w.efGap!=null?w.efGap:16)+'">')
+        +row('Verbraucher je Spalte','<input id="pEfMaxCol" type="number" min="0" value="'+(w.efMaxCol!=null?w.efMaxCol:3)+'"> <span style="font-size:11px;color:var(--muted)">dar&uuml;ber hinaus in die untere Reihe; 0 = alle in die Spalte</span>')
+        +'<div class="pgh">Elemente</div><div style="font-size:11px;color:var(--muted);margin:-2px 2px 5px">Typ bestimmt Position und Standard-Icon. Das Vorzeichen entscheidet nur bei <b>Netz</b> und <b>Batterie</b>: <b>+</b> zum Haus, <b>&minus;</b> vom Haus weg. PV flie&szlig;t immer zum Haus; Verbraucher und Sonstiges immer weg &ndash; unabh&auml;ngig vom Vorzeichen.</div>'
+        +listEditor(w,'elements','Typ · Name · Icon · Farbe · Leistung-ID · Speed-ID · Speed-Referenz · SoC-ID',[{k:'type',type:'select',def:'consumer',options:[['pv','PV / Erzeuger'],['grid','Netz'],['battery','Batterie'],['consumer','Verbraucher'],['other','Sonstiges']]},{k:'name',ph:'Name'},{k:'icon',ph:'icon'},{k:'color',type:'skincolor'},{k:'vid',ph:'Leist-ID'},{k:'speedVid',ph:'Speed'},{k:'speedRef',ph:'Speed-Ref'},{k:'socVid',ph:'SoC'}]);
       return h
         +'<div class="pgh">Fluss (Variable = „Variable" oben)</div>'
         +row('Farbe','<input type="color" id="pFlCol" value="'+(w.flPos||'#00cdab')+'">')
@@ -125,6 +278,11 @@
         +listEditor(w,'stages','Icon · Label · Wert-ID · Zusatz · Zusatz-ID',[{k:'icon',ph:'icon'},{k:'label',ph:'Label'},{k:'vid',ph:'Wert-ID'},{k:'sub',ph:'Zusatz'},{k:'subvid',ph:'Zus-ID'}]);
     },
     wire:function(w){
+      if($('#pEfDur'))$('#pEfDur').onchange=function(){var v=parseFloat(this.value);w.efDur100=(isNaN(v)||v<=0)?undefined:v;render();commit();};
+      if($('#pEfAuto'))$('#pEfAuto').onchange=function(){w.efSpeedAuto=this.checked?undefined:false;render();renderProps();commit();};
+      if($('#pEfPad'))$('#pEfPad').onchange=function(){w.efPad=(this.value===''?undefined:Math.max(0,parseInt(this.value)||0));render();commit();};
+      if($('#pEfGap'))$('#pEfGap').onchange=function(){w.efGap=(this.value===''?undefined:Math.max(0,parseInt(this.value)||0));render();commit();};
+      if($('#pEfMaxCol'))$('#pEfMaxCol').onchange=function(){w.efMaxCol=(this.value===''?undefined:Math.max(0,parseInt(this.value)||0));render();commit();};
       if($('#pFlMode'))$('#pFlMode').onchange=function(){w.mode=this.value;render();renderProps();commit();};
       function b(id,prop,num){var e=$('#'+id);if(!e)return;e.oninput=e.onchange=function(){var v=num?(this.value===''?undefined:parseFloat(this.value)):(this.value||undefined);w[prop]=v;render();applyFlowState(w);commit();};}
       b('pFlCol','flPos');b('pFlThr','flThr',1);b('pFlRef','flRef',1);b('pFlStartL','startLabel');b('pFlTankL','tankLabel');

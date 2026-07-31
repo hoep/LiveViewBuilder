@@ -74,7 +74,7 @@
     });
   }
   function cpRenderWheel(w){
-    var lbl=w.label?'<div style="font-size:11px;color:var(--muted);flex:none">'+esc(w.label)+'</div>':'';
+    var lbl=w.label?'<div style="font-size:11px;color:var(--muted);flex:none">'+escL(w.label)+'</div>':'';
     var wheel='<div data-role="cwWheel" style="position:relative;flex:none;width:118px;height:118px;border-radius:50%;background:radial-gradient(circle at center,#fff,rgba(255,255,255,0) 72%),conic-gradient(from 0deg,hsl(0,100%,50%),hsl(60,100%,50%),hsl(120,100%,50%),hsl(180,100%,50%),hsl(240,100%,50%),hsl(300,100%,50%),hsl(360,100%,50%));box-shadow:inset 0 0 0 1px var(--line);cursor:crosshair;touch-action:none">'
       +'<div data-role="cwHandle" style="position:absolute;left:50%;top:50%;width:15px;height:15px;margin:-7.5px 0 0 -7.5px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.45);background:#000;pointer-events:none"></div></div>';
     var slider='<div style="display:flex;align-items:center;gap:8px;width:100%;flex:none">'
@@ -155,7 +155,7 @@
     return '<div style="height:100%;display:flex;flex-direction:column;justify-content:center;gap:7px;padding:10px 12px;box-sizing:border-box">'
       +'<div style="display:flex;align-items:center;gap:8px">'
         +'<span data-role="sw" style="width:22px;height:22px;border-radius:6px;border:1px solid var(--line);background:#000;flex:none"></span>'
-        +(w.label?'<span style="font-size:12px;color:var(--muted);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(w.label)+'</span>':'<span style="flex:1"></span>')
+        +(w.label?'<span style="font-size:12px;color:var(--muted);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+escL(w.label)+'</span>':'<span style="flex:1"></span>')
         +'<span data-role="hex" style="font-family:var(--fm);font-size:11px;color:var(--muted);flex:none">#000000</span>'
       +'</div>'+rows+'</div>';
   }
@@ -178,7 +178,7 @@
     var cur=w.varId&&_lastVals[w.varId];
     var active=!!(cur&&parseInt(String(cur.v).replace(',','.'),10)===mine);
     var chk='<svg data-role="chk" class="i" style="display:'+(active?'block':'none')+';position:absolute;top:5px;right:5px;width:16px;height:16px;fill:none;stroke:#fff;stroke-width:3;stroke-linecap:round;stroke-linejoin:round;filter:drop-shadow(0 0 2px rgba(0,0,0,.65))"><use href="#ic-check"/></svg>';
-    var lbl=w.label?'<div style="position:absolute;left:4px;right:4px;bottom:5px;text-align:center;font-size:11px;line-height:1.1;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.7);pointer-events:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(w.label)+'</div>':'';
+    var lbl=w.label?'<div style="position:absolute;left:4px;right:4px;bottom:5px;text-align:center;font-size:11px;line-height:1.1;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.7);pointer-events:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+escL(w.label)+'</div>':'';
     return '<div data-role="swatch" style="position:absolute;inset:6px;border-radius:12px;background:'+esc(col)+';border:1px solid var(--line);box-shadow:'+(active?'0 0 0 3px var(--accent)':'none')+';cursor:pointer">'+chk+lbl+'</div>';
   }
   function cpLiveButton(w,el,id,d,base,txt,on){
@@ -194,7 +194,7 @@
   }
 
   // ---------------------------------------------------------------- Variante „box" (reine Anzeige)
-  function cpRenderBox(w){return '<div style="position:absolute;inset:0;padding:8px;box-sizing:border-box;display:flex;flex-direction:column;gap:6px"><div data-role="sw" style="flex:1;border-radius:9px;border:1px solid var(--line);background:#333;min-height:20px;cursor:pointer"></div>'+(w.label?'<div style="font-size:11px;color:var(--muted);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(w.label)+'</div>':'')+'</div>';}
+  function cpRenderBox(w){return '<div style="position:absolute;inset:0;padding:8px;box-sizing:border-box;display:flex;flex-direction:column;gap:6px"><div data-role="sw" style="flex:1;border-radius:9px;border:1px solid var(--line);background:#333;min-height:20px;cursor:pointer"></div>'+(w.label?'<div style="font-size:11px;color:var(--muted);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escL(w.label)+'</div>':'')+'</div>';}
   function cpLiveBox(w,el,id,d,base,txt,on){var sw=$('[data-role=sw]',el);if(sw){var n=parseInt(d.v)||0;sw.style.background='#'+('000000'+(n&0xFFFFFF).toString(16)).slice(-6);}}
 
   // ---------------------------------------------------------------- Registry

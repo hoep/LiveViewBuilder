@@ -33,7 +33,7 @@
         else tr='<span class="hpill '+esc(st)+'" data-role="badge"><span class="hpd"></span>'+esc(w.badge||'')+'</span>';
       }
       var val='<div class="hvcval"><span data-role="val">–</span>'+(w.unit?'<small> '+esc(w.unit)+'</small>':'')+'</div>';
-      var cap=w.label?'<div class="hvccap">'+esc(w.label)+'</div>':'';
+      var cap=w.label?'<div class="hvccap">'+escL(w.label)+'</div>':'';
       var bar=w.barOn?('<div class="hvcbar"><div class="btrack"><i data-role="bar"></i></div>'+((w.barCap!=null&&w.barCap!=='')?'<div class="hvcbarcap" data-role="barcap">'+esc(w.barCap)+'</div>':'')+'</div>'):'';
       return '<div class="hvcard" data-role="card"><div class="hvctop"><div class="hvctl">'+icon+title+'</div>'+tr+'</div>'+val+cap+bar+'</div>';
     },
@@ -63,7 +63,7 @@
         ):'')
         +'<div class="pgh">Farbe nach Zustand</div>'
         +'<div style="font-size:11px;color:var(--muted);margin:-2px 2px 4px">Quelle: <b>varId2</b> (Toggle/Status), sonst Hauptwert. true/false = 1/0. Farbe: #hex oder accent/ok/warn/crit/info.'+(w.vaFill&&w.v2acc?' <span style="color:var(--warm)">— „varId2 = Akzent" oben deaktivieren, sonst überlagern sich beide!</span>':'')+'</div>'
-        +listEditor(w,'vassoc','Zustand · Farbe',[{k:'v',ph:'z. B. 1 / true'},{k:'color',type:'skin'}])
+        +listEditor(w,'vassoc','Zustand · Farbe',[{k:'v',ph:'z. B. 1 / true'},{k:'color',type:'skincolor'}])
         +row('Ganze Kachel einfärben','<input type="checkbox" id="pVcVaFill"'+(w.vaFill?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">statt nur des Werts</span>')
         +'<div class="pgh">Fortschrittsbalken (unten)</div>'
         +row('Balken zeigen','<input type="checkbox" id="pVcBarOn"'+(w.barOn?' checked':'')+'>')

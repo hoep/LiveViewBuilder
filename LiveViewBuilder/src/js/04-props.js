@@ -40,6 +40,7 @@
       +'<div class="prop">'
       +row('Typ','<select id="pType">'+typeOpts+'</select>')
       +row('Label','<input id="pLabel" value="'+esc(w.label||'')+'">')
+      +'<div style="font-size:11px;color:var(--muted);margin:-2px 2px 5px">Ein <b>\\n</b> im Text erzwingt an dieser Stelle einen Zeilenumbruch.</div>'
       +row('Name','<input id="pName" value="'+esc(w.name||'')+'" placeholder="eindeutige Kennung (intern)">')
       +((w.type==='camera'||w.type==='image')?row('Media-ID','<input id="pMedia" value="'+(w.mediaId||'')+'" placeholder="Media-ID">')
           :(w.type==='line'||w.type==='shape')?row('Farbe','<input id="pColor" type="color" value="'+(w.color||'#00cdab')+'">')
@@ -59,6 +60,7 @@
       +(w.type!=='line'?row('Farben','<input id="pFg" type="color" value="'+(w.fg||'#e7eef0')+'" title="Textfarbe"> <input id="pBg" type="color" value="'+(w.bg||'#141c1f')+'" title="Hintergrund"> <button class="btn" id="pClr" style="padding:5px 8px" title="Farben zurücksetzen"><svg class="i"><use href="#ic-minus"/></svg></button>'):'')
       +(w.type!=='line'&&w.type!=='shape'?row('Rahmen','<select id="pFrame"><option value=""'+(w.frame==null?' selected':'')+'>Ansicht-Standard</option><option value="1"'+(w.frame===true?' selected':'')+'>An</option><option value="0"'+(w.frame===false?' selected':'')+'>Aus</option></select>'):'')
       +(w.type!=='line'?row('Hintergrund','<select id="pBgT"><option value=""'+(!w.bgT?' selected':'')+'>Deckend</option><option value="1"'+(w.bgT?' selected':'')+'>Transparent</option></select>'):'')
+      +(w.type!=='line'?row('Beschriftung','<input type="checkbox" id="pLblWrap"'+(w.lblWrap?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">mehrzeilig statt abschneiden</span>'):'')
       +(w.type!=='line'&&w.type!=='shape'?('<div class="pgh">Typografie</div>'
         +row('Schrift','<select id="pFf"><option value=""'+(!w.ff?' selected':'')+'>Standard</option>'+[['system-ui,-apple-system,sans-serif','Sans'],['Georgia,\'Times New Roman\',serif','Serif'],['var(--fm)','Mono'],['\'Segoe UI\',Arial,sans-serif','Segoe/Arial'],['\'Courier New\',monospace','Courier'],['Verdana,sans-serif','Verdana']].map(function(o){return '<option value="'+esc(o[0])+'"'+(w.ff===o[0]?' selected':'')+'>'+o[1]+'</option>';}).join('')+'</select>')
         +row('Gewicht','<select id="pFwt"><option value=""'+(!w.fwt?' selected':'')+'>Standard</option>'+['300','400','500','600','700','800'].map(function(x){return '<option value="'+x+'"'+(w.fwt===x?' selected':'')+'>'+x+'</option>';}).join('')+'</select>')
@@ -101,6 +103,7 @@
     if($('#pClr'))$('#pClr').onclick=function(){delete w.fg;delete w.bg;delete w.bgT;render();renderProps();};
     if($('#pFrame'))$('#pFrame').onchange=function(){w.frame=(this.value===''?undefined:(this.value==='1'));render();commit();};
     if($('#pBgT'))$('#pBgT').onchange=function(){w.bgT=(this.value==='1')||undefined;render();commit();};
+    if($('#pLblWrap'))$('#pLblWrap').onchange=function(){w.lblWrap=this.checked||undefined;render();commit();};
     if($('#pFf'))$('#pFf').onchange=function(){w.ff=this.value||undefined;render();commit();};
     if($('#pFwt'))$('#pFwt').onchange=function(){w.fwt=this.value||undefined;render();commit();};
     if($('#pFsty'))$('#pFsty').onchange=function(){w.fsty=this.value||undefined;render();commit();};
@@ -223,7 +226,16 @@
     var arr=w[key]||[];var gtc=cols.map(function(){return '1fr';}).join(' ')+' 22px';
     var rows=arr.map(function(r,i){
       return '<div class="fcrow" style="display:grid;grid-template-columns:'+gtc+';gap:4px;margin-bottom:4px">'
-        +cols.map(function(c){if(c.type==='skin')return skinSel(String(r[c.k]!=null?r[c.k]:''),'data-le="'+key+'.'+i+'.'+c.k+'"');if(c.type==='color'){var cv=String(r[c.k]!=null?r[c.k]:'');return '<input type="color" data-le="'+key+'.'+i+'.'+c.k+'" value="'+(/^#[0-9a-fA-F]{6}$/.test(cv)?cv:'#00cdab')+'" title="'+esc(c.ph||'Farbe')+'">';}if(c.type==='select'){var sv=String(r[c.k]!=null?r[c.k]:(c.def||''));return '<select data-le="'+key+'.'+i+'.'+c.k+'">'+(c.options||[]).map(function(o){return '<option value="'+o[0]+'"'+(sv===o[0]?' selected':'')+'>'+esc(o[1])+'</option>';}).join('')+'</select>';}if(c.type==='skincolor'){return skinSel(String(r[c.k]!=null?r[c.k]:''),'data-le="'+key+'.'+i+'.'+c.k+'"');}return '<input data-le="'+key+'.'+i+'.'+c.k+'" value="'+esc(String(r[c.k]!=null?r[c.k]:''))+'" placeholder="'+c.ph+'">';}).join('')
+        +cols.map(function(c){if(c.type==='color'){var cv=String(r[c.k]!=null?r[c.k]:'');return '<input type="color" data-le="'+key+'.'+i+'.'+c.k+'" value="'+(/^#[0-9a-fA-F]{6}$/.test(cv)?cv:'#00cdab')+'" title="'+esc(c.ph||'Farbe')+'">';}if(c.type==='select'){
+          // Die Vorgabe wird nicht nur angezeigt, sondern auch HINTERLEGT. Vorher zeigte das
+          // Feld c.def an, ohne dass etwas gespeichert war - und wer die bereits sichtbare
+          // Auswahl nochmals anklickte, loeste kein Aenderungsereignis aus, es blieb also
+          // dauerhaft leer. Das Widget sah einen leeren Typ und verhielt sich anders, als das
+          // Feld behauptete (Energiefluss: Verbraucher wurden als Lieferant gezeichnet).
+          if((r[c.k]==null||r[c.k]==='')&&c.def!=null&&c.def!=='')r[c.k]=c.def;
+          var sv=String(r[c.k]!=null?r[c.k]:(c.def||''));return '<select data-le="'+key+'.'+i+'.'+c.k+'">'+(c.options||[]).map(function(o){return '<option value="'+o[0]+'"'+(sv===o[0]?' selected':'')+'>'+esc(o[1])+'</option>';}).join('')+'</select>';}/* skincolor: Auswahl der Skin-Farben statt Freitext - verhindert Tippfehler, die
+           still verworfen wuerden, und laesst unbekannte Altwerte als "Eigene" stehen. */
+        if(c.type==='skincolor'){return skinSel(String(r[c.k]!=null?r[c.k]:''),'data-le="'+key+'.'+i+'.'+c.k+'"');}return '<input data-le="'+key+'.'+i+'.'+c.k+'" value="'+esc(String(r[c.k]!=null?r[c.k]:''))+'" placeholder="'+c.ph+'">';}).join('')
         +'<button class="btn" data-ledel="'+key+'.'+i+'" style="padding:2px"><svg class="i"><use href="#ic-minus"/></svg></button></div>';
     }).join('');
     return '<div class="prop" style="margin-top:8px"><div style="font-size:11px;color:var(--muted);margin-bottom:5px">'+title+'</div>'+rows+'<button class="btn" data-leadd="'+key+'"><svg class="i"><use href="#ic-plus"/></svg></button></div>';

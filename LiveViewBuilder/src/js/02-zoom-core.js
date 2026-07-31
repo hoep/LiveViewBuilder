@@ -19,7 +19,11 @@
     if(w.type==='gauge'||w.type==='chart'||w.type==='spark'||w.type==='sankey')return '<div data-role="chart"></div>';
     // value
     var ic=w.icon?('<div class="wvic">'+iconSVG(w.icon)+'</div>'):'';
-    return '<div class="wv'+(w.icon?' hasic':'')+'">'+ic+'<div class="wvbody"><div class="l">'+esc(w.label||'')+'</div><div class="v" data-role="val">–</div></div></div>';
+    return '<div class="wv'+(w.icon?' hasic':'')+'">'+ic+'<div class="wvbody"><div class="l">'+escL(w.label||'')+'</div><div class="v" data-role="val">–</div></div></div>';
   }
   function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+  // Beschriftung ausgeben: wie esc(), aber ein eingetipptes \n - oder ein echter
+  // Zeilenumbruch - erzwingt an genau dieser Stelle eine neue Zeile. Nur fuer INHALT
+  // verwenden; in HTML-Attributen (title, alt, placeholder, value) weiterhin esc().
+  function escL(s){return esc(s).replace(/\\n|\r\n|\r|\n/g,'<br>');}
 

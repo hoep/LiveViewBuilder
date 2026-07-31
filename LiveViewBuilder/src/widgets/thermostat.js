@@ -4,7 +4,7 @@
     defaults:function(w){w.min=14;w.max=28;w.step=0.5;w.label='Thermostat';},
     render:function(w){var tShowState=(w.showState!==false),tShowBar=(w.showBar!==false),tShowModes=(w.showModes!==false),tShowSet=(w.showSet!==false);
       return '<div class="htc tone-idle">'
-        +'<div class="htc-top"><span class="htc-name">'+esc(w.label||'')+'</span>'+(tShowState?'<span class="htc-state" data-role="hstate"></span>':'')+'</div>'
+        +'<div class="htc-top"><span class="htc-name">'+escL(w.label||'')+'</span>'+(tShowState?'<span class="htc-state" data-role="hstate"></span>':'')+'</div>'
         +'<div class="htc-main"><span class="htc-ist" data-role="val">–</span><span class="htc-sep">→</span><span class="htc-soll">Soll <b data-role="target">–</b></span></div>'
         +(tShowBar?'<div class="htc-bar"><i data-role="istfill"></i><i class="htc-sollmk" data-role="sollmk"></i></div>':'')
         +(tShowModes?'<div class="htc-modes" data-role="modes"></div>':'')

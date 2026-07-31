@@ -6,9 +6,9 @@
       var sty=[];if(w.icx!=null&&w.icx!=='')sty.push('padding-left:'+(parseInt(w.icx)||0)+'px'); // Icon-X relativ zum linken Widget-Rand
       if(rowMode)sty.push('justify-content:'+jc);
       var st=sty.length?(' style="'+sty.join(';')+'"'):'';
-      if(w.oneline){var lab=w.label?('<span class="wv1l">'+esc(w.label)+'</span>'):''; // einzeilig/simple: Icon fix links, Text (Label optional + Wert) direkt dahinter
+      if(w.oneline){var lab=w.label?('<span class="wv1l">'+escL(w.label)+'</span>'):''; // einzeilig/simple: Icon fix links, Text (Label optional + Wert) direkt dahinter
         return '<div class="wv wv1'+(w.icon?' hasic':'')+'"'+st+'>'+ic+'<div class="wv1line">'+lab+'<span class="v" data-role="val">–</span></div></div>';}
-      return '<div class="wv'+(w.icon?' hasic':'')+'"'+st+'>'+ic+'<div class="wvbody" style="min-width:0'+al+'"><div class="l">'+esc(w.label||'')+'</div><div class="v" data-role="val">–</div></div></div>';},
+      return '<div class="wv'+(w.icon?' hasic':'')+'"'+st+'>'+ic+'<div class="wvbody" style="min-width:0'+al+'"><div class="l">'+escL(w.label||'')+'</div><div class="v" data-role="val">–</div></div></div>';},
     props:function(w){return row('Wert-Größe (px)','<input id="pFs" type="number" value="'+(w.valfs||24)+'">')
       +row('Präfix','<input id="pPre" value="'+esc(w.pre||'')+'" placeholder="z. B. ~">')
       +row('Suffix','<input id="pSuf" value="'+esc(w.suf||'')+'" placeholder="z. B. °C">')
@@ -21,7 +21,7 @@
       +(w.colThr?(row('Grün bis','<input id="pVT1" type="number" value="'+(w.t1!=null?w.t1:'')+'" placeholder="Schwelle">')+row('Gelb bis','<input id="pVT2" type="number" value="'+(w.t2!=null?w.t2:'')+'" placeholder="Schwelle">')+row('Invertieren','<input type="checkbox" id="pThrInv"'+(w.thrInvert?' checked':'')+'>')):'')
       +'<div class="pgh">Farbe nach Zustand</div>'
       +'<div style="font-size:11px;color:var(--muted);margin:-2px 2px 4px">Je Zustand eine Farbe (überschreibt die Schwellenfarbe). Erlaubt: exakte Werte, Operatoren (&gt;0, &lt;=25, !=3), Bereiche (0..25) und * für „alles andere“. Bool: 1/0 bzw. true/false.</div>'
-      +listEditor(w,'vassoc','Zustand · Text · Farbe',[{k:'v',ph:'Wert (z. B. 1)'},{k:'text',ph:'Text (optional)'},{k:'color',type:'skin'}])
+      +listEditor(w,'vassoc','Zustand · Text · Farbe',[{k:'v',ph:'Wert (z. B. 1)'},{k:'text',ph:'Text (optional)'},{k:'color',type:'skincolor'}])
       +row('Ganze Kachel einfärben','<input type="checkbox" id="pVaFill"'+(w.vaFill?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">statt nur des Werts</span>')
       +(w.vaFill?row('Darstellung','<select id="pFillMode">'+[['','Automatisch (crit füllt)'],['soft','Getönt'],['fill','Vollfläche']].map(function(o){return '<option value="'+o[0]+'"'+((w.fillMode||'')===o[0]?' selected':'')+'>'+o[1]+'</option>';}).join('')+'</select>'):'');},
     wire:function(w){

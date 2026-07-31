@@ -4,6 +4,14 @@
   var $=function(s,r){return (r||document).querySelector(s)},$$=function(s,r){return Array.prototype.slice.call((r||document).querySelectorAll(s))};
   // ===== Icon-Bibliothek (Line-Style, Heimautomation). id -> [Kategorie, SVG-Inhalt] =====
   var ICONS={
+    // --- ergaenzt fuer den Energiefluss: Anlagenteile, die bisher fehlten ---
+    grid:['Energie','<path d="M7.5 21L11 3M16.5 21L13 3"/><path d="M4 7h16M5.5 11.5h13"/><path d="M10.4 7L14 11.5M13.6 7L10 11.5"/><path d="M9.6 11.5L14.6 16.5M14.4 11.5L9.4 16.5"/><path d="M4 7v2M20 7v2M5.5 11.5v1.8M18.5 11.5v1.8"/><path d="M6 21h12"/>'],
+    inverter:['Energie','<rect x="4" y="5" width="16" height="14" rx="2"/><path d="M7 15c1.5-4 3.5-4 5 0s3.5 4 5 0"/><path d="M9 3v2M15 3v2M9 19v2M15 19v2"/>'],
+    transformer:['Energie','<path d="M6 8a3 3 0 0 1 0 8a3 3 0 0 1 0 -8"/><path d="M18 8a3 3 0 0 0 0 8a3 3 0 0 0 0 -8"/><path d="M9 12h6"/><path d="M6 5v3M18 5v3M6 16v3M18 16v3"/>'],
+    smartmeter:['Energie','<rect x="4" y="3" width="16" height="18" rx="2"/><rect x="7" y="6" width="10" height="6" rx="1"/><path d="M9 9h6"/><path d="M8 15h.01M11 15h.01M14 15h.01M8 18h8"/>'],
+    wallbox:['Energie','<rect x="5" y="3" width="11" height="14" rx="2"/><path d="M8 7h5"/><path d="M8 10h5"/><path d="M16 9h2a2 2 0 0 1 2 2v6a2 2 0 0 1 -4 0v-4"/><path d="M10 17v4"/><path d="M8 21h4"/>'],
+    generator:['Energie','<rect x="3" y="8" width="14" height="10" rx="2"/><path d="M17 12h3a1 1 0 0 1 1 1v2a1 1 0 0 1 -1 1h-3"/><path d="M10 10l-2 4h4l-2 4"/><path d="M6 18v2M14 18v2"/>'],
+
     bulb:['Licht','<path d="M3 12h1m8 -9v1m8 8h1m-15.4 -6.4l.7 .7m12.1 -.7l-.7 .7" /> <path d="M9 16a5 5 0 1 1 6 0a3.5 3.5 0 0 0 -1 3a2 2 0 0 1 -4 0a3.5 3.5 0 0 0 -1 -3" /> <path d="M9.7 17l4.6 0" />'],
     windturbine:['Energie','<path d="M12 13v8M8 21h8" /><path d="M12 11v-6" /><path d="M12 11l5 3" /><path d="M12 11l-5 3" /><circle cx="12" cy="11" r="1" />'],
     evstation:['Energie','<rect x="5" y="3" width="9" height="18" rx="1.5" /><path d="M8 7h3M8 10.5h3" /><path d="M14 9h2a2 2 0 0 1 2 2v4.5a1.5 1.5 0 0 0 3 0v-6l-2 -2" />'],

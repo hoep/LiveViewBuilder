@@ -167,6 +167,35 @@
   .hlrow{display:flex;align-items:center;gap:11px}.hlbadge{width:38px;height:38px;flex:none;border-radius:11px;background:color-mix(in oklab,var(--accent) 16%,var(--surface-2));color:var(--accent);display:flex;align-items:center;justify-content:center;padding:8px;transition:.15s}.hlbadge.on{background:var(--accent);color:#04201b}
   .hltext{min-width:0}.hlname{font-size:var(--wf-txt);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.hlstate{font-size:var(--wf-lbl);color:var(--muted);font-family:var(--fm)}
   .stage.preview .hlbadge{cursor:pointer}
+  /* ---- Licht-Kachel ----------------------------------------------------------------
+     Masse aus der Vorlage (418x294) als Anteile, damit die Kachel in jeder Groesse
+     gleich aussieht: Balken 20 % der Breite, 12 % Abstand oben und unten, Wert 18 %
+     der Hoehe. Alles ueber Container-Einheiten, nicht ueber feste Pixel. */
+  .hl2{position:relative;height:100%;overflow:hidden}
+  .hl2main{position:absolute;left:9%;top:15%;bottom:12%;right:28%;display:flex;flex-direction:column}
+  .hl2top{display:flex;align-items:center;gap:3cqw;min-width:0}
+  .hl2ic{width:8cqh;height:8cqh;min-width:14px;min-height:14px;flex:none;color:var(--muted)}
+  .hl2.on .hl2ic{color:var(--accent)}
+  .hl2name{font-size:9cqh;font-weight:700;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .hl2sub{font-size:6.5cqh;color:var(--muted);margin-top:1.5cqh;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .hl2vrow{margin-top:auto;display:flex;align-items:baseline;gap:1.5cqw;min-width:0}
+  .hl2val{font-size:18cqh;font-weight:700;line-height:1;font-variant-numeric:tabular-nums}
+  .hl2unit{font-size:7cqh;color:var(--muted);font-weight:600}
+  .hl2state{font-size:6.5cqh;color:var(--muted);margin-top:1.5cqh;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .hl2.on .hl2state{color:var(--accent)}
+  /* Balken: Kapsel mit Abstand zu allen Kanten, von unten gefuellt. Der weisse Riegel
+     markiert den Fuellstand und sitzt IM Fuellelement, wandert also von selbst mit. */
+  .hl2bar{position:absolute;right:6%;top:15%;bottom:15%;width:20%;border-radius:999px;
+          background:color-mix(in oklab,var(--bg) 70%,var(--surface-2));
+          border:1px solid var(--line);overflow:hidden}
+  .hl2bar i{position:absolute;left:0;right:0;bottom:0;height:0;display:block;border-radius:999px;
+            background:linear-gradient(180deg,color-mix(in oklab,var(--accent) 78%,var(--text)),var(--accent));
+            transition:height .35s cubic-bezier(.2,.8,.2,1)}
+  .hl2bar i::after{content:"";position:absolute;left:14%;right:14%;top:4%;min-height:4px;height:5%;
+                   border-radius:999px;background:color-mix(in oklab,var(--text) 92%,transparent)}
+  /* Rahmen der Kachel nimmt im eingeschalteten Zustand die Akzentfarbe an (wie in der Vorlage) */
+  .w.t-light:has(.hl2.on){border-color:color-mix(in oklab,var(--accent) 55%,var(--line))}
+  .stage:not(.edit) .w.t-light{cursor:pointer}
   .hchip{height:100%;display:flex;align-items:center;gap:8px;padding:0 12px;border-radius:999px}.hchipic{width:18px;height:18px;flex:none;color:var(--wicon,var(--accent))}.hchip [data-role=val]{font-family:var(--fm);font-size:var(--wf-txt);font-weight:600;white-space:nowrap}
   .hwx{height:100%;display:flex;flex-direction:column;justify-content:center;gap:8px;padding:10px 14px}
   .hwtop{display:flex;align-items:center;gap:12px}.hwicon{width:44px;height:44px;flex:none;color:var(--warm)}.hwtemp{font-family:var(--fm);font-size:30px;font-weight:600;line-height:1}
@@ -183,6 +212,28 @@
      --tile und --surface tragen die Karten, --surface-2 bleibt bewusst erhalten, damit
      Balkenspuren, Chips und Schalter sichtbar bleiben. */
   .w.bg-t{background:transparent!important;--tile:transparent;--surface:transparent}
+  /* Beschriftungen mehrzeilig. Aufgezaehlt sind bewusst nur BESCHRIFTUNGEN - Werte,
+     Schalter und Editor-Oberflaeche bleiben einzeilig, sonst braechen Zahlen um und
+     Knoepfe wuerden hoch. Kommt ein Widget mit eigener Label-Klasse dazu, gehoert sie
+     hier ergaenzt; ein pauschales "* {white-space:normal}" waere zu grob. */
+  .w.lbl-wrap .l,
+  .w.lbl-wrap .hassocl,
+  .w.lbl-wrap .hblabel,
+  .w.lbl-wrap .htc-name,
+  .w.lbl-wrap .hl2name,
+  .w.lbl-wrap .hl2sub,
+  .w.lbl-wrap .hl2state,
+  .w.lbl-wrap .hmtitle,
+  .w.lbl-wrap .hsrow .hsn,
+  .w.lbl-wrap .hkpi .hkl,
+  .w.lbl-wrap .hvctitle,
+  .w.lbl-wrap .hvccap,
+  .w.lbl-wrap .hsu-lbl,
+  .w.lbl-wrap .stl-lbl,
+  .w.lbl-wrap .stl-title,
+  .w.lbl-wrap .slog-lbl,
+  .w.lbl-wrap .htemp .htzn,
+  .w.lbl-wrap .hlname{white-space:normal;overflow-wrap:anywhere;text-overflow:clip;line-height:1.2}
   /* Die aeussere Huelle des Widget-Inhalts (.htick, .hvcard, .hinfo, .panel ...) malt oft
      selbst Hintergrund UND Rahmen - die Laufzeile etwa einen Verlauf surface->surface-2 mit
      1px Linie. Nur dieses eine direkte Kind wird mit neutralisiert; alles darunter
@@ -1131,6 +1182,14 @@
   var $=function(s,r){return (r||document).querySelector(s)},$$=function(s,r){return Array.prototype.slice.call((r||document).querySelectorAll(s))};
   // ===== Icon-Bibliothek (Line-Style, Heimautomation). id -> [Kategorie, SVG-Inhalt] =====
   var ICONS={
+    // --- ergaenzt fuer den Energiefluss: Anlagenteile, die bisher fehlten ---
+    grid:['Energie','<path d="M7.5 21L11 3M16.5 21L13 3"/><path d="M4 7h16M5.5 11.5h13"/><path d="M10.4 7L14 11.5M13.6 7L10 11.5"/><path d="M9.6 11.5L14.6 16.5M14.4 11.5L9.4 16.5"/><path d="M4 7v2M20 7v2M5.5 11.5v1.8M18.5 11.5v1.8"/><path d="M6 21h12"/>'],
+    inverter:['Energie','<rect x="4" y="5" width="16" height="14" rx="2"/><path d="M7 15c1.5-4 3.5-4 5 0s3.5 4 5 0"/><path d="M9 3v2M15 3v2M9 19v2M15 19v2"/>'],
+    transformer:['Energie','<path d="M6 8a3 3 0 0 1 0 8a3 3 0 0 1 0 -8"/><path d="M18 8a3 3 0 0 0 0 8a3 3 0 0 0 0 -8"/><path d="M9 12h6"/><path d="M6 5v3M18 5v3M6 16v3M18 16v3"/>'],
+    smartmeter:['Energie','<rect x="4" y="3" width="16" height="18" rx="2"/><rect x="7" y="6" width="10" height="6" rx="1"/><path d="M9 9h6"/><path d="M8 15h.01M11 15h.01M14 15h.01M8 18h8"/>'],
+    wallbox:['Energie','<rect x="5" y="3" width="11" height="14" rx="2"/><path d="M8 7h5"/><path d="M8 10h5"/><path d="M16 9h2a2 2 0 0 1 2 2v6a2 2 0 0 1 -4 0v-4"/><path d="M10 17v4"/><path d="M8 21h4"/>'],
+    generator:['Energie','<rect x="3" y="8" width="14" height="10" rx="2"/><path d="M17 12h3a1 1 0 0 1 1 1v2a1 1 0 0 1 -1 1h-3"/><path d="M10 10l-2 4h4l-2 4"/><path d="M6 18v2M14 18v2"/>'],
+
     bulb:['Licht','<path d="M3 12h1m8 -9v1m8 8h1m-15.4 -6.4l.7 .7m12.1 -.7l-.7 .7" /> <path d="M9 16a5 5 0 1 1 6 0a3.5 3.5 0 0 0 -1 3a2 2 0 0 1 -4 0a3.5 3.5 0 0 0 -1 -3" /> <path d="M9.7 17l4.6 0" />'],
     windturbine:['Energie','<path d="M12 13v8M8 21h8" /><path d="M12 11v-6" /><path d="M12 11l5 3" /><path d="M12 11l-5 3" /><circle cx="12" cy="11" r="1" />'],
     evstation:['Energie','<rect x="5" y="3" width="9" height="18" rx="1.5" /><path d="M8 7h3M8 10.5h3" /><path d="M14 9h2a2 2 0 0 1 2 2v4.5a1.5 1.5 0 0 0 3 0v-6l-2 -2" />'],
@@ -1535,9 +1594,13 @@
     if(w.type==='gauge'||w.type==='chart'||w.type==='spark'||w.type==='sankey')return '<div data-role="chart"></div>';
     // value
     var ic=w.icon?('<div class="wvic">'+iconSVG(w.icon)+'</div>'):'';
-    return '<div class="wv'+(w.icon?' hasic':'')+'">'+ic+'<div class="wvbody"><div class="l">'+esc(w.label||'')+'</div><div class="v" data-role="val">–</div></div></div>';
+    return '<div class="wv'+(w.icon?' hasic':'')+'">'+ic+'<div class="wvbody"><div class="l">'+escL(w.label||'')+'</div><div class="v" data-role="val">–</div></div></div>';
   }
   function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+  // Beschriftung ausgeben: wie esc(), aber ein eingetipptes \n - oder ein echter
+  // Zeilenumbruch - erzwingt an genau dieser Stelle eine neue Zeile. Nur fuer INHALT
+  // verwenden; in HTML-Attributen (title, alt, placeholder, value) weiterhin esc().
+  function escL(s){return esc(s).replace(/\\n|\r\n|\r|\n/g,'<br>');}
 
   function _wActionKind(w){ // welche Interaktion hat das Widget? -> Hover-Affordance-Klasse
     var t=w.type, hold=!!(w.longPopup||w.longNav), tap=false;
@@ -1577,6 +1640,7 @@
       d.style.left=w.x+'px';d.style.top=w.y+'px';d.style.width=w.w+'px';d.style.height=w.h+'px';
       var _frameOn=(w.frame!=null)?w.frame:!state.page.noframe;if(!_frameOn)d.classList.add('no-frame'); // Kachel-Rahmen: Widget-Override sonst Ansicht-Standard
       if(w.bgT)d.classList.add('bg-t'); // Hintergrund transparent (Rahmen bleibt davon unberuehrt)
+      if(w.lblWrap)d.classList.add('lbl-wrap'); // Beschriftungen duerfen umbrechen
       var _ak=_wActionKind(w);if(_ak)d.classList.add(_ak); // Hover-Affordance: tap/hold/both (CSS greift nur ausserhalb Edit)
       if(w.name&&_refSet[w.name])d.classList.add('ref-hidden'); // in Laufzeile referenziert -> immer aus (bearbeiten über die Laufzeile)
       else if(w.hidden)d.classList.add('run-hidden'); // manuell versteckt -> im Run aus, im Edit gestrichelt sichtbar (CSS)
@@ -2300,7 +2364,7 @@
     var s='<svg viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="xMidYMid meet" style="width:100%;height:100%">';
     src.forEach(function(o,i){var y=ny(i,src.length)+22;s+='<path class="pfline" d="M120 '+y+' C160 '+y+' 150 '+cy+' 180 '+cy+'"/><path class="pfline pfdash" d="M120 '+y+' C160 '+y+' 150 '+cy+' 180 '+cy+'"/>';});
     snk.forEach(function(o,i){var y=ny(i,snk.length)+22;s+='<path class="pfline" d="M240 '+cy+' C270 '+cy+' 250 '+y+' 280 '+y+'"/><path class="pfline pfdash" d="M240 '+cy+' C270 '+cy+' 250 '+y+' 280 '+y+'"/>';});
-    s+='<rect class="pfhouse" x="180" y="'+(cy-26)+'" width="60" height="52" rx="10"/><text x="210" y="'+(cy+4)+'" text-anchor="middle" class="pflab">'+esc(w.label||'Haus')+'</text>';
+    s+='<rect class="pfhouse" x="180" y="'+(cy-26)+'" width="60" height="52" rx="10"/><text x="210" y="'+(cy+4)+'" text-anchor="middle" class="pflab">'+escL(w.label||'Haus')+'</text>';
     function node(x,o,i,cnt){var y=ny(i,cnt);return '<rect class="pfnode" x="'+x+'" y="'+y+'" width="110" height="44" rx="9"/><text x="'+(x+11)+'" y="'+(y+18)+'" class="pfnlab">'+esc(o.label||'')+'</text><text x="'+(x+11)+'" y="'+(y+35)+'" class="pfnval"'+(o.vid?' data-vid="'+o.vid+'"':'')+'>–</text>';}
     src.forEach(function(o,i){s+=node(10,o,i,src.length);});
     snk.forEach(function(o,i){s+=node(280,o,i,snk.length);});
@@ -2507,6 +2571,7 @@
       dd.innerHTML='<div class="winner">'+widgetInner(w)+'</div>';
       if(w.type==='value'&&w.valfs){var vv=$('.v',dd);if(vv)vv.style.fontSize=w.valfs+'px';}
       if(w.bgT)dd.classList.add('bg-t'); // Hintergrund transparent, auch im Popup
+      if(w.lblWrap)dd.classList.add('lbl-wrap');
       if(w.bg&&!w.bgT)dd.style.background=w.bg;if(w.fg){var _rf2=_readableFg(w.fg,(w.bgT?null:w.bg));if(_rf2)dd.style.color=_rf2;}
       if(w.iconColor)dd.style.setProperty('--wicon',_skinColor(w.iconColor)||w.iconColor);
       oc.appendChild(dd);
@@ -2537,7 +2602,7 @@
     function mp(id){return (id&&map[id]!=null)?map[id]:id;}
     var inner='<div class="compinner" style="position:absolute;left:0;top:0;width:'+sw+'px;height:'+sh+'px;transform-origin:top left;transform:scale('+sc+');pointer-events:'+(mode==='edit'?'none':'auto')+'">';
     (src.widgets||[]).forEach(function(mw){var c={};for(var k in mw)c[k]=mw[k];c.id=w.id+'__'+mw.id;c.varId=mp(c.varId);c.varId2=mp(c.varId2);c.varId3=mp(c.varId3);if(c.visVar)c.visVar=mp(c.visVar);
-      inner+='<div class="w t-'+c.type+(c.lineMode?' wline':'')+(c.bgT?' bg-t':'')+'" data-id="'+c.id+'" style="position:absolute;left:'+c.x+'px;top:'+c.y+'px;width:'+c.w+'px;height:'+c.h+'px'+((c.bg&&!c.bgT)?';background:'+c.bg:'')+(c.fg?(function(){var r=_readableFg(c.fg,(c.bgT?null:c.bg));return r?';color:'+r:'';})():'')+'"><div class="winner">'+widgetInner(c)+'</div></div>';
+      inner+='<div class="w t-'+c.type+(c.lineMode?' wline':'')+(c.bgT?' bg-t':'')+(c.lblWrap?' lbl-wrap':'')+'" data-id="'+c.id+'" style="position:absolute;left:'+c.x+'px;top:'+c.y+'px;width:'+c.w+'px;height:'+c.h+'px'+((c.bg&&!c.bgT)?';background:'+c.bg:'')+(c.fg?(function(){var r=_readableFg(c.fg,(c.bgT?null:c.bg));return r?';color:'+r:'';})():'')+'"><div class="winner">'+widgetInner(c)+'</div></div>';
       _compKids.push(c);});
     host.innerHTML=inner+'</div>';}
   // Wert-Format pro Widget
@@ -2666,6 +2731,7 @@
       +'<div class="prop">'
       +row('Typ','<select id="pType">'+typeOpts+'</select>')
       +row('Label','<input id="pLabel" value="'+esc(w.label||'')+'">')
+      +'<div style="font-size:11px;color:var(--muted);margin:-2px 2px 5px">Ein <b>\\n</b> im Text erzwingt an dieser Stelle einen Zeilenumbruch.</div>'
       +row('Name','<input id="pName" value="'+esc(w.name||'')+'" placeholder="eindeutige Kennung (intern)">')
       +((w.type==='camera'||w.type==='image')?row('Media-ID','<input id="pMedia" value="'+(w.mediaId||'')+'" placeholder="Media-ID">')
           :(w.type==='line'||w.type==='shape')?row('Farbe','<input id="pColor" type="color" value="'+(w.color||'#00cdab')+'">')
@@ -2685,6 +2751,7 @@
       +(w.type!=='line'?row('Farben','<input id="pFg" type="color" value="'+(w.fg||'#e7eef0')+'" title="Textfarbe"> <input id="pBg" type="color" value="'+(w.bg||'#141c1f')+'" title="Hintergrund"> <button class="btn" id="pClr" style="padding:5px 8px" title="Farben zurücksetzen"><svg class="i"><use href="#ic-minus"/></svg></button>'):'')
       +(w.type!=='line'&&w.type!=='shape'?row('Rahmen','<select id="pFrame"><option value=""'+(w.frame==null?' selected':'')+'>Ansicht-Standard</option><option value="1"'+(w.frame===true?' selected':'')+'>An</option><option value="0"'+(w.frame===false?' selected':'')+'>Aus</option></select>'):'')
       +(w.type!=='line'?row('Hintergrund','<select id="pBgT"><option value=""'+(!w.bgT?' selected':'')+'>Deckend</option><option value="1"'+(w.bgT?' selected':'')+'>Transparent</option></select>'):'')
+      +(w.type!=='line'?row('Beschriftung','<input type="checkbox" id="pLblWrap"'+(w.lblWrap?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">mehrzeilig statt abschneiden</span>'):'')
       +(w.type!=='line'&&w.type!=='shape'?('<div class="pgh">Typografie</div>'
         +row('Schrift','<select id="pFf"><option value=""'+(!w.ff?' selected':'')+'>Standard</option>'+[['system-ui,-apple-system,sans-serif','Sans'],['Georgia,\'Times New Roman\',serif','Serif'],['var(--fm)','Mono'],['\'Segoe UI\',Arial,sans-serif','Segoe/Arial'],['\'Courier New\',monospace','Courier'],['Verdana,sans-serif','Verdana']].map(function(o){return '<option value="'+esc(o[0])+'"'+(w.ff===o[0]?' selected':'')+'>'+o[1]+'</option>';}).join('')+'</select>')
         +row('Gewicht','<select id="pFwt"><option value=""'+(!w.fwt?' selected':'')+'>Standard</option>'+['300','400','500','600','700','800'].map(function(x){return '<option value="'+x+'"'+(w.fwt===x?' selected':'')+'>'+x+'</option>';}).join('')+'</select>')
@@ -2727,6 +2794,7 @@
     if($('#pClr'))$('#pClr').onclick=function(){delete w.fg;delete w.bg;delete w.bgT;render();renderProps();};
     if($('#pFrame'))$('#pFrame').onchange=function(){w.frame=(this.value===''?undefined:(this.value==='1'));render();commit();};
     if($('#pBgT'))$('#pBgT').onchange=function(){w.bgT=(this.value==='1')||undefined;render();commit();};
+    if($('#pLblWrap'))$('#pLblWrap').onchange=function(){w.lblWrap=this.checked||undefined;render();commit();};
     if($('#pFf'))$('#pFf').onchange=function(){w.ff=this.value||undefined;render();commit();};
     if($('#pFwt'))$('#pFwt').onchange=function(){w.fwt=this.value||undefined;render();commit();};
     if($('#pFsty'))$('#pFsty').onchange=function(){w.fsty=this.value||undefined;render();commit();};
@@ -2849,7 +2917,16 @@
     var arr=w[key]||[];var gtc=cols.map(function(){return '1fr';}).join(' ')+' 22px';
     var rows=arr.map(function(r,i){
       return '<div class="fcrow" style="display:grid;grid-template-columns:'+gtc+';gap:4px;margin-bottom:4px">'
-        +cols.map(function(c){if(c.type==='skin')return skinSel(String(r[c.k]!=null?r[c.k]:''),'data-le="'+key+'.'+i+'.'+c.k+'"');if(c.type==='color'){var cv=String(r[c.k]!=null?r[c.k]:'');return '<input type="color" data-le="'+key+'.'+i+'.'+c.k+'" value="'+(/^#[0-9a-fA-F]{6}$/.test(cv)?cv:'#00cdab')+'" title="'+esc(c.ph||'Farbe')+'">';}if(c.type==='select'){var sv=String(r[c.k]!=null?r[c.k]:(c.def||''));return '<select data-le="'+key+'.'+i+'.'+c.k+'">'+(c.options||[]).map(function(o){return '<option value="'+o[0]+'"'+(sv===o[0]?' selected':'')+'>'+esc(o[1])+'</option>';}).join('')+'</select>';}if(c.type==='skincolor'){return skinSel(String(r[c.k]!=null?r[c.k]:''),'data-le="'+key+'.'+i+'.'+c.k+'"');}return '<input data-le="'+key+'.'+i+'.'+c.k+'" value="'+esc(String(r[c.k]!=null?r[c.k]:''))+'" placeholder="'+c.ph+'">';}).join('')
+        +cols.map(function(c){if(c.type==='color'){var cv=String(r[c.k]!=null?r[c.k]:'');return '<input type="color" data-le="'+key+'.'+i+'.'+c.k+'" value="'+(/^#[0-9a-fA-F]{6}$/.test(cv)?cv:'#00cdab')+'" title="'+esc(c.ph||'Farbe')+'">';}if(c.type==='select'){
+          // Die Vorgabe wird nicht nur angezeigt, sondern auch HINTERLEGT. Vorher zeigte das
+          // Feld c.def an, ohne dass etwas gespeichert war - und wer die bereits sichtbare
+          // Auswahl nochmals anklickte, loeste kein Aenderungsereignis aus, es blieb also
+          // dauerhaft leer. Das Widget sah einen leeren Typ und verhielt sich anders, als das
+          // Feld behauptete (Energiefluss: Verbraucher wurden als Lieferant gezeichnet).
+          if((r[c.k]==null||r[c.k]==='')&&c.def!=null&&c.def!=='')r[c.k]=c.def;
+          var sv=String(r[c.k]!=null?r[c.k]:(c.def||''));return '<select data-le="'+key+'.'+i+'.'+c.k+'">'+(c.options||[]).map(function(o){return '<option value="'+o[0]+'"'+(sv===o[0]?' selected':'')+'>'+esc(o[1])+'</option>';}).join('')+'</select>';}/* skincolor: Auswahl der Skin-Farben statt Freitext - verhindert Tippfehler, die
+           still verworfen wuerden, und laesst unbekannte Altwerte als "Eigene" stehen. */
+        if(c.type==='skincolor'){return skinSel(String(r[c.k]!=null?r[c.k]:''),'data-le="'+key+'.'+i+'.'+c.k+'"');}return '<input data-le="'+key+'.'+i+'.'+c.k+'" value="'+esc(String(r[c.k]!=null?r[c.k]:''))+'" placeholder="'+c.ph+'">';}).join('')
         +'<button class="btn" data-ledel="'+key+'.'+i+'" style="padding:2px"><svg class="i"><use href="#ic-minus"/></svg></button></div>';
     }).join('');
     return '<div class="prop" style="margin-top:8px"><div style="font-size:11px;color:var(--muted);margin-bottom:5px">'+title+'</div>'+rows+'<button class="btn" data-leadd="'+key+'"><svg class="i"><use href="#ic-plus"/></svg></button></div>';
@@ -3100,7 +3177,6 @@
     if(w.type==='thermostat'){var mb=e.target.closest('.htmbtn');if(mb&&w.varId3){setVar(w.varId3,mb.getAttribute('data-mv'));return;}
       if(w.varId2){var up=e.target.closest('[data-role=up]'),dn=e.target.closest('[data-role=dn]');if(up||dn){var tv=_lastVals[w.varId2];var t=tv?parseFloat(tv.v):20;if(isNaN(t))t=20;var st=w.step||0.5;setVar(w.varId2,(t+(up?st:-st)).toFixed(1));}}return;}
     if(w.type==='cover'){var cu=e.target.closest('[data-role=cup]'),cs=e.target.closest('[data-role=cstop]'),cd=e.target.closest('[data-role=cdn]');if(cu&&w.varId)setVar(w.varId,100);else if(cd&&w.varId)setVar(w.varId,0);else if(cs&&w.varId2)setVar(w.varId2,1);return;}
-    if(w.type==='light'&&w.varId){var lb=e.target.closest('[data-role=badge]');if(lb){var ld=_lastVals[w.varId];var lc=ld?(ld.v===true||ld.v===1||ld.v==='1'):false;setVar(w.varId,lc?0:1);}return;}
     if(w.type==='media'&&w.varId2){if(e.target.closest('[data-role=mplay]')){var md=_lastVals[w.varId2];var mc=md?(md.v===true||md.v===1||md.v==='1'):false;setVar(w.varId2,mc?0:1);}return;}
     if(w.type==='alarm'&&w.varId){if(e.target.closest('[data-role=aon]'))setVar(w.varId,1);else if(e.target.closest('[data-role=aoff]'))setVar(w.varId,0);return;}
     if(w.type==='vacuum'&&w.varId3){if(e.target.closest('[data-role=vstart]'))setVar(w.varId3,1);else if(e.target.closest('[data-role=vstop]'))setVar(w.varId3,0);return;}
@@ -3214,8 +3290,18 @@
   // Live-Feed (für WS-Monitor-Widget): jeder eingehende Wert wird protokolliert, mit Quelle (poll/ws)
   var _liveFeed=[],_liveSrc='poll';
   function _feedPush(id,d,src){if(src==='cache')return;_liveFeed.push({t:Date.now(),id:id,v:(d.f!=null&&d.f!=='')?d.f:d.v,src:src||'poll'});if(_liveFeed.length>500)_liveFeed.splice(0,_liveFeed.length-500);}
+  // Zeitpunkt der letzten Aenderung je Variable. Der Poll liefert ihn als 'c' mit; der
+  // WebSocket-Push tut das nicht, deshalb wird dort ersatzweise der Moment festgehalten,
+  // in dem sich der Wert tatsaechlich geaendert hat. Ohne beides koennte eine Anzeige wie
+  // "seit 18:12" erst ab dem Laden der Seite zaehlen.
+  var _chgAt={};
+  function changedAt(id){return _chgAt[id]||0;}
   function applyVal(id,d){
-    if(!id||!d)return;_lastVals[id]=d;_feedPush(id,d,_liveSrc);
+    if(!id||!d)return;
+    var _prev=_lastVals[id];
+    if(d.c)_chgAt[id]=d.c*1000;
+    else if(!_prev||String(_prev.v)!==String(d.v))_chgAt[id]=Date.now();
+    _lastVals[id]=d;_feedPush(id,d,_liveSrc);
     var base=(d.f!==''&&d.f!=null)?d.f:d.v,on=(d.v===true||d.v===1||d.v==='1');
     var _bs=String(base),_pu=(d.u!=null)?String(d.u):''; // Profil-Einheit vom Server
     var num=(_pu!==''&&_bs.length>=_pu.length&&_bs.slice(-_pu.length)===_pu)?_bs.slice(0,-_pu.length).replace(/\s+$/,''):_bs; // Wert ohne Profil-Einheit
@@ -3833,7 +3919,21 @@
       applySkin();GS=bcfg().gs;if(bcfg().sideW){var _sd=$('.side');if(_sd)_sd.style.width=bcfg().sideW+'px';}
       var _sv=VIEWNAME||lvPage();switchView((_sv&&store.views&&store.views[_sv])?_sv:store.current);buildSwatches();buildIconLib();buildBlocks();buildSkins();buildSettings();buildLayoutList();syncPalette();decoratePalette();chromeUI(); // ?view= auch im Edit-Modus berücksichtigen; syncPalette ergänzt fehlende Registry-Widgets
       if(RUN){enterRun();}else{toast('Geladen: '+(_target||'Standard')+' · '+Object.keys(store.views).length+' Ansicht(en)');}
-    }).catch(function(){store={views:{'Ansicht 1':{page:{w:1440,h:900},widgets:[]}},current:'Ansicht 1'};switchView('Ansicht 1');if(RUN)enterRun();});
+    }).catch(function(err){
+      // ACHTUNG: Dieser catch umschliesst die GESAMTE Kette oben - migrateStore, switchView,
+      // buildBlocks, buildIconLib, buildSettings und jedes Widget-render. Frueher nahm er den
+      // Fehler nicht einmal entgegen und ersetzte den Speicher stillschweigend durch eine leere
+      // Ansicht. Sichtbares Ergebnis: leere Arbeitsflaeche, KEINE Meldung, kein roter Balken -
+      // denn eine abgefangene Zurueckweisung loest 'unhandledrejection' nie aus. Ein Boot-Fehler
+      // muss laut sein, sonst sucht man ihn blind. Die leere Ansicht bleibt als Notanker, damit
+      // der Builder bedienbar ist, aber NIE mehr ohne Hinweis.
+      try{console.error('[LVB] load() fehlgeschlagen:',err);}catch(_){}
+      if(!RUN&&window.__diag){
+        window.__diag('LADEFEHLER beim Start: '+((err&&(err.stack||err.message))||err||'?')
+          +'\nDie Arbeitsflaeche ist deshalb leer - der gespeicherte Stand wurde NICHT geaendert.');
+      }
+      store={views:{'Ansicht 1':{page:{w:1440,h:900},widgets:[]}},current:'Ansicht 1'};switchView('Ansicht 1');if(RUN)enterRun();
+    });
   }
 
   // ---------- Runtime (Vollbild-Anzeige) ----------
@@ -4556,14 +4656,14 @@
       if(w.vfwt){vc+=' tw-vfwt';vst+='--asc-vfwt:'+w.vfwt+';';}
       if(w.vfsz){vc+=' tw-vfsz';vst+='--asc-vfsz:'+w.vfsz+'px;';}
       var val='<div class="'+vc+'" data-role="aval"'+(vst?' style="'+vst+'"':'')+'>–</div>';
-      var lbl=(s!=='icon'&&w.label)?'<div class="hassocl" data-role="alabel">'+esc(w.label)+'</div>':'';
+      var lbl=(s!=='icon'&&w.label)?'<div class="hassocl" data-role="alabel">'+escL(w.label)+'</div>':'';
       return '<div class="hassoc" data-role="acard"><div class="hassoc-top">'+chip+pill+'</div><div class="hassoc-btm">'+val+lbl+'</div></div>';},
     props:function(w){var FF=[['system-ui,-apple-system,sans-serif','Sans'],['Georgia,\'Times New Roman\',serif','Serif'],['var(--fm)','Mono'],['\'Segoe UI\',Arial,sans-serif','Segoe/Arial'],['\'Courier New\',monospace','Courier'],['Verdana,sans-serif','Verdana']];
       return row('Darstellung','<select id="pFillMode">'+[['','Automatisch (crit füllt)'],['soft','Getönt'],['fill','Vollfläche']].map(function(o){return '<option value="'+o[0]+'"'+((w.fillMode||'')===o[0]?' selected':'')+'>'+o[1]+'</option>';}).join('')+'</select>')
       +row('Anzeige','<select id="pAsShow"><option value="both"'+((w.assocShow||'both')==='both'?' selected':'')+'>Icon + Wert + Label</option><option value="icon"'+(w.assocShow==='icon'?' selected':'')+'>Nur Icon</option><option value="text"'+(w.assocShow==='text'?' selected':'')+'>Wert + Label</option></select>')
       +row('Zustand als','<select id="pStateAs"><option value="value"'+((w.stateAs||'value')==='value'?' selected':'')+'>Großer Wert</option><option value="pill"'+(w.stateAs==='pill'?' selected':'')+'>Pille</option></select>')
       +row('Einheit','<input id="pAsUnit" value="'+esc(w.unit||'')+'" placeholder="z. B. kWh (bei Zählerwerten)">')
-      +listEditor(w,'amap','Manuell: Wert · Icon · Text · Farbe',[{k:'v',ph:'0, >0, 1..5, *'},{k:'icon',ph:'z.B. winopen'},{k:'text',ph:'Text (Pille)'},{k:'color',ph:'ok/warn/crit/text'}])
+      +listEditor(w,'amap','Manuell: Wert · Icon · Text · Farbe',[{k:'v',ph:'0, >0, 1..5, *'},{k:'icon',ph:'z.B. winopen'},{k:'text',ph:'Text (Pille)'},{k:'color',type:'skincolor'}])
       +'<div class="hint" style="font-size:11px;color:var(--muted)">Wert: exakt (<b>0</b>, <b>1</b>), Vergleich (<b>&gt;0</b>, <b>&gt;=1</b>, <b>&lt;5</b>, <b>!=0</b>), Bereich (<b>1..5</b>) oder Platzhalter (<b>*</b> = Rest). Exakte Treffer haben Vorrang. Die Spalte <b>Text</b> überschreibt den Zustandstext (Pille) — auch für Profil-Assoziationen (Wert eintragen). Farbe <b>crit</b> = Alarm (rote Vollfläche), sonst getönt mit linker Kante. Icons z. B. winopen/winclosed/wintilt, blindopen/blindclosed, lighton/lightoff.</div>'
       +'<div class="pgh">Schrift Wert</div>'
       +row('Schrift','<select id="pVff"><option value="">Wie Widget</option>'+FF.map(function(o){return '<option value="'+esc(o[0])+'"'+(w.vff===o[0]?' selected':'')+'>'+o[1]+'</option>';}).join('')+'</select>')
@@ -4582,7 +4682,7 @@
   // ===== Widget: Balken (Bar) — horizontaler Fortschrittsbalken =====
   defWidget('bar',{
     label:'Balken', paletteIcon:'wbars', size:[220,66],
-    render:function(w){return '<div class="wbar"><div class="bl"><span class="l'+(w.icon?' hasic':'')+'">'+(w.icon?'<span class="baric">'+iconSVG(w.icon)+'</span>':'')+esc(w.label||'')+'</span><span class="bv" data-role="val">–</span></div><div class="btrack"><i data-role="bar"></i></div></div>';},
+    render:function(w){return '<div class="wbar"><div class="bl"><span class="l'+(w.icon?' hasic':'')+'">'+(w.icon?'<span class="baric">'+iconSVG(w.icon)+'</span>':'')+escL(w.label||'')+'</span><span class="bv" data-role="val">–</span></div><div class="btrack"><i data-role="bar"></i></div></div>';},
     live:function(w,el,id,d,base,txt,on){var mn=(w.min!=null?w.min:0),mx=(w.max!=null?w.max:100);var nv=parseFloat(String(d.v).replace(',','.'));var bar=$('[data-role=bar]',el);if(bar&&!isNaN(nv))bar.style.width=Math.max(0,Math.min(100,((nv-mn)/((mx-mn)||1))*100))+'%';var bv=$('[data-role=val]',el);if(bv)bv.textContent=txt;}
   });
 // Widget: blank (Leer)
@@ -4590,12 +4690,12 @@ defWidget('blank',{
   label:'Leer',
   paletteIcon:'wblank',
   size:[180,110],
-  render:function(w){return '<div class="hblank"><span class="hbplus">'+iconSVG('wblank')+'</span><span class="hbtxt">'+esc(w.label&&w.label!=='Label'?w.label:'Leer — Typ &amp; Variable im Panel wählen')+'</span></div>';}
+  render:function(w){return '<div class="hblank"><span class="hbplus">'+iconSVG('wblank')+'</span><span class="hbtxt">'+escL(w.label&&w.label!=='Label'?w.label:'Leer — Typ &amp; Variable im Panel wählen')+'</span></div>';}
 });
   // ===== Widget: Button — Icon-Badge, Zustands-Styling (Ein/Aus) =====
   defWidget('button',{
     label:'Button', paletteIcon:'power', size:[110,110],
-    render:function(w){return '<div class="hbtn"><div class="hbicon" data-role="badge">'+iconSVG(w.icon||'power')+'</div>'+(w.label?'<div class="hblabel">'+esc(w.label)+'</div>':'')+'</div>';},
+    render:function(w){return '<div class="hbtn"><div class="hbicon" data-role="badge">'+iconSVG(w.icon||'power')+'</div>'+(w.label?'<div class="hblabel">'+escL(w.label)+'</div>':'')+'</div>';},
     props:function(w){return btnStateProps(w);},
     wire:function(w){btnStateWire(w);},
     live:function(w,el,id,d,base,txt,on){var b=$('[data-role=badge]',el);if(b)b.classList.toggle('on',on);var tv=$('[data-role=val]',el);if(tv)tv.textContent=txt;applyBtnState(w,el,on);}
@@ -4604,7 +4704,7 @@ defWidget('blank',{
   defWidget('calc',{
     label:'Berechnung', paletteIcon:'meter', size:[190,88],
     defaults:function(w){w.mode='sum';w.label='Summe';w.items=[{vid:0},{vid:0}];},
-    render:function(w){return '<div class="wv"><div class="wvbody" style="min-width:0"><div class="l">'+esc(w.label||'')+'</div><div class="v" data-role="val">–</div></div></div>';},
+    render:function(w){return '<div class="wv"><div class="wvbody" style="min-width:0"><div class="l">'+escL(w.label||'')+'</div><div class="v" data-role="val">–</div></div></div>';},
     props:function(w){return row('Rechnung','<select id="pCalcMode">'+['sum','avg','min','max','diff','count'].map(function(m){return '<option value="'+m+'"'+((w.mode||'sum')===m?' selected':'')+'>'+({sum:'Summe',avg:'Mittel',min:'Min',max:'Max',diff:'Differenz (1 − Rest)',count:'Anzahl > 0'}[m])+'</option>';}).join('')+'</select>')
       +row('Einheit','<input id="pCalcUnit" value="'+esc(w.unit||'')+'">')
       +row('Nachkommastellen','<input id="pCalcDec" type="number" min="0" max="4" value="'+(w.dec!=null?w.dec:1)+'">')
@@ -4675,7 +4775,7 @@ defWidget('calendar',{
   defWidget('camera',{
     label:'Kamera', paletteIcon:'camera', size:[260,160],
     render:function(w){
-      var m=w.camSrc||'media',fit=_camFitCSS(w),nm='<div class="wcamnm">'+esc(w.label||'')+'</div>';
+      var m=w.camSrc||'media',fit=_camFitCSS(w),nm='<div class="wcamnm">'+escL(w.label||'')+'</div>';
       if(m==='go2rtc'){
         var base=(w.g2Base||'').replace(/\/+$/,''),strm=encodeURIComponent(w.g2Stream||'');
         if(!base||!w.g2Stream)return '<div class="wcam"><div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--faint);text-align:center;padding:8px">go2rtc: Adresse und Stream-Name setzen</div>'+nm+'</div>';
@@ -4713,7 +4813,7 @@ defWidget('calendar',{
   // ===== Widget: Kamera+ (campro) — nutzt die gemeinsamen Kamera-Helfer aus camera.js =====
   defWidget('campro',{
     label:'Kamera+', paletteIcon:'camera', size:[260,170],
-    render:function(w){return '<div class="hcampro"><img data-role="cam"'+(w.mediaId?' data-media="'+esc(String(w.mediaId))+'"':'')+' style="object-fit:'+_camFitCSS(w)+'" src="'+(w.mediaId?('?api=media&id='+w.mediaId):'')+'"><div class="hcpmotion"'+(w.varId?' data-viddot="'+w.varId+'"':'')+'><span style="width:6px;height:6px;border-radius:50%;background:#fff"></span>Bewegung</div><div class="hcpname">'+esc(w.label||'')+'</div></div>';},
+    render:function(w){return '<div class="hcampro"><img data-role="cam"'+(w.mediaId?' data-media="'+esc(String(w.mediaId))+'"':'')+' style="object-fit:'+_camFitCSS(w)+'" src="'+(w.mediaId?('?api=media&id='+w.mediaId):'')+'"><div class="hcpmotion"'+(w.varId?' data-viddot="'+w.varId+'"':'')+'><span style="width:6px;height:6px;border-radius:50%;background:#fff"></span>Bewegung</div><div class="hcpname">'+escL(w.label||'')+'</div></div>';},
     props:function(w){return _camFitSel(w)+row('Media-ID','<input id="pMedia" value="'+(w.mediaId||'')+'" placeholder="Media-ID">')+row('Aktualisierung (s)','<input id="pCamRef" type="number" min="1" value="'+(w.refresh||15)+'">');},
     wire:function(w){_camFitWire(w);var m=$('#pMedia');if(m)m.oninput=function(){w.mediaId=this.value.trim()||undefined;render();};if($('#pCamRef'))$('#pCamRef').oninput=function(){w.refresh=parseInt(this.value)||15;};},
     mount:function(w){_camAspect(w);}
@@ -4899,7 +4999,7 @@ defWidget('calendar',{
   // ===== Widget: Checkbox — bool anzeigen/schalten, optional nur Anzeige =====
   defWidget('checkbox',{
     label:'Checkbox', paletteIcon:'check', size:[160,44],
-    render:function(w){return '<div style="height:100%;display:flex;align-items:center;gap:9px;padding:0 12px"><span data-role="cbx" style="width:20px;height:20px;border-radius:5px;border:2px solid var(--line);flex:none;display:flex;align-items:center;justify-content:center;box-sizing:border-box"></span><span style="font-size:13px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(w.label||'')+'</span></div>';},
+    render:function(w){return '<div style="height:100%;display:flex;align-items:center;gap:9px;padding:0 12px"><span data-role="cbx" style="width:20px;height:20px;border-radius:5px;border:2px solid var(--line);flex:none;display:flex;align-items:center;justify-content:center;box-sizing:border-box"></span><span style="font-size:13px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escL(w.label||'')+'</span></div>';},
     props:function(w){return row('Nur Anzeige','<input type="checkbox" id="pCbRo"'+(w.readonly?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">nicht schaltbar</span>');},
     wire:function(w){if($('#pCbRo'))$('#pCbRo').onchange=function(){w.readonly=this.checked||undefined;};},
     live:function(w,el,id,d,base,txt,on){var b=$('[data-role=cbx]',el);if(b){b.style.background=on?'var(--accent)':'';b.style.borderColor=on?'var(--accent)':'var(--line)';b.innerHTML=on?'<svg style="width:13px;height:13px;fill:none;stroke:var(--accent-ink,#052e28);stroke-width:3;stroke-linecap:round;stroke-linejoin:round"><use href="#ic-check"/></svg>':'';}},
@@ -5030,7 +5130,7 @@ defWidget('chip',{
     });
   }
   function cpRenderWheel(w){
-    var lbl=w.label?'<div style="font-size:11px;color:var(--muted);flex:none">'+esc(w.label)+'</div>':'';
+    var lbl=w.label?'<div style="font-size:11px;color:var(--muted);flex:none">'+escL(w.label)+'</div>':'';
     var wheel='<div data-role="cwWheel" style="position:relative;flex:none;width:118px;height:118px;border-radius:50%;background:radial-gradient(circle at center,#fff,rgba(255,255,255,0) 72%),conic-gradient(from 0deg,hsl(0,100%,50%),hsl(60,100%,50%),hsl(120,100%,50%),hsl(180,100%,50%),hsl(240,100%,50%),hsl(300,100%,50%),hsl(360,100%,50%));box-shadow:inset 0 0 0 1px var(--line);cursor:crosshair;touch-action:none">'
       +'<div data-role="cwHandle" style="position:absolute;left:50%;top:50%;width:15px;height:15px;margin:-7.5px 0 0 -7.5px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.45);background:#000;pointer-events:none"></div></div>';
     var slider='<div style="display:flex;align-items:center;gap:8px;width:100%;flex:none">'
@@ -5111,7 +5211,7 @@ defWidget('chip',{
     return '<div style="height:100%;display:flex;flex-direction:column;justify-content:center;gap:7px;padding:10px 12px;box-sizing:border-box">'
       +'<div style="display:flex;align-items:center;gap:8px">'
         +'<span data-role="sw" style="width:22px;height:22px;border-radius:6px;border:1px solid var(--line);background:#000;flex:none"></span>'
-        +(w.label?'<span style="font-size:12px;color:var(--muted);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(w.label)+'</span>':'<span style="flex:1"></span>')
+        +(w.label?'<span style="font-size:12px;color:var(--muted);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+escL(w.label)+'</span>':'<span style="flex:1"></span>')
         +'<span data-role="hex" style="font-family:var(--fm);font-size:11px;color:var(--muted);flex:none">#000000</span>'
       +'</div>'+rows+'</div>';
   }
@@ -5134,7 +5234,7 @@ defWidget('chip',{
     var cur=w.varId&&_lastVals[w.varId];
     var active=!!(cur&&parseInt(String(cur.v).replace(',','.'),10)===mine);
     var chk='<svg data-role="chk" class="i" style="display:'+(active?'block':'none')+';position:absolute;top:5px;right:5px;width:16px;height:16px;fill:none;stroke:#fff;stroke-width:3;stroke-linecap:round;stroke-linejoin:round;filter:drop-shadow(0 0 2px rgba(0,0,0,.65))"><use href="#ic-check"/></svg>';
-    var lbl=w.label?'<div style="position:absolute;left:4px;right:4px;bottom:5px;text-align:center;font-size:11px;line-height:1.1;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.7);pointer-events:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(w.label)+'</div>':'';
+    var lbl=w.label?'<div style="position:absolute;left:4px;right:4px;bottom:5px;text-align:center;font-size:11px;line-height:1.1;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.7);pointer-events:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+escL(w.label)+'</div>':'';
     return '<div data-role="swatch" style="position:absolute;inset:6px;border-radius:12px;background:'+esc(col)+';border:1px solid var(--line);box-shadow:'+(active?'0 0 0 3px var(--accent)':'none')+';cursor:pointer">'+chk+lbl+'</div>';
   }
   function cpLiveButton(w,el,id,d,base,txt,on){
@@ -5150,7 +5250,7 @@ defWidget('chip',{
   }
 
   // ---------------------------------------------------------------- Variante „box" (reine Anzeige)
-  function cpRenderBox(w){return '<div style="position:absolute;inset:0;padding:8px;box-sizing:border-box;display:flex;flex-direction:column;gap:6px"><div data-role="sw" style="flex:1;border-radius:9px;border:1px solid var(--line);background:#333;min-height:20px;cursor:pointer"></div>'+(w.label?'<div style="font-size:11px;color:var(--muted);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(w.label)+'</div>':'')+'</div>';}
+  function cpRenderBox(w){return '<div style="position:absolute;inset:0;padding:8px;box-sizing:border-box;display:flex;flex-direction:column;gap:6px"><div data-role="sw" style="flex:1;border-radius:9px;border:1px solid var(--line);background:#333;min-height:20px;cursor:pointer"></div>'+(w.label?'<div style="font-size:11px;color:var(--muted);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escL(w.label)+'</div>':'')+'</div>';}
   function cpLiveBox(w,el,id,d,base,txt,on){var sw=$('[data-role=sw]',el);if(sw){var n=parseInt(d.v)||0;sw.style.background='#'+('000000'+(n&0xFFFFFF).toString(16)).slice(-6);}}
 
   // ---------------------------------------------------------------- Registry
@@ -5242,7 +5342,7 @@ defWidget('chip',{
   // ===== Widget: Cover — Rollo/Jalousie mit Auf/Stop/Zu und Positions-Slider =====
   defWidget('cover',{
     label:'Rollo', paletteIcon:'blinds', size:[200,112],
-    render:function(w){return '<div class="hcov"><div class="hcrow"><span class="hcname">'+esc(w.label||'')+'</span><span class="hcval" data-role="val">–</span></div><div class="hcbtns"><button data-role="cup" title="Auf"><svg><use href="#ic-chevup"/></svg></button><button data-role="cstop" title="Stop"><svg><use href="#ic-stop"/></svg></button><button data-role="cdn" title="Zu"><svg><use href="#ic-chevdn"/></svg></button></div><input class="hsrange" type="range" data-role="range" min="0" max="100" step="1" value="0"></div>';},
+    render:function(w){return '<div class="hcov"><div class="hcrow"><span class="hcname">'+escL(w.label||'')+'</span><span class="hcval" data-role="val">–</span></div><div class="hcbtns"><button data-role="cup" title="Auf"><svg><use href="#ic-chevup"/></svg></button><button data-role="cstop" title="Stop"><svg><use href="#ic-stop"/></svg></button><button data-role="cdn" title="Zu"><svg><use href="#ic-chevdn"/></svg></button></div><input class="hsrange" type="range" data-role="range" min="0" max="100" step="1" value="0"></div>';},
     live:function(w,el,id,d,base,txt,on){var cr=$('[data-role=range]',el);if(cr&&document.activeElement!==cr)cr.value=parseFloat(d.v);var cv=$('[data-role=val]',el);if(cv)cv.textContent=txt;}
   });
   // ===== Widget: Zählerwert (cval) — Verbrauch einer Periode aus einer Zählervariable =====
@@ -5250,7 +5350,7 @@ defWidget('chip',{
     label:'Zählerwert', paletteIcon:'wkpi', size:[190,96],
     defaults:function(w){w.label='Verbrauch';w.cmpStage='day';},
     render:function(w){var al=w.align?(';text-align:'+w.align):'';var fs=w.valfs||26;
-      return '<div class="wv"><div class="wvbody" style="min-width:0'+al+'"><div class="l">'+esc(w.label||'')+(STAGECUR[cmpStage(w)]?' · '+STAGECUR[cmpStage(w)]:'')+'</div><div class="v" data-role="val" style="font-size:'+(w.valfs?w.valfs+'px':'var(--wf-val)')+'">–</div></div></div>';},
+      return '<div class="wv"><div class="wvbody" style="min-width:0'+al+'"><div class="l">'+escL(w.label||'')+(STAGECUR[cmpStage(w)]?' · '+STAGECUR[cmpStage(w)]:'')+'</div><div class="v" data-role="val" style="font-size:'+(w.valfs?w.valfs+'px':'var(--wf-val)')+'">–</div></div></div>';},
     props:function(w){return row('Aggregationsstufe',stageSel('pCvStage',cmpStage(w)))
       +row('Einheit','<input id="pCvUnit" value="'+esc(w.unit||'')+'">')
       +row('Wert-Größe','<input id="pCvFs" type="number" value="'+(w.valfs||26)+'">')
@@ -5280,7 +5380,7 @@ defWidget('chip',{
   defWidget('delta',{
     label:'Delta', paletteIcon:'wdelta', size:[160,88],
     defaults:function(w){w.tone='ok';w.dir='up';w.text='+6 %';w.label='Autarkie';},
-    render:function(w){return '<div class="hdelta t-'+(w.tone||'ok')+'" data-role="delroot"><div class="hdmain"><span data-role="arrow">'+(w.dir==='dn'?'▼':(w.dir==='flat'?'→':'▲'))+'</span> <span data-role="val">'+esc(w.text||'')+'</span></div>'+((w.label||w.cmpOn)?'<div class="hdcap" data-role="cap">'+esc(w.label||'')+'</div>':'')+'</div>';},
+    render:function(w){return '<div class="hdelta t-'+(w.tone||'ok')+'" data-role="delroot"><div class="hdmain"><span data-role="arrow">'+(w.dir==='dn'?'▼':(w.dir==='flat'?'→':'▲'))+'</span> <span data-role="val">'+esc(w.text||'')+'</span></div>'+((w.label||w.cmpOn)?'<div class="hdcap" data-role="cap">'+escL(w.label||'')+'</div>':'')+'</div>';},
     props:function(w){return (w.type==='delta'?(row('Text','<input id="pText" value="'+esc(w.text||'')+'" placeholder="+6 %"'+(w.cmpOn?' disabled':'')+'>')+(w.cmpOn?'':row('Richtung',dirSel('pDir',w.dir))+row('Farbe','<select id="pTone">'+[['ok','OK'],['crit','Fehler'],['warn','Warnung'],['muted','Neutral']].map(function(o){return '<option value="'+o[0]+'"'+((w.tone||'ok')===o[0]?' selected':'')+'>'+o[1]+'</option>';}).join('')+'</select>'))):'');},
     wire:function(w){if($('#pText'))$('#pText').oninput=function(){w.text=this.value;render();};if($('#pTone'))$('#pTone').onchange=function(){w.tone=this.value;render();};},
     mount:function(w){if(w.cmpOn)computeCompare(w);}, // Vergleich sofort nach Render berechnen
@@ -5305,7 +5405,7 @@ defWidget('devlist',{
   defWidget('eventctl',{
     label:'Ereignis', paletteIcon:'clock', size:[230,72],
     render:function(w){return '<div style="height:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px">'
-      +'<div style="min-width:0"><div data-role="evname" style="font-size:13px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(w.label||'Ereignis')+'</div><div data-role="evsub" style="font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">–</div></div>'
+      +'<div style="min-width:0"><div data-role="evname" style="font-size:13px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escL(w.label||'Ereignis')+'</div><div data-role="evsub" style="font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">–</div></div>'
       +'<span class="sw" data-role="evsw"><i class="swk"></i></span></div>';},
     props:function(w){return row('Ereignis-ID','<input id="pEvId" value="'+(w.eventId||'')+'" placeholder="Event-ID (Wochenplan/Timer)">');},
     wire:function(w){if($('#pEvId'))$('#pEvId').onchange=function(){w.eventId=parseInt(this.value)||0;render();fetchEvent(w);};},
@@ -5348,54 +5448,193 @@ defWidget('devlist',{
   }
   // ===== energy-Modus (Power-Flow-Card-Plus-Stil): Home-Knoten + frei konfigurierbare Kreis-Elemente =====
   var _EF_W=400,_EF_H=300,_EF_HX=200,_EF_HY=150,_EF_RH=40,_EF_RN=32;
-  function _et(t){t=(t||'').toString().toLowerCase();return {batterie:'battery',akku:'battery',netz:'grid',solar:'pv',pv:'pv',load:'verbraucher',verbrauch:'verbraucher',consumer:'verbraucher'}[t]||t;}
-  function _efDefIcon(t){return t==='pv'?'solarpanel':t==='grid'?'pylon':t==='battery'?'battery':t==='verbraucher'?'plug':'gauge';}
+    // Kanonischer Typ, durchgehend englisch. Frueher hiess der Verbraucher intern
+  // 'verbraucher' - als einziger deutscher Wert zwischen pv/grid/battery. Wer im Editor
+  // 'consumer' eintrug, bekam still etwas anderes gespeichert, und ohne Namen stand das
+  // deutsche Stichwort als Beschriftung im Bild. Alte Schreibweisen bleiben lesbar.
+  function _et(t){t=(t||'').toString().toLowerCase();
+    // OHNE Typ muss 'consumer' herauskommen. Der Editor zeigt bei leerem Feld "Verbraucher"
+    // an (Vorgabe def:'consumer'), speichert dabei aber nichts. Fiel der leere Wert hier auf
+    // 'other', entschied das Vorzeichen ueber die Richtung - und ein Verbraucher mit
+    // positiver Leistung wurde als Lieferant gezeichnet. Anzeige und Verhalten muessen
+    // dasselbe sagen; 'other' bleibt der ausdruecklich gewaehlten Einstellung vorbehalten.
+    if(t==='')return 'consumer';
+    return {batterie:'battery',akku:'battery',netz:'grid',solar:'pv',pv:'pv',
+            load:'consumer',verbrauch:'consumer',verbraucher:'consumer'}[t]||t;}
+  // Farbe eines Knotens. Der Skin-Waehler speichert einen SCHLUESSEL ('ok', 'accent'),
+  // keine CSS-Farbe. Roh eingesetzt ergab das "stroke:ok" - eine ungueltige Deklaration,
+  // die der Browser verwirft: Ring, Leitung und Laufpunkt blieben unsichtbar, das Element
+  // verschwand komplett. _cssColorOrEmpty laesst nur echte Farben durch, alles andere
+  // faellt sichtbar auf den Akzent zurueck statt lautlos zu verschwinden.
+  function _efCol(c){return _cssColorOrEmpty(c)||'var(--accent)';}
+  function _efDefIcon(t){return t==='pv'?'solarpanel':t==='grid'?'pylon':t==='battery'?'battery':t==='consumer'?'plug':'gauge';}
   function _efIcon(id){var e=ICONS[id]||ICONS.gauge;return e?e[1]:'';}
-  function _energyLayout(w){
-    var els=w.elements||[],by={pv:[],grid:[],battery:[],verbraucher:[],other:[]},pos=[];
+  // Geometrie des Energieflusses. Frueher standen die Baender auf festen Pixelwerten:
+  // pv oben auf 216 px, grid links auf nur 104 px - ab drei Netz-Knoten beruehrten sie
+  // sich, ab fuenf PV-Knoten ebenso. Schlimmer: 'other' lag auf EXAKT demselben Band wie
+  // 'battery' und verdeckte es vollstaendig. Und der Rand galt nur fuer den Kreis, nicht
+  // fuer die Beschriftung darueber, die deshalb oben abgeschnitten wurde.
+  //
+  // Jetzt wird der Platzbedarf gerechnet: Jeder Knoten bekommt Durchmesser plus Abstand,
+  // die Flaeche waechst mit, wenn eine Seite mehr Knoten hat. Beruehrungen sind damit
+  // ausgeschlossen, nicht nur unwahrscheinlich.
+  function _energyGeo(w){
+    var PAD=(w.efPad!=null&&w.efPad!==''?+w.efPad:18);     // Rand ringsum, einstellbar
+    var GAP=(w.efGap!=null&&w.efGap!==''?+w.efGap:16);     // Mindestabstand zwischen Knoten
+    var RN=_EF_RN,RH=_EF_RH;
+    // Hoehe des Textblocks haengt an der Zeilenzahl - ein Name mit \n braucht mehr Platz.
+    function lblH(list){var m=1;(list||[]).forEach(function(o){var n=_efLines(o.e.name).length||1;if(n>m)m=n;});return 9+m*_EF_LH;}
+    // Waagrecht genuegt Durchmesser + Abstand, die Beschriftungen stehen nebeneinander.
+    // SENKRECHT muss der Textblock mitgerechnet werden: Er sitzt bei y = -r - 9 und ist
+    // rund 11 px hoch. Ohne ihn stiess die Beschriftung des unteren Knotens 4 px in die
+    // Unterkante des darueberliegenden - genau die gemeldete Kollision.
+    // REIHENFOLGE BEACHTEN: top/left/right muessen VOR cellL/cellR/lblT stehen. Standen sie
+    // darunter, waren sie durch das Hochziehen von var dort noch undefined - lblH() bekam
+    // nichts, meldete stur eine Zeile, und die ganze Mehrzeilen-Rechnung lief ins Leere.
+    // Hoehe des Wertblocks UNTER den Kreisen. Netz und Batterie zeigen zwei Zeilen
+    // (Bezug/Einspeisung bzw. Laden/Entladen), alle anderen eine.
+    function valH(list){var m=1;(list||[]).forEach(function(o){var n=_efValLines(_et(o.e.type));if(n>m)m=n;});return 13+m*_EF_VLH;}
+    var els=w.elements||[],by={pv:[],grid:[],battery:[],consumer:[],other:[]};
     els.forEach(function(e,i){(by[_et(e.type)]||by.other).push({e:e,i:i});});
-    function sp(n,k,a,b){return n<=1?(a+b)/2:a+(b-a)*k/(n-1);}
-    function place(list,fn){list.forEach(function(o,k){var p=fn(k,list.length);pos[o.i]={x:(o.e.x!=null&&o.e.x!==''?+o.e.x:p.x),y:(o.e.y!=null&&o.e.y!==''?+o.e.y:p.y)};});}
-    place(by.pv,         function(k,n){return {x:sp(n,k,92,308),y:48};});
-    place(by.grid,       function(k,n){return {x:48,y:sp(n,k,98,202)};});
-    place(by.battery,    function(k,n){return {x:sp(n,k,120,280),y:252};});
-    place(by.verbraucher,function(k,n){return {x:352,y:sp(n,k,90,210)};});
-    place(by.other,      function(k,n){return {x:sp(n,k,120,280),y:252};});
-    return pos;
+    var top=by.pv, bot=by.battery.concat(by.other), left=by.grid, right=by.consumer;
+    // Eine Spalte aus vielen Verbrauchern macht das Bild sehr hoch: Jeder Knoten braucht
+    // senkrecht Durchmesser + Abstand + Beschriftung + Wertblock, also rund 125 px. Bei
+    // fuenf Verbrauchern waren das 760 px Hoehe - im Widget auf Briefmarkengroesse
+    // heruntergerechnet. Ueberzaehlige wandern darum in die untere Reihe, wo sie
+    // NEBENeinander stehen und nur Breite kosten.
+    var MAXC=(w.efMaxCol!=null&&w.efMaxCol!==''?+w.efMaxCol:3);
+    if(MAXC>0&&right.length>MAXC){bot=bot.concat(right.slice(MAXC));right=right.slice(0,MAXC);}
+    // Eine Zelle umfasst jetzt BEIDES: Beschriftung darueber und Wertblock darunter. Ohne
+    // den unteren Teil stiess der Wert des einen Knotens in die Beschriftung des naechsten -
+    // derselbe Fehler wie zuvor bei den Beschriftungen, nur am anderen Ende.
+    var cellH=2*RN+GAP;
+    var cellL=2*RN+GAP+lblH(left)+valH(left), cellR=2*RN+GAP+lblH(right)+valH(right);
+    var lblT=Math.max(lblH(top),lblH(left),lblH(right));   // oberer Rand: groesster Textblock
+    var valB=Math.max(valH(bot),valH(left),valH(right));   // unterer Rand: groesster Wertblock
+    function need(n,cell){return n>0?2*RN+(n-1)*(cell||cellH):0;}
+    // Reihen duerfen nicht in die Spalten laufen und umgekehrt - sonst treffen sich
+    // Reihenende und Spaltenanfang in den Ecken. Nur reservieren, wo es die Seite gibt.
+    var res=2*RN+GAP;
+    // Waagrecht bleibt es beim reinen Durchmesser - Beschriftung und Wert stehen mittig
+    // unter- bzw. ueberhalb, sie brauchen keine zusaetzliche BREITE. Senkrecht dagegen
+    // beansprucht die obere Reihe zusaetzlich ihren Wertblock nach unten, die untere Reihe
+    // ihre Beschriftung nach oben.
+    var rL=left.length?res:0, rR=right.length?res:0;
+    var rT=top.length?(2*RN+GAP+valH(top)):0, rB=bot.length?(2*RN+GAP+lblH(bot)):0;
+    var W=Math.max(_EF_W,2*PAD+rL+rR+need(top.length,cellH),2*PAD+rL+rR+need(bot.length,cellH),
+                   2*PAD+4*RN+2*GAP+2*RH);
+    // Der Home-Knoten in der Mitte traegt seinen Wert ebenfalls unter sich.
+    var homeV=13+_EF_VLH;
+    var H=Math.max(_EF_H,2*PAD+lblT+rT+rB+valB+need(left.length,cellL),
+                   2*PAD+lblT+rT+rB+valB+need(right.length,cellR),
+                   2*PAD+lblT+rT+rB+valB+2*RH+homeV+2*GAP);
+    var hx=W/2,hy=H/2,pos=[];
+    function lay(list,along,fixed,lo,hi){                  // zwischen lo und hi zentrieren
+      var cell=(along==='x')?cellH:(fixed<=(W/2)?cellL:cellR);
+      var L=need(list.length,cell),start=lo+((hi-lo)-L)/2+RN;
+      list.forEach(function(o,k){
+        var v=start+k*cell;
+        var p=(along==='x')?{x:v,y:fixed}:{x:fixed,y:v};
+        pos[o.i]={x:(o.e.x!=null&&o.e.x!==''?+o.e.x:p.x),      // frei gesetzte Werte gehen vor
+                  y:(o.e.y!=null&&o.e.y!==''?+o.e.y:p.y)};
+      });
+    }
+    lay(top,  'x',PAD+lblH(top)+RN,        PAD+rL,      W-PAD-rR);
+    lay(bot,  'x',H-PAD-valH(bot)-RN,      PAD+rL,      W-PAD-rR);   // Wertblock bleibt frei
+    lay(left, 'y',PAD+RN,                  PAD+lblT+rT, H-PAD-rB-valB);
+    lay(right,'y',W-PAD-RN,                PAD+lblT+rT, H-PAD-rB-valB);
+    return {pos:pos,W:W,H:H,hx:hx,hy:hy};
   }
-  function _efPath(nx,ny){
-    var dx=_EF_HX-nx,dy=_EF_HY-ny;
-    if(Math.abs(dx)>=Math.abs(dy)){var mx=(nx+_EF_HX)/2;return 'M'+nx+' '+ny+' C'+mx+' '+ny+' '+mx+' '+_EF_HY+' '+_EF_HX+' '+_EF_HY;}
-    var my=(ny+_EF_HY)/2;return 'M'+nx+' '+ny+' C'+nx+' '+my+' '+_EF_HX+' '+my+' '+_EF_HX+' '+_EF_HY;
+  function _efPath(nx,ny,hx,hy){
+    hx=(hx==null?_EF_HX:hx);hy=(hy==null?_EF_HY:hy);
+    var dx=hx-nx,dy=hy-ny;
+    if(Math.abs(dx)>=Math.abs(dy)){var mx=(nx+hx)/2;return 'M'+nx+' '+ny+' C'+mx+' '+ny+' '+mx+' '+hy+' '+hx+' '+hy;}
+    var my=(ny+hy)/2;return 'M'+nx+' '+ny+' C'+nx+' '+my+' '+hx+' '+my+' '+hx+' '+hy;
   }
+  // Beschriftung eines Knotens. In SVG gibt es kein <br>; mehrere Zeilen brauchen
+  // <tspan> mit dy. Die Beschriftung sitzt UEBER dem Kreis, also waechst sie nach oben:
+  // die erste Zeile beginnt entsprechend hoeher, damit die letzte immer denselben
+  // Abstand zum Kreis hat.
+  var _EF_LH=12;                                        // Zeilenhoehe der Beschriftung
+  function _efLines(name){
+    var a=String(name==null?'':name).split(/\\n|\r\n|\r|\n/);
+    while(a.length&&a[a.length-1].trim()==='')a.pop();
+    while(a.length&&a[0].trim()==='')a.shift();
+    return a;
+  }
+  function _efLabel(name,r){
+    var a=_efLines(name);if(!a.length)return '';
+    var y0=-r-9-(a.length-1)*_EF_LH;
+    return '<text class="efname" y="'+y0+'">'+a.map(function(t,i){
+      return '<tspan x="0"'+(i?' dy="'+_EF_LH+'"':'')+'>'+esc(t)+'</tspan>';}).join('')+'</text>';
+  }
+  // Werte stehen UNTER dem Kreis, nicht darin. Innen liegt der Text auf einer Sehne, nicht
+  // auf dem Durchmesser: Bei r=32 sind auf der ersten Wertzeile nur 55 px frei, auf der
+  // zweiten (Netz/Batterie) nur noch 34 px. "→ 1.234 W" braucht 59 px und lief deshalb in
+  // die Kreislinie. Aussen ist der Platz unbegrenzt, der Kreis bleibt fest, und nichts muss
+  // beim Werteumschlag neu skaliert werden. Das Icon rueckt dadurch in die Kreismitte.
+  var _EF_VLH=11;                                       // Zeilenhoehe des Wertblocks
+  function _efValLines(type){return (type==='grid'||type==='battery')?2:1;}
+  function _efValH(type){return 13+_efValLines(type)*_EF_VLH;}   // Hoehe UNTER dem Kreis
   function _efNode(x,y,r,col,icon,name,type,idx){
     var g='<g class="efnode" transform="translate('+x+','+y+')">';
-    g+='<text class="efname" y="'+(-r-9)+'">'+esc(name||'')+'</text>';
-    if(type==='battery')g+='<text class="efsoc" data-role="efsoc-'+idx+'" y="'+(-r*0.5)+'"></text>';
+    g+=_efLabel(name,r);
     g+='<circle class="efring" r="'+r+'" style="stroke:'+col+'"/>';
-    g+='<svg class="eficon" x="-11" y="'+((type==='battery'?-2:-r*0.5-1))+'" width="22" height="22" viewBox="0 0 24 24">'+_efIcon(icon)+'</svg>';
-    g+='<text class="efval" data-role="efval-'+idx+'" y="'+(r*0.5)+'">–</text>';
-    g+='<text class="efval2" data-role="efval2-'+idx+'" y="'+(r*0.5+11)+'"></text>';
+    // Batterie behaelt den Ladestand INNEN - er ist nie laenger als "100%" und passt dort
+    // bequem; das Icon rueckt dafuer etwas nach oben.
+    g+='<svg class="eficon" x="-11" y="'+(type==='battery'?-15:-11)+'" width="22" height="22" viewBox="0 0 24 24">'+_efIcon(icon)+'</svg>';
+    if(type==='battery')g+='<text class="efsoc" data-role="efsoc-'+idx+'" y="18"></text>';
+    g+='<text class="efval" data-role="efval-'+idx+'" y="'+(r+13)+'">–</text>';
+    g+='<text class="efval2" data-role="efval2-'+idx+'" y="'+(r+13+_EF_VLH)+'"></text>';
     return g+'</g>';
   }
   function energySVG(w){
-    var pos=_energyLayout(w),els=w.elements||[];
-    var s='<svg class="efsvg" viewBox="0 0 '+_EF_W+' '+_EF_H+'" preserveAspectRatio="xMidYMid meet">';
-    els.forEach(function(e,i){var p=pos[i];if(!p)return;var col=e.color||'var(--accent)',d=_efPath(p.x,p.y);
+    var G=_energyGeo(w),pos=G.pos,els=w.elements||[];
+    var s='<svg class="efsvg" viewBox="0 0 '+G.W+' '+G.H+'" preserveAspectRatio="xMidYMid meet">';
+    els.forEach(function(e,i){var p=pos[i];if(!p)return;var col=_efCol(e.color),d=_efPath(p.x,p.y,G.hx,G.hy);
       s+='<path class="efwire" d="'+d+'" style="stroke:'+col+'"/>'
         +'<path class="efflow" data-role="efflow-'+i+'" d="'+d+'" style="stroke:'+col+';opacity:0"/>'
         +'<circle class="efdot" data-role="efdot-'+i+'" r="4" style="fill:'+col+';offset-path:path(\''+d+'\');opacity:0"/>';
     });
-    s+=_efNode(_EF_HX,_EF_HY,_EF_RH,(w.homeColor||'var(--accent)'),w.homeIcon||'housepower',w.homeName||'Home','home','h');
-    els.forEach(function(e,i){var p=pos[i];if(!p)return;s+=_efNode(p.x,p.y,_EF_RN,(e.color||'var(--accent)'),e.icon||_efDefIcon(_et(e.type)),e.name||e.type||'',_et(e.type),i);});
+    s+=_efNode(G.hx,G.hy,_EF_RH,_efCol(w.homeColor),w.homeIcon||'housepower',w.homeName||'Home','home','h');
+    els.forEach(function(e,i){var p=pos[i];if(!p)return;s+=_efNode(p.x,p.y,_EF_RN,_efCol(e.color),e.icon||_efDefIcon(_et(e.type)),e.name||'',_et(e.type),i);});
     return s+'</svg>';
   }
   function _efNum(vid){var d=vid&&_lastVals[vid];return d?parseFloat(String(d.v).replace(',','.')):NaN;}
-  function _efFmtW(v){if(v==null||isNaN(v))return '–';try{return Math.round(Math.abs(v)).toLocaleString('de-DE')+' W';}catch(e){return Math.round(Math.abs(v))+' W';}}
+  // Ab 1000 W in kW - "1,2 kW" statt "1.234 W". Das halbiert die Textbreite genau dort, wo
+  // sie bisher aus dem Kreis lief. Ab 10 kW entfaellt die Nachkommastelle, sie traegt dann
+  // keine Information mehr. minimumFractionDigits und maximumFractionDigits duerfen sich
+  // NICHT widersprechen (min > max wirft RangeError), darum zwei getrennte Zweige.
+  function _efFmtW(v){
+    if(v==null||isNaN(v))return '–';
+    var a=Math.abs(v);
+    try{
+      if(a>=10000)return Math.round(a/1000).toLocaleString('de-DE')+' kW';
+      if(a>=1000)return (Math.round(a/100)/10).toLocaleString('de-DE',{minimumFractionDigits:1,maximumFractionDigits:1})+' kW';
+      return Math.round(a).toLocaleString('de-DE')+' W';
+    }catch(e){return Math.round(a)+' W';}
+  }
+  // Richtung eines Elements: PV speist immer ein, Verbraucher zieht immer ab,
+  // bei Netz und Batterie entscheidet das Vorzeichen der Leistung.
+  // 'other' zaehlt bewusst als Verbraucher und NICHT vorzeichengesteuert: Einspeisung ist
+  // durch pv, grid und battery vollstaendig abgedeckt, "Sonstiges" ist in der Praxis immer
+  // ein Abnehmer. Vorher entschied dort das Vorzeichen - eine positive Verbrauchsleistung
+  // wurde damit als Einspeisung gezeichnet, ohne dass das irgendwo ablesbar war.
+  function _efDir(t,p){return (t==='pv')?1:(t==='consumer'||t==='other')?-1:((p<0)?-1:1);}
   function refreshEnergy(w){
     var el=$('.w[data-id="'+w.id+'"]',canvas);if(!el)return;var els=w.elements||[],homeIn=0;
+    // Tempo-Referenz: Summe dessen, was gerade INS Haus fliesst - also alle Lieferanten
+    // zusammen (PV, Netzbezug, Batterie-Entladung). Damit laeuft der groesste Lieferant am
+    // schnellsten und jeder andere anteilig langsamer; ein fester Schwellwert taugt dafuer
+    // nicht, weil er bei wenig Last alles auf Standgas und bei viel Last alles auf Anschlag
+    // setzt. Faellt die Summe auf 0, greift die feste Referenz als Rueckfall.
+    var total=0;
+    if(w.efSpeedAuto!==false)els.forEach(function(e){
+      var p=_efNum(e.vid);if(isNaN(p))return;
+      if(_efDir(_et(e.type),p)>0)total+=Math.abs(p);
+    });
     els.forEach(function(e,i){
-      var t=_et(e.type),p=_efNum(e.vid),mag=isNaN(p)?0:Math.abs(p),dir=(t==='pv')?1:(t==='verbraucher')?-1:((p<0)?-1:1),active=mag>1;
+      var t=_et(e.type),p=_efNum(e.vid),mag=isNaN(p)?0:Math.abs(p),dir=_efDir(t,p),active=mag>1;
       var v1=$('[data-role=efval-'+i+']',el),v2=$('[data-role=efval2-'+i+']',el);
       if(t==='grid'||t==='battery'){var into=Math.max(isNaN(p)?0:p,0),out=Math.max(isNaN(p)?0:-p,0),A=(t==='grid')?['→ ','← ']:['↑ ','↓ '];
         if(v1)v1.textContent=A[0]+_efFmtW(into);if(v2)v2.textContent=A[1]+_efFmtW(out);}
@@ -5403,7 +5642,15 @@ defWidget('devlist',{
       if(t==='battery'&&e.socVid){var soc=_efNum(e.socVid),se=$('[data-role=efsoc-'+i+']',el);if(se)se.textContent=isNaN(soc)?'':(Math.round(soc)+'%');}
       var flow=$('[data-role=efflow-'+i+']',el),dot=$('[data-role=efdot-'+i+']',el);
       var spd=e.speedVid?_efNum(e.speedVid):mag;if(isNaN(spd))spd=mag;
-      var ref=e.speedVid?(+e.speedRef||100):(+w.efRef||3000),frac=Math.min(1,Math.abs(spd)/(ref||1)),dur=(2.4-frac*1.9).toFixed(2),rev=(dir<0?'reverse':'normal');
+      var ref=e.speedVid?(+e.speedRef||100)
+             :((w.efSpeedAuto!==false&&total>0)?total:(+w.efRef||3000)),frac=Math.min(1,Math.abs(spd)/(ref||1)),rev=(dir<0?'reverse':'normal');
+      // Nur EIN Wert ist einstellbar: die Umlaufdauer bei vollem Anteil. Alles andere
+      // ergibt sich daraus umgekehrt proportional - halber Anteil, doppelte Dauer. Das ist
+      // die ehrliche Lesart von "relativ": Der Punkt bewegt sich so schnell wie sein
+      // Anteil am Fluss. Nach unten gedeckelt beim Zwanzigfachen der Volldauer: ohne
+      // Deckel braeuchte 1 % Anteil hundert Umlaufdauern und wirkte wie Stillstand.
+      var t100=(w.efDur100!=null&&w.efDur100!==''?+w.efDur100:0.6);
+      var dur=(frac>0?Math.min(t100/frac,t100*20):t100*20).toFixed(2);
       if(flow){flow.style.opacity=active?'':'0';flow.style.animationDuration=dur+'s';flow.style.animationDirection=rev;}
       if(dot){dot.style.opacity=active?'':'0';dot.style.animationDuration=dur+'s';dot.style.animationDirection=rev;}
       if(dir>0)homeIn+=mag;
@@ -5423,9 +5670,15 @@ defWidget('devlist',{
         +'<div class="pgh">Home-Knoten</div>'
         +row('Name / Icon','<input id="pEfHN" value="'+esc(w.homeName||'Home')+'" style="width:88px"> <input id="pEfHI" value="'+esc(w.homeIcon||'housepower')+'" placeholder="icon" style="width:88px">')
         +row('Farbe / Wert-ID','<input type="color" id="pEfHC" value="'+(w.homeColor||'#00cdab')+'"> <input id="pEfHV" value="'+(w.homeVid||'')+'" placeholder="leer = Summe" style="width:110px">')
+        +row('Dauer bei 100 % (s)','<input id="pEfDur" type="number" step="0.1" min="0.1" value="'+(w.efDur100!=null?w.efDur100:0.6)+'"> <span style="font-size:11px;color:var(--muted)">halber Anteil = doppelte Dauer</span>')
+        +row('Tempo automatisch','<input type="checkbox" id="pEfAuto"'+(w.efSpeedAuto!==false?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">Referenz = Summe aller Einspeisungen</span>')
+        +(w.efSpeedAuto!==false?'<div style="font-size:11px;color:var(--muted);margin:-2px 2px 5px">Jeder Knoten laeuft anteilig zur Gesamteinspeisung. Der feste Wert unten greift nur, wenn gerade nichts einspeist.</div>':'')
         +row('Referenz-Leistung (Tempo)','<input id="pEfRef" type="number" value="'+(w.efRef||3000)+'" placeholder="W bei max Tempo">')
-        +'<div class="pgh">Elemente — Typ: pv · grid · batterie · verbraucher (Leistung ±: + = →Home)</div>'
-        +listEditor(w,'elements','Typ · Name · Icon · Farbe · Leistung-ID · Speed-ID · SoC-ID',[{k:'type',ph:'typ'},{k:'name',ph:'Name'},{k:'icon',ph:'icon'},{k:'color',ph:'#hex'},{k:'vid',ph:'Leist-ID'},{k:'speedVid',ph:'Speed'},{k:'socVid',ph:'SoC'}]);
+        +row('Rand (px)','<input id="pEfPad" type="number" min="0" value="'+(w.efPad!=null?w.efPad:18)+'">')
+        +row('Knotenabstand (px)','<input id="pEfGap" type="number" min="0" value="'+(w.efGap!=null?w.efGap:16)+'">')
+        +row('Verbraucher je Spalte','<input id="pEfMaxCol" type="number" min="0" value="'+(w.efMaxCol!=null?w.efMaxCol:3)+'"> <span style="font-size:11px;color:var(--muted)">dar&uuml;ber hinaus in die untere Reihe; 0 = alle in die Spalte</span>')
+        +'<div class="pgh">Elemente</div><div style="font-size:11px;color:var(--muted);margin:-2px 2px 5px">Typ bestimmt Position und Standard-Icon. Das Vorzeichen entscheidet nur bei <b>Netz</b> und <b>Batterie</b>: <b>+</b> zum Haus, <b>&minus;</b> vom Haus weg. PV flie&szlig;t immer zum Haus; Verbraucher und Sonstiges immer weg &ndash; unabh&auml;ngig vom Vorzeichen.</div>'
+        +listEditor(w,'elements','Typ · Name · Icon · Farbe · Leistung-ID · Speed-ID · Speed-Referenz · SoC-ID',[{k:'type',type:'select',def:'consumer',options:[['pv','PV / Erzeuger'],['grid','Netz'],['battery','Batterie'],['consumer','Verbraucher'],['other','Sonstiges']]},{k:'name',ph:'Name'},{k:'icon',ph:'icon'},{k:'color',type:'skincolor'},{k:'vid',ph:'Leist-ID'},{k:'speedVid',ph:'Speed'},{k:'speedRef',ph:'Speed-Ref'},{k:'socVid',ph:'SoC'}]);
       return h
         +'<div class="pgh">Fluss (Variable = „Variable" oben)</div>'
         +row('Farbe','<input type="color" id="pFlCol" value="'+(w.flPos||'#00cdab')+'">')
@@ -5438,6 +5691,11 @@ defWidget('devlist',{
         +listEditor(w,'stages','Icon · Label · Wert-ID · Zusatz · Zusatz-ID',[{k:'icon',ph:'icon'},{k:'label',ph:'Label'},{k:'vid',ph:'Wert-ID'},{k:'sub',ph:'Zusatz'},{k:'subvid',ph:'Zus-ID'}]);
     },
     wire:function(w){
+      if($('#pEfDur'))$('#pEfDur').onchange=function(){var v=parseFloat(this.value);w.efDur100=(isNaN(v)||v<=0)?undefined:v;render();commit();};
+      if($('#pEfAuto'))$('#pEfAuto').onchange=function(){w.efSpeedAuto=this.checked?undefined:false;render();renderProps();commit();};
+      if($('#pEfPad'))$('#pEfPad').onchange=function(){w.efPad=(this.value===''?undefined:Math.max(0,parseInt(this.value)||0));render();commit();};
+      if($('#pEfGap'))$('#pEfGap').onchange=function(){w.efGap=(this.value===''?undefined:Math.max(0,parseInt(this.value)||0));render();commit();};
+      if($('#pEfMaxCol'))$('#pEfMaxCol').onchange=function(){w.efMaxCol=(this.value===''?undefined:Math.max(0,parseInt(this.value)||0));render();commit();};
       if($('#pFlMode'))$('#pFlMode').onchange=function(){w.mode=this.value;render();renderProps();commit();};
       function b(id,prop,num){var e=$('#'+id);if(!e)return;e.oninput=e.onchange=function(){var v=num?(this.value===''?undefined:parseFloat(this.value)):(this.value||undefined);w[prop]=v;render();applyFlowState(w);commit();};}
       b('pFlCol','flPos');b('pFlThr','flThr',1);b('pFlRef','flRef',1);b('pFlStartL','startLabel');b('pFlTankL','tankLabel');
@@ -5622,7 +5880,7 @@ defWidget('gaugepro',{
   defWidget('kpi',{
     label:'KPI', paletteIcon:'wkpi', size:[240,96],
     defaults:function(w){w.label='Autarkie';w.unit='%';w.icon='home';w.dir='up';w.delta='+6 % ggü. gestern';},
-    render:function(w){return '<div class="hkpi"><span class="hkbi">'+iconSVG(w.icon||'home')+'</span><div class="hkm"><div class="hkl">'+esc(w.label||'')+'</div><div class="hkn"><span data-role="val">–</span>'+(w.unit?'<small> '+esc(w.unit)+'</small>':'')+'</div>'+(w.cmpOn?'<div class="hks" data-role="cmp">…</div>':(w.delta?'<div class="hks '+(w.dir==='dn'?'dn':(w.dir==='up'?'up':''))+'">'+(w.dir==='dn'?'▼ ':(w.dir==='up'?'▲ ':''))+esc(w.delta)+'</div>':''))+'</div></div>';},
+    render:function(w){return '<div class="hkpi"><span class="hkbi">'+iconSVG(w.icon||'home')+'</span><div class="hkm"><div class="hkl">'+escL(w.label||'')+'</div><div class="hkn"><span data-role="val">–</span>'+(w.unit?'<small> '+esc(w.unit)+'</small>':'')+'</div>'+(w.cmpOn?'<div class="hks" data-role="cmp">…</div>':(w.delta?'<div class="hks '+(w.dir==='dn'?'dn':(w.dir==='up'?'up':''))+'">'+(w.dir==='dn'?'▼ ':(w.dir==='up'?'▲ ':''))+esc(w.delta)+'</div>':''))+'</div></div>';},
     props:function(w){return (w.type==='kpi'?(row('Einheit','<input id="pUnit" value="'+esc(w.unit||'')+'">')
       +row('Präfix','<input id="pPre" value="'+esc(w.pre||'')+'" placeholder="z. B. ~">')
       +row('Suffix','<input id="pSuf" value="'+esc(w.suf||'')+'" placeholder="z. B. °C">')
@@ -5647,14 +5905,103 @@ defWidget('gaugepro',{
       return true;
     }
   });
-  // ===== Widget: Licht (Light) — Badge mit Ein/Aus, Name, Status und Helligkeits-Slider =====
+  // ===== Widget: Licht (Light) — Name, Untertitel, Helligkeit in Prozent und Balken =====
+  //
+  // Zweite Variable = Helligkeit (0-100). Der senkrechte Balken erscheint NUR, wenn sie
+  // gesetzt ist - ohne Helligkeit gibt es nichts zu fuellen und die Kachel bleibt schlicht.
+  //
+  // Klick auf die Kachel:
+  //   mit Statusvariable  -> schaltet diese um (ein/aus), wie bisher
+  //   ohne Statusvariable -> setzt die Helligkeit auf 100 %, und wenn sie schon bei 100 %
+  //                          steht, zurueck auf 0 %. So laesst sich eine reine Dimmer-Kachel
+  //                          bedienen, ohne dass ein zweiter Schaltkanal noetig waere.
+  function _lgNum(id){var d=id&&_lastVals[id];if(!d)return null;
+    var n=parseFloat(String(d.v).replace(',','.'));return isNaN(n)?null:n;}
+  function _lgOn(w){                                   // "ein" aus Status ODER Helligkeit
+    if(w.varId){var d=_lastVals[w.varId];if(d)return (d.v===true||d.v===1||d.v==='1'||d.v==='true');}
+    var n=_lgNum(w.varId2);return n!=null&&n>0;
+  }
+  // Fuellwert fuers Icon: adaptive Icons (bulb, ceilinglamp, spot ...) zeichnen damit ihre
+  // Helligkeit. Ohne Wert wuerde iconSVG() 100 % annehmen und die Lampe immer voll leuchten.
+  function _lgLevel(w){
+    if(w.varId2){var n=_lgNum(w.varId2);return n==null?0:Math.max(0,Math.min(100,n));}
+    return _lgOn(w)?100:0;                              // ohne Dimmer: nur an/aus
+  }
+  function _lgSince(w){                                // "seit HH:MM" der massgeblichen Variable
+    var id=w.varId||w.varId2,t=(typeof changedAt==='function')?changedAt(id):0;
+    if(!t)return '';
+    var d=new Date(t),p=function(n){return ('0'+n).slice(-2);};
+    return 'seit '+p(d.getHours())+':'+p(d.getMinutes());
+  }
+  function _lgPaint(w,root){
+    var el=$('.w[data-id="'+w.id+'"]',(root||canvas));if(!el)return;
+    var n=_lgNum(w.varId2),on=_lgOn(w);
+    var box=$('.hl2',el);if(box)box.classList.toggle('on',on);
+    // An den Enden sagt eine Zahl nichts: 0 % ist schlicht "Aus", 100 % ist "Ein".
+    // Entschieden wird am GERUNDETEN Wert, damit Anzeige und Text nicht auseinanderlaufen
+    // (99,6 % wuerde sonst als "100 %" erscheinen, aber nicht als "Ein" gelten).
+    var v=$('[data-role=val]',el),u=$('[data-role=unit]',el),txt,unit='';
+    if(!w.varId2){txt=on?'Ein':'Aus';}
+    else if(n==null){txt='–';}
+    else{
+      var r=Math.round(n);
+      if(r<=0)txt='Aus';
+      else if(r>=100)txt='Ein';
+      else{txt=r;unit='%';}
+    }
+    if(v)v.textContent=txt;
+    if(u)u.textContent=unit;
+    var ic=$('.hl2ic',el);
+    if(ic)ic.innerHTML=iconSVG(w.icon||'bulb',_lgLevel(w));   // Icon folgt der Helligkeit
+    var f=$('[data-role=lfill]',el);
+    if(f)f.style.height=Math.max(0,Math.min(100,(n==null?0:n)))+'%';
+    var st=$('[data-role=state]',el);
+    if(st){
+      var parts=[];
+      if(w.showState!==false)parts.push(on?'Ein':'Aus');
+      if(w.showSince!==false){var s=_lgSince(w);if(s)parts.push(s);}
+      st.textContent=parts.join(' · ');
+      st.style.display=parts.length?'':'none';
+    }
+  }
   defWidget('light',{
-    label:'Licht', paletteIcon:'bulb', size:[210,98],
+    label:'Licht', paletteIcon:'bulb', size:[300,200],
     defaults:function(w){w.label='Licht';w.icon='bulb';},
-    render:function(w){return '<div class="hlight"><div class="hlrow"><div class="hlbadge" data-role="badge">'+iconSVG(w.icon||'bulb')+'</div><div class="hltext"><div class="hlname">'+esc(w.label||'')+'</div><div class="hlstate" data-role="val">–</div></div></div><input class="hsrange" type="range" data-role="range" min="0" max="100" step="1" value="0"></div>';},
-    live:function(w,el,id,d,base,txt,on){
-      if(w.varId===id){var lb=$('[data-role=badge]',el);if(lb)lb.classList.toggle('on',on);var lst=$('.hlstate',el);if(lst)lst.textContent=txt;}
-      if(w.varId2===id){var lr=$('[data-role=range]',el);if(lr&&document.activeElement!==lr)lr.value=parseFloat(d.v);}
+    render:function(w){
+      var bar=w.varId2?'<div class="hl2bar"><i data-role="lfill"></i></div>':'';
+      return '<div class="hl2'+(w.varId2?' hasbar':'')+'">'
+        +'<div class="hl2main">'
+          +'<div class="hl2top"><span class="hl2ic">'+iconSVG(w.icon||'bulb',_lgLevel(w))+'</span>'
+          +'<span class="hl2name">'+escL(w.label||'')+'</span></div>'
+          +(w.sub?'<div class="hl2sub">'+escL(w.sub)+'</div>':'')
+          +'<div class="hl2vrow"><span class="hl2val" data-role="val">–</span>'
+          +'<span class="hl2unit" data-role="unit"></span></div>'
+          +'<div class="hl2state" data-role="state"></div>'
+        +'</div>'+bar+'</div>';
+    },
+    mount:function(w){_lgPaint(w);},
+    live:function(w,el,id,d,base,txt,on){_lgPaint(w,(typeof rootOfEl==='function')?rootOfEl(el):null);},
+    click:function(w,el,e){
+      if(w.varId){                                     // Statuskanal vorhanden -> den schalten
+        var dd=_lastVals[w.varId],cur=dd?(dd.v===true||dd.v===1||dd.v==='1'||dd.v==='true'):false;
+        setVar(w.varId,cur?0:1);return true;
+      }
+      if(w.varId2){                                    // reine Dimmer-Kachel: 100 % bzw. zurueck auf 0
+        var n=_lgNum(w.varId2);
+        setVar(w.varId2,(n!=null&&n>=100)?0:100);return true;
+      }
+      return false;
+    },
+    props:function(w){
+      return row('Untertitel','<input id="pLgSub" value="'+esc(w.sub||'')+'" placeholder="z. B. Erdgeschoss">')
+        +row('Status anzeigen','<input type="checkbox" id="pLgState"'+(w.showState!==false?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">Ein / Aus</span>')
+        +row('Zeit anzeigen','<input type="checkbox" id="pLgSince"'+(w.showSince!==false?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">seit HH:MM</span>')
+        +'<div style="font-size:11px;color:var(--muted);margin:2px 2px 5px">Der Balken erscheint nur, wenn eine Helligkeits-Variable gesetzt ist. Ohne Statusvariable schaltet ein Klick auf die Kachel zwischen 100 % und 0 %.</div>';
+    },
+    wire:function(w){
+      if($('#pLgSub'))$('#pLgSub').onchange=function(){w.sub=this.value||undefined;render();commit();};
+      if($('#pLgState'))$('#pLgState').onchange=function(){w.showState=this.checked?undefined:false;render();commit();};
+      if($('#pLgSince'))$('#pLgSince').onchange=function(){w.showSince=this.checked?undefined:false;render();commit();};
     }
   });
   // ===== Widget: Linie (line) — Richtung, Breite, optionale Pfeilspitzen =====
@@ -5757,7 +6104,7 @@ defWidget('meterlist',{
   defWidget('msglog',{
     label:'Meldungen', paletteIcon:'wticker', size:[460,230], noHover:true, // Chips klicken intern -> kein Ganz-Widget-Hover
     defaults:function(w){w.label='Meldungen';w.max=25;},
-    render:function(w){return '<div class="hmsg"><div class="hmsgtop"><span class="hmsgt">'+esc(w.label||'Meldungen')+'</span><span class="hmsgchips">'+_chips(w)+'</span></div><div class="hmsgl" data-role="msgl"><div class="hmsge">…</div></div></div>';},
+    render:function(w){return '<div class="hmsg"><div class="hmsgtop"><span class="hmsgt">'+escL(w.label||'Meldungen')+'</span><span class="hmsgchips">'+_chips(w)+'</span></div><div class="hmsgl" data-role="msgl"><div class="hmsge">…</div></div></div>';},
     props:function(w){return '<div class="pgh">Standard-Filter (Builder)</div>'
       +'<div style="display:flex;flex-wrap:wrap;gap:6px 12px">'+_SEVS.map(function(s){return '<label style="display:inline-flex;align-items:center;gap:4px;font-size:11px"><input type="checkbox" data-sev="'+s+'"'+(_sevDef(w,s)?' checked':'')+'> <span style="color:'+_SEVCLR[s]+';font-weight:600">'+s+'</span></label>';}).join('')+'</div>'
       +'<div class="hint" style="font-size:11px;color:var(--muted)">Im Live-Modus per Tipp auf die Pills umschaltbar (je Gerät gespeichert).</div>'
@@ -5787,7 +6134,7 @@ defWidget('meterlist',{
   defWidget('objinfo',{
     label:'Objekt-Info', paletteIcon:'info', size:[230,60],
     defaults:function(w){w.field='updated';},
-    render:function(w){return '<div style="height:100%;display:flex;flex-direction:column;justify-content:center;padding:8px 12px;min-width:0"><div style="font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis" data-role="oiname">'+esc(w.label||'Objekt')+'</div><div style="font-size:15px;color:var(--text);font-family:var(--fm);white-space:nowrap;overflow:hidden;text-overflow:ellipsis" data-role="oival">–</div></div>';},
+    render:function(w){return '<div style="height:100%;display:flex;flex-direction:column;justify-content:center;padding:8px 12px;min-width:0"><div style="font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis" data-role="oiname">'+escL(w.label||'Objekt')+'</div><div style="font-size:15px;color:var(--text);font-family:var(--fm);white-space:nowrap;overflow:hidden;text-overflow:ellipsis" data-role="oival">–</div></div>';},
     props:function(w){return row('Objekt-ID','<input id="pOiId" value="'+(w.objId||'')+'" placeholder="ID"> <button class="btn" id="pOiPick" style="padding:6px 8px">wählen</button>')
       +row('Feld','<select id="pOiField"><option value="updated"'+((w.field||'updated')==='updated'?' selected':'')+'>Letzte Aktualisierung</option><option value="changed"'+(w.field==='changed'?' selected':'')+'>Letzte Änderung</option><option value="next"'+(w.field==='next'?' selected':'')+'>Nächster Lauf</option><option value="last"'+(w.field==='last'?' selected':'')+'>Letzter Lauf</option><option value="name"'+(w.field==='name'?' selected':'')+'>Objektname</option></select>');},
     wire:function(w){
@@ -5825,7 +6172,7 @@ defWidget('meterlist',{
         +'</svg>'
         +'<div style="display:flex;flex-direction:column;justify-content:center;min-width:0;flex:1">'
           +'<div style="display:flex;align-items:baseline;gap:4px"><span data-role="val" style="font-size:30px;font-weight:600;font-family:var(--fm);color:var(--text);line-height:1">–</span><span style="font-size:13px;color:var(--muted)">mm</span></div>'
-          +'<div data-role="sub" style="font-size:12px;color:var(--muted);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(w.label||'Regen heute')+'</div>'
+          +'<div data-role="sub" style="font-size:12px;color:var(--muted);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escL(w.label||'Regen heute')+'</div>'
         +'</div></div>';
     },
     mount:function(w){var el=$('.w[data-id="'+w.id+'"]',canvas);if(el)_rainApply(w,el);},
@@ -5845,7 +6192,7 @@ defWidget('meterlist',{
   // ===== Widget: Raum (Room) — Metrik-Kachel mit Icon, Name und bis zu 3 Werten =====
   defWidget('room',{
     label:'Raum', paletteIcon:'home', size:[200,110],
-    render:function(w){return '<div class="hroom"><div class="hrhead"><div class="hricon">'+iconSVG(w.icon||'home')+'</div><div class="hrname">'+esc(w.label||'')+'</div></div><div class="hrmetrics"><span><b data-role="val">–</b>'+(w.unit?'<small> '+esc(w.unit)+'</small>':'')+'</span>'+(w.varId2?'<span><b data-role="sub">–</b>'+(w.unit2?'<small> '+esc(w.unit2)+'</small>':'')+'</span>':'')+(w.varId3?'<span><b data-role="sub2">–</b>'+(w.unit3?'<small> '+esc(w.unit3)+'</small>':'')+'</span>':'')+'</div></div>';},
+    render:function(w){return '<div class="hroom"><div class="hrhead"><div class="hricon">'+iconSVG(w.icon||'home')+'</div><div class="hrname">'+escL(w.label||'')+'</div></div><div class="hrmetrics"><span><b data-role="val">–</b>'+(w.unit?'<small> '+esc(w.unit)+'</small>':'')+'</span>'+(w.varId2?'<span><b data-role="sub">–</b>'+(w.unit2?'<small> '+esc(w.unit2)+'</small>':'')+'</span>':'')+(w.varId3?'<span><b data-role="sub2">–</b>'+(w.unit3?'<small> '+esc(w.unit3)+'</small>':'')+'</span>':'')+'</div></div>';},
     props:function(w){return row('Einheit','<input id="pRU1" value="'+esc(w.unit||'')+'" placeholder="z. B. °C">')+(w.varId2?row('Einheit 2','<input id="pRU2" value="'+esc(w.unit2||'')+'" placeholder="Einheit">'):'')+(w.varId3?row('Einheit 3','<input id="pRU3" value="'+esc(w.unit3||'')+'" placeholder="Einheit">'):'');},
     wire:function(w){if($('#pRU1'))$('#pRU1').oninput=function(){w.unit=this.value||undefined;render();};if($('#pRU2'))$('#pRU2').oninput=function(){w.unit2=this.value||undefined;render();};if($('#pRU3'))$('#pRU3').oninput=function(){w.unit3=this.value||undefined;render();};},
     live:function(w,el,id,d,base,txt,on){if(w.varId===id){var rv=$('[data-role=val]',el);if(rv)rv.textContent=txt;}if(w.varId2===id){var r2=$('[data-role=sub]',el);if(r2)r2.textContent=txt;}if(w.varId3===id){var r3=$('[data-role=sub2]',el);if(r3)r3.textContent=txt;}}
@@ -5881,7 +6228,7 @@ defWidget('meterlist',{
     label:'Auswahl', paletteIcon:'wselect', size:[220,44],
     defaults:function(w){w.options=[{value:0,text:'Aus',color:''},{value:1,text:'An',color:''}];},
     render:function(w){return '<div class="hsel">'+(w.options||[]).map(function(o){return '<button class="hselb" data-selval="'+esc(String(o.value!=null?o.value:''))+'"'+(o.color?' style="--sc:'+esc(o.color)+'"':'')+'>'+esc(o.text||String(o.value))+'</button>';}).join('')+'</div>';},
-    props:function(w){return listEditor(w,'options','Optionen: Wert · Text · Farbe',[{k:'value',ph:'Wert'},{k:'text',ph:'Text'},{k:'color',ph:'Farbe',type:'color'}]);},
+    props:function(w){return listEditor(w,'options','Optionen: Wert · Text · Farbe',[{k:'value',ph:'Wert'},{k:'text',ph:'Text'},{k:'color',type:'skincolor'}]);},
     live:function(w,el,id,d,base,txt,on){if(w.varId===id){$$('.hselb',el).forEach(function(b){b.classList.toggle('on',String(b.getAttribute('data-selval'))===String(d.v));});}}
   });
   // ===== Widget: Form (shape) — Rechteck/Kreis/Linie, mit Kontur & Eckenradius =====
@@ -5942,7 +6289,7 @@ defWidget('meterlist',{
 
   // ---------------------------------------------------------------- Variante „slider" (Schieberegler)
   function _rgRenderSlider(w){
-    return '<div class="hslider"><div class="hsrow"><span class="hsname">'+esc(w.label||'')+'</span><span class="hsval" data-role="val">–</span></div><input class="hsrange" type="range" data-role="range" min="'+(w.min!=null?w.min:0)+'" max="'+(w.max!=null?w.max:100)+'" step="'+(w.step||1)+'" value="0"'+(w.mirror?' style="transform:scaleX(-1)"':'')+'></div>';
+    return '<div class="hslider"><div class="hsrow"><span class="hsname">'+escL(w.label||'')+'</span><span class="hsval" data-role="val">–</span></div><input class="hsrange" type="range" data-role="range" min="'+(w.min!=null?w.min:0)+'" max="'+(w.max!=null?w.max:100)+'" step="'+(w.step||1)+'" value="0"'+(w.mirror?' style="transform:scaleX(-1)"':'')+'></div>';
   }
 
   // ---------------------------------------------------------------- Variante „range" (zwei Griffe, linear)
@@ -5966,7 +6313,7 @@ defWidget('meterlist',{
     var mn=_rgMin(w),mx=_rgMax(w);
     var loV=_rgClamp(_rgCur(w,w.varId,mn),mn,mx),hiV=_rgClamp(_rgCur(w,w.varId2,mx),mn,mx);
     var lf=_rgFrac(w,loV)*100,hf=_rgFrac(w,hiV)*100,a=Math.min(lf,hf),b=Math.max(lf,hf);
-    var lbl=w.label?'<span style="color:var(--muted);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0">'+esc(w.label)+'</span>':'<span></span>';
+    var lbl=w.label?'<span style="color:var(--muted);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0">'+escL(w.label)+'</span>':'<span></span>';
     var head='<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px">'+lbl+'<span style="font-family:var(--fm);font-variant-numeric:tabular-nums;font-size:13px;color:var(--text);white-space:nowrap"><b data-role="vlo">'+_rgFmt(loV)+'</b><span style="color:var(--muted)"> – </span><b data-role="vhi">'+_rgFmt(hiV)+'</b></span></div>';
     function thumb(role,left){return '<div data-role="'+role+'" data-rs-thumb="1" style="position:absolute;top:50%;left:'+left+'%;width:22px;height:22px;transform:translate(-50%,-50%);border-radius:50%;background:var(--surface);border:2px solid var(--accent);box-shadow:0 1px 3px rgba(0,0,0,.25);cursor:grab;touch-action:none;z-index:2"></div>';}
     var rail='<div data-role="rail" style="position:absolute;left:11px;right:11px;top:50%;transform:translateY(-50%);height:5px;border-radius:3px;background:var(--surface-2)">'
@@ -6001,21 +6348,21 @@ defWidget('meterlist',{
       +'<circle data-role="lo" data-cr-thumb="1" cx="'+lp[0].toFixed(1)+'" cy="'+lp[1].toFixed(1)+'" r="6" fill="var(--surface)" stroke="var(--accent)" stroke-width="2.5" style="cursor:grab;touch-action:none"/>'
       +'<circle data-role="hi" data-cr-thumb="1" cx="'+hp[0].toFixed(1)+'" cy="'+hp[1].toFixed(1)+'" r="6" fill="var(--surface)" stroke="var(--accent)" stroke-width="2.5" style="cursor:grab;touch-action:none"/>'
       +'<text data-role="crval" x="50" y="53" text-anchor="middle" fill="var(--text)" font-size="10" font-family="var(--fm)">'+(Math.round(loV*10)/10)+' – '+(Math.round(hiV*10)/10)+'</text>'
-      +(w.label?'<text x="50" y="66" text-anchor="middle" fill="var(--muted)" font-size="7">'+esc(w.label)+'</text>':'')
+      +(w.label?'<text x="50" y="66" text-anchor="middle" fill="var(--muted)" font-size="7">'+escL(w.label)+'</text>':'')
       +'</svg></div>';
   }
 
   // ---------------------------------------------------------------- Variante „stepper" (+/− Tasten)
   function _rgRenderStepper(w){
     function btn(role,ic){return '<button data-role="'+role+'" style="width:34px;height:34px;border-radius:9px;border:1px solid var(--line);background:var(--surface-2);color:var(--text);cursor:pointer;flex:none;display:flex;align-items:center;justify-content:center;touch-action:none"><svg class="i" style="width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round"><use href="#ic-'+ic+'"/></svg></button>';}
-    return '<div style="height:100%;display:flex;align-items:center;gap:8px;padding:6px 10px">'+btn('dec','minus')+'<div style="flex:1;text-align:center;min-width:0"><div data-role="val" style="font-family:var(--fm);font-variant-numeric:tabular-nums;font-size:20px;font-weight:600;line-height:1">–</div>'+(w.label?'<div style="font-size:11px;color:var(--muted);margin-top:2px">'+esc(w.label)+'</div>':'')+'</div>'+btn('inc','plus')+'</div>';
+    return '<div style="height:100%;display:flex;align-items:center;gap:8px;padding:6px 10px">'+btn('dec','minus')+'<div style="flex:1;text-align:center;min-width:0"><div data-role="val" style="font-family:var(--fm);font-variant-numeric:tabular-nums;font-size:20px;font-weight:600;line-height:1">–</div>'+(w.label?'<div style="font-size:11px;color:var(--muted);margin-top:2px">'+escL(w.label)+'</div>':'')+'</div>'+btn('inc','plus')+'</div>';
   }
 
   // ---------------------------------------------------------------- Variante „dial" (runder Sollwert-Regler)
   // Geometrie (_dpt/dialTrack/dialProg) liegt in js/03-render-charts.js — bewusst NICHT hierher verschoben
   function _rgRenderDial(w){
     var dp0=_dpt(135);
-    return '<div class="hdial"><svg viewBox="0 0 100 100"><path class="dtrack" d="'+dialTrack()+'"/><path class="dprog" data-role="dprog" d="'+dialProg(0)+'"/><circle class="dthumb" data-role="dthumb" cx="'+dp0[0]+'" cy="'+dp0[1]+'" r="5.5"/></svg><div class="dctr"><div class="dval" data-role="val">–</div><div class="dlbl">'+esc(w.label||'')+'</div></div></div>';
+    return '<div class="hdial"><svg viewBox="0 0 100 100"><path class="dtrack" d="'+dialTrack()+'"/><path class="dprog" data-role="dprog" d="'+dialProg(0)+'"/><circle class="dthumb" data-role="dthumb" cx="'+dp0[0]+'" cy="'+dp0[1]+'" r="5.5"/></svg><div class="dctr"><div class="dval" data-role="val">–</div><div class="dlbl">'+escL(w.label||'')+'</div></div></div>';
   }
 
   // ---------------------------------------------------------------- Pointer-Interaktion (einmalig, dokumentweit)
@@ -6188,7 +6535,7 @@ defWidget('meterlist',{
   defWidget('statelog',{
     label:'Zustands-Verlauf', paletteIcon:'wchart', size:[300,240],
     defaults:function(w){w.hours=24;w.count=20;w.states=[{v:'1',color:'warm',label:'Erkannt'},{v:'0',color:'muted',label:'Frei'}];},
-    render:function(w){return '<div class="wslog">'+(w.label?'<div class="slog-head">'+esc(w.label)+'</div>':'')+'<div data-role="slog" class="slog-list"></div></div>';},
+    render:function(w){return '<div class="wslog">'+(w.label?'<div class="slog-head">'+escL(w.label)+'</div>':'')+'<div data-role="slog" class="slog-list"></div></div>';},
     mount:function(w){_slogFetch(w);},
     props:function(w){return winCtl(w)
       +row('Max. Einträge','<input id="pSlogN" type="number" min="1" value="'+(w.count>0?w.count:20)+'">')
@@ -6270,7 +6617,7 @@ defWidget('meterlist',{
     defaults:function(w){w.hours=24;w.orient='h';w.items=[{vid:0,label:'Signal 1'}];w.states=[{v:'1',color:'ok',label:'Ein'},{v:'0',color:'',label:'Aus'}];},
     render:function(w){
       var leg=(w.states||[]).filter(function(s){return s.color;}).map(function(s){return '<span class="stl-leg"><i style="background:'+_skinColor(s.color)+'"></i>'+esc(s.label||String(s.v))+'</span>';}).join('');
-      var head='<div class="stl-head">'+(w.label?'<span class="stl-title">'+esc(w.label)+'</span>':'')+'<span class="stl-legs">'+leg+'</span></div>';
+      var head='<div class="stl-head">'+(w.label?'<span class="stl-title">'+escL(w.label)+'</span>':'')+'<span class="stl-legs">'+leg+'</span></div>';
       if(w.showLog){ // HA-Ansicht: Balken oben + Verlaufsliste darunter (eine Kachel)
         return '<div class="wstatetl wstatetl-log" style="position:absolute;inset:0;padding:8px 10px;box-sizing:border-box">'+head+'<div class="stl-barbox"><div data-role="stl" style="position:absolute;inset:0"></div></div><div data-role="slog" class="slog-list"></div></div>';
       }
@@ -6331,7 +6678,7 @@ defWidget('statusgrid',{
     label:'Status-Bild', paletteIcon:'wimage', size:[64,64],
     defaults:function(w){w.states=[{value:false,mediaId:'off'},{value:true,mediaId:0}];},
     render:function(w){var lv=w.varId&&_lastVals[w.varId];var st=_siState(w,lv?lv.v:null);
-      return '<div class="hsimg"><img data-role="simg" alt="'+esc(w.label||'')+'" style="'+(st.gray?'filter:grayscale(1) opacity(.6)':'')+'" src="'+st.src+'">'+(w.label?'<span class="hsimlbl">'+esc(w.label)+'</span>':'')+'</div>';},
+      return '<div class="hsimg"><img data-role="simg" alt="'+esc(w.label||'')+'" style="'+(st.gray?'filter:grayscale(1) opacity(.6)':'')+'" src="'+st.src+'">'+(w.label?'<span class="hsimlbl">'+escL(w.label)+'</span>':'')+'</div>';},
     props:function(w){return row('Farbbild (Media)','<input id="pMedia2" value="'+(w.mediaId||'')+'" placeholder="Media-ID">')
       +listEditor(w,'states','Zustände: Wert · Media-ID',[{k:'value',ph:'true/false/0/1'},{k:'mediaId',ph:'ID oder „off"'}])
       +'<div class="hint" style="font-size:11px;color:var(--muted)">Bei Media-ID „<b>off</b>" wird das Farbbild in Graustufen gezeigt.</div>';},
@@ -6381,7 +6728,7 @@ defWidget('statuslist',{
     label:'Statistik', paletteIcon:'wkpi', size:[200,96],
     defaults:function(w){w.label='Ø Wert';w.cmpStage='day';w.statAvg=true;},
     render:function(w){var al=w.align?(';text-align:'+w.align):'';var cnt=aggParts(w).length;var fs=w.valfs||(cnt>=2?15:26);
-      return '<div class="wv"><div class="wvbody" style="min-width:0'+al+'"><div class="l">'+esc(w.label||'')+(STAGECUR[cmpStage(w)]?' · '+STAGECUR[cmpStage(w)]:'')+'</div><div class="v" data-role="val" style="font-size:'+(w.valfs?w.valfs+'px':(cnt>=2?'var(--wf-txt)':'var(--wf-val)'))+';line-height:1.15">–</div></div></div>';},
+      return '<div class="wv"><div class="wvbody" style="min-width:0'+al+'"><div class="l">'+escL(w.label||'')+(STAGECUR[cmpStage(w)]?' · '+STAGECUR[cmpStage(w)]:'')+'</div><div class="v" data-role="val" style="font-size:'+(w.valfs?w.valfs+'px':(cnt>=2?'var(--wf-txt)':'var(--wf-val)'))+';line-height:1.15">–</div></div></div>';},
     props:function(w){return row('Aggregationsstufe',stageSel('pSvStage',cmpStage(w)))
       +row('Werte','<label style="margin-right:10px"><input type="checkbox" id="pSvMin"'+(w.statMin?' checked':'')+'> Min</label>'
                    +'<label style="margin-right:10px"><input type="checkbox" id="pSvAvg"'+((w.statAvg||(!w.statMin&&!w.statMax&&!w.statAvg))?' checked':'')+'> Ø</label>'
@@ -6421,7 +6768,7 @@ defWidget('statuslist',{
       var onC=w.swOn?_cssColorOrEmpty(w.swOn):'',offC=w.swOff?_cssColorOrEmpty(w.swOff):'';
       var sty=(onC?('--sw-on:'+onC+';'):'')+(offC?('--sw-off:'+offC+';'):'');
       var knob='<i class="swk">'+(w.swOffIcon?'<span class="swi swi-off">'+iconSVG(w.swOffIcon)+'</span>':'')+(w.swOnIcon?'<span class="swi swi-on">'+iconSVG(w.swOnIcon)+'</span>':'')+'</i>';
-      return '<div class="wsw"><span class="l">'+(w.icon?'<span class="swic">'+iconSVG(w.icon)+'</span>':'')+esc(w.label||'Schalter')+'</span><span class="sw" data-role="sw"'+(sty?(' style="'+sty+'"'):'')+'>'+knob+'</span></div>';
+      return '<div class="wsw"><span class="l">'+(w.icon?'<span class="swic">'+iconSVG(w.icon)+'</span>':'')+escL(w.label||'Schalter')+'</span><span class="sw" data-role="sw"'+(sty?(' style="'+sty+'"'):'')+'>'+knob+'</span></div>';
     },
     props:function(w){
       function csel(id,cur){return skinSel(cur,'id="'+id+'"');}
@@ -6476,7 +6823,7 @@ defWidget('statuslist',{
     // Kopf: Titel + Zähler + rechts Seg-Toggle + Pager
     var pager=(ps>0&&total>ps)?('<div class="tbl-pager"><button class="tbl-pg" data-tbl-page="prev"'+(page<=0?' disabled':'')+'>&#8249;</button><span class="tbl-pgtxt">'+from+'&ndash;'+to+' von '+total+'</span><button class="tbl-pg" data-tbl-page="next"'+(page>=pages-1?' disabled':'')+'>&#8250;</button></div>'):'';
     var seg=w.hideToggle?'':('<div class="seg"><button class="seg-b'+(view==='table'?' on':'')+'" data-tbl-view="table">Tabelle</button><button class="seg-b'+(view==='cards'?' on':'')+'" data-tbl-view="cards">Karten</button></div>');
-    var ph='<div class="ph"><div><h3>'+esc(w.label||'Tabelle')+'</h3><div class="ph-sub">'+total+' '+(total===1?'Eintrag':'Einträge')+'</div></div><div class="ph-right">'+seg+pager+'</div></div>';
+    var ph='<div class="ph"><div><h3>'+escL(w.label||'Tabelle')+'</h3><div class="ph-sub">'+total+' '+(total===1?'Eintrag':'Einträge')+'</div></div><div class="ph-right">'+seg+pager+'</div></div>';
     var bodyHtml;
     if(!rows.length||!cols){bodyHtml='<div class="tbl-empty">'+(w.varId?'Keine Daten (Zeile 0 = Spaltenkopf, JSON o. serialisiertes Array)':'Variable wählen')+'</div>';}
     else if(view==='cards'){
@@ -6515,7 +6862,7 @@ defWidget('statuslist',{
   defWidget('tempbar',{
     label:'Temp-Säule', paletteIcon:'temperature', size:[110,190],
     defaults:function(w){w.label='EG';w.min=16;w.max=24;w.soll=22;w.pill='Komfort';w.pillState='ok';},
-    render:function(w){var tmn=(w.min!=null?w.min:16),tmx=(w.max!=null?w.max:24),sp=(w.soll!=null?Math.max(0,Math.min(100,(w.soll-tmn)/((tmx-tmn)||1)*100)):null);return '<div class="htemp'+(w.warm?' warm':'')+'"><div class="htval" data-role="val">–</div><div class="htbarwrap"><div class="htscale"><span>'+tmx+'</span><span>'+tmn+'</span></div><div class="htbar"><i class="htfill" data-role="fill"></i>'+(sp!=null?'<i class="htsoll" style="bottom:'+sp+'%"></i>':'')+'</div></div><div class="htzn">'+esc(w.label||'')+'</div>'+(w.pill?'<span class="hpill '+(w.pillState||'ok')+'"><span class="hpd"></span>'+esc(w.pill)+'</span>':'')+'</div>';},
+    render:function(w){var tmn=(w.min!=null?w.min:16),tmx=(w.max!=null?w.max:24),sp=(w.soll!=null?Math.max(0,Math.min(100,(w.soll-tmn)/((tmx-tmn)||1)*100)):null);return '<div class="htemp'+(w.warm?' warm':'')+'"><div class="htval" data-role="val">–</div><div class="htbarwrap"><div class="htscale"><span>'+tmx+'</span><span>'+tmn+'</span></div><div class="htbar"><i class="htfill" data-role="fill"></i>'+(sp!=null?'<i class="htsoll" style="bottom:'+sp+'%"></i>':'')+'</div></div><div class="htzn">'+escL(w.label||'')+'</div>'+(w.pill?'<span class="hpill '+(w.pillState||'ok')+'"><span class="hpd"></span>'+esc(w.pill)+'</span>':'')+'</div>';},
     props:function(w){return (row('Soll','<input id="pSoll" type="number" step="0.5" value="'+(w.soll!=null?w.soll:22)+'">')+row('Badge','<input id="pPill" value="'+esc(w.pill||'')+'">')+row('Status','<select id="pPillState">'+[['ok','OK'],['warn','Warnung'],['crit','Kritisch'],['on','An'],['off','Aus']].map(function(o){return '<option value="'+o[0]+'"'+((w.pillState||'ok')===o[0]?' selected':'')+'>'+o[1]+'</option>';}).join('')+'</select>')+row('Warm','<label style="font-size:12px"><input type="checkbox" id="pWarm"'+(w.warm?' checked':'')+'> warme Farbe</label>'));},
     wire:function(w){
       if($('#pSoll'))$('#pSoll').oninput=function(){w.soll=this.value===''?undefined:parseFloat(this.value);render();};
@@ -6528,7 +6875,7 @@ defWidget('statuslist',{
   // ===== Widget: Text — statische Textzeile =====
   defWidget('text',{
     label:'Text', paletteIcon:'wcode', size:[200,48],
-    render:function(w){return '<div class="wt"><div class="t">'+esc(w.label||'Text')+'</div></div>';}
+    render:function(w){return '<div class="wt"><div class="t">'+escL(w.label||'Text')+'</div></div>';}
   });
   // ===== Widget: Eingabefeld (textbox) — schreibt Benutzereingabe in String-Variable =====
   defWidget('textbox',{
@@ -6552,7 +6899,7 @@ defWidget('statuslist',{
     defaults:function(w){w.min=14;w.max=28;w.step=0.5;w.label='Thermostat';},
     render:function(w){var tShowState=(w.showState!==false),tShowBar=(w.showBar!==false),tShowModes=(w.showModes!==false),tShowSet=(w.showSet!==false);
       return '<div class="htc tone-idle">'
-        +'<div class="htc-top"><span class="htc-name">'+esc(w.label||'')+'</span>'+(tShowState?'<span class="htc-state" data-role="hstate"></span>':'')+'</div>'
+        +'<div class="htc-top"><span class="htc-name">'+escL(w.label||'')+'</span>'+(tShowState?'<span class="htc-state" data-role="hstate"></span>':'')+'</div>'
         +'<div class="htc-main"><span class="htc-ist" data-role="val">–</span><span class="htc-sep">→</span><span class="htc-soll">Soll <b data-role="target">–</b></span></div>'
         +(tShowBar?'<div class="htc-bar"><i data-role="istfill"></i><i class="htc-sollmk" data-role="sollmk"></i></div>':'')
         +(tShowModes?'<div class="htc-modes" data-role="modes"></div>':'')
@@ -6611,7 +6958,7 @@ defWidget('statuslist',{
           +(m.sub?' <small>'+esc(m.sub)+'</small>':'')+'</span>';
       }).join('');};
       var itm=band(''),itm2=band('b');
-      var lead=w.hideLead?'':'<div class="htlead"><span class="htpulse"></span>'+esc(w.label||'Alarm')+(w.hideCount?'':'<span class="htcnt">'+crit+'</span>')+'</div>';
+      var lead=w.hideLead?'':'<div class="htlead"><span class="htpulse"></span>'+escL(w.label||'Alarm')+(w.hideCount?'':'<span class="htcnt">'+crit+'</span>')+'</div>';
       return '<div class="htick'+(crit===0?' ok':'')+(w.hideDots?' nodots':'')+'">'+lead+'<div class="httrack"><div class="htmove" style="animation-duration:'+(w.speed||46)+'s">'+itm+itm2+'</div></div></div>';
     },
     props:function(w){
@@ -6681,7 +7028,7 @@ defWidget('statuslist',{
     label:'Kachel', paletteIcon:'wtile', size:[190,64],
     render:function(w){
       if(w.iconOnly)return '<div class="htile htile-icon"><div class="htico" data-role="badge">'+iconSVG(w.icon||'bulb')+'</div></div>'; // nur Icon, füllt die Kachel
-      return '<div class="htile"><div class="htbadge" data-role="badge">'+iconSVG(w.icon||'bulb')+'</div><div class="httext"><div class="htname">'+esc(w.label||'')+'</div><div class="htstate" data-role="val">–</div></div></div>';},
+      return '<div class="htile"><div class="htbadge" data-role="badge">'+iconSVG(w.icon||'bulb')+'</div><div class="httext"><div class="htname">'+escL(w.label||'')+'</div><div class="htstate" data-role="val">–</div></div></div>';},
     props:function(w){return row('Nur Icon','<input type="checkbox" id="pTileIcon"'+(w.iconOnly?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">Icon füllt die Kachel (für Popup-Buttons)</span>')+btnStateProps(w);},
     wire:function(w){if($('#pTileIcon'))$('#pTileIcon').onchange=function(){w.iconOnly=this.checked||undefined;render();renderProps();commit();};btnStateWire(w);},
     live:function(w,el,id,d,base,txt,on){var b=$('[data-role=badge]',el);if(b)b.classList.toggle('on',on);var tv=$('[data-role=val]',el);if(tv)tv.textContent=txt;applyBtnState(w,el,on);}
@@ -6689,7 +7036,7 @@ defWidget('statuslist',{
   // ===== Widget: Timer — Countdown mit Fortschrittsbalken =====
   defWidget('timer',{
     label:'Timer', paletteIcon:'clock', size:[200,68],
-    render:function(w){return '<div class="htimer"><div class="htrow"><span class="htname">'+esc(w.label||'')+'</span><span class="httime" data-role="time">–</span></div><div class="htbar"><i data-role="bar"></i></div></div>';}
+    render:function(w){return '<div class="htimer"><div class="htrow"><span class="htname">'+escL(w.label||'')+'</span><span class="httime" data-role="time">–</span></div><div class="htbar"><i data-role="bar"></i></div></div>';}
   });
   // ===== Widget: Vacuum — Saug-/Mähroboter mit Status, Batterie und Start/Stop =====
   defWidget('vacuum',{
@@ -6705,9 +7052,9 @@ defWidget('statuslist',{
       var sty=[];if(w.icx!=null&&w.icx!=='')sty.push('padding-left:'+(parseInt(w.icx)||0)+'px'); // Icon-X relativ zum linken Widget-Rand
       if(rowMode)sty.push('justify-content:'+jc);
       var st=sty.length?(' style="'+sty.join(';')+'"'):'';
-      if(w.oneline){var lab=w.label?('<span class="wv1l">'+esc(w.label)+'</span>'):''; // einzeilig/simple: Icon fix links, Text (Label optional + Wert) direkt dahinter
+      if(w.oneline){var lab=w.label?('<span class="wv1l">'+escL(w.label)+'</span>'):''; // einzeilig/simple: Icon fix links, Text (Label optional + Wert) direkt dahinter
         return '<div class="wv wv1'+(w.icon?' hasic':'')+'"'+st+'>'+ic+'<div class="wv1line">'+lab+'<span class="v" data-role="val">–</span></div></div>';}
-      return '<div class="wv'+(w.icon?' hasic':'')+'"'+st+'>'+ic+'<div class="wvbody" style="min-width:0'+al+'"><div class="l">'+esc(w.label||'')+'</div><div class="v" data-role="val">–</div></div></div>';},
+      return '<div class="wv'+(w.icon?' hasic':'')+'"'+st+'>'+ic+'<div class="wvbody" style="min-width:0'+al+'"><div class="l">'+escL(w.label||'')+'</div><div class="v" data-role="val">–</div></div></div>';},
     props:function(w){return row('Wert-Größe (px)','<input id="pFs" type="number" value="'+(w.valfs||24)+'">')
       +row('Präfix','<input id="pPre" value="'+esc(w.pre||'')+'" placeholder="z. B. ~">')
       +row('Suffix','<input id="pSuf" value="'+esc(w.suf||'')+'" placeholder="z. B. °C">')
@@ -6720,7 +7067,7 @@ defWidget('statuslist',{
       +(w.colThr?(row('Grün bis','<input id="pVT1" type="number" value="'+(w.t1!=null?w.t1:'')+'" placeholder="Schwelle">')+row('Gelb bis','<input id="pVT2" type="number" value="'+(w.t2!=null?w.t2:'')+'" placeholder="Schwelle">')+row('Invertieren','<input type="checkbox" id="pThrInv"'+(w.thrInvert?' checked':'')+'>')):'')
       +'<div class="pgh">Farbe nach Zustand</div>'
       +'<div style="font-size:11px;color:var(--muted);margin:-2px 2px 4px">Je Zustand eine Farbe (überschreibt die Schwellenfarbe). Erlaubt: exakte Werte, Operatoren (&gt;0, &lt;=25, !=3), Bereiche (0..25) und * für „alles andere“. Bool: 1/0 bzw. true/false.</div>'
-      +listEditor(w,'vassoc','Zustand · Text · Farbe',[{k:'v',ph:'Wert (z. B. 1)'},{k:'text',ph:'Text (optional)'},{k:'color',type:'skin'}])
+      +listEditor(w,'vassoc','Zustand · Text · Farbe',[{k:'v',ph:'Wert (z. B. 1)'},{k:'text',ph:'Text (optional)'},{k:'color',type:'skincolor'}])
       +row('Ganze Kachel einfärben','<input type="checkbox" id="pVaFill"'+(w.vaFill?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">statt nur des Werts</span>')
       +(w.vaFill?row('Darstellung','<select id="pFillMode">'+[['','Automatisch (crit füllt)'],['soft','Getönt'],['fill','Vollfläche']].map(function(o){return '<option value="'+o[0]+'"'+((w.fillMode||'')===o[0]?' selected':'')+'>'+o[1]+'</option>';}).join('')+'</select>'):'');},
     wire:function(w){
@@ -6800,7 +7147,7 @@ defWidget('statuslist',{
         else tr='<span class="hpill '+esc(st)+'" data-role="badge"><span class="hpd"></span>'+esc(w.badge||'')+'</span>';
       }
       var val='<div class="hvcval"><span data-role="val">–</span>'+(w.unit?'<small> '+esc(w.unit)+'</small>':'')+'</div>';
-      var cap=w.label?'<div class="hvccap">'+esc(w.label)+'</div>':'';
+      var cap=w.label?'<div class="hvccap">'+escL(w.label)+'</div>':'';
       var bar=w.barOn?('<div class="hvcbar"><div class="btrack"><i data-role="bar"></i></div>'+((w.barCap!=null&&w.barCap!=='')?'<div class="hvcbarcap" data-role="barcap">'+esc(w.barCap)+'</div>':'')+'</div>'):'';
       return '<div class="hvcard" data-role="card"><div class="hvctop"><div class="hvctl">'+icon+title+'</div>'+tr+'</div>'+val+cap+bar+'</div>';
     },
@@ -6830,7 +7177,7 @@ defWidget('statuslist',{
         ):'')
         +'<div class="pgh">Farbe nach Zustand</div>'
         +'<div style="font-size:11px;color:var(--muted);margin:-2px 2px 4px">Quelle: <b>varId2</b> (Toggle/Status), sonst Hauptwert. true/false = 1/0. Farbe: #hex oder accent/ok/warn/crit/info.'+(w.vaFill&&w.v2acc?' <span style="color:var(--warm)">— „varId2 = Akzent" oben deaktivieren, sonst überlagern sich beide!</span>':'')+'</div>'
-        +listEditor(w,'vassoc','Zustand · Farbe',[{k:'v',ph:'z. B. 1 / true'},{k:'color',type:'skin'}])
+        +listEditor(w,'vassoc','Zustand · Farbe',[{k:'v',ph:'z. B. 1 / true'},{k:'color',type:'skincolor'}])
         +row('Ganze Kachel einfärben','<input type="checkbox" id="pVcVaFill"'+(w.vaFill?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">statt nur des Werts</span>')
         +'<div class="pgh">Fortschrittsbalken (unten)</div>'
         +row('Balken zeigen','<input type="checkbox" id="pVcBarOn"'+(w.barOn?' checked':'')+'>')
@@ -7079,13 +7426,13 @@ defWidget('webview',{
     label:'Wochenplan', paletteIcon:'calendar', size:[340,180],
     defaults:function(w){w.label='Wochenplan';},
     render:function(w){var nc=(_skinColor(w.nowColor||'warn')||'var(--warn)'); // Farbe der „jetzt"-Markierung (Default: Warnung)
-      return '<div class="hwp" style="--wp-now:'+nc+'"><div class="hwphd">'+esc(w.label||'Wochenplan')+'</div><div class="hwpgrid" data-role="wpgrid"><div class="hwpempty">lädt …</div></div>'+(w.showTimes?'<div data-role="wptimes" style="font-size:10px;color:var(--muted);padding:4px 8px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></div>':'')+'</div>';},
+      return '<div class="hwp" style="--wp-now:'+nc+'"><div class="hwphd">'+escL(w.label||'Wochenplan')+'</div><div class="hwpgrid" data-role="wpgrid"><div class="hwpempty">lädt …</div></div>'+(w.showTimes?'<div data-role="wptimes" style="font-size:10px;color:var(--muted);padding:4px 8px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></div>':'')+'</div>';},
     props:function(w){return row('Schaltzeiten (heute)','<input type="checkbox" id="pWpTimes"'+(w.showTimes?' checked':'')+'>')
       +row('Markierung „jetzt"',(function(){var SK=[['warn','Warnung'],['crit','Alert'],['accent','Akzent'],['ok','OK'],['info','Info'],['text','Neutral']],cur=w.nowColor||'warn';
         return '<span class="iconsw" data-role="wpnowsw">'+SK.map(function(c){return '<button type="button" class="iconswb'+(cur===c[0]?' on':'')+'" data-skin="'+c[0]+'" title="'+esc(c[1])+'" style="background:var(--'+c[0]+')"></button>';}).join('')+'</span>';})())
       +'<div class="pgh">Farben je Zustand (überschreibt Event)</div>'
       +'<div style="font-size:11px;color:var(--muted);margin:-2px 2px 4px">Zustands-Name aus dem Symcon-Wochenplan · Farbe: #hex oder accent/ok/warn/crit/info</div>'
-      +listEditor(w,'colors','Zustand · Farbe',[{k:'name',ph:'Zustand (z. B. Pumpe läuft)'},{k:'color',ph:'#00cdab / accent'}]);},
+      +listEditor(w,'colors','Zustand · Farbe',[{k:'name',ph:'Zustand (z. B. Pumpe läuft)'},{k:'color',type:'skincolor'}]);},
     wire:function(w){if($('#pWpTimes'))$('#pWpTimes').onchange=function(){w.showTimes=this.checked||undefined;render();fetchWeekplan(w);};
       $$('#props [data-role=wpnowsw] [data-skin]').forEach(function(b){b.onclick=function(){w.nowColor=this.getAttribute('data-skin')||undefined;render();renderProps();fetchWeekplan(w);commit();};});}
   });
@@ -7177,7 +7524,7 @@ defWidget('webview',{
     defaults:function(w){w.label='Live-Updates';w.max=40;w.wsSrc='both';},
     render:function(w){
       if(w.simple)return '<div class="hws hws-sim" title="'+esc(w.label||'Live')+'"><span class="hwsd hwsdlg ws idle" data-role="dws" title="WebSocket"></span><span class="hwsd hwsdlg poll idle" data-role="dpoll" title="Poll"></span></div>';
-      return '<div class="hws">'+(w.label?('<div class="hwshd"><span>'+esc(w.label)+'</span><span class="hwslg"><span class="hwsd ws"></span>WS<span class="hwsd poll" style="margin-left:6px"></span>Poll</span></div>'):'')
+      return '<div class="hws">'+(w.label?('<div class="hwshd"><span>'+escL(w.label)+'</span><span class="hwslg"><span class="hwsd ws"></span>WS<span class="hwsd poll" style="margin-left:6px"></span>Poll</span></div>'):'')
       +'<div class="hwsl" data-role="wsl"><div class="hwse">warte auf Updates …</div></div></div>';},
     props:function(w){return row('Darstellung','<select id="pWsMode"><option value=""'+(!w.simple?' selected':'')+'>Standard (Fenster)</option><option value="1"'+(w.simple?' selected':'')+'>Simple (nur 2 Punkte)</option></select>')
       +(w.simple?'':row('Max Zeilen','<input id="pWsMax" type="number" min="5" max="200" value="'+(w.max||40)+'">'))
