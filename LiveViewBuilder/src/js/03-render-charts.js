@@ -407,19 +407,23 @@
   function setLine(w){
     var ec=_ec[w.id];if(!ec)return;var ct=w.ctype||'area',hs=chartSeries(w),defs=_chSeries(w);
     var forceStack=(ct==='barstack'),stacked=(w.stack||forceStack),anyBar=false,yaxes=_chYAxes(w);
+    // Gemischt = mindestens ein Balken UND mindestens etwas anderes. Nur dann greift die
+    // Stapelung ausschliesslich auf die Balken (siehe _mkSer).
+    var _kinds={};hs.forEach(function(s,i){_kinds[_resolveType((defs[i]&&defs[i].type)||ct).kind]=1;});
+    var _mixed=(!!_kinds.bar&&(!!_kinds.line||!!_kinds.scatter));
     var lbl=w.labels?{show:true,fontSize:_ecF(w,'label',9),color:cssv('--muted'),position:'top'}:{show:false};
     function _rt(d){return (d&&d.type)?d.type:ct;} // effektiver Typ: Serie-Override oder Chart-Default (Mixed-Chart)
     var series=hs.map(function(s,i){
       var d=defs[i]||{},col=_chColor(d.color,i),nm=d.name||s.name||(i===0?(w.label||'Serie 1'):'Serie '+(i+1)),ax=Math.min(Math.max(parseInt(d.axis)||0,0),yaxes.length-1);
       var rt=_rt(d);if(_resolveType(rt).kind==='bar')anyBar=true;
-      return _mkSer(rt,s.data,col,nm,ax,w,stacked,lbl,false);
+      return _mkSer(rt,s.data,col,nm,ax,w,stacked,lbl,false,_mixed);
     });
     // Vergleichsserie (Zeitversatz) — abgeschattet
     var cmpS=(_hist[w.id]&&_hist[w.id].cmp)||null;
     if(cmpS){var shade=(w.cmpShade!=null?w.cmpShade:55)/100,olbl=OFFLBL[w.cmpOff||'1d'];
       cmpS.forEach(function(s,i){if(!s)return;var d=defs[i]||{},base=_chColor(d.color,i),col=darken(base,shade),ax=Math.min(Math.max(parseInt(d.axis)||0,0),yaxes.length-1);
         var nm=(d.name||(i===0?(w.label||'Serie 1'):'Serie '+(i+1)))+' · '+olbl,rt=_rt(d);
-        series.push(_mkSer(rt,s.data,col,nm,ax,w,stacked,null,true));
+        series.push(_mkSer(rt,s.data,col,nm,ax,w,stacked,null,true,_mixed));
       });
     }
     var ax0=_axShow(w);
@@ -435,7 +439,26 @@
       xAxis:{type:'time',boundaryGap:anyBar,axisLine:{show:ax0.line,lineStyle:{color:cssv('--line')}},axisTick:{show:ax0.ticks},axisLabel:{show:ax0.xLab,color:cssv('--faint'),fontSize:_axFs(w)},splitLine:{show:ax0.xGrid,lineStyle:{color:cssv('--line-soft')}}},
       yAxis:yA,series:series};
     if(w.zoom)opt.dataZoom=[{type:'inside'},{type:'slider',height:13,bottom:4,borderColor:'transparent',backgroundColor:accA(.06),fillerColor:accA(.18),handleStyle:{color:cssv('--accent')},dataBackground:{lineStyle:{color:cssv('--line')},areaStyle:{color:accA(.08)}},textStyle:{color:cssv('--faint'),fontSize:_ecF(w,'axis',8)}}];
-    if(w.extrema&&series[0]&&(ct==='line'||ct==='area'||ct==='bar'||ct==='step')){series[0].markPoint={symbol:'pin',symbolSize:32,data:[{type:'max',name:'Max'},{type:'min',name:'Min'}],label:{fontSize:_ecF(w,'label',8),color:cssv('--text')},itemStyle:{color:accA(.55)}};}
+    // Extremwerte. Frueher fest an series[0] und nur bei bestimmten Diagrammtypen - in einem
+    // gemischten Diagramm ist das aber fast immer die falsche Reihe: Min und Max interessieren
+    // an der Leistungslinie, nicht am Verbrauchsbalken. Jetzt frei waehlbar (w.exSer, 1-basiert
+    // wie im Editor gezaehlt) und ohne Typ-Einschraenkung. Die senkrechte Linie kommt dazu,
+    // damit der Zeitpunkt ablesbar ist und nicht nur der Wert.
+    if(w.extrema){
+      var _xi=Math.min(Math.max((parseInt(w.exSer)||1)-1,0),series.length-1);
+      var _xs=series[_xi];
+      if(_xs){
+        var _xu=(w.exUnit!=null?w.exUnit:(w.yunit||''));
+        var _xf=function(p){return _chNum(w,p.value,false)+(_xu?(' '+_xu):'');};
+        _xs.markPoint={symbol:'pin',symbolSize:34,silent:true,
+          data:[{type:'max',name:'Max'},{type:'min',name:'Min'}],
+          label:{fontSize:_ecF(w,'label',9),color:cssv('--text'),formatter:_xf},
+          itemStyle:{color:accA(.55)}};
+        if(w.exLine!==false)_xs.markLine={silent:true,symbol:'none',
+          lineStyle:{color:cssv('--faint'),width:1,type:'solid',opacity:.55},
+          label:{show:false},data:[{type:'max'},{type:'min'}]};
+      }
+    }
     ec.setOption(opt,true);
   }
   // Kalenderjahr-Modus (Balken, Monatlich): x = Jän–Dez, exaktes Jahr (+ Vorjahr bei Vergleich), via generische ?api=aggregated
@@ -511,7 +534,12 @@
     else if(t==='spline'){sm=true;}else if(t==='area'){fl=true;}else if(t==='areaspline'){fl=true;sm=true;}
     else if(t==='step'){sp=true;}else if(t==='steparea'){sp=true;fl=true;}
     return {kind:k,smooth:sm,fill:fl,step:sp};}
-  function _mkSer(rt,data,col,nm,ax,w,stacked,lbl,dashed){var R=_resolveType(rt),st=stacked?'total':undefined,br=parseFloat(w.barRadius!=null?w.barRadius:3);
+  // In einem GEMISCHTEN Diagramm (Balken und Linien nebeneinander) darf die Stapelung nur
+  // die Balken treffen. Eine Leistungslinie auf einen Verbrauchsbalken zu stapeln ergibt
+  // keinen Sinn - und bei zwei Linien addierte echarts sie stillschweigend aufeinander, was
+  // wie ein Messfehler aussieht. Reine Linien- oder Flaechendiagramme stapeln unveraendert.
+  function _mkSer(rt,data,col,nm,ax,w,stacked,lbl,dashed,mixed){var R=_resolveType(rt),
+    st=(stacked&&!(mixed&&R.kind!=='bar'))?'total':undefined,br=parseFloat(w.barRadius!=null?w.barRadius:3);
     if(R.kind==='bar')return {type:'bar',name:nm,yAxisIndex:ax,stack:(dashed?(stacked?'cmp':undefined):st),itemStyle:{color:col,borderRadius:(stacked?0:br)},data:data,label:(dashed?{show:false}:lbl)};
     if(R.kind==='scatter')return {type:'scatter',name:nm,yAxisIndex:ax,symbolSize:(w.symSize||7),itemStyle:{color:col},data:data,label:(dashed?{show:false}:lbl)};
     var smooth=(R.smooth!=null?R.smooth:(w.smooth!==false&&!R.step));
