@@ -22,6 +22,6 @@
       if($('#pShSet'))$('#pShSet').onchange=function(){w.showSet=this.checked;render();commit();};
     },
     live:function(w,el,id,d,base,txt,on){
-      if(w.varId===id||w.varId2===id||w.varId3===id)updateTherm(w);
+      if(w.varId===id||w.varId2===id||w.varId3===id)updateTherm(w,rootOfEl(el));
     }
   });
