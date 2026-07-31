@@ -5982,6 +5982,11 @@ defWidget('gaugepro',{
     mount:function(w){_lgPaint(w);},
     live:function(w,el,id,d,base,txt,on){_lgPaint(w,(typeof rootOfEl==='function')?rootOfEl(el):null);},
     click:function(w,el,e){
+      // Ein ausdruecklich gesetztes Ziel geht vor. _wClick fragt den Widget-Klick VOR
+      // navTo/popupTo ab - ohne dieses Durchreichen wuerde eine Kachel, die als
+      // Seiteneinstieg gedacht ist, stattdessen das Licht schalten. Wer beides will,
+      // nimmt den langen Druck (longNav).
+      if(w.navTo||w.popupTo||w.navBack)return false;
       if(w.varId){                                     // Statuskanal vorhanden -> den schalten
         var dd=_lastVals[w.varId],cur=dd?(dd.v===true||dd.v===1||dd.v==='1'||dd.v==='true'):false;
         setVar(w.varId,cur?0:1);return true;
