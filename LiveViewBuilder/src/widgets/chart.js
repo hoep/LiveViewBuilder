@@ -99,7 +99,7 @@
         h+='<div class="pgh">Achsen & Raster</div>'+row('Y-Beschriftung','<input type="checkbox" id="pYLab"'+(w.yLabels!==false?' checked':'')+'>')+row('X-Beschriftung','<input type="checkbox" id="pXLab"'+(w.xLabels!==false?' checked':'')+'>')+row('Y-Hilfslinien','<input type="checkbox" id="pYg"'+(w.ygrid!==false?' checked':'')+'>')+row('X-Hilfslinien','<input type="checkbox" id="pXg"'+(w.xgrid?' checked':'')+'>')+row('Achslinien','<input type="checkbox" id="pAxLine"'+(w.axLine?' checked':'')+'>')+row('Tickmarks','<input type="checkbox" id="pAxTicks"'+(w.axTicks?' checked':'')+'>');
         if(V.axPlus)h+=row('Raster-Teilung','<input id="pGridDivs" type="number" min="0" style="width:56px" value="'+(w.gridDivs||'')+'" placeholder="auto"> <span style="font-size:11px;color:var(--muted)">Y-Achse: Anzahl</span>');
         if(V.axPlus&&(V.bar||V.line))h+=row('Stapeln','<input type="checkbox" id="pStack"'+(w.stack?' checked':'')+'>');
-        if(V.axPlus)h+=row('Zoom/Scroll','<input type="checkbox" id="pZoom"'+(w.zoom?' checked':'')+'>')+row('Extrema (Max/Min)','<input type="checkbox" id="pExtr"'+(w.extrema?' checked':'')+'>')+row('Perioden-Navigation','<input type="checkbox" id="pPnav"'+(w.pnav?' checked':'')+'>');
+        if(V.axPlus)h+=row('Zoom/Scroll','<input type="checkbox" id="pZoom"'+(w.zoom?' checked':'')+'>')+row('Extrema (Max/Min)','<input type="checkbox" id="pExtr"'+(w.extrema?' checked':'')+'>')+(w.extrema?(row('Extrema an Serie','<input id="pExSer" type="number" min="1" style="width:52px" value="'+(w.exSer||1)+'"> <span style="font-size:11px;color:var(--muted)">1 = erste Reihe</span>')+row('Extrema-Einheit','<input id="pExUnit" style="width:70px" value="'+esc(w.exUnit!=null?w.exUnit:'')+'" placeholder="wie Y-Achse">')+row('Extrema-Linie','<input type="checkbox" id="pExLine"'+(w.exLine!==false?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">senkrechte Markierung</span>')):'')+row('Perioden-Navigation','<input type="checkbox" id="pPnav"'+(w.pnav?' checked':'')+'>');
       }
       if(V.cmp)h+='<div class="pgh">Vergleich (Zeitversatz)</div>'+row('Aktiv','<input type="checkbox" id="pCmpOn"'+(w.cmpOn?' checked':'')+'>')+(w.cmpOn?(row('Versatz',offSel('pCmpOff',w.cmpOff))+row('Schatten %','<input id="pCmpShade" type="number" min="0" max="90" value="'+(w.cmpShade!=null?w.cmpShade:55)+'">')):'');
       if(V.ser)h+=seriesEditor(w,V.spark?{max:1,simple:1}:null); // Sparkline zeichnet nur die erste Serie
@@ -160,7 +160,10 @@
       if($('#pGridDivs'))$('#pGridDivs').oninput=function(){w.gridDivs=this.value===''?undefined:parseInt(this.value);reChart();};
       if($('#pStack'))$('#pStack').onchange=function(){w.stack=this.checked;reChart();};
       if($('#pZoom'))$('#pZoom').onchange=function(){w.zoom=this.checked;reChart();};
-      if($('#pExtr'))$('#pExtr').onchange=function(){w.extrema=this.checked||undefined;reChart();};
+      if($('#pExtr'))$('#pExtr').onchange=function(){w.extrema=this.checked||undefined;reChart();renderProps();};
+      if($('#pExSer'))$('#pExSer').onchange=function(){w.exSer=Math.max(1,parseInt(this.value)||1);reChart();};
+      if($('#pExUnit'))$('#pExUnit').onchange=function(){w.exUnit=this.value.trim()||undefined;reChart();};
+      if($('#pExLine'))$('#pExLine').onchange=function(){w.exLine=this.checked?undefined:false;reChart();};
       if($('#pPnav'))$('#pPnav').onchange=function(){w.pnav=this.checked||undefined;render();commit();};
       $$('#props [data-sf]').forEach(function(inp){inp.oninput=inp.onchange=function(){var pr=inp.getAttribute('data-sf').split('.'),i=parseInt(pr[0]),k=pr[1];_ensureSeries(w);w.series[i]=w.series[i]||{};w.series[i][k]=(k==='vid'?(parseInt(inp.value)||0):(k==='axis'?parseInt(inp.value):inp.value));delete _hist[w.id];fetchHist(w);commit();if(inp.tagName==='SELECT')renderProps();};});
       $$('#props [data-spick]').forEach(function(b){b.onclick=function(){showTab('vars');toast('Variable im Baum anklicken');_bindSeries={wid:w.id,idx:parseInt(b.getAttribute('data-spick'))};};});
