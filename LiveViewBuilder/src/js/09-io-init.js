@@ -29,8 +29,15 @@
   $('#modeBtn').onclick=function(){mode=(mode==='edit')?'preview':'edit';stage.classList.toggle('edit',mode==='edit');stage.classList.toggle('preview',mode==='preview');this.textContent=(mode==='edit')?'Vorschau':'Bearbeiten';this.classList.toggle('on',mode==='preview');if(mode==='preview')select(null);};
 
   // ---------- Ansichten (Views) ----------
-  function _isPopupView(name){ // Popup = Seite, auf die ein Widget per Popup-Aktion verweist (Home ist nie Popup)
-    if(name===store.home)return false;
+  // Popup = Seite, die ueber einer anderen geoeffnet wird. Sie bekommt NIE Bar oder Sidebar.
+  // Frueher wurde das allein daraus geschlossen, dass irgendein Widget per popupTo/longPopup
+  // darauf zeigt. Eine frisch angelegte Popup-Seite hat aber noch keinen Verweis - sie galt
+  // deshalb als normale Seite und bekam die Leisten. Jetzt entscheidet ein ausdrueckliches
+  // Kennzeichen an der Seite; der alte Rueckschluss bleibt fuer bestehende Ansichten erhalten.
+  function _isPopupView(name){
+    if(name===store.home)return false;                      // die Startseite ist nie Popup
+    var v=store.views[name];
+    if(v&&v.page&&v.page.popup)return true;                 // ausdruecklich so angelegt
     for(var vn in store.views){var ws=(store.views[vn].widgets)||[];for(var i=0;i<ws.length;i++){if(ws[i].popupTo===name||ws[i].longPopup===name)return true;}}
     return false;
   }
@@ -43,7 +50,19 @@
   }
   function reseq(){seq=1;state.widgets.forEach(function(w){var n=parseInt(String(w.id||'w0').replace('w',''))||0;if(n>=seq)seq=n+1;});}
   function switchView(name){if(!store.views[name])return;store.current=name;state=store.views[name];if(!state.page)state.page={w:1440,h:900};if(!state.widgets)state.widgets=[];selId=null;sel={};reseq();refreshViewSel();setCanvas();invalidateSC();_scMode='';document.body.classList.remove('reflow');restoring=true;render();restoring=false;renderProps();resetHist();chromeUI();} // render() macht bereits Kamera/HTML-Init + Sofort-Poll (kein doppeltes Rendern mehr)
-  function newView(){var n=prompt('Name der neuen Ansicht:','Ansicht '+(Object.keys(store.views).length+1));if(!n)return;if(store.views[n]){toast('Name existiert bereits');return;}store.views[n]={page:{w:bcfg().defW,h:bcfg().defH,fit:bcfg().defFit},widgets:[]};switchView(n);toast('Ansicht angelegt: '+n);}
+  function newView(asPopup){
+    var n=prompt(asPopup?'Name des neuen Popups:':'Name der neuen Ansicht:',
+                 (asPopup?'Popup ':'Ansicht ')+(Object.keys(store.views).length+1));
+    if(!n)return;
+    if(store.views[n]){toast('Name existiert bereits');return;}
+    // Popups sind kleiner als eine Seite und tragen das Kennzeichen von Anfang an - sonst
+    // wuerden sie bis zum ersten Verweis mit Bar und Sidebar gezeichnet.
+    var pg=asPopup?{w:500,h:400,fit:'letterbox',popup:true}
+                  :{w:bcfg().defW,h:bcfg().defH,fit:bcfg().defFit};
+    store.views[n]={page:pg,widgets:[]};
+    switchView(n);
+    toast((asPopup?'Popup angelegt: ':'Ansicht angelegt: ')+n);
+  }
   function _renameViewRefs(old,n){ // alle Verweise auf einen Ansichtsnamen mitziehen (Actions, Home, Mobil)
     var cnt=0;Object.keys(store.views).forEach(function(vn){var v=store.views[vn];
       if(v.page&&v.page.mobileView===old){v.page.mobileView=n;cnt++;}
@@ -54,7 +73,8 @@
   function renameView(){var old=store.current;if(!old)return;var n=prompt('Ansicht umbenennen:',old);if(!n||n===old)return;if(store.views[n]){toast('Name existiert bereits');return;}store.views[n]=store.views[old];delete store.views[old];store.current=n;var rc=_renameViewRefs(old,n);refreshViewSel();commit();toast('Umbenannt'+(rc?' · '+rc+' Verweis(e) angepasst':''));}
   function deleteView(){var n=store.current;if(!n)return;if(!confirm('Ansicht „'+n+'" wirklich löschen?'))return;delete store.views[n];var keys=Object.keys(store.views);if(!keys.length){store.views['Ansicht 1']={page:{w:1440,h:900},widgets:[]};keys=['Ansicht 1'];}switchView(keys[0]);toast('Gelöscht');}
   $('#viewSel').onchange=function(){switchView(this.value);};
-  $('#newView').onclick=newView;$('#renView').onclick=renameView;$('#delView').onclick=deleteView;
+  $('#newView').onclick=function(){newView(false);};
+  if($('#newPopup'))$('#newPopup').onclick=function(){newView(true);};$('#renView').onclick=renameView;$('#delView').onclick=deleteView;
   $('#homeBtn').onclick=function(){store.home=store.current;refreshViewSel();toast('Startseite: '+store.current+' (Speichern nicht vergessen)');};
   $('#cvW').addEventListener('change',function(){state.page.w=Math.max(320,parseInt(this.value)||1440);setCanvas();});
   $('#cvH').addEventListener('change',function(){state.page.h=Math.max(240,parseInt(this.value)||900);setCanvas();});
@@ -62,6 +82,11 @@
   $('#zoomOut').onclick=function(){setZoom(zoom/1.15);};
   $('#zoomLbl').onclick=function(){setZoom(Math.abs(zoom-1)<1e-4?fitZoom():1);};
   stage.addEventListener('wheel',function(e){if(!(e.ctrlKey||e.metaKey)||document.body.classList.contains('run'))return;e.preventDefault();var r=canvas.getBoundingClientRect(),cx=(e.clientX-r.left)/zoom,cy=(e.clientY-r.top)/zoom,z0=zoom;setZoom(zoom*(e.deltaY<0?1.1:1/1.1));var sc=zoom/z0;stage.scrollLeft+=cx*(sc-1)*z0;stage.scrollTop+=cy*(sc-1)*z0;},{passive:false});
+  if($('#cvPopup'))$('#cvPopup').addEventListener('change',function(){
+    state.page.popup=this.checked||undefined;   // Kennzeichen an der Seite, nicht am Widget
+    render();refreshViewSel();commit();
+    toast(this.checked?'Popup: Bar und Sidebar werden hier nicht gezeichnet':'Wieder eine normale Seite');
+  });
   $('#cvFit').addEventListener('change',function(){state.page.fit=this.value;invalidateSC();commit();renderProps();drawStructure();if(document.body.classList.contains('run'))fitCanvas();toast('Anpassung: '+this.value+(document.body.classList.contains('run')?'':' — im Live-Modus sichtbar'));});
   if($('#cvFrame'))$('#cvFrame').addEventListener('change',function(){state.page.noframe=this.checked?undefined:true;render();commit();toast('Kachel-Rahmen (Ansicht): '+(this.checked?'an':'aus'));});
   $('#structBtn').addEventListener('click',function(){_showStruct=!_showStruct;this.classList.toggle('on',_showStruct);drawStructure();});

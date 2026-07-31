@@ -63,6 +63,7 @@
   <div class="sp"></div>
   <select class="btn" id="viewSel" title="Ansicht"></select>
   <button class="btn" id="newView" title="Neue Ansicht"><svg class="i"><use href="#ic-plus"/></svg></button>
+  <button class="btn" id="newPopup" title="Neues Popup anlegen (zeigt nie Bar oder Sidebar)"><svg class="i"><use href="#ic-cube"/></svg></button>
   <button class="btn" id="renView" title="Umbenennen"><svg class="i"><use href="#ic-pencil"/></svg></button>
   <button class="btn" id="delView" title="Ansicht löschen"><svg class="i"><use href="#ic-trash"/></svg></button>
   <button class="btn" id="homeBtn" title="Aktuelle Ansicht als Startseite (Kiosk-Default)"><svg class="i"><use href="#ic-home"/></svg></button>
@@ -71,6 +72,9 @@
   <input id="cvW" type="number" class="cvnum" title="Breite (px)">
   <span class="muted">×</span>
   <input id="cvH" type="number" class="cvnum" title="Höhe (px)">
+  <label class="muted" style="font-size:11px;margin-left:8px;display:inline-flex;align-items:center;gap:4px;cursor:pointer" 
+         title="Popup: wird ueber einer Seite geoeffnet und zeigt nie Bar oder Sidebar">
+    <input id="cvPopup" type="checkbox"> Popup</label>
   <span class="muted" style="font-size:11px;margin-left:6px">Anpassung</span>
   <select id="cvFit" class="cvnum" style="width:auto" title="Skalierung im Live-Modus: Letterbox = wie bisher, Auto = SmartFit (Track-Fill/Reflow), Track-Fill = immer füllen ohne Scroll, Reflow = Umbruch">
     <option value="letterbox">Letterbox</option>
