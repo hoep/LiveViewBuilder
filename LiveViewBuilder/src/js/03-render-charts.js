@@ -47,21 +47,35 @@
       if(w.ff){d.style.setProperty('--w-ff',w.ff);d.classList.add('tw-ff');}if(w.fwt){d.style.setProperty('--w-fwt',w.fwt);d.classList.add('tw-fwt');}if(w.fsty){d.style.setProperty('--w-fsty',w.fsty);d.classList.add('tw-fsty');}if(w.fsz){d.style.setProperty('--w-fsz',w.fsz+'px');d.classList.add('tw-fsz');} // Typografie: auf innere Elemente erzwingen
       return d;
   }
+  // Ein Widget in Betrieb nehmen: Diagramm anlegen, Kamera laden, Inhalte holen.
+  // Lag frueher fest im Seiten-Rendern und war damit auf den Seiten-Canvas verdrahtet.
+  // Popups durchlaufen einen eigenen Pfad und bekamen davon nichts - dort blieben
+  // Diagramme (auch Wasserfall), Kameras, HTML, Wochenplan, Sonnenbogen, Kalender,
+  // Ereignis- und Objekt-Kacheln sowie Thermostate leer. Jetzt einmal vorhanden und
+  // mit dem passenden Wurzelelement aufgerufen.
+  // Wurzel eines bereits gezeichneten Widgets bestimmen. Die live-Hooks bekommen das
+  // Element mitgeliefert; daraus laesst sich ablesen, ob es im Popup oder auf der Seite
+  // haengt. Ohne das wuerde ein Hook aus dem Popup heraus das gleichnamige Element auf
+  // der Seite anfassen - Popup-Widgets tragen dieselben IDs wie die Seiten-Widgets.
+  function rootOfEl(el){var oc=$('#ovcanvas');return (el&&oc&&oc.contains(el))?oc:canvas;}
+  function activateWidget(w,root){
+    if(w.type==='gauge'||w.type==='chart'||w.type==='spark'||w.type==='sankey'||w.type==='gaugepro'||w.type==='waterfall')initEChart(w,root);
+    if(w.type==='camera'||w.type==='campro')refreshCam(w,root);
+    if(w.type==='html'){if(w.htmlSrc==='custom')setHtmlContent(w,w.html||'',root);else fetchHtml(w,root);}
+    if(w.type==='weekplan')fetchWeekplan(w,root);
+    if(w.type==='suncard')refreshSun(w,root);
+    if(w.type==='calendar')fetchCalEvents(w,root);
+    if(w.type==='eventctl')fetchEvent(w,root);
+    if(w.type==='objinfo')fetchObjInfo(w,root);
+    if(w.visVar&&mode!=='edit'&&_lastVals[w.visVar]){var _ve=$('.w[data-id="'+w.id+'"]',(root||canvas));if(_ve)_ve.style.display=evalVis(w,_lastVals[w.visVar])?'':'none';}
+    if(w.type==='thermostat'){buildThermModes(w,root);updateTherm(w,root);}
+    if((w.assocOn||w.type==='assoc')&&w.varId)loadAssoc(w.varId,function(){if(_lastVals[w.varId])applyVal(w.varId,_lastVals[w.varId]);});
+  }
   function _renderRest(){
     // ECharts- und Kamera-Widgets aktivieren (je Widget abgesichert) — Seiteninhalt UND Leisten-Inhalt
     state.widgets.concat(chromeAllKids()).forEach(function(w){
       try{
-      if(w.type==='gauge'||w.type==='chart'||w.type==='spark'||w.type==='sankey'||w.type==='gaugepro'||w.type==='waterfall')initEChart(w);
-      if(w.type==='camera'||w.type==='campro')refreshCam(w);
-      if(w.type==='html'){if(w.htmlSrc==='custom')setHtmlContent(w,w.html||'');else fetchHtml(w);}
-      if(w.type==='weekplan')fetchWeekplan(w);
-      if(w.type==='suncard')refreshSun(w); // weatherpro füllt sich über seinen mount-Hook (applyWeather)
-      if(w.type==='calendar')fetchCalEvents(w);
-      if(w.type==='eventctl')fetchEvent(w);
-      if(w.type==='objinfo')fetchObjInfo(w);
-      if(w.visVar&&mode!=='edit'&&_lastVals[w.visVar]){var _ve=$('.w[data-id="'+w.id+'"]',canvas);if(_ve)_ve.style.display=evalVis(w,_lastVals[w.visVar])?'':'none';}
-      if(w.type==='thermostat'){buildThermModes(w);updateTherm(w);}
-      if((w.assocOn||w.type==='assoc')&&w.varId)loadAssoc(w.varId,function(){if(_lastVals[w.varId])applyVal(w.varId,_lastVals[w.varId]);}); // Profil-Assoziationen auch im Run laden (sonst keine Farben/Icons)
+      activateWidget(w,canvas);   // gemeinsam mit dem Popup-Pfad
       var _mwr=WIDGETS[w.type];if(_mwr&&_mwr.mount)_mwr.mount(w); // Registry-Post-Render-Hook (z.B. Canvas zeichnen)
       }catch(_e){} // ein defektes Widget darf Init/Interaktion der anderen nicht blockieren
     });
@@ -109,8 +123,8 @@
       fill.style.background='linear-gradient(90deg,'+tColor(r._l,w.tgrad)+','+tColor(r._h,w.tgrad)+')';
     });
   }
-  function refreshSun(w){
-    var el=$('.w[data-id="'+w.id+'"]',canvas);if(!el)return;
+  function refreshSun(w,root){
+    var el=$('.w[data-id="'+w.id+'"]',(root||canvas));if(!el)return;
     var sr=_lastVals[w.varId],ss=_lastVals[w.varId2],a=sr?_hhmm(sr.f||sr.v):null,b=ss?_hhmm(ss.f||ss.v):null,sun=$('[data-role=sun]',el);if(sun==null)return;
     // Beim ersten Setzen nach einem Neuzeichnen die Übergänge aussetzen: sonst startet die Sonne
     // sichtbar am Aufgangspunkt (Markup-Standard) und der Mond blitzt kurz auf.
@@ -220,9 +234,9 @@
       yAxis:{type:'value',name:unit,nameTextStyle:{color:cssv('--muted'),fontSize:_ecF(w,'axname',9)},nameGap:7,axisLine:{show:axw.line,lineStyle:{color:cssv('--line')}},axisTick:{show:axw.ticks},axisLabel:{show:axw.yLab,color:cssv('--faint'),fontSize:_axFs(w)},splitLine:{show:axw.yGrid,lineStyle:{color:cssv('--line-soft')}}},
       series:series},true);
   }
-  function initEChart(w){
+  function initEChart(w,root){
     if(typeof echarts==='undefined')return;
-    var el=$('.w[data-id="'+w.id+'"] [data-role=chart]',canvas);if(!el)return;
+    var el=$('.w[data-id="'+w.id+'"] [data-role=chart]',(root||canvas));if(!el)return;
     _ec[w.id]=echarts.init(el,null,{renderer:'canvas'});
     if(w.type==='gauge'){setGauge(w,_lastVals[w.varId]);}
     else if(w.type==='gaugepro'){setGaugePro(w,_lastVals[w.varId]);}
@@ -271,14 +285,14 @@
     function bind(id,prop){var e=$('#'+id);if(e)e.oninput=e.onchange=function(){w[prop]=this.value||undefined;relive();};}
     bind('pOnText','onText');bind('pOffText','offText');bind('pOnBg','onBg');bind('pOffBg','offBg');bind('pOnFg','onFg');bind('pOffFg','offFg');bind('pOnIcon','onIcon');bind('pOffIcon','offIcon');
     if($('#pStClr'))$('#pStClr').onclick=function(){['onText','offText','onBg','offBg','onFg','offFg','onIcon','offIcon'].forEach(function(k){delete w[k];});renderProps();relive();};}
-  function fetchEvent(w){if(!w.eventId)return;fetch('?api=event&id='+w.eventId,{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
-    var el=$('.w[data-id="'+w.id+'"]',canvas);if(!el||!j||j.error)return;
+  function fetchEvent(w,root){if(!w.eventId)return;fetch('?api=event&id='+w.eventId,{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
+    var el=$('.w[data-id="'+w.id+'"]',(root||canvas));if(!el||!j||j.error)return;
     var nm=$('[data-role=evname]',el);if(nm&&!w.label)nm.textContent=j.name||'Ereignis';
     var sw=$('[data-role=evsw]',el);if(sw)sw.classList.toggle('on',!!j.active);
     var sub=$('[data-role=evsub]',el);if(sub){var parts=[j.active?'aktiv':'inaktiv'];if(j.next>0)parts.push('nächste: '+new Date(j.next*1000).toLocaleString('de-DE',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}));sub.textContent=parts.join(' · ');}
   }).catch(function(){});}
-  function fetchObjInfo(w){if(!w.objId)return;fetch('?api=objinfo&id='+w.objId,{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
-    var el=$('.w[data-id="'+w.id+'"]',canvas);if(!el||!j||j.error)return;
+  function fetchObjInfo(w,root){if(!w.objId)return;fetch('?api=objinfo&id='+w.objId,{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
+    var el=$('.w[data-id="'+w.id+'"]',(root||canvas));if(!el||!j||j.error)return;
     var nm=$('[data-role=oiname]',el);if(nm&&!w.label)nm.textContent=j.name||'Objekt';
     var vv=$('[data-role=oival]',el);if(!vv)return;var f=w.field||'updated',out='–';
     if(f==='name')out=j.name||'';
@@ -696,8 +710,8 @@
     if(!name)name=String(lv.f!=null&&lv.f!==''?lv.f:lv.v);var l=name.toLowerCase();
     return {raw:lv.v,name:name,isOff:/(^|[^a-z])(aus|off)([^a-z]|$)/.test(l),isCool:/(kühl|kuehl|cool)/.test(l),isHeat:/(heiz|heat|warm)/.test(l)};
   }
-  function updateTherm(w){
-    var el=$('.w[data-id="'+w.id+'"]',canvas);if(!el)return;
+  function updateTherm(w,root){
+    var el=$('.w[data-id="'+w.id+'"]',(root||canvas));if(!el)return;
     var iv=_lastVals[w.varId],sv=_lastVals[w.varId2];
     var ist=iv?parseFloat(String(iv.v).replace(',','.')):NaN,soll=sv?parseFloat(String(sv.v).replace(',','.')):NaN;
     var c=$('[data-role=val]',el);if(c)c.textContent=iv?(iv.f!=null&&iv.f!==''?iv.f:iv.v):'–';
@@ -714,11 +728,11 @@
     var st=$('[data-role=hstate]',el);if(st)st.innerHTML='<span class="htc-ic">'+iconSVG(ic)+'</span>'+lab;
     $$('[data-role=modes] .htmbtn',el).forEach(function(b){b.classList.toggle('on',String(b.getAttribute('data-mv'))===String(m&&m.raw));});
   }
-  function buildThermModes(w){
-    var box=$('.w[data-id="'+w.id+'"] [data-role=modes]',canvas);if(!box)return;
+  function buildThermModes(w,root){
+    var box=$('.w[data-id="'+w.id+'"] [data-role=modes]',(root||canvas));if(!box)return;
     if(!w.varId3){box.innerHTML='';return;}
     loadAssoc(w.varId3,function(d){
-      var b2=$('.w[data-id="'+w.id+'"] [data-role=modes]',canvas);if(!b2)return;
+      var b2=$('.w[data-id="'+w.id+'"] [data-role=modes]',(root||canvas));if(!b2)return;
       if(!d||!d.assocs.length){b2.innerHTML='';return;}
       b2.innerHTML=d.assocs.map(function(a){return '<button class="htmbtn" data-mv="'+esc(String(a.v))+'">'+esc(a.name||String(a.v))+'</button>';}).join('');
       updateTherm(w);
@@ -728,9 +742,9 @@
   // dauerhaft in derselben <img>-Verbindung - ein erneutes Setzen von src wuerde ihn abreissen
   // und neu verbinden lassen (sichtbares Ruckeln, unnoetige Last auf der Kamera).
   function _camMode(w){return w.camSrc||'media';}
-  function refreshCam(w){
+  function refreshCam(w,root){
     if(_camMode(w)!=='media')return;                       // Stream selbst versorgt sich
-    var el=$('.w[data-id="'+w.id+'"] [data-role=cam]',canvas);
+    var el=$('.w[data-id="'+w.id+'"] [data-role=cam]',(root||canvas));
     if(el&&w.mediaId)el.src='?api=media&id='+w.mediaId+'&t='+Date.now();
   }
   function setSankey(w){
@@ -767,8 +781,8 @@
   var MON=['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
   var DOW=['So','Mo','Di','Mi','Do','Fr','Sa'];
   function pad2(n){return String(n).padStart(2,'0');}
-  function fetchCalEvents(w){
-    var el=$('.w[data-id="'+w.id+'"] [data-role=cal]',canvas);if(!el)return;
+  function fetchCalEvents(w,root){
+    var el=$('.w[data-id="'+w.id+'"] [data-role=cal]',(root||canvas));if(!el)return;
     if(!w.calIds){el.innerHTML='<div class="calempty">Kalender-Instanz-IDs im Panel eintragen (z. B. 33020,55959)</div>';return;}
     fetch('?api=cal&ids='+encodeURIComponent(w.calIds)+'&days='+(w.days||14),{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
       var evs=(j&&j.events)||[];el.innerHTML=((w.calview||'agenda')==='month')?calMonth(evs):calAgenda(evs);
@@ -828,7 +842,7 @@
   // Fixe Textfarbe nur nutzen, wenn sie zum tatsächlichen Hintergrund genug Kontrast hat — sonst Theme-Textfarbe (verhindert dunkel-auf-dunkel bei fixem fg)
   function _readableFg(fg,bg){try{if(!fg)return '';var Lf=_lum(fg);if(Lf==null)return fg;var b=bg||cssv('--surface')||'#141c1f';var Lb=_lum(b);if(Lb==null)return fg;return (Math.abs(Lf-Lb)<0.25)?'':fg;}catch(e){return fg;}}
   function _fixHtmlColors(rootEl,v){try{var els=rootEl.querySelectorAll('*'),n=Math.min(els.length,3000),i;for(i=0;i<n;i++){var el=els[i];var L=_lum(getComputedStyle(el).color);if(L==null)continue;if((v.dark&&L<0.35)||(!v.dark&&L>0.7))el.style.setProperty('color',v.text,'important');}}catch(e){}} // nur nicht zum Theme passende Farben ersetzen
-  function setHtmlContent(w,t){var host=$('.w[data-id="'+w.id+'"] [data-role=htmlhost]',canvas);if(!host)return;t=(t&&t.length)?t:'';
+  function setHtmlContent(w,t,root){var host=$('.w[data-id="'+w.id+'"] [data-role=htmlhost]',(root||canvas));if(!host)return;t=(t&&t.length)?t:'';
     var mode=w.htmlMode||'auto';if(mode==='auto')mode=/<script[\s>]/i.test(t)?'iframe':'shadow'; // JS -> iframe, sonst Shadow DOM
     host.innerHTML=''; // frischer Container (erlaubt Moduswechsel; Shadow lässt sich nicht wieder abnehmen)
     if(mode==='iframe'){
@@ -854,7 +868,7 @@
     sh.innerHTML='<style>:host{display:block;background:transparent}#shwrap{transform-origin:top left;background:transparent}'+_skinCss+'</style>'+headHtml+'<div id="shwrap">'+bodyHtml+'</div>';
     if(_skin){var _wrp=sh.getElementById('shwrap');if(_wrp)_fixHtmlColors(_wrp,_skin);}
     applyHtmlScale(w);}
-  function fetchHtml(w){if(!w.varId)return;fetch('?api=html&id='+w.varId,{cache:'no-store'}).then(function(r){return r.text();}).then(function(t){setHtmlContent(w,t);}).catch(function(){});}
+  function fetchHtml(w,root){if(!w.varId)return;fetch('?api=html&id='+w.varId,{cache:'no-store'}).then(function(r){return r.text();}).then(function(t){setHtmlContent(w,t,root);}).catch(function(){});}
   function applyHtmlScale(w){
     if(w.type!=='html')return;
     var host=$('.w[data-id="'+w.id+'"] [data-role=htmlhost]',canvas);if(!host)return;
@@ -959,6 +973,10 @@
     $('#overlay').classList.add('open');
     invalidateVidx(); // Popup-Widgets in den Index aufnehmen, bevor Werte gesetzt werden
     _popup.widgets.forEach(function(w){if(w.varId&&_lastVals[w.varId])applyVal(w.varId,_lastVals[w.varId]);});
+    // Widgets im Popup genauso in Betrieb nehmen wie auf einer Seite - vorher fehlte das
+    // vollstaendig, weshalb Diagramme (auch Wasserfall), Kameras, HTML, Wochenplan,
+    // Sonnenbogen, Kalender, Ereignis- und Objekt-Kacheln sowie Thermostate leer blieben.
+    _popup.widgets.forEach(function(w){activateWidget(w,oc);});
     _popup.widgets.forEach(function(w){var wc=WIDGETS[w.type];if(wc&&wc.mount){try{wc.mount(w);}catch(e){}}}); // mount-Hooks im Popup (wsmon/msglog/suncard … initialisieren + Timer starten)
     _pvSince=0;pollVals();
   }
@@ -1030,7 +1048,7 @@
   function _dpt(deg){var a=deg*Math.PI/180;return [(50+40*Math.cos(a)).toFixed(2),(50+40*Math.sin(a)).toFixed(2)];}
   function dialTrack(){var s=_dpt(135),e=_dpt(45);return 'M'+s[0]+' '+s[1]+' A40 40 0 1 1 '+e[0]+' '+e[1];}
   function dialProg(fr){fr=Math.max(0,Math.min(1,fr));var s=_dpt(135),e=_dpt(135+270*fr),la=(270*fr>180)?1:0;return 'M'+s[0]+' '+s[1]+' A40 40 0 '+la+' 1 '+e[0]+' '+e[1];}
-  function fetchWeekplan(w){if(!w.varId)return;var el=$('.w[data-id="'+w.id+'"] [data-role=wpgrid]',canvas);if(!el)return;
+  function fetchWeekplan(w,root){if(!w.varId)return;var el=$('.w[data-id="'+w.id+'"] [data-role=wpgrid]',(root||canvas));if(!el)return;
     fetch('?api=weekplan&id='+w.varId,{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
       if(!j||!j.days){el.innerHTML='<div class="hwpempty">kein Wochenplan</div>';return;}
       var dn=['Mo','Di','Mi','Do','Fr','Sa','So'],h='';
@@ -1043,7 +1061,7 @@
         if(i===_today)segs+='<i class="wpnow" style="left:'+_nowPct+'%"></i>';
         h+='<div class="hwpday'+(i===_today?' today':'')+'"><span>'+dn[i]+'</span><div class="hwpcol">'+segs+'</div></div>';}
       el.innerHTML=h;
-      var tf=$('.w[data-id="'+w.id+'"] [data-role=wptimes]',canvas);if(tf){function _hm(m){return ('0'+Math.floor(m/60)).slice(-2)+':'+('0'+(m%60)).slice(-2);}
+      var tf=$('.w[data-id="'+w.id+'"] [data-role=wptimes]',(root||canvas));if(tf){function _hm(m){return ('0'+Math.floor(m/60)).slice(-2)+':'+('0'+(m%60)).slice(-2);}
         var tl=(j.days[_today]||[]).filter(function(s){var g=(j.groups&&j.groups[s.group]);return !_wpOff((g&&g.name),_ov[String((g&&g.name)||'').toLowerCase().trim()]);}).map(function(s){return _hm(s.from)+'–'+_hm(s.to);}).join(' · ');
         tf.textContent=tl?('Heute ein: '+tl):'Heute: aus';}
     }).catch(function(){el.innerHTML='<div class="hwpempty">Fehler</div>';});}

@@ -13,5 +13,5 @@
       +row('Nacht + Mond','<input type="checkbox" id="pSunNight"'+(w.showNight?' checked':'')+'>');},
     wire:function(w){if($('#pSunTime'))$('#pSunTime').onchange=function(){w.showTime=this.checked||undefined;render();commit();};
       if($('#pSunNight'))$('#pSunNight').onchange=function(){w.showNight=this.checked||undefined;render();refreshSun(w);commit();};},
-    live:function(w,el,id,d,base,txt,on){refreshSun(w);return;}
+    live:function(w,el,id,d,base,txt,on){refreshSun(w,rootOfEl(el));return;}
   });
