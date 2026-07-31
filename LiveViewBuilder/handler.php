@@ -707,19 +707,59 @@ if ($api === 'cmp') {
     $prevSame = $prevStart + ($now - $pStart); // gleiches Zeitfenster in der Vorperiode
 
     $lvl = ($stage === 'month') ? 1 : (($stage === 'year') ? 2 : 0); // Aggregationsstufe fuer Rohwert-Fallback
-    $valAt = function ($t) use ($ac, $id, $lvl, $now) {
+
+    // Jede dieser Archivsuchen kostet rund 275 ms - gemessen, unabhaengig vom Zeitfenster.
+    // Der Zaehlerpfad unten braucht vier davon, macht ueber eine Sekunde, in der die Kachel
+    // leer bleibt. Punktwerte der VERGANGENHEIT aendern sich aber nie mehr: Was am
+    // 30.07. um 00:00 im Archiv stand, steht dort auch morgen noch. Solche Werte duerfen
+    // deshalb dauerhaft gemerkt werden - das ist kein Verfallszwischenspeicher, sondern
+    // schlicht die Erkenntnis, dass Geschichte sich nicht aendert. Nur Zeitpunkte juenger
+    // als GRACE bleiben ungespeichert, weil dort noch Werte nachtroepfeln koennen.
+    $CFILE = rtrim((string) ($DATADIR ?? sys_get_temp_dir()), '/') . '/cache-valat.json';
+    $GRACE = 600;
+    $cache = @json_decode((string) @file_get_contents($CFILE), true);
+    if (!is_array($cache)) $cache = [];
+    $cdirty = false;
+    $valAt = function ($t) use ($ac, $id, $lvl, $now, &$cache, &$cdirty, $GRACE) {
         if ($t > $now) $t = $now;
-        $r = @AC_GetLoggedValues($ac, $id, 0, $t, 1); // letzter geloggter Wert <= t
-        if (is_array($r) && count($r)) return (float) $r[0]['Value'];
-        $a = @AC_GetAggregatedValues($ac, $id, $lvl, $t - 3 * 86400, $t, 1); // Fallback (Rohwerte evtl. gepurged)
-        return (is_array($a) && count($a)) ? (float) $a[0]['Avg'] : null;
+        $cacheable = ($t < $now - $GRACE);
+        // "Gestern zur selben Uhrzeit" wandert sekuendlich und erzeugt sonst bei JEDEM
+        // Aufruf einen neuen Schluessel - der Speicher fuellte sich mit Einmalwerten und
+        // traefe nie. Auf die Minute gerundet bleiben es hoechstens 1440 Schluessel je Tag.
+        // Fuer einen Tagesvergleich ist die Sekunde ohnehin ohne Bedeutung; Periodengrenzen
+        // (00:00:00) runden auf sich selbst.
+        if ($cacheable) $t = $t - ($t % 60);
+        $ck = $id . ':' . $t;
+        if ($cacheable && array_key_exists($ck, $cache)) {
+            return ($cache[$ck] === null) ? null : (float) $cache[$ck];
+        }
+        $r   = @AC_GetLoggedValues($ac, $id, 0, $t, 1); // letzter geloggter Wert <= t
+        $out = null;
+        if (is_array($r) && count($r)) {
+            $out = (float) $r[0]['Value'];
+        } else {
+            $a = @AC_GetAggregatedValues($ac, $id, $lvl, $t - 3 * 86400, $t, 1); // Fallback (Rohwerte evtl. gepurged)
+            if (is_array($a) && count($a)) $out = (float) $a[0]['Avg'];
+        }
+        if ($cacheable) { $cache[$ck] = $out; $cdirty = true; }
+        return $out;
+    };
+    $cflush = function () use (&$cache, &$cdirty, $CFILE) {
+        if (!$cdirty) return;
+        if (count($cache) > 800) $cache = array_slice($cache, -400, null, true); // aelteste Eintraege fallen raus
+        @file_put_contents($CFILE, json_encode($cache), LOCK_EX);
     };
 
     if ($kind === 'counter') {
-        $vn = $valAt($now); $vps = $valAt($pStart);
+        // Der AKTUELLE Wert steht direkt an der Variable - dafuer braucht es keine
+        // Archivsuche. Der Standardpfad unten macht das laengst so; hier fehlte es.
+        $cn  = @GetValue($id);
+        $vn  = is_numeric($cn) ? (float) $cn : $valAt($now);
+        $vps = $valAt($pStart);
         $cur  = ($vn !== null && $vps !== null) ? ($vn - $vps) : null;      // Verbrauch in der aktuellen Periode
         $vp1 = $valAt($prevSame); $vp0 = $valAt($prevStart);
         $past = ($vp1 !== null && $vp0 !== null) ? ($vp1 - $vp0) : null;    // Verbrauch Vorperiode (gleiches Fenster)
+        $cflush();
         echo json_encode(['type' => 1, 'cur' => $cur, 'past' => $past]);
         return;
     }
@@ -733,6 +773,7 @@ if ($api === 'cmp') {
     $cn   = @GetValue($id);
     $cur  = is_numeric($cn) ? (float) $cn : $valAt($now); // aktueller Wert
     $past = $valAt($prevSame);                            // Wert zum selben Zeitpunkt der Vorperiode
+    $cflush();
     echo json_encode(['type' => 0, 'cur' => $cur, 'past' => $past]);
     return;
 }
