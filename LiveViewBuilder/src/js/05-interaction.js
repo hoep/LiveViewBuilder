@@ -37,7 +37,8 @@
     if(w.type==='tile'||w.type==='button'){if(w.navBack){navBack();return;}if(w.navTo&&store.views[w.navTo]){navGo(w.navTo);return;}if(w.varId){var d=_lastVals[w.varId];var cur=d?(d.v===true||d.v===1||d.v==='1'):false;setVar(w.varId,cur?0:1);}return;}
     if(w.type==='thermostat'){var mb=e.target.closest('.htmbtn');if(mb&&w.varId3){setVar(w.varId3,mb.getAttribute('data-mv'));return;}
       if(w.varId2){var up=e.target.closest('[data-role=up]'),dn=e.target.closest('[data-role=dn]');if(up||dn){var tv=_lastVals[w.varId2];var t=tv?parseFloat(tv.v):20;if(isNaN(t))t=20;var st=w.step||0.5;setVar(w.varId2,(t+(up?st:-st)).toFixed(1));}}return;}
-    if(w.type==='cover'){var cu=e.target.closest('[data-role=cup]'),cs=e.target.closest('[data-role=cstop]'),cd=e.target.closest('[data-role=cdn]');if(cu&&w.varId)setVar(w.varId,100);else if(cd&&w.varId)setVar(w.varId,0);else if(cs&&w.varId2)setVar(w.varId2,1);return;}
+    // 'cover' stand hier frueher mit fest verdrahteten Werten (100 / 0 / 1). Die Logik liegt
+    // jetzt in widgets/cover.js, wo sie die einstellbaren Befehlswerte auswerten kann.
     if(w.type==='media'&&w.varId2){if(e.target.closest('[data-role=mplay]')){var md=_lastVals[w.varId2];var mc=md?(md.v===true||md.v===1||md.v==='1'):false;setVar(w.varId2,mc?0:1);}return;}
     if(w.type==='alarm'&&w.varId){if(e.target.closest('[data-role=aon]'))setVar(w.varId,1);else if(e.target.closest('[data-role=aoff]'))setVar(w.varId,0);return;}
     if(w.type==='vacuum'&&w.varId3){if(e.target.closest('[data-role=vstart]'))setVar(w.varId3,1);else if(e.target.closest('[data-role=vstop]'))setVar(w.varId3,0);return;}
