@@ -638,7 +638,7 @@
     var Y=new Date().getFullYear(),need=w.cmpOn?[Y,Y-1]:[Y],res={},done=0;
     need.forEach(function(y){
       var from=Math.floor(new Date(y,0,1,0,0,0).getTime()/1000),to=Math.floor(new Date(y+1,0,1,0,0,0).getTime()/1000)-1;
-      fetch('?api=aggregated&id='+w.varId+'&level=3&from='+from+'&to='+to,{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
+      fetch('?api=aggregated&id='+encodeURIComponent(w.varId)+'&level=3&from='+from+'&to='+to,{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
         var arr=EMPTY.slice();((j&&j.rows)||[]).forEach(function(b){var mo=new Date(b.t*1000).getMonth();if(mo>=0&&mo<12&&b[aggF]!=null)arr[mo]=Math.round(b[aggF]*100)/100;});res[y]=arr;
       }).catch(function(){res[y]=EMPTY.slice();}).then(function(){
         done++;if(done>=need.length){_hist[w.id]={cal:{cur:res[Y]||EMPTY.slice(),prev:res[Y-1]||EMPTY.slice(),curY:Y,prevY:Y-1}};if(_ec[w.id])renderChartData(w);}
@@ -798,7 +798,7 @@
     var S=_chSeries(w).filter(function(s){return s&&s.vid;});if(!S.length)return;
     var cols=[cssv('--accent'),cssv('--info'),cssv('--warm')],out=[],cmp=[],done=0;
     var off=(w.cmpOn?OFFS[w.cmpOff||'1d']:0),poff=(w._pOff||0),mTo=W.to,mFrom=W.from,lvl=W.level,aggF=W.aggF;
-    function hUrl(id,from,to){return lvl!=null?('?api=aggregated&id='+id+'&level='+lvl+'&from='+from+'&to='+to):('?api=history&id='+id+'&from='+from+'&to='+to);}
+    function hUrl(id,from,to){return lvl!=null?('?api=aggregated&id='+encodeURIComponent(id)+'&level='+lvl+'&from='+from+'&to='+to):('?api=history&id='+encodeURIComponent(id)+'&from='+from+'&to='+to);}
     function hPts(j){if(lvl!=null){return ((j&&j.rows)||[]).map(function(b){return [b.t*1000,b[aggF]];}).filter(function(p){return p[1]!=null;}).sort(function(a,b){return a[0]-b[0];});}return (j&&j.data)||[];}
     var total=S.length*(w.cmpOn&&off?2:1);
     function fin(){done++;if(done>=total){_hist[w.id]={series:out,cmp:(w.cmpOn&&off?cmp:null)};if(_ec[w.id]){renderChartData(w);var pl=$('.w[data-id="'+w.id+'"] [data-role=plabel]',canvas);if(pl)pl.textContent=poff>0?('−'+poff):'jetzt';}}}
@@ -819,7 +819,7 @@
     var mode=(w.cmpAvg&&kind==='standard')?'avg':'';
     var c=_cmpData[w.id],now=Date.now();
     if(c&&c.stage===stage&&c.kind===kind&&c.mode===mode&&(now-c.fetched)<25000){cb(c);return;}
-    fetch('?api=cmp&id='+w.varId+'&stage='+stage+'&kind='+kind+(mode?'&mode='+mode:''),{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
+    fetch('?api=cmp&id='+encodeURIComponent(w.varId)+'&stage='+stage+'&kind='+kind+(mode?'&mode='+mode:''),{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
       _cmpData[w.id]={cur:(j&&j.cur!=null)?parseFloat(j.cur):null,past:(j&&j.past!=null)?parseFloat(j.past):null,type:(j&&j.type)||0,stage:stage,kind:kind,mode:mode,fetched:now};cb(_cmpData[w.id]);
     }).catch(function(){cb(null);});
   }
@@ -857,7 +857,7 @@
     if(!w.varId){cb(null);return;}
     var stage=cmpStage(w),c=_aggData[w.id],now=Date.now();
     if(c&&c.stage===stage&&(now-c.fetched)<25000){cb(c);return;}
-    fetch('?api=agg&id='+w.varId+'&stage='+stage,{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
+    fetch('?api=agg&id='+encodeURIComponent(w.varId)+'&stage='+stage,{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
       _aggData[w.id]={min:(j&&j.min!=null)?parseFloat(j.min):null,max:(j&&j.max!=null)?parseFloat(j.max):null,avg:(j&&j.avg!=null)?parseFloat(j.avg):null,stage:stage,fetched:now};cb(_aggData[w.id]);
     }).catch(function(){cb(null);});
   }

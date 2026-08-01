@@ -161,6 +161,41 @@
       if (!first) first = name;
     });
 
+    // Sonderansicht: Rechenformeln - kein Widget-Katalog, sondern Erklaerung + Live-Demo.
+    (function(){
+      var ws = [], n = 0, y = DOKU_PAD, W = DOKU_W - 2 * DOKU_PAD;
+      function add(o){ n++; o.id = 'rf' + n; ws.push(o); }
+      add({type:'text', x:DOKU_PAD, y:y, w:W, h:40, bgT:true, fsz:21, label:'Rechenformeln in Variablenfeldern'}); y += 48;
+      add({type:'text', x:DOKU_PAD, y:y, w:W, h:80, bgT:true, fsz:13, fg:'#7d9099',
+           label:'Jedes Variablenfeld akzeptiert statt einer ID eine Formel, die mit „=" beginnt. So lassen '
+                +'sich mehrere Variablen verrechnen: Der Live-Wert kommt aus den aktuellen Werten, das Aggregat '
+                +'(Charts, Delta, KPI, Wertkarte) direkt aus den aggregierten Werten der Einzelvariablen — es wird '
+                +'also nichts doppelt gerechnet.'}); y += 90;
+      add({type:'text', x:DOKU_PAD, y:y, w:W, h:24, bgT:true, fsz:15, label:'Beispiele'}); y += 30;
+      add({type:'text', x:DOKU_PAD, y:y, w:W, h:132, bgT:true, fsz:13, fg:'#39d08a',
+           label:'=45552+49633              Summe zweier Zähler (z. B. PV1 + PV2)\n'
+                +'=(#20726+#40754)/2        Mittel zweier Leistungen (Klammern erlaubt)\n'
+                +'=45552-49633              Differenz zweier Zähler\n'
+                +'=53289*0.06               Variable mal Konstante (z. B. Preis)\n'
+                +'=(#48744+#41293)*100/#48275   gemischt mit Klammern und Konstante'}); y += 144;
+      add({type:'text', x:DOKU_PAD, y:y, w:W, h:24, bgT:true, fsz:15, label:'Regeln'}); y += 30;
+      add({type:'text', x:DOKU_PAD, y:y, w:W, h:132, bgT:true, fsz:13, fg:'#7d9099',
+           label:'• Operatoren + − * / und Klammern ( ).\n'
+                +'• Eine Zahl ist eine VARIABLE, wenn sie mit # beginnt (#20726) oder fünfstellig ist (≥ 10000). '
+                +'Kleinere Zahlen und Dezimalzahlen sind KONSTANTEN.\n'
+                +'• + und − sind im Aggregat exakt (Summe/Differenz je Periode). * und / zwischen zwei Variablen '
+                +'nutzen die Perioden-Aggregate der Einzelvariablen (Wert-aus-Aggregaten), nicht die Rohwerte.\n'
+                +'• Live aktualisiert sich die Formel, sobald sich eine beteiligte Variable ändert.'}); y += 144;
+      add({type:'text', x:DOKU_PAD, y:y, w:W, h:24, bgT:true, fsz:15, label:'Live-Demo — Summe zweier Variablen'}); y += 30;
+      // reine Client-Berechnung aus dem Demo-Variablenpool (900004 + 900022), rechnet live mit.
+      add({type:'value', x:DOKU_PAD, y:y, w:240, h:120, varId:'=900004+900022', label:'A + B', suf:' kWh', dec:1});
+      add({type:'text', x:DOKU_PAD + 260, y:y+8, w:W - 260, h:100, bgT:true, fsz:12, fg:'#7d9099',
+           label:'Diese Kachel ist an die Formel =900004+900022 gebunden. Ihr Wert ist die laufende Summe '
+                +'der beiden Demo-Variablen und aktualisiert sich, wenn sich eine davon ändert.'});
+      y += 132;
+      views['Doku · Rechenformeln'] = {page:{w:DOKU_W, h:y + DOKU_PAD, fit:'letterbox'}, widgets:ws};
+    })();
+
     return {
       views: views, current: first, home: first, skin:'Standard',
       // Startskin ueber die Adresse waehlbar: ?theme=light bzw. ?theme=dark.

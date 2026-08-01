@@ -2316,7 +2316,7 @@
     var Y=new Date().getFullYear(),need=w.cmpOn?[Y,Y-1]:[Y],res={},done=0;
     need.forEach(function(y){
       var from=Math.floor(new Date(y,0,1,0,0,0).getTime()/1000),to=Math.floor(new Date(y+1,0,1,0,0,0).getTime()/1000)-1;
-      fetch('?api=aggregated&id='+w.varId+'&level=3&from='+from+'&to='+to,{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
+      fetch('?api=aggregated&id='+encodeURIComponent(w.varId)+'&level=3&from='+from+'&to='+to,{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
         var arr=EMPTY.slice();((j&&j.rows)||[]).forEach(function(b){var mo=new Date(b.t*1000).getMonth();if(mo>=0&&mo<12&&b[aggF]!=null)arr[mo]=Math.round(b[aggF]*100)/100;});res[y]=arr;
       }).catch(function(){res[y]=EMPTY.slice();}).then(function(){
         done++;if(done>=need.length){_hist[w.id]={cal:{cur:res[Y]||EMPTY.slice(),prev:res[Y-1]||EMPTY.slice(),curY:Y,prevY:Y-1}};if(_ec[w.id])renderChartData(w);}
@@ -2476,7 +2476,7 @@
     var S=_chSeries(w).filter(function(s){return s&&s.vid;});if(!S.length)return;
     var cols=[cssv('--accent'),cssv('--info'),cssv('--warm')],out=[],cmp=[],done=0;
     var off=(w.cmpOn?OFFS[w.cmpOff||'1d']:0),poff=(w._pOff||0),mTo=W.to,mFrom=W.from,lvl=W.level,aggF=W.aggF;
-    function hUrl(id,from,to){return lvl!=null?('?api=aggregated&id='+id+'&level='+lvl+'&from='+from+'&to='+to):('?api=history&id='+id+'&from='+from+'&to='+to);}
+    function hUrl(id,from,to){return lvl!=null?('?api=aggregated&id='+encodeURIComponent(id)+'&level='+lvl+'&from='+from+'&to='+to):('?api=history&id='+encodeURIComponent(id)+'&from='+from+'&to='+to);}
     function hPts(j){if(lvl!=null){return ((j&&j.rows)||[]).map(function(b){return [b.t*1000,b[aggF]];}).filter(function(p){return p[1]!=null;}).sort(function(a,b){return a[0]-b[0];});}return (j&&j.data)||[];}
     var total=S.length*(w.cmpOn&&off?2:1);
     function fin(){done++;if(done>=total){_hist[w.id]={series:out,cmp:(w.cmpOn&&off?cmp:null)};if(_ec[w.id]){renderChartData(w);var pl=$('.w[data-id="'+w.id+'"] [data-role=plabel]',canvas);if(pl)pl.textContent=poff>0?('−'+poff):'jetzt';}}}
@@ -2497,7 +2497,7 @@
     var mode=(w.cmpAvg&&kind==='standard')?'avg':'';
     var c=_cmpData[w.id],now=Date.now();
     if(c&&c.stage===stage&&c.kind===kind&&c.mode===mode&&(now-c.fetched)<25000){cb(c);return;}
-    fetch('?api=cmp&id='+w.varId+'&stage='+stage+'&kind='+kind+(mode?'&mode='+mode:''),{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
+    fetch('?api=cmp&id='+encodeURIComponent(w.varId)+'&stage='+stage+'&kind='+kind+(mode?'&mode='+mode:''),{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
       _cmpData[w.id]={cur:(j&&j.cur!=null)?parseFloat(j.cur):null,past:(j&&j.past!=null)?parseFloat(j.past):null,type:(j&&j.type)||0,stage:stage,kind:kind,mode:mode,fetched:now};cb(_cmpData[w.id]);
     }).catch(function(){cb(null);});
   }
@@ -2535,7 +2535,7 @@
     if(!w.varId){cb(null);return;}
     var stage=cmpStage(w),c=_aggData[w.id],now=Date.now();
     if(c&&c.stage===stage&&(now-c.fetched)<25000){cb(c);return;}
-    fetch('?api=agg&id='+w.varId+'&stage='+stage,{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
+    fetch('?api=agg&id='+encodeURIComponent(w.varId)+'&stage='+stage,{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
       _aggData[w.id]={min:(j&&j.min!=null)?parseFloat(j.min):null,max:(j&&j.max!=null)?parseFloat(j.max):null,avg:(j&&j.avg!=null)?parseFloat(j.avg):null,stage:stage,fetched:now};cb(_aggData[w.id]);
     }).catch(function(){cb(null);});
   }
@@ -2991,7 +2991,7 @@
       +row('Name','<input id="pName" value="'+esc(w.name||'')+'" placeholder="eindeutige Kennung (intern)">')
       +((w.type==='camera'||w.type==='image')?row('Media-ID','<input id="pMedia" value="'+(w.mediaId||'')+'" placeholder="Media-ID">')
           :(w.type==='line'||w.type==='shape')?row('Farbe','<input id="pColor" type="color" value="'+(w.color||'#00cdab')+'">')
-          :(['text','calendar','clock','component','eventctl','objinfo','infolist','meterlist','statuslist','statusgrid','devlist','chart','skinswitch','windrose','rangeslider','raincard','circlerange','cie'].indexOf(w.type)<0&&!(w.type==='html'&&w.htmlSrc==='custom')&&!(w.type==='colorpick'&&(w.cmode||'wheel')==='cie')?row('Variable','<input id="pVar" value="'+(w.varId||'')+'" placeholder="ID"> <button class="btn" id="pPick" style="padding:6px 8px">wählen</button>'):''))
+          :(['text','calendar','clock','component','eventctl','objinfo','infolist','meterlist','statuslist','statusgrid','devlist','chart','skinswitch','windrose','rangeslider','raincard','circlerange','cie'].indexOf(w.type)<0&&!(w.type==='html'&&w.htmlSrc==='custom')&&!(w.type==='colorpick'&&(w.cmode||'wheel')==='cie')?row('Variable','<input id="pVar" value="'+esc(String(w.varId||''))+'" placeholder="ID oder =Formel"> <button class="btn" id="pPick" style="padding:6px 8px">wählen</button><div style="font-size:11px;color:var(--muted);margin:4px 2px 0">Formel möglich: <b>=45552+49633</b>, <b>=(#20726+#40754)/2</b> — Aggregat &amp; Live werden aus den Einzelvariablen berechnet.</div>'):''))
       +((w.type==='kpi'||w.type==='delta')?('<div class="pgh">Vergleich (Zeitversatz)</div>'
         +row('Aktiv','<input type="checkbox" id="pCmpOn"'+(w.cmpOn?' checked':'')+'>')
         +(w.cmpOn?(row('Aggregationsstufe',stageSel('pCmpStage',cmpStage(w)))+row('Zählervariable','<input type="checkbox" id="pCmpCnt"'+(w.cmpCounter?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">Verbrauch je Periode</span>')+(!w.cmpCounter?row('Periodenmittel','<input type="checkbox" id="pCmpAvg"'+(w.cmpAvg?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">Mittel über die Periode statt Punktwert</span>'):'')+row('Anzeige','<select id="pCmpMode"><option value="pct"'+((w.cmpMode||'pct')==='pct'?' selected':'')+'>Prozent</option><option value="abs"'+(w.cmpMode==='abs'?' selected':'')+'>Absolut</option></select>')+row('Veränderung invertieren','<input type="checkbox" id="pCmpInv"'+(w.cmpInvert?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">Rückgang = gut (z. B. Verbrauch) — nur Farbe dreht, Pfeil bleibt</span>')):'')
@@ -3002,8 +3002,8 @@
       +((w.type==='chart'||w.type==='spark')?(function(){if(w.type==='chart'&&(['pie','donut','rose','waterfall','daylight'].indexOf(w.ctype||'area')>=0))return ''; /* Anteils-Charts und Wasserfall haben keine Zeitachse */var r=_chRange(w);var U=[['raw','Roh'],['min','Minuten'],['hour','Stunden'],['day','Tage'],['week','Wochen'],['month','Monate'],['year','Jahre']];var sel='<select id="pRUnit">'+U.map(function(u){return '<option value="'+u[0]+'"'+(r.unit===u[0]?' selected':'')+'>'+u[1]+'</option>';}).join('')+'</select>';var s=row('Zeitraum','<input id="pRN" type="number" min="1" style="width:64px" value="'+(r.n||24)+'"> '+sel);if(r.unit==='raw')s+=row('Fenster-Einheit','<select id="pRRawU"><option value="hour"'+((r.rawUnit||'hour')==='hour'?' selected':'')+'>Stunden</option><option value="day"'+(r.rawUnit==='day'?' selected':'')+'>Tage</option></select>');else s+=row('Wert','<select id="pRAggF"><option value="avg"'+((r.aggF||'avg')==='avg'?' selected':'')+'>Mittel</option><option value="sum"'+(r.aggF==='sum'?' selected':'')+'>Summe</option></select> <span style="font-size:11px;color:var(--muted)">Z&#228;hler: &#8222;Mittel&#8220;=Verbrauch/Bucket</span>');if(r.unit==='month'&&w.type==='chart'&&w.ctype!=='spark')s+=row('Zeitmodus','<select id="pRCal"><option value=""'+(!r.cal?' selected':'')+'>Rollierend</option><option value="1"'+(r.cal?' selected':'')+'>Kalenderjahr (J&#228;n&#8211;Dez)</option></select>');return s;})():'')
       +(['bar','gauge','slider','thermostat','gaugepro','timer','tempbar','dial'].indexOf(w.type)>=0?(row('Min','<input id="pMin" type="number" value="'+(w.min!=null?w.min:0)+'">')+row('Max','<input id="pMax" type="number" value="'+(w.max!=null?w.max:100)+'">')):'')
       +((w.type==='slider'||w.type==='thermostat'||w.type==='dial')?row('Schritt','<input id="pStep" type="number" step="0.1" value="'+(w.step||1)+'">'):'')
-      +(lbl2?row(lbl2,'<input id="pVar2" value="'+(w.varId2||'')+'" placeholder="ID"> <button class="btn" id="pPick2" style="padding:6px 8px">wählen</button>'):'')
-      +(lbl3?row(lbl3,'<input id="pVar3" value="'+(w.varId3||'')+'" placeholder="ID"> <button class="btn" id="pPick3" style="padding:6px 8px">wählen</button>'):'')
+      +(lbl2?row(lbl2,'<input id="pVar2" value="'+esc(String(w.varId2||''))+'" placeholder="ID oder =Formel"> <button class="btn" id="pPick2" style="padding:6px 8px">wählen</button>'):'')
+      +(lbl3?row(lbl3,'<input id="pVar3" value="'+esc(String(w.varId3||''))+'" placeholder="ID oder =Formel"> <button class="btn" id="pPick3" style="padding:6px 8px">wählen</button>'):'')
       +(w.type!=='line'?row('Farben','<input id="pFg" type="color" value="'+(w.fg||'#e7eef0')+'" title="Textfarbe"> <input id="pBg" type="color" value="'+(w.bg||'#141c1f')+'" title="Hintergrund"> <button class="btn" id="pClr" style="padding:5px 8px" title="Farben zurücksetzen"><svg class="i"><use href="#ic-minus"/></svg></button>'):'')
       +(w.type!=='line'&&w.type!=='shape'?row('Rahmen','<select id="pFrame"><option value=""'+(w.frame==null?' selected':'')+'>Ansicht-Standard</option><option value="1"'+(w.frame===true?' selected':'')+'>An</option><option value="0"'+(w.frame===false?' selected':'')+'>Aus</option></select>'):'')
       +(w.type!=='line'?row('Hintergrund','<select id="pBgT"><option value=""'+(!w.bgT?' selected':'')+'>Deckend</option><option value="1"'+(w.bgT?' selected':'')+'>Transparent</option></select>'):'')
@@ -3041,7 +3041,7 @@
       if(_clash){toast('Name „'+nm+'\u201c ist bereits vergeben: '+_clash.type+' in '+(_clash.view||'?'));
         this.select();return;}   // Eingabe stehen lassen und markieren, nicht loeschen
       w.name=nm||undefined;render();}; // render() aktualisiert Laufzeilen-Referenzen und ruft intern schon commit(). KEIN renderProps() hier - das wuerde das Panel mitten im change-Handler neu aufbauen und das Eingabefeld zerstoeren.
-    if($('#pVar'))$('#pVar').onchange=function(){w.varId=parseInt(this.value)||0;delete _hist[w.id];render();renderProps();};
+    if($('#pVar'))$('#pVar').onchange=function(){var _v=(this.value||'').trim();w.varId=(_v.charAt(0)==='=')?_v:(parseInt(_v)||0);delete _hist[w.id];render();renderProps();};
     if($('#pPick'))$('#pPick').onclick=function(){showTab('vars');toast('Variable im Baum anklicken — bindet an dieses Element');_bindTarget=w.id;};
     if($('#pMedia'))$('#pMedia').onchange=function(){w.mediaId=parseInt(this.value)||0;render();};
     if($('#pColor'))$('#pColor').oninput=function(){w.color=this.value;render();};
@@ -3095,9 +3095,9 @@
     if($('#pStep'))$('#pStep').oninput=function(){w.step=parseFloat(this.value)||1;render();};
     if($('#pT1'))$('#pT1').oninput=function(){w.t1=this.value===''?null:parseFloat(this.value);render();};
     if($('#pT2'))$('#pT2').oninput=function(){w.t2=this.value===''?null:parseFloat(this.value);render();};
-    if($('#pVar2'))$('#pVar2').onchange=function(){w.varId2=parseInt(this.value)||0;delete _hist[w.id];render();};
+    if($('#pVar2'))$('#pVar2').onchange=function(){var _v=(this.value||'').trim();w.varId2=(_v.charAt(0)==='=')?_v:(parseInt(_v)||0);delete _hist[w.id];render();};
     if($('#pPick2'))$('#pPick2').onclick=function(){showTab('vars');toast('Variable im Baum anklicken');_bindTarget2=w.id;};
-    if($('#pVar3'))$('#pVar3').onchange=function(){w.varId3=parseInt(this.value)||0;delete _hist[w.id];render();};
+    if($('#pVar3'))$('#pVar3').onchange=function(){var _v=(this.value||'').trim();w.varId3=(_v.charAt(0)==='=')?_v:(parseInt(_v)||0);delete _hist[w.id];render();};
     if($('#pPick3'))$('#pPick3').onclick=function(){showTab('vars');toast('Untergang-Variable im Baum anklicken');_bindTarget3=w.id;};
     ['pX','pY','pW','pH'].forEach(function(k){var el=$('#'+k);el.oninput=function(){var v=parseInt(el.value)||0;if(k==='pX')w.x=v;if(k==='pY')w.y=v;if(k==='pW')w.w=Math.max(40,v);if(k==='pH')w.h=Math.max(28,v);render();};});
     $('#pDel').onclick=function(){var ids=Object.keys(sel).length?Object.keys(sel):[w.id];state.widgets=state.widgets.filter(function(x){return ids.indexOf(x.id)<0;});if(typeof chromeList==='function')chromeList().forEach(function(_b){if(_b.widgets)_b.widgets=_b.widgets.filter(function(x){return ids.indexOf(x.id)<0;});});selClear();render();renderProps();};
@@ -3530,6 +3530,66 @@
   // Speed: Index id -> [{w,root}] statt bei jedem Wert ALLE Widgets zu durchlaufen.
   // Enthält jede von einem Widget referenzierte ID (varId/2/3, visVar, fc.hi/lo/pq, links/src/snk/items/rows.vid) —
   // deckt damit sowohl pollVals-Bindungen als auch die Sub-Element-Slots (data-vid/viddot/vidbar) ab.
+  // ---- Rechenformeln in Variablenfeldern: "=Ausdruck" mit + - * / und Klammern.
+  // Variable = Token mit '#' oder Ganzzahl >= 10000; sonst Konstante. Spiegelbild von
+  // LVB_Formula* in functions.php (PHP) - beide muessen identisch rechnen.
+  function _fIsFormula(s){return typeof s==='string'&&s.charAt(0)==='=';}
+  function _fVarId(t){
+    if(!t)return null;
+    if(t.charAt(0)==='#'){var r=t.slice(1);return /^[0-9]+$/.test(r)?parseInt(r,10):null;}
+    if(/^[0-9]+$/.test(t)&&parseInt(t,10)>=10000)return parseInt(t,10);
+    return null;
+  }
+  function _fParse(expr){ // -> RPN-Array oder null
+    var s=String(expr).replace(/^\s+/,'');if(s.charAt(0)==='=')s=s.slice(1);
+    var n=s.length,i=0,out=[],ops=[],prec={'u-':3,'*':2,'/':2,'+':1,'-':1},prev='';
+    while(i<n){
+      var c=s.charAt(i);
+      if(c===' '||c==='\t'){i++;continue;}
+      if(c==='#'||(c>='0'&&c<='9')||c==='.'){
+        var j=i;if(c==='#')j++;
+        while(j<n&&((s.charAt(j)>='0'&&s.charAt(j)<='9')||s.charAt(j)==='.'))j++;
+        out.push(s.slice(i,j));i=j;prev='num';continue;
+      }
+      if(c==='('){ops.push('(');i++;prev='(';continue;}
+      if(c===')'){while(ops.length&&ops[ops.length-1]!=='(')out.push(ops.pop());if(!ops.length)return null;ops.pop();i++;prev='num';continue;}
+      if(c==='+'||c==='-'||c==='*'||c==='/'){
+        var op=c;
+        if(op==='-'&&(prev===''||prev==='('||prev==='op'))op='u-';
+        if(op!=='u-'){while(ops.length&&ops[ops.length-1]!=='('&&prec[ops[ops.length-1]]>=prec[op])out.push(ops.pop());}
+        ops.push(op);i++;prev='op';continue;
+      }
+      return null;
+    }
+    while(ops.length){var t=ops.pop();if(t==='(')return null;out.push(t);}
+    return out.length?out:null;
+  }
+  function _fIds(expr){var r=_fParse(expr);if(!r)return [];var seen={},ids=[];r.forEach(function(t){var v=_fVarId(t);if(v!==null&&!seen[v]){seen[v]=1;ids.push(v);}});return ids;}
+  function _fEvalNum(expr){ // aktuellen Formelwert aus _lastVals; null falls eine Komponente fehlt
+    var rpn=_fParse(expr);if(!rpn)return null;var st=[];
+    for(var i=0;i<rpn.length;i++){var t=rpn[i];
+      if(t==='u-'){if(!st.length)return null;st.push(-st.pop());continue;}
+      if(t==='+'||t==='-'||t==='*'||t==='/'){if(st.length<2)return null;var b=st.pop(),a=st.pop();st.push(t==='+'?a+b:t==='-'?a-b:t==='*'?a*b:(b===0?0:a/b));continue;}
+      var vid=_fVarId(t);
+      if(vid!==null){var d=_lastVals[vid];if(!d)return null;var num=parseFloat(String(d.v).replace(',','.'));st.push(isNaN(num)?0:num);}
+      else st.push(parseFloat(t));
+    }
+    return st.length===1?st[0]:null;
+  }
+  function _fFmt(v){var a=Math.abs(v),dd=a>=100?0:(a>=10?1:(a>=1?2:3));return v.toFixed(dd).replace('.',',');}
+  // add() so umhuellen, dass ein Formelfeld sowohl den Formel-Token (fuer die Verteilung)
+  // als auch seine Komponenten-IDs (fuer den Poll) liefert.
+  function _emit(add){return function(id){if(_fIsFormula(id)){add(id);_fIds(id).forEach(function(cid){add(cid);});}else add(id);};}
+  // Nach jedem Poll: jeden Formel-Token aus seinen Komponenten neu berechnen und verteilen.
+  function _recalcFormulas(){
+    if(!_vidx)return;
+    for(var key in _vidx){
+      if(!_fIsFormula(key))continue;
+      var v=_fEvalNum(key);if(v===null)continue;
+      var prev=_lastVals[key];
+      if(!prev||String(prev.v)!==String(v))applyVal(key,{v:v,f:_fFmt(v),u:'',c:Math.floor(Date.now()/1000)});
+    }
+  }
   var _vidx=null;
   function _vidxAdd(id,w,root){if(!id)return;(_vidx[id]=_vidx[id]||[]).push({w:w,root:root});}
   function _collectIds(w,add){ // alle Variablen-IDs eines Widgets an add() geben
@@ -3540,19 +3600,19 @@
     if(w.elements)w.elements.forEach(function(o){if(o){add(o.vid);add(o.speedVid);add(o.socVid);}});
     if(w.tankVid)add(w.tankVid);
   }
-  function _vidxOne(w,root){_collectIds(w,function(id){_vidxAdd(id,w,root);});}
+  function _vidxOne(w,root){_collectIds(w,_emit(function(id){_vidxAdd(id,w,root);}));}
   var _allIds=null;
   function allViewIds(){ // Vereinigung ALLER Variablen-IDs über alle Ansichten -> Poll hält den Cache für jede Seite warm
     if(_allIds)return _allIds;var set={};
-    try{Object.keys(store.views||{}).forEach(function(vn){var v=store.views[vn];((v&&v.widgets)||[]).forEach(function(w){_collectIds(w,function(id){if(id)set[id]=1;});});});}catch(e){}
+    try{Object.keys(store.views||{}).forEach(function(vn){var v=store.views[vn];((v&&v.widgets)||[]).forEach(function(w){_collectIds(w,_emit(function(id){if(id)set[id]=1;}));});});}catch(e){}
     // Leisten-Widgets (store.chrome) gehoeren zu KEINER Ansicht - ohne sie wuerde der Poll
     // ihre Variablen nie abfragen und die Kacheln blieben dauerhaft auf "-".
-    try{if(typeof chromeAllKids==='function')chromeAllKids().forEach(function(w){_collectIds(w,function(id){if(id)set[id]=1;});});}catch(e){}
+    try{if(typeof chromeAllKids==='function')chromeAllKids().forEach(function(w){_collectIds(w,_emit(function(id){if(id)set[id]=1;}));});}catch(e){}
     _allIds=Object.keys(set);return _allIds;
   }
   function invalidateAllIds(){_allIds=null;}
   function applyCached(){ // beim Seitenwechsel: aktuelle Widgets sofort aus dem Cache füllen (kein „–"-Flackern)
-    if(!_vidx)buildVidx();_liveSrc='cache';for(var id in _vidx){var d=_lastVals[id];if(d)applyVal(parseInt(id),d);}
+    if(!_vidx)buildVidx();_liveSrc='cache';for(var id in _vidx){var d=_lastVals[id];if(d)applyVal(_fIsFormula(id)?id:parseInt(id),d);}_recalcFormulas();
   }
   function buildVidx(){
     _vidx={};
@@ -3605,11 +3665,12 @@
   }
   function pollVals(){
     if(!_vidx)buildVidx();
-    var ids=Object.keys(_vidx); // nur aktuelle Ansicht -> kleine URL; Warm-Cache aller Seiten liefert der WebSocket-Push
-    if(!ids.length)return;
+    var ids=Object.keys(_vidx).filter(function(k){return /^[0-9]+$/.test(k);}); // nur echte IDs pollen (Formel-Token ausgenommen)
+    if(!ids.length){_recalcFormulas();return;}
     fetch('?api=val&ids='+ids.join(',')+'&since='+_pvSince,{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
       if(!j)return;if(j.ts)_pvSince=j.ts;if(!j.values)return;
       _liveSrc='poll';for(var id in j.values){applyVal(parseInt(id),j.values[id]);}
+      _recalcFormulas();
     }).catch(function(){});
   }
   function startPV(ms){stopPV();_pvT=setInterval(pollVals,ms||1200);}
@@ -5176,6 +5237,41 @@
       views[name] = {page:{w:DOKU_W, h:y + DOKU_PAD, fit:'letterbox'}, widgets:ws};
       if (!first) first = name;
     });
+
+    // Sonderansicht: Rechenformeln - kein Widget-Katalog, sondern Erklaerung + Live-Demo.
+    (function(){
+      var ws = [], n = 0, y = DOKU_PAD, W = DOKU_W - 2 * DOKU_PAD;
+      function add(o){ n++; o.id = 'rf' + n; ws.push(o); }
+      add({type:'text', x:DOKU_PAD, y:y, w:W, h:40, bgT:true, fsz:21, label:'Rechenformeln in Variablenfeldern'}); y += 48;
+      add({type:'text', x:DOKU_PAD, y:y, w:W, h:80, bgT:true, fsz:13, fg:'#7d9099',
+           label:'Jedes Variablenfeld akzeptiert statt einer ID eine Formel, die mit „=" beginnt. So lassen '
+                +'sich mehrere Variablen verrechnen: Der Live-Wert kommt aus den aktuellen Werten, das Aggregat '
+                +'(Charts, Delta, KPI, Wertkarte) direkt aus den aggregierten Werten der Einzelvariablen — es wird '
+                +'also nichts doppelt gerechnet.'}); y += 90;
+      add({type:'text', x:DOKU_PAD, y:y, w:W, h:24, bgT:true, fsz:15, label:'Beispiele'}); y += 30;
+      add({type:'text', x:DOKU_PAD, y:y, w:W, h:132, bgT:true, fsz:13, fg:'#39d08a',
+           label:'=45552+49633              Summe zweier Zähler (z. B. PV1 + PV2)\n'
+                +'=(#20726+#40754)/2        Mittel zweier Leistungen (Klammern erlaubt)\n'
+                +'=45552-49633              Differenz zweier Zähler\n'
+                +'=53289*0.06               Variable mal Konstante (z. B. Preis)\n'
+                +'=(#48744+#41293)*100/#48275   gemischt mit Klammern und Konstante'}); y += 144;
+      add({type:'text', x:DOKU_PAD, y:y, w:W, h:24, bgT:true, fsz:15, label:'Regeln'}); y += 30;
+      add({type:'text', x:DOKU_PAD, y:y, w:W, h:132, bgT:true, fsz:13, fg:'#7d9099',
+           label:'• Operatoren + − * / und Klammern ( ).\n'
+                +'• Eine Zahl ist eine VARIABLE, wenn sie mit # beginnt (#20726) oder fünfstellig ist (≥ 10000). '
+                +'Kleinere Zahlen und Dezimalzahlen sind KONSTANTEN.\n'
+                +'• + und − sind im Aggregat exakt (Summe/Differenz je Periode). * und / zwischen zwei Variablen '
+                +'nutzen die Perioden-Aggregate der Einzelvariablen (Wert-aus-Aggregaten), nicht die Rohwerte.\n'
+                +'• Live aktualisiert sich die Formel, sobald sich eine beteiligte Variable ändert.'}); y += 144;
+      add({type:'text', x:DOKU_PAD, y:y, w:W, h:24, bgT:true, fsz:15, label:'Live-Demo — Summe zweier Variablen'}); y += 30;
+      // reine Client-Berechnung aus dem Demo-Variablenpool (900004 + 900022), rechnet live mit.
+      add({type:'value', x:DOKU_PAD, y:y, w:240, h:120, varId:'=900004+900022', label:'A + B', suf:' kWh', dec:1});
+      add({type:'text', x:DOKU_PAD + 260, y:y+8, w:W - 260, h:100, bgT:true, fsz:12, fg:'#7d9099',
+           label:'Diese Kachel ist an die Formel =900004+900022 gebunden. Ihr Wert ist die laufende Summe '
+                +'der beiden Demo-Variablen und aktualisiert sich, wenn sich eine davon ändert.'});
+      y += 132;
+      views['Doku · Rechenformeln'] = {page:{w:DOKU_W, h:y + DOKU_PAD, fit:'letterbox'}, widgets:ws};
+    })();
 
     return {
       views: views, current: first, home: first, skin:'Standard',

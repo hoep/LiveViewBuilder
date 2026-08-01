@@ -340,3 +340,86 @@ function LVB_ParseICS(string $ics, int $from, int $to): array
     return $events;
 }
 
+// ===== Rechenformeln fuer Variablenbindungen ==========================================
+// Ein Variablenfeld darf statt einer ID eine Formel "=Ausdruck" enthalten. Erlaubt sind
+// + - * / und Klammern. Ein Zahlentoken ist eine VARIABLE, wenn es mit '#' beginnt ODER
+// eine Ganzzahl >= 10000 ist (IPS-Objekt-IDs sind fuenfstellig); alles andere (Dezimalzahl
+// oder Ganzzahl < 10000) ist eine KONSTANTE. Beispiele:  =45552+49633   =(#20726+#40754)/2
+// Der Kern ist ein Shunting-Yard-Parser nach RPN; identisch in JS (06-live.js) nachgebaut.
+
+function LVB_IsFormula($s): bool
+{
+    return is_string($s) && isset($s[0]) && $s[0] === '=';
+}
+
+function LVB_FormulaVarId(string $tok) // -> int|null (Variablen-ID) oder null (keine Variable)
+{
+    if ($tok === '') return null;
+    if ($tok[0] === '#' && substr($tok, 1) !== '' && ctype_digit(substr($tok, 1))) return (int) substr($tok, 1);
+    if (ctype_digit($tok) && (int) $tok >= 10000) return (int) $tok; // blanke fuenfstellige ID
+    return null;
+}
+
+function LVB_FormulaParse(string $expr) // -> array RPN-Tokens oder null bei Fehler
+{
+    $s = ltrim($expr);
+    if (isset($s[0]) && $s[0] === '=') $s = substr($s, 1);
+    $n = strlen($s); $i = 0; $out = []; $ops = [];
+    $prec = ['u-' => 3, '*' => 2, '/' => 2, '+' => 1, '-' => 1];
+    $prev = ''; // '', '(', 'op', 'num' -> zur Erkennung des unaeren Minus
+    while ($i < $n) {
+        $c = $s[$i];
+        if (ctype_space($c)) { $i++; continue; }
+        if ($c === '#' || ctype_digit($c) || $c === '.') {
+            $j = $i; if ($c === '#') $j++;
+            while ($j < $n && (ctype_digit($s[$j]) || $s[$j] === '.')) $j++;
+            $out[] = substr($s, $i, $j - $i); $i = $j; $prev = 'num'; continue;
+        }
+        if ($c === '(') { $ops[] = '('; $i++; $prev = '('; continue; }
+        if ($c === ')') {
+            while ($ops && end($ops) !== '(') $out[] = array_pop($ops);
+            if (!$ops) return null; array_pop($ops); $i++; $prev = 'num'; continue;
+        }
+        if (strpos('+-*/', $c) !== false) {
+            $op = $c;
+            if ($op === '-' && ($prev === '' || $prev === '(' || $prev === 'op')) $op = 'u-';
+            if ($op !== 'u-') {
+                while ($ops && end($ops) !== '(' && $prec[end($ops)] >= $prec[$op]) $out[] = array_pop($ops);
+            }
+            $ops[] = $op; $i++; $prev = 'op'; continue;
+        }
+        return null; // unbekanntes Zeichen
+    }
+    while ($ops) { $t = array_pop($ops); if ($t === '(') return null; $out[] = $t; }
+    return $out ? $out : null;
+}
+
+function LVB_FormulaIds(string $expr): array
+{
+    $rpn = LVB_FormulaParse($expr); if (!$rpn) return [];
+    $ids = [];
+    foreach ($rpn as $t) { $v = LVB_FormulaVarId($t); if ($v !== null) $ids[$v] = true; }
+    return array_keys($ids);
+}
+
+function LVB_FormulaEval(string $expr, array $vals) // vals: id -> float ; -> float|null
+{
+    $rpn = LVB_FormulaParse($expr); if (!$rpn) return null;
+    $st = [];
+    foreach ($rpn as $t) {
+        if ($t === 'u-') { if (!$st) return null; $st[] = -array_pop($st); continue; }
+        if ($t === '+' || $t === '-' || $t === '*' || $t === '/') {
+            if (count($st) < 2) return null; $b = array_pop($st); $a = array_pop($st);
+            if     ($t === '+') $st[] = $a + $b;
+            elseif ($t === '-') $st[] = $a - $b;
+            elseif ($t === '*') $st[] = $a * $b;
+            else                $st[] = ((float) $b == 0.0) ? 0.0 : $a / $b; // Division durch 0 -> 0
+            continue;
+        }
+        $vid = LVB_FormulaVarId($t);
+        if ($vid !== null) $st[] = isset($vals[$vid]) ? (float) $vals[$vid] : 0.0;
+        else               $st[] = (float) $t; // Konstante
+    }
+    return count($st) === 1 ? $st[0] : null;
+}
+

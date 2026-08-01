@@ -665,6 +665,43 @@ if (!function_exists('lvbStageLevel')) {
 }
 if ($api === 'agg') { // Min/Max/Avg einer geloggten Variable ueber die aktuelle Periode (native Aggregation)
     header('Content-Type: application/json; charset=utf-8');
+    // Formel-Bindung: je Periodenbucket den Ausdruck auswerten, dann min/max/avg ueber die Buckets.
+    $rawIdA = (string) ($_GET['id'] ?? '');
+    $stage  = (string) ($_GET['stage'] ?? 'day');
+    if (LVB_IsFormula($rawIdA)) {
+        $acsA = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}');
+        $acA  = $acsA[0] ?? 0;
+        $fids = LVB_FormulaIds($rawIdA);
+        if (!$acA || !$fids) { echo json_encode(['min' => null, 'max' => null, 'avg' => null]); return; }
+        $now = time();
+        $Y = (int) date('Y', $now); $mo = (int) date('n', $now); $dd = (int) date('j', $now); $H = (int) date('G', $now); $mi = (int) date('i', $now);
+        switch ($stage) {
+            case 'minute': $pStart = mktime($H, $mi, 0, $mo, $dd, $Y); break;
+            case 'hour':   $pStart = mktime($H, 0, 0, $mo, $dd, $Y);  break;
+            case 'week':   $pStart = strtotime(date('Y-m-d', strtotime('monday this week', $now)) . ' 00:00:00'); break;
+            case 'month':  $pStart = mktime(0, 0, 0, $mo, 1, $Y); break;
+            case 'year':   $pStart = mktime(0, 0, 0, 1, 1, $Y);   break;
+            default:       $pStart = mktime(0, 0, 0, $mo, $dd, $Y); break;
+        }
+        $lvl = lvbStageLevel($stage);
+        $ser = []; $tsset = [];
+        foreach ($fids as $vid) {
+            $r = @AC_GetAggregatedValues($acA, $vid, $lvl, $pStart, $now, 0);
+            $m = []; if (is_array($r)) foreach ($r as $b) { $t = (int) $b['TimeStamp']; $m[$t] = isset($b['Avg']) ? (float) $b['Avg'] : 0.0; $tsset[$t] = 1; }
+            $ser[$vid] = $m;
+        }
+        $mn = null; $mx = null; $sum = 0.0; $k = 0;
+        foreach (array_keys($tsset) as $t) {
+            $vals = []; foreach ($fids as $vid) $vals[$vid] = $ser[$vid][$t] ?? 0.0;
+            $v = LVB_FormulaEval($rawIdA, $vals);
+            if ($v === null) continue;
+            if ($mn === null || $v < $mn) $mn = $v;
+            if ($mx === null || $v > $mx) $mx = $v;
+            $sum += $v; $k++;
+        }
+        echo json_encode(['min' => $mn, 'max' => $mx, 'avg' => $k ? ($sum / $k) : null]);
+        return;
+    }
     $id    = (int) ($_GET['id'] ?? 0);
     $stage = (string) ($_GET['stage'] ?? 'day'); // minute|hour|day|week|month|year
     if (!@IPS_VariableExists($id)) { echo json_encode(['min' => null, 'max' => null, 'avg' => null]); return; }
@@ -694,6 +731,31 @@ if ($api === 'aggregated') {
     $to    = (int) ($_GET['to'] ?? time());
     $from  = (int) ($_GET['from'] ?? ($to - 366 * 86400));
     $limit = (int) ($_GET['limit'] ?? 0);
+    // Formel-Bindung "=Ausdruck": jede beteiligte Variable nativ aggregieren, dann pro
+    // Periode den Ausdruck auf den Perioden-Werten auswerten (bei +/- exakt).
+    $rawId = (string) ($_GET['id'] ?? '');
+    if (LVB_IsFormula($rawId)) {
+        $acs2 = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}');
+        $ac2  = $acs2[0] ?? 0;
+        $fids = LVB_FormulaIds($rawId);
+        if (!$ac2 || !$fids) { echo json_encode(['id' => $rawId, 'level' => $level, 'counter' => false, 'rows' => []]); return; }
+        $ser = []; $tsset = [];
+        foreach ($fids as $vid) {
+            $r = @AC_GetAggregatedValues($ac2, $vid, $level, $from, $to, $limit);
+            $m = [];
+            if (is_array($r)) foreach ($r as $b) { $t = (int) $b['TimeStamp']; $m[$t] = isset($b['Avg']) ? (float) $b['Avg'] : 0.0; $tsset[$t] = 1; }
+            $ser[$vid] = $m;
+        }
+        $tss = array_keys($tsset); rsort($tss);
+        $out = [];
+        foreach ($tss as $t) {
+            $vals = []; foreach ($fids as $vid) $vals[$vid] = $ser[$vid][$t] ?? 0.0;
+            $v = LVB_FormulaEval($rawId, $vals);
+            $out[] = ['t' => $t, 'avg' => $v, 'sum' => $v, 'min' => $v, 'max' => $v];
+        }
+        echo json_encode(['id' => $rawId, 'level' => $level, 'counter' => false, 'rows' => $out]);
+        return;
+    }
     if (!@IPS_VariableExists($id)) { echo json_encode(['id' => $id, 'rows' => []]); return; }
     $acs = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}');
     $ac  = $acs[0] ?? 0;
@@ -716,6 +778,69 @@ if ($api === 'aggregated') {
 }
 if ($api === 'cmp') {
     header('Content-Type: application/json; charset=utf-8');
+    // Formel-Bindung "=Ausdruck": je Komponente Ist- und Vorperioden-Wert nativ bestimmen
+    // (Zaehler automatisch erkannt), dann den Ausdruck auf beiden Saetzen auswerten.
+    $rawIdC = (string) ($_GET['id'] ?? '');
+    if (LVB_IsFormula($rawIdC)) {
+        $stage = (string) ($_GET['stage'] ?? 'day');
+        $acsC  = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}');
+        $acC   = $acsC[0] ?? 0;
+        $fids  = LVB_FormulaIds($rawIdC);
+        if (!$acC || !$fids) { echo json_encode(['cur' => null, 'past' => null, 'type' => 0]); return; }
+        $now = time();
+        $Y = (int) date('Y', $now); $mo = (int) date('n', $now); $dd = (int) date('j', $now); $H = (int) date('G', $now); $mi = (int) date('i', $now);
+        switch ($stage) {
+            case 'minute': $pStart = mktime($H, $mi, 0, $mo, $dd, $Y); break;
+            case 'hour':   $pStart = mktime($H, 0, 0, $mo, $dd, $Y);  break;
+            case 'week':   $pStart = strtotime(date('Y-m-d', strtotime('monday this week', $now)) . ' 00:00:00'); break;
+            case 'month':  $pStart = mktime(0, 0, 0, $mo, 1, $Y); break;
+            case 'year':   $pStart = mktime(0, 0, 0, 1, 1, $Y);   break;
+            default:       $pStart = mktime(0, 0, 0, $mo, $dd, $Y); break;
+        }
+        switch ($stage) {
+            case 'minute': $prevStart = $pStart - 60; break;
+            case 'hour':   $prevStart = $pStart - 3600; break;
+            case 'week':   $prevStart = strtotime('-1 week', $pStart); break;
+            case 'month':  $prevStart = strtotime('-1 month', $pStart); break;
+            case 'year':   $prevStart = strtotime('-1 year', $pStart); break;
+            default:       $prevStart = strtotime('-1 day', $pStart); break;
+        }
+        $prevSame = $prevStart + ($now - $pStart);
+        $valAtF = function ($vid, $t) use ($acC, $now) {
+            if ($t > $now) $t = $now;
+            $r = @AC_GetLoggedValues($acC, $vid, 0, $t, 1);
+            if (is_array($r) && count($r)) return (float) $r[0]['Value'];
+            $a = @AC_GetAggregatedValues($acC, $vid, 0, $t - 3 * 86400, $t, 1);
+            if (is_array($a) && count($a)) return (float) $a[0]['Avg'];
+            return null;
+        };
+        $meanAvgF = function ($vid, $a, $b) use ($acC) {
+            $rows = @AC_GetAggregatedValues($acC, $vid, 0, $a, $b, 0);
+            if (!is_array($rows) || !count($rows)) return null;
+            $s = 0.0; $k = 0; foreach ($rows as $r) { if (isset($r['Avg'])) { $s += (float) $r['Avg']; $k++; } }
+            return $k ? ($s / $k) : null;
+        };
+        $curV = []; $pastV = []; $allC = true;
+        foreach ($fids as $vid) {
+            if (@AC_GetAggregationType($acC, $vid) == 1) { // Zaehler: Verbrauch/Ertrag der Periode
+                $vn = @GetValue($vid); $vn = is_numeric($vn) ? (float) $vn : $valAtF($vid, $now);
+                $vps = $valAtF($vid, $pStart); $curV[$vid] = ($vn !== null && $vps !== null) ? ($vn - $vps) : null;
+                $vp1 = $valAtF($vid, $prevSame); $vp0 = $valAtF($vid, $prevStart); $pastV[$vid] = ($vp1 !== null && $vp0 !== null) ? ($vp1 - $vp0) : null;
+            } else { // Standardvariable: Periodenmittel
+                $allC = false;
+                $curV[$vid]  = $meanAvgF($vid, $pStart, $now);
+                $pastV[$vid] = $meanAvgF($vid, $prevStart, $prevSame);
+            }
+        }
+        $mk = function ($src) use ($fids) { $o = []; foreach ($fids as $vid) { if (!isset($src[$vid]) || $src[$vid] === null) return null; $o[$vid] = $src[$vid]; } return $o; };
+        $cv = $mk($curV); $pv = $mk($pastV);
+        echo json_encode([
+            'type' => $allC ? 1 : 0,
+            'cur'  => ($cv !== null) ? LVB_FormulaEval($rawIdC, $cv) : null,
+            'past' => ($pv !== null) ? LVB_FormulaEval($rawIdC, $pv) : null,
+        ]);
+        return;
+    }
     $id    = (int) ($_GET['id'] ?? 0);
     $stage = (string) ($_GET['stage'] ?? 'day');     // minute|hour|day|week|month|year
     $kind  = (string) ($_GET['kind'] ?? 'standard'); // standard|counter
