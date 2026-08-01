@@ -119,6 +119,34 @@ if ($api === 'tree') {
     return;
 }
 
+// ---- Builder-Bedienoberflaeche: Sitzungseinstellungen (Zoom, aktiver Tab, Schwebemodus+
+//      Position). BEWUSST getrennt vom Layout-Store in einer eigenen Datei je Instanz:
+//      UI-Zustand soll das Dokument nicht veraendern und nicht an die Run-Clients
+//      veroeffentlicht werden. GET liest, POST/?save (mit key=TOKEN) schreibt.
+if ($api === 'bset') {
+    header('Content-Type: application/json; charset=utf-8');
+    if (!is_dir($DATADIR)) { @mkdir($DATADIR, 0775, true); }
+    $bf     = $DATADIR . '/builder-settings.json';
+    $isSave = (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') || isset($_GET['save']);
+    if ($isSave) {
+        if (!hash_equals($TOKEN, (string) ($_GET['key'] ?? ''))) {
+            http_response_code(403); echo json_encode(['error' => 'forbidden']); return;
+        }
+        $data = file_get_contents('php://input');
+        if ($data === '' || $data === false) { $data = (string) ($_POST['data'] ?? ''); }
+        $obj = json_decode($data, true);
+        if (json_last_error() !== JSON_ERROR_NONE || !is_array($obj)) {
+            http_response_code(400); echo json_encode(['error' => 'invalid json']); return;
+        }
+        @file_put_contents($bf, $data);
+        echo json_encode(['ok' => true, 'bytes' => strlen($data)]);
+        return;
+    }
+    $data = @file_get_contents($bf);
+    echo ($data !== false && $data !== '') ? $data : '{}';
+    return;
+}
+
 // ---- IPS-Meldungen aus dem Logfile (ohne DEBUG), neueste zuerst ----
 if ($api === 'messages') {
     header('Content-Type: application/json; charset=utf-8');
