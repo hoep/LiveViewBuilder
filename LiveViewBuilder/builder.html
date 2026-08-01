@@ -6628,6 +6628,11 @@ defWidget('devlist',{
     return s+'</svg>';
   }
   function _efNum(vid){var d=vid&&_lastVals[vid];return d?parseFloat(String(d.v).replace(',','.')):NaN;}
+  // Leistungswert in WATT, unabhaengig von der Profil-Einheit der Variable. Misst eine Quelle
+  // in kW (z. B. Pool 1,5 kW), wuerde der Rohwert 1,5 sonst wie 1,5 W behandelt - der Fluss
+  // liefe im Schneckentempo und die Anzeige zeigte "1,5 W". Nur exaktes "kW" wird auf W
+  // hochgerechnet, damit "kWh" o. Ae. nicht faelschlich skaliert.
+  function _efWatts(vid){var d=vid&&_lastVals[vid];if(!d)return NaN;var n=parseFloat(String(d.v).replace(',','.'));if(isNaN(n))return n;var u=(d.u!=null?String(d.u):'').trim().toLowerCase();return (u==='kw')?n*1000:n;}
   // Ab 1000 W in kW - "1,2 kW" statt "1.234 W". Das halbiert die Textbreite genau dort, wo
   // sie bisher aus dem Kreis lief. Ab 10 kW entfaellt die Nachkommastelle, sie traegt dann
   // keine Information mehr. minimumFractionDigits und maximumFractionDigits duerfen sich
@@ -6677,11 +6682,11 @@ defWidget('devlist',{
     // setzt. Faellt die Summe auf 0, greift die feste Referenz als Rueckfall.
     var total=0;
     if(w.efSpeedAuto!==false)els.forEach(function(e){
-      var p=_efNum(e.vid);if(isNaN(p))return;
+      var p=_efWatts(e.vid);if(isNaN(p))return;
       if(_efDir(_et(e.type),p)>0)total+=Math.abs(p);
     });
     els.forEach(function(e,i){
-      var t=_et(e.type),p=_efNum(e.vid),mag=isNaN(p)?0:Math.abs(p),dir=_efDir(t,p),active=mag>1;
+      var t=_et(e.type),p=_efWatts(e.vid),mag=isNaN(p)?0:Math.abs(p),dir=_efDir(t,p),active=mag>1;
       var v1=$('[data-role=efval-'+i+']',el),v2=$('[data-role=efval2-'+i+']',el);
       if(t==='grid'||t==='battery'){var into=Math.max(isNaN(p)?0:p,0),out=Math.max(isNaN(p)?0:-p,0),A=(t==='grid')?['→ ','← ']:['↑ ','↓ '];
         if(v1)v1.textContent=A[0]+_efFmtW(into);if(v2)v2.textContent=A[1]+_efFmtW(out);}
@@ -6702,7 +6707,7 @@ defWidget('devlist',{
       _efSetAnim(dot,dur,rev,active);
       if(dir>0)homeIn+=mag;
     });
-    var hv=$('[data-role=efval-h]',el);if(hv){var hp=w.homeVid?_efNum(w.homeVid):NaN;hv.textContent=_efFmtW(isNaN(hp)?homeIn:hp);}
+    var hv=$('[data-role=efval-h]',el);if(hv){var hp=w.homeVid?_efWatts(w.homeVid):NaN;hv.textContent=_efFmtW(isNaN(hp)?homeIn:hp);}
   }
   defWidget('flow',{
     label:'Fluss', paletteIcon:'wsankey', size:[560,168],
