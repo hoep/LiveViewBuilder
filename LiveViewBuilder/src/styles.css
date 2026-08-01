@@ -50,7 +50,8 @@
   .wv .l{font-size:var(--wf-lbl);color:var(--muted);text-transform:uppercase;letter-spacing:.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .wv .v{font-family:var(--fm);font-weight:600;font-variant-numeric:tabular-nums;line-height:1.05;font-size:var(--wf-val);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .wv .v .u{font-size:.6em;color:var(--muted);margin-left:3px}
-  .wt{padding:9px 11px;height:100%;display:flex;align-items:center}.wt .t{font-size:var(--wf-txt);font-weight:600}
+  .wt{padding:9px 11px;height:100%;display:flex;align-items:center}
+  .wt.vtop{align-items:flex-start}.wt .t{font-size:var(--wf-txt);font-weight:600}
   .wsw{height:100%;display:flex;align-items:center;justify-content:space-between;padding:0 12px;gap:10px}.wsw .l{font-size:var(--wf-txt);color:var(--text)}
   .sw{width:42px;height:24px;border-radius:999px;background:var(--surface-2);border:1px solid var(--line);position:relative;flex:none;pointer-events:none}
   .sw .swk{position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:var(--sw-off,var(--muted));transition:.15s;display:flex;align-items:center;justify-content:center}
@@ -177,10 +178,20 @@
   .hl2.on .hl2state{color:var(--accent)}
   /* Balken: Kapsel mit Abstand zu allen Kanten, von unten gefuellt. Der weisse Riegel
      markiert den Fuellstand und sitzt IM Fuellelement, wandert also von selbst mit. */
-  .hl2bar{position:absolute;right:6%;top:15%;bottom:15%;width:20%;border-radius:999px;
+  /* Unsichtbarer senkrechter Regler ueber dem Helligkeitsbalken: bedienbar, ohne die
+     gezeichnete Fuellung zu stoeren. writing-mode/direction drehen ihn so, dass unten 0 %
+     und oben 100 % liegt; -webkit-appearance deckt aeltere Safari/Chrome ab. */
+  .hl2bar .hl2rng{position:absolute;inset:0;width:100%;height:100%;margin:0;padding:0;opacity:0;
+    cursor:ns-resize;background:transparent;-webkit-appearance:slider-vertical;appearance:slider-vertical;
+    writing-mode:vertical-lr;direction:rtl;z-index:2}
+  .stage.edit .hl2bar .hl2rng{pointer-events:none}
+  /* Breite und Rundung sind einstellbar (--lgbw / --lgbr). Vorgabe wie bisher: 20 % breit,
+     vollrund. Bei voller Rundung wird die Fuellung auf halber Hoehe so breit wie hoch und
+     sieht aus wie eine Kugel - deshalb laesst sich die Rundung jetzt zuruecknehmen. */
+  .hl2bar{position:absolute;right:6%;top:15%;bottom:15%;width:var(--lgbw,20%);border-radius:var(--lgbr,999px);
           background:color-mix(in oklab,var(--bg) 70%,var(--surface-2));
           border:1px solid var(--line);overflow:hidden}
-  .hl2bar i{position:absolute;left:0;right:0;bottom:0;height:0;display:block;border-radius:999px;
+  .hl2bar i{position:absolute;left:0;right:0;bottom:0;height:0;display:block;border-radius:var(--lgbr,999px);
             background:linear-gradient(180deg,color-mix(in oklab,var(--accent) 78%,var(--text)),var(--accent));
             transition:height .35s cubic-bezier(.2,.8,.2,1)}
   .hl2bar i::after{content:"";position:absolute;left:14%;right:14%;top:4%;min-height:4px;height:5%;
@@ -203,7 +214,10 @@
      was bei jedem neuen Widget vergessen wuerde - werden hier die Flaechen-Token neutralisiert:
      --tile und --surface tragen die Karten, --surface-2 bleibt bewusst erhalten, damit
      Balkenspuren, Chips und Schalter sichtbar bleiben. */
-  .w.bg-t{background:transparent!important;--tile:transparent;--surface:transparent}
+  /* Transparent heisst OHNE Kasten - der Rahmen blieb bisher stehen und erzeugte
+     Kaestchen in Kaestchen, sobald mehrere transparente Widgets in einer Komponente
+     uebereinander lagen. */
+  .w.bg-t{background:transparent!important;border-color:transparent!important;--tile:transparent;--surface:transparent}
   /* Beschriftungen mehrzeilig. Aufgezaehlt sind bewusst nur BESCHRIFTUNGEN - Werte,
      Schalter und Editor-Oberflaeche bleiben einzeilig, sonst braechen Zahlen um und
      Knoepfe wuerden hoch. Kommt ein Widget mit eigener Label-Klasse dazu, gehoert sie
@@ -576,6 +590,23 @@
   }
 
   /* ===== Wertkarte (valuecard) — generische Karte aus KPI/Bar/Pill/Toggle-Bausteinen ===== */
+  /* Bereichsleiste: Minimum links, Maximum rechts, der Ist-Wert als Marke dazwischen. */
+  .hvcrng{display:flex;align-items:center;gap:8px;margin-top:2px}
+  .hvcrng .rmin,.hvcrng .rmax{font-size:var(--wf-lbl);color:var(--faint);font-family:var(--fm);white-space:nowrap;flex:none}
+  .hvcrng .rtrack{position:relative;flex:1;height:6px;border-radius:3px;
+    background:linear-gradient(90deg,var(--info) 0%,var(--ok) 45%,var(--warn) 75%,var(--crit) 100%);opacity:.85}
+  .hvcrng .rdot{position:absolute;top:50%;width:12px;height:12px;border-radius:50%;
+    background:var(--text);border:2px solid var(--surface);transform:translate(-50%,-50%);box-shadow:0 0 0 1px var(--line)}
+  /* Doku-Seite: Erklaerungsblock ueber den Einstellungen */
+  .dkdoc{border:1px solid var(--line);border-radius:var(--r-s);background:var(--surface-2);padding:10px 12px;margin-bottom:10px}
+  .dkdoc .dkdt{font-size:14px;font-weight:700;margin-bottom:4px}
+  .dkdoc .dkdt code{font-family:var(--fm);font-size:11px;color:var(--accent);background:transparent;padding:0 0 0 4px}
+  .dkdoc .dkdz{font-size:12px;color:var(--muted);line-height:1.45}
+  .dkdoc .dkdh{font-size:11px;font-weight:700;color:var(--faint);text-transform:uppercase;letter-spacing:.04em;margin:9px 0 4px}
+  .dkdoc .dkdl{margin:0;padding-left:16px;font-size:12px;line-height:1.5;color:var(--text)}
+  .dkdoc .dkdl li{margin-bottom:3px}
+  .dkdoc .dkdl b{color:var(--accent);font-weight:600}
+  .dkdoc .dkdw{margin-top:8px;font-size:11px;color:var(--warn);border-left:2px solid var(--warn);padding-left:8px;line-height:1.45}
   .hvcard{display:flex;flex-direction:column;height:100%;box-sizing:border-box;padding:12px 14px;gap:5px}
   .hvctop{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:26px}
   .hvctl{display:flex;align-items:center;gap:10px;min-width:0}

@@ -18,6 +18,10 @@ $uriPath = (string) parse_url((string) ($_SERVER['REQUEST_URI'] ?? ''), PHP_URL_
 $seg     = explode('/', trim($uriPath, '/'));
 if (($seg[1] ?? '') === 'run') {
     $LV_MODE = 'run';
+} elseif (($seg[1] ?? '') === 'doku') {
+    // Eigenstaendige Doku- und Demoseite: zeigt JEDES Widget live samt seinen Einstellungen.
+    // Braucht keine gespeicherte Ansicht - sie wird aus der Widget-Registry erzeugt.
+    $LV_MODE = 'doku';
 }
 
 // ---- Statische Assets (ECharts, offline gehostet) ----
@@ -952,6 +956,7 @@ $html = str_replace('__LV_TOKEN__', $TOKEN, $html);
 $html = str_replace('__LV_WSPORT__', (string) ($WSPORT ?? ''), $html);     // WebSocket-Push optional (Property)
 $html = str_replace('__LV_WSURL__', (string) ($WSURL ?? ''), $html);       // volle wss-Adresse (Reverse Proxy) - schlaegt den Port
 $html = str_replace('__LV_RUN__', ($LV_MODE === 'run' ? '1' : ''), $html); // /hook/run/<site> -> Laufzeit
+$html = str_replace('__LV_DOKU__', ($LV_MODE === 'doku' ? '1' : ''), $html); // /hook/doku -> Doku/Demo
 header('Content-Type: text/html; charset=utf-8');
 header('Cache-Control: no-store, no-cache, must-revalidate'); // Builder nie cachen -> nach Rebuild immer frisch
 echo $html;

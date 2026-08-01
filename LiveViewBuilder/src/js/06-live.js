@@ -166,7 +166,8 @@
     }
   }
   startPV();wsConnect();_wsWd=setInterval(wsWatchdog,30000);
-  function setVar(id,val){fetch('?api=setvar&id='+id+'&value='+encodeURIComponent(val)+'&key='+encodeURIComponent(TOKEN),{cache:'no-store'}).then(function(){setTimeout(pollVals,250);});}
+  function setVar(id,val){if(typeof DOKU!=='undefined'&&DOKU&&typeof dokuSetVar==='function'){dokuSetVar(id,val);return;} // Doku: lokal, nie an den Server
+  fetch('?api=setvar&id='+id+'&value='+encodeURIComponent(val)+'&key='+encodeURIComponent(TOKEN),{cache:'no-store'}).then(function(){setTimeout(pollVals,250);});}
 
   // ---------- Variablen-Baum ----------
   var _bindTarget=null,_bindTarget2=null,_bindTarget3=null,_bindVis=null,_bindObj=null,_bindField=null,_bindSeries=null;

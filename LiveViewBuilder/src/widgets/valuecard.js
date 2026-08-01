@@ -22,7 +22,9 @@
       var icon=w.icon?'<span class="hkbi">'+iconSVG(w.icon)+'</span>':'';
       var title=w.title?'<span class="hvctitle">'+esc(w.title)+'</span>':'';
       var tr='';
-      if(w.varId2&&!w.v2acc){
+      // Im Bereichsmodus ist Variable 2 das MINIMUM, kein Schaltkanal - sonst erscheint
+      // oben rechts ein Schalter, der nichts schaltet.
+      if(w.varId2&&!w.v2acc&&!w.rngOn){
         var onC=w.swOn?_cssColorOrEmpty(w.swOn):'',offC=w.swOff?_cssColorOrEmpty(w.swOff):'';
         var sty=(onC?('--sw-on:'+onC+';'):'')+(offC?('--sw-off:'+offC+';'):'');
         var knob='<i class="swk">'+(w.swOffIcon?'<span class="swi swi-off">'+iconSVG(w.swOffIcon)+'</span>':'')+(w.swOnIcon?'<span class="swi swi-on">'+iconSVG(w.swOnIcon)+'</span>':'')+'</i>';
@@ -35,10 +37,23 @@
       var val='<div class="hvcval"><span data-role="val">–</span>'+(w.unit?'<small> '+esc(w.unit)+'</small>':'')+'</div>';
       var cap=w.label?'<div class="hvccap">'+escL(w.label)+'</div>':'';
       var bar=w.barOn?('<div class="hvcbar"><div class="btrack"><i data-role="bar"></i></div>'+((w.barCap!=null&&w.barCap!=='')?'<div class="hvcbarcap" data-role="barcap">'+esc(w.barCap)+'</div>':'')+'</div>'):'';
-      return '<div class="hvcard" data-role="card"><div class="hvctop"><div class="hvctl">'+icon+title+'</div>'+tr+'</div>'+val+cap+bar+'</div>';
+      // Bereichsmodus: zeigt, WO der aktuelle Wert zwischen Minimum und Maximum liegt.
+      // Drei Zahlen untereinander sagen das nicht - die Lage auf der Skala schon.
+      // varId = Ist, varId2 = Minimum, varId3 = Maximum (im Bereichsmodus umgedeutet).
+      // Die Farbstufen stehen im ECHTEN Wert der Variable (z. B. 30 fuer 30 °C), nicht in
+      // Prozent - "ab 30 °C rot" ist eine Aussage, "ab 70 % der Spanne" verschiebt sich mit
+      // jedem neuen Tagesminimum. Die Umlegung auf die Leiste passiert deshalb erst zur
+      // Laufzeit in live(), wo Minimum und Maximum bekannt sind.
+      var rng=w.rngOn?('<div class="hvcrng"><span class="rmin" data-role="rmin">–</span>'
+        +'<span class="rtrack"><i class="rdot" data-role="rdot"></i></span>'
+        +'<span class="rmax" data-role="rmax">–</span></div>'):'';
+      return '<div class="hvcard" data-role="card"><div class="hvctop"><div class="hvctl">'+icon+title+'</div>'+tr+'</div>'+val+cap+rng+bar+'</div>';
     },
     props:function(w){if(w.type!=='valuecard')return '';
-      return row('Titel (oben-links)','<input id="pVcTitle" value="'+esc(w.title||'')+'" placeholder="statt/neben Icon">')
+      return row('Bereich Min/Max','<input type="checkbox" id="pVcRng"'+(w.rngOn?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">Var 2 = Min, Var 3 = Max</span>')
+        +(w.rngOn?('<div style="font-size:11px;color:var(--muted);margin:2px 2px 5px">Farbstufen der Leiste. Der Wert steht in der Einheit der Variable &ndash; z.&nbsp;B. 30 f&uuml;r 30&nbsp;&deg;C. Leer = gleichm&auml;&szlig;ig verteilt. Eine Stufe = einfarbig blass&nbsp;&rarr;&nbsp;voll, keine Stufe = Temperaturskala.</div>'
+          +listEditor(w,'rngGrad','Farbstufen: Wert · Farbe',[{k:'v',ph:'Wert'},{k:'color',type:'skincolor'}])):'')
+        +row('Titel (oben-links)','<input id="pVcTitle" value="'+esc(w.title||'')+'" placeholder="statt/neben Icon">')
         +row('Einheit','<input id="pVcUnit" value="'+esc(w.unit||'')+'" style="width:100px">')
         +'<div class="pgh">Badge (oben-rechts)</div>'
         +row('Text','<input id="pVcBadge" value="'+esc(w.badge||'')+'" placeholder="OPTIMAL / LÄUFT / Soll 27,0">')
@@ -72,6 +87,8 @@
           +row('Text rechts','<input id="pVcBarCap" value="'+esc(w.barCap||'')+'" placeholder="z. B. 81 % Kanister">')):'');
     },
     wire:function(w){
+      if($('#pVcRng'))$('#pVcRng').onchange=function(){w.rngOn=this.checked||undefined;render();renderProps();commit();};
+
       function bind(id,prop,num){var e=$('#'+id);if(!e)return;e.oninput=e.onchange=function(){var v=num?(this.value===''?undefined:parseFloat(this.value)):(this.value||undefined);w[prop]=v;render();};}
       bind('pVcTitle','title');bind('pVcUnit','unit');bind('pVcBadge','badge');bind('pVcBarCap','barCap');
       bind('pVcOkT','okText');bind('pVcBadT','badText');
@@ -94,6 +111,43 @@
       return false;
     },
     live:function(w,el,id,d,base,txt,on){
+      // Bereichsmodus: bei JEDER der drei Variablen neu rechnen, damit die Marke stimmt,
+      // egal welcher Wert sich gerade geaendert hat.
+      if(w.rngOn&&(id===w.varId||id===w.varId2||id===w.varId3)){
+        var _n=function(vid){var lv=vid&&_lastVals[vid];if(!lv)return null;
+          var q=parseFloat(String(lv.v).replace(',','.'));return isNaN(q)?null:q;};
+        var _t=function(vid){var lv=vid&&_lastVals[vid];return lv?((lv.f!=null&&lv.f!=='')?lv.f:String(lv.v)):'–';};
+        var cu=_n(w.varId),mi=_n(w.varId2),ma=_n(w.varId3);
+        var eMin=$('[data-role=rmin]',el),eMax=$('[data-role=rmax]',el),dot=$('[data-role=rdot]',el);
+        if(eMin)eMin.textContent=_t(w.varId2);
+        if(eMax)eMax.textContent=_t(w.varId3);
+        if(dot){
+          var p=(cu!=null&&mi!=null&&ma!=null&&ma>mi)?((cu-mi)/(ma-mi)*100):null;
+          dot.style.display=(p==null)?'none':'';
+          if(p!=null)dot.style.left=Math.max(0,Math.min(100,p))+'%';
+        }
+        // Farbverlauf: jede Stufe traegt einen WERT; er wird auf die Lage zwischen
+        // Minimum und Maximum umgelegt. Stufen ausserhalb der Spanne rasten am Rand ein.
+        var trk=$('.rtrack',el);
+        if(trk){
+          var gs=(w.rngGrad||[]).map(function(g){
+            var c=_cssColorOrEmpty(g.color);if(!c)return null;
+            var gv=parseFloat(String(g.v==null?g.p:g.v).replace(',','.'));
+            return {c:c,v:isNaN(gv)?null:gv};
+          }).filter(Boolean);
+          if(gs.length&&mi!=null&&ma!=null&&ma>mi){
+            gs.forEach(function(o,i){
+              o.p=(o.v==null)?Math.round(i/Math.max(1,gs.length-1)*100)
+                             :Math.max(0,Math.min(100,(o.v-mi)/(ma-mi)*100));
+            });
+            gs.sort(function(x,y){return x.p-y.p;});
+            trk.style.background=(gs.length===1)
+              ? ('linear-gradient(90deg,color-mix(in oklab,'+gs[0].c+' 14%,transparent) 0%,'
+                 +'color-mix(in oklab,'+gs[0].c+' 55%,transparent) 55%,'+gs[0].c+' 100%)')
+              : ('linear-gradient(90deg,'+gs.map(function(o){return o.c+' '+o.p.toFixed(1)+'%';}).join(',')+')');
+          }else if(!gs.length){ trk.style.background=''; }
+        }
+      }
       if(w.varId===id){
         var v=$('[data-role=val]',el);if(v)v.textContent=txt;
         if(w.okMin!=null||w.okMax!=null){var nv=parseFloat(String(d.v).replace(',','.'));var bd=$('[data-role=badge]',el);if(bd&&!isNaN(nv)){var okv=(w.okMin==null||nv>=w.okMin)&&(w.okMax==null||nv<=w.okMax);bd.className='hpill '+(okv?'ok':'warn');bd.innerHTML='<span class="hpd"></span>'+esc(okv?(w.okText||'OPTIMAL'):(w.badText||'PRÜFEN'));}}
