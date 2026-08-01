@@ -59,7 +59,9 @@ class LiveViewBuilder extends IPSModule
             return;
         }
         $v = $this->siteLabel();
-        $this->registerHooks(['/hook/builder/' . $v, '/hook/run/' . $v]);   // view-spezifisch -> mehrere Instanzen kollidieren nicht
+        $this->registerHooks(['/hook/builder/' . $v, '/hook/run/' . $v, '/hook/doku']);   // view-spezifisch -> mehrere Instanzen kollidieren nicht;
+        // '/hook/doku' bewusst OHNE Ansichtsnamen: die Doku ist eigenstaendig und gehoert zum Modul,
+        // nicht zu einer bestimmten Ansicht. Mehrere Instanzen zeigen dieselbe Seite - das ist gewollt.
         $this->migrateOldDir();     // fruehere Auto-Ablage in den View-Ordner uebernehmen (einmalig)
         $this->syncPushBasePath();  // Push-Modul auf denselben Datenordner zeigen lassen (sonst liest der Push den falschen Ordner)
         $this->syncViews();         // Modul-Liste -> Seiten abgleichen (Anlegen/Loeschen), mit Schutz-Guard
@@ -181,7 +183,7 @@ class LiveViewBuilder extends IPSModule
     public function MessageSink($TimeStamp, $SenderID, $Message, $Data)
     {
         if ($Message === IPS_KERNELMESSAGE && $Data[0] === KR_READY) {
-            $this->registerHooks(['/hook/builder', '/hook/run']);
+            $this->registerHooks(['/hook/builder', '/hook/run', '/hook/doku']);
             return;
         }
         if ($Message === 10204 || $Message === 10205) { // KL_WARNING / KL_ERROR mitschneiden
