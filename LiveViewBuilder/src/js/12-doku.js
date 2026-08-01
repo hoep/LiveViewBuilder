@@ -26,7 +26,7 @@
     ['Werte & Zahlen',          ['value','valuecard','cval','sval','kpi','delta','calc','chip','icon','bar','meterlist','infolist']],
     ['Schalten & Bedienen',     ['switch','light','button','tile','checkbox','select','slider','colorpick','textbox','cover','thermostat','alarm','vacuum','timer','eventctl']],
     ['Zustand & Listen',        ['assoc','statusgrid','statuslist','devlist','statusimage','table','objinfo','msglog','statelog','statetl']],
-    ['Diagramme',               ['chart','gauge','gaugepro','sankey','flow','flowline','windrose','tempbar']],
+    ['Diagramme',               ['chart','gauge','gaugepro','doubledonut','sankey','flow','flowline','windrose','tempbar']],
     ['Wetter, Sonne & Termine', ['weather','weatherpro','sun','suncard','raincard','calendar','weekplan','clock']],
     ['Medien & Inhalte',        ['camera','campro','media','image','html','webview','marquee','ticker']],
     ['Struktur & Layout',       ['text','shape','line','blank','component','room','chromebar','chromesidebar','skinswitch']],

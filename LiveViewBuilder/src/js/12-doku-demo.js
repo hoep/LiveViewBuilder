@@ -56,3 +56,55 @@
     _DID[id]=[val,f,e[2]||''];
     applyVal(id,{v:val,f:f,u:e[2]||'',c:Math.floor((typeof Date!=='undefined'?Date.now():0)/1000)});
   }
+
+  // ----- Chart-Daten im Doku-Modus erfinden -----------------------------------------
+  // Diagramme holen ihre Reihen ueber ?api=aggregated / history / agg / cmp. Fuer die
+  // Demo-IDs gibt es serverseitig nichts. Deshalb wird fetch im Doku-Modus abgefangen und
+  // liefert fuer genau diese Endpunkte einen synthetischen, aber plausiblen Verlauf -
+  // eine ruhige Welle, in der Groessenordnung des Demo-Werts der jeweiligen ID.
+  function _dokuAnchor(id){var e=_DID[+id];var n=e?parseFloat(String(e[0]).replace(',','.')):NaN;
+    return isNaN(n)?50:(n||50);}
+  function _dokuWave(base,i,n){ // 0..n-1 -> weiche Welle um base
+    var a=Math.abs(base)||1;
+    return base*0.55 + a*0.45*(0.5+0.5*Math.sin(i/Math.max(3,n/6)+0.6)) + a*0.06*Math.sin(i*1.7);
+  }
+  function _dokuAgg(url){
+    var q=function(k){var m=url.match(new RegExp('[?&]'+k+'=([^&]*)'));return m?decodeURIComponent(m[1]):'';};
+    var id=+q('id'), level=+q('level')||3, to=+q('to')||Math.floor(Date.now()/1000);
+    var from=+q('from')||(to-366*86400);
+    var step={0:3600,1:86400,2:604800,3:2629800,4:31557600,5:300}[level]||86400;
+    var base=_dokuAnchor(id), rows=[], n=Math.max(8,Math.min(60,Math.round((to-from)/step)||24));
+    for(var i=0;i<n;i++){var t=from+Math.round((to-from)*i/(n-1||1));var v=_dokuWave(base,i,n);
+      rows.push({t:t, avg:Math.round(v*100)/100, sum:Math.round(v*100)/100,
+                 min:Math.round(v*90)/100, max:Math.round(v*112)/100});}
+    return {id:id, level:level, counter:false, rows:rows};
+  }
+  function _dokuHist(url){
+    var q=function(k){var m=url.match(new RegExp('[?&]'+k+'=([^&]*)'));return m?decodeURIComponent(m[1]):'';};
+    var id=+q('id'), to=+q('to')||Math.floor(Date.now()/1000), from=+q('from')||(to-86400);
+    var base=_dokuAnchor(id), n=120, data=[];
+    for(var i=0;i<n;i++){var t=from+Math.round((to-from)*i/(n-1));
+      data.push([t*1000, Math.round(_dokuWave(base,i,n)*100)/100]);}
+    return {data:data};
+  }
+  function _dokuSynth(url){
+    if(/[?&]api=aggregated\b/.test(url))return _dokuAgg(url);
+    if(/[?&]api=history\b/.test(url))return _dokuHist(url);
+    if(/[?&]api=agg\b/.test(url)){var b=_dokuAnchor((url.match(/[?&]id=(\d+)/)||[])[1]);
+      return {min:Math.round(b*0.7*100)/100,max:Math.round(b*1.15*100)/100,avg:Math.round(b*100)/100};}
+    if(/[?&]api=cmp\b/.test(url)){var c=_dokuAnchor((url.match(/[?&]id=(\d+)/)||[])[1]);
+      return {type:0,cur:Math.round(c*100)/100,past:Math.round(c*0.9*100)/100};}
+    return null;
+  }
+  function dokuInstallFetch(){
+    if(typeof window==='undefined'||!window.fetch||window._dokuFetchOn)return;
+    window._dokuFetchOn=true; var orig=window.fetch;
+    window.fetch=function(url){
+      if(typeof url==='string' && /[?&]api=(aggregated|history|agg|cmp)\b/.test(url)){
+        var body=_dokuSynth(url);
+        if(body!=null)return Promise.resolve(new Response(JSON.stringify(body),
+          {status:200,headers:{'Content-Type':'application/json'}}));
+      }
+      return orig.apply(this,arguments);
+    };
+  }

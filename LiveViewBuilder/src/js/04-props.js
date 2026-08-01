@@ -36,8 +36,8 @@
       :'<div class="hint">Kein Element ausgewählt.</div>';return;}
     try{
     var typeOpts=Object.keys(TYPES).map(function(t){return '<option value="'+t+'">'+TYPES[t]+'</option>';}).join('');
-    var lbl2={thermostat:'Ziel-Var',light:'Helligkeit',cover:'Befehls-Var',weather:'Vorhersage (JSON)',weatherpro:'Vorhersage (JSON)',sun:'Untergang',suncard:'Untergang',media:'Zustand',room:'Metrik 2',vacuum:'Batterie',valuecard:'Toggle/Akzent-Var'}[w.type];
-    var lbl3={cover:'Status-Text',media:'Lautstärke',room:'Metrik 3',vacuum:'Start/Stop',thermostat:'Modus/Profil-Var',valuecard:'Balken-Var'}[w.type];
+    var lbl2={doubledonut:'Unterer Wert',thermostat:'Ziel-Var',light:'Helligkeit',cover:'Befehls-Var',weather:'Vorhersage (JSON)',weatherpro:'Vorhersage (JSON)',sun:'Untergang',suncard:'Untergang',media:'Zustand',room:'Metrik 2',vacuum:'Batterie',valuecard:'Toggle/Akzent-Var'}[w.type];
+    var lbl3={doubledonut:'Mittelwert',cover:'Status-Text',media:'Lautstärke',room:'Metrik 3',vacuum:'Start/Stop',thermostat:'Modus/Profil-Var',valuecard:'Balken-Var'}[w.type];
     var _inBar=(typeof chromeOwnerOf==='function')?chromeOwnerOf(w.id):null;
     p.innerHTML=_dkh+(Object.keys(sel).length>=2?alignSection():'')
       +(_inBar?('<div class="prop" style="border-color:var(--accent)"><div style="font-size:11px;color:var(--muted);margin-bottom:5px">Liegt in der Leiste <b>'+esc(_inBar.name||'Leiste')+'</b> — erscheint damit auf allen Seiten.</div>'
@@ -139,7 +139,14 @@
     if($('#pRUnit'))$('#pRUnit').onchange=function(){_setRange(w,{unit:this.value});renderProps();commit();};
     if($('#pRRawU'))$('#pRRawU').onchange=function(){_setRange(w,{rawUnit:this.value});commit();};
     if($('#pRAggF'))$('#pRAggF').onchange=function(){_setRange(w,{aggF:this.value});commit();};
-    if($('#pRCal'))$('#pRCal').onchange=function(){_setRange(w,{cal:!!this.value});renderProps();commit();};
+    if($('#pRCal'))$('#pRCal').onchange=function(){
+      // Kalenderjahr bedeutet zwoelf Monatsbalken - dann Einheit und Anzahl passend setzen,
+      // sonst bleibt ein widerspruechliches "Kalenderjahr + 7 Tage" stehen. Alt-Felder
+      // mitraeumen, damit nichts Altes die Weiche stellt.
+      if(this.value){_setRange(w,{cal:true,unit:'month',n:12});w.calYear=true;w.agg=3;}
+      else{_setRange(w,{cal:false});delete w.calYear;}
+      renderProps();commit();
+    };
     if($('#pLineMode'))$('#pLineMode').onchange=function(){w.lineMode=this.checked||undefined;render();commit();};
     if($('#pMin'))$('#pMin').oninput=function(){var v=parseFloat(this.value);w.min=isNaN(v)?0:v;render();};
     if($('#pMax'))$('#pMax').oninput=function(){var v=parseFloat(this.value);w.max=isNaN(v)?100:v;render();};
