@@ -513,6 +513,26 @@
       groesse: [280,60],
       demo: {"label": "Netzfluss", "varId": 38704, "flDir": "h", "flPos": "ok", "flNeg": "crit", "flThr": 5, "flRef": 2000, "bgT": 1, "frame": false}
     },
+    "doubledonut": {
+      titel: "Doppel-Donut",
+      zweck: "Zwei Halb-Donuts in einem Kreis: obere Haelfte ein Wert, untere Haelfte ein zweiter - gespiegelt, jede zwischen eigenem Min und Max. In der Mitte optional ein dritter Wert mit Untertitel. Der Kreis bleibt in jeder Kachelform rund.",
+      funktionen: [
+        {name: "Variable / Unterer Wert / Mittelwert", beschreibung: "Drei Bindungen: obere Haelfte (Variable), untere Haelfte (Unterer Wert) und der reine Anzeigewert in der Mitte (Mittelwert)."},
+        {name: "Min / Max oben bzw. unten", beschreibung: "Bereich, zwischen dem sich die jeweilige Haelfte fuellt. Werte ausserhalb rasten am Rand ein."},
+        {name: "Farbe oben / unten", beschreibung: "Skin-Farbe je Haelfte (Vorgabe oben OK-Gruen, unten Info-Blau)."},
+        {name: "Untertitel (Mitte)", beschreibung: "Kleiner Text unter dem Mittelwert."},
+        {name: "Ringdicke (px)", beschreibung: "Staerke der beiden Boegen, 4 bis 48."},
+        {name: "Rundung", beschreibung: "Runde oder gerade Enden der Boegen. Bei geraden Enden beruehren sich beide Haelften bei Max exakt links und rechts (durchgehender Ring), bei runden Enden bleibt ein kleiner Abstand."},
+        {name: "Schriftart / Gewicht", beschreibung: "Schriftfamilie und Strichstaerke fuer alle Beschriftungen; leer laesst die Standardschrift."},
+        {name: "Groesse Mitte / Untertitel", beschreibung: "Schriftgroesse des Mittelwerts und des Untertitels darunter (in viewBox-Einheiten, skaliert mit der Kachel)."},
+        {name: "Groesse Werte", beschreibung: "Schriftgroesse der beiden Halbwert-Beschriftungen oben und unten."},
+        {name: "Position oben / unten", beschreibung: "Y-Position der oberen bzw. unteren Wertbeschriftung (0 bis 240), damit sie nicht an den Boegen kleben."},
+        {name: "Position Mitte (Y)", beschreibung: "Feinjustierung der senkrechten Lage von Mittelwert und Untertitel; leer = automatisch."},
+        {name: "Live", beschreibung: "Beide Haelften und der Mittelwert aktualisieren sich bei jeder Wertaenderung; die Fuellung laeuft weich nach."}
+      ],
+      groesse: [220,200],
+      demo: {"varId": 900004, "varId2": 900022, "varId3": 900019, "topMin": 0, "topMax": 100, "botMin": 0, "botMax": 100, "ddTop": "ok", "ddBot": "info", "sub": "Durchsatz"}
+    },
     "gauge": {
       titel: "Gauge",
       zweck: "Rundinstrument auf ECharts-Basis fuer einen numerischen Wert zwischen Min und Max. Vier Bauformen vom klassischen Bogen bis zum Donut-Ring, Farbe wahlweise fest, nach Schwellen abgestuft oder aus den Profil-Assoziationen.",

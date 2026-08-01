@@ -12,6 +12,7 @@ require_once __DIR__ . '/store.inc.php';   // Ablage-Logik geteilt mit module.ph
 
 $api = (string) ($_GET['api'] ?? '');
 
+
 // Modus aus dem Pfad:  /hook/run/<site> -> Laufzeit ; sonst Builder/Editor
 $LV_MODE = 'builder';
 $uriPath = (string) parse_url((string) ($_SERVER['REQUEST_URI'] ?? ''), PHP_URL_PATH);
@@ -27,7 +28,7 @@ if (($seg[1] ?? '') === 'run') {
 // ---- Statische Assets (ECharts, offline gehostet) ----
 if ($api === 'asset') {
     $name  = (string) ($_GET['name'] ?? '');
-    $files = ['echarts' => $DIR . '/assets/echarts.min.js'];
+    $files = ['echarts' => $DIR . '/assets/echarts.min.js', 'dokudata' => $DIR . '/src/js/12-doku-data.js'];
     if (!isset($files[$name]) || !is_file($files[$name])) {
         http_response_code(404);
         echo '// not found';
@@ -61,17 +62,24 @@ if ($api === 'tree') {
     header('Content-Type: application/json; charset=utf-8');
     $search = trim((string) ($_GET['search'] ?? ''));
     if ($search !== '') {
+        // ID-Treffer: jede Objekt-ID (nicht nur Variablen) - so springt man auch auf eine
+        // Kategorie oder Instanz und kann sie im Ergebnis aufklappen.
         $idHit = null;
-        if (preg_match('/^[0-9]+$/', $search) === 1 && IPS_VariableExists((int) $search)) {
-            $vid           = (int) $search;
-            $idHit         = LVB_TreeNode($vid);
-            $idHit['path'] = LVB_ObjPath($vid);
+        $searchId = (preg_match('/^[0-9]+$/', $search) === 1) ? (int) $search : -1;
+        if ($searchId >= 0 && IPS_ObjectExists($searchId)) {
+            $idHit         = LVB_TreeNode($searchId);
+            $idHit['path'] = LVB_ObjPath($searchId);
         }
+        // Volltext: Variablen (Name + voller Pfad) UND Instanzen (Geraete per Name/Pfad
+        // findbar, dann aufklappbar). Doppelte IDs werden uebersprungen.
+        $cand = array_merge(IPS_GetVariableList(), IPS_GetInstanceList());
+        $seen = [];
         $rest = [];
-        foreach (IPS_GetVariableList() as $vid) {
-            if ($idHit !== null && $vid === (int) $search) {
+        foreach ($cand as $vid) {
+            if ($vid === $searchId || isset($seen[$vid])) {
                 continue;
             }
+            $seen[$vid] = true;
             // Namensvergleich zuerst (billig); Objektpfad nur bei Bedarf berechnen (teuer: Baum-Walk)
             $nameHit = mb_stripos(IPS_GetName($vid), $search) !== false;
             $path    = $nameHit ? null : LVB_ObjPath($vid);
@@ -99,7 +107,12 @@ if ($api === 'tree') {
     foreach ($kids as $cid) {
         $nodes[] = LVB_TreeNode($cid);
     }
+    // Reihenfolge exakt wie die Symcon-Konsole: zuerst nach Objektposition, bei gleicher
+    // Position (Standard 0) natuerlich-alphabetisch nach Name.
     usort($nodes, function ($a, $b) {
+        if ($a['pos'] !== $b['pos']) {
+            return $a['pos'] <=> $b['pos'];
+        }
         return strnatcasecmp($a['name'], $b['name']);
     });
     echo json_encode(['parent' => $parent, 'path' => LVB_ObjPath($parent), 'nodes' => $nodes]);
