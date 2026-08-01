@@ -76,6 +76,7 @@
       s.style.left='';s.style.top='';s.style.width='';
       toast('Panel angedockt');
     }
+    _bsSave();
   }
   (function(){
     var s=$('.side'),grip=$('#sideGrip'),btn=$('#sideFloat');
@@ -96,7 +97,52 @@
       t=Math.max(4,Math.min(window.innerHeight-40,t));
       s.style.left=l+'px';s.style.top=t+'px';
     });
-    function end(){drag=null;}
+    function end(){if(drag){drag=null;_bsSave();}}
     grip.addEventListener('pointerup',end);
     grip.addEventListener('pointercancel',end);
   })();
+
+  // ---- Builder-Bedienoberflaeche merken (eigene Datei, NICHT im Layout-Store) --------
+  // Zoom, aktiver Tab und Schwebemodus+Position werden pro Instanz in builder-settings.json
+  // gehalten (Endpoint ?api=bset). Getrennt vom Layout, damit reiner UI-Zustand das Dokument
+  // weder aendert noch an die Run-Clients veroeffentlicht wird. Nur im Builder-Modus aktiv.
+  var _bsT=0, _bsRestoring=false;
+  function _bsCollect(){
+    var s=$('.side'), tabEl=$('.tab.on');
+    var o={ zoom:(typeof zoom==='number'?zoom:1),
+            tab:(tabEl?tabEl.getAttribute('data-tab'):null),
+            float:!!_sideFloat };
+    if(_sideFloat&&s){ o.floatL=parseInt(s.style.left)||0; o.floatT=parseInt(s.style.top)||0; }
+    return o;
+  }
+  function _bsSave(){
+    if(RUN||DOKU||_bsRestoring)return;
+    clearTimeout(_bsT);
+    _bsT=setTimeout(function(){
+      try{
+        fetch('?api=bset&save=1&key='+encodeURIComponent(TOKEN),
+          {method:'POST',cache:'no-store',headers:{'Content-Type':'application/json'},
+           body:JSON.stringify(_bsCollect())});
+      }catch(_e){}
+    },500);
+  }
+  function _bsApply(s){
+    if(!s||typeof s!=='object')return;
+    _bsRestoring=true;
+    try{
+      if(typeof s.zoom==='number'&&typeof setZoom==='function')setZoom(s.zoom);
+      if(s.tab&&typeof showTab==='function')showTab(s.tab);
+      if(s.float&&!_sideFloat){
+        toggleSideFloat();
+        var sd=$('.side');
+        if(sd){ if(typeof s.floatL==='number')sd.style.left=s.floatL+'px';
+                if(typeof s.floatT==='number')sd.style.top=s.floatT+'px'; }
+      }
+    }catch(_e){}
+    _bsRestoring=false;
+  }
+  function loadBuilderSettings(){
+    if(RUN||DOKU)return;
+    fetch('?api=bset',{cache:'no-store'}).then(function(r){return r.json();})
+      .then(function(s){_bsApply(s);}).catch(function(){});
+  }

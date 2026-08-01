@@ -223,7 +223,7 @@
   $('#search').addEventListener('keydown',function(e){if(e.key==='Enter'){clearTimeout(_srchT);doSearch(this.value);}});
 
   // ---------- Tabs / Toolbar ----------
-  function showTab(t){$$('.tab').forEach(function(x){x.classList.toggle('on',x.dataset.tab===t);});$$('.pane').forEach(function(x){x.classList.toggle('on',x.dataset.pane===t);});}
+  function showTab(t){$$('.tab').forEach(function(x){x.classList.toggle('on',x.dataset.tab===t);});$$('.pane').forEach(function(x){x.classList.toggle('on',x.dataset.pane===t);});if(typeof _bsSave==='function')_bsSave();}
   $$('.tab').forEach(function(x){x.onclick=function(){showTab(x.dataset.tab);};});
   // Farbverwaltung
   var DEFPAL=['#00cdab','#5ab6ff','#39d08a','#f2b441','#f2685a','#e7eef0','#8ba0a6','#1a2428'];
