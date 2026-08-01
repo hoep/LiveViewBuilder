@@ -47,6 +47,7 @@
     var pops=all.filter(_isPopupView).sort(cmp);                             // Popups (P), alphabetisch
     function add(list,badge){list.forEach(function(n){var o=document.createElement('option');o.value=n;o.textContent=badge+' · '+n+(n===store.home?'  · Start':'');if(n===store.current)o.selected=true;s.appendChild(o);});}
     add(pages,'S');add(pops,'P');
+    if(typeof buildPageTree==='function')buildPageTree();
   }
   function reseq(){seq=1;state.widgets.forEach(function(w){var n=parseInt(String(w.id||'w0').replace('w',''))||0;if(n>=seq)seq=n+1;});}
   function switchView(name){if(!store.views[name])return;store.current=name;state=store.views[name];if(!state.page)state.page={w:1440,h:900};if(!state.widgets)state.widgets=[];selId=null;sel={};reseq();refreshViewSel();setCanvas();invalidateSC();_scMode='';document.body.classList.remove('reflow');restoring=true;render();restoring=false;renderProps();resetHist();chromeUI();} // render() macht bereits Kamera/HTML-Init + Sofort-Poll (kein doppeltes Rendern mehr)
@@ -158,13 +159,25 @@
     // Doku-Modus: nichts laden. Der Store entsteht aus der Widget-Registry, damit die
     // Seite ohne gespeicherte Ansicht funktioniert und nie veraltet.
     if(typeof DOKU!=='undefined'&&DOKU){
-      if(typeof dokuSeed==='function')dokuSeed();   // Demo-Werte in _lastVals, bevor gerendert wird
-      store=buildDokuStore();
-      applySkin();GS=bcfg().gs;
-      switchView(store.current);buildSwatches();buildIconLib();buildBlocks();buildSkins();buildSettings();
-      buildLayoutList();syncPalette();decoratePalette();chromeUI();
-      mode='preview';stage.classList.remove('edit');stage.classList.add('preview'); // sofort bedienbar
-      toast('Dokumentation: '+Object.keys(WIDGETS).length+' Widgets auf '+Object.keys(store.views).length+' Seiten');
+      // Die Erklaerungen (DOKU_INFO, ~240 KB) liegen NICHT in builder.html - sonst
+      // spraengte die Seite das 1-MB-Ausgabelimit der Hook-Schicht und ALLE Seiten
+      // stuerben. Sie werden als eigenes Skript nachgeladen, nur hier im Doku-Modus.
+      var _dfin=function(){
+        if(typeof dokuSeed==='function')dokuSeed();
+        if(typeof dokuInstallFetch==='function')dokuInstallFetch();
+        store=buildDokuStore();
+        var _dv=(location.search.match(/[?&]dokuview=([^&]*)/)||[])[1];
+        if(_dv){_dv=decodeURIComponent(_dv).toLowerCase();
+          for(var vn in store.views){if(vn.toLowerCase().indexOf(_dv)>=0){store.current=vn;store.home=vn;break;}}}
+        applySkin();GS=bcfg().gs;
+        switchView(store.current);buildSwatches();buildIconLib();buildBlocks();buildSkins();buildSettings();
+        buildLayoutList();syncPalette();decoratePalette();chromeUI();
+        mode='preview';stage.classList.remove('edit');stage.classList.add('preview');
+        toast('Dokumentation: '+Object.keys(WIDGETS).length+' Widgets auf '+Object.keys(store.views).length+' Seiten');
+      };
+      if(typeof DOKU_INFO!=='undefined'){_dfin();}
+      else{var _ds=document.createElement('script');_ds.src='?api=asset&name=dokudata';
+        _ds.onload=_dfin;_ds.onerror=_dfin;document.head.appendChild(_ds);}
       return;
     }
     fetch('?api=layout'+(_target?('&file='+encodeURIComponent(_target)):''),{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){

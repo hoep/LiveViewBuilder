@@ -11,6 +11,7 @@ function LVB_TreeNode(int $id): array
         'id'       => $id,
         'name'     => $o['ObjectName'],
         'type'     => $o['ObjectType'], // 0 Kat, 1 Instanz, 2 Variable, 3 Skript, 4 Ereignis, 5 Media, 6 Link
+        'pos'      => $o['ObjectPosition'], // Reihenfolge wie in der Symcon-Konsole (Position, dann Name)
         'children' => count($o['ChildrenIDs']) > 0,
     ];
     if ($o['ObjectType'] === 2 && IPS_VariableExists($id)) {

@@ -208,6 +208,26 @@
   // ein Abnehmer. Vorher entschied dort das Vorzeichen - eine positive Verbrauchsleistung
   // wurde damit als Einspeisung gezeichnet, ohne dass das irgendwo ablesbar war.
   function _efDir(t,p){return (t==='pv')?1:(t==='consumer'||t==='other')?-1:((p<0)?-1:1);}
+  // Geschwindigkeit/Richtung des Laufpunkts NICHT mitten in einer Runde aendern - das laesst
+  // die CSS-Animation zurueckspringen und der Fluss wirkt bei zappelnden (z. B. berechneten)
+  // Leistungswerten staendig unterbrochen. Der neue Wert wird gemerkt und erst am Rundenende
+  // uebernommen (animationiteration), wenn der Punkt ohnehin am Start steht - dort ist der
+  // Wechsel unsichtbar. So gilt fuer eine ganze Runde genau eine Geschwindigkeit.
+  // Die Deckkraft (an/aus) darf sofort wechseln, das ist nur ein Ein-/Ausblenden.
+  function _efSetAnim(el,dur,dir,active){
+    if(!el)return;
+    el.style.opacity=active?'':'0';
+    el._efPD=dur+'s'; el._efPDir=dir;
+    if(!el._efHook){
+      el._efHook=true;
+      el.style.animationDuration=el._efPD;      // erste Geschwindigkeit sofort setzen
+      el.style.animationDirection=el._efPDir;
+      el.addEventListener('animationiteration',function(){
+        if(el.style.animationDuration!==el._efPD)el.style.animationDuration=el._efPD;
+        if(el.style.animationDirection!==el._efPDir)el.style.animationDirection=el._efPDir;
+      });
+    }
+  }
   function refreshEnergy(w){
     var el=$('.w[data-id="'+w.id+'"]',canvas);if(!el)return;var els=w.elements||[],homeIn=0;
     // Tempo-Referenz: Summe dessen, was gerade INS Haus fliesst - also alle Lieferanten
@@ -238,8 +258,8 @@
       // Deckel braeuchte 1 % Anteil hundert Umlaufdauern und wirkte wie Stillstand.
       var t100=(w.efDur100!=null&&w.efDur100!==''?+w.efDur100:0.6);
       var dur=(frac>0?Math.min(t100/frac,t100*20):t100*20).toFixed(2);
-      if(flow){flow.style.opacity=active?'':'0';flow.style.animationDuration=dur+'s';flow.style.animationDirection=rev;}
-      if(dot){dot.style.opacity=active?'':'0';dot.style.animationDuration=dur+'s';dot.style.animationDirection=rev;}
+      _efSetAnim(flow,dur,rev,active);
+      _efSetAnim(dot,dur,rev,active);
       if(dir>0)homeIn+=mag;
     });
     var hv=$('[data-role=efval-h]',el);if(hv){var hp=w.homeVid?_efNum(w.homeVid):NaN;hv.textContent=_efFmtW(isNaN(hp)?homeIn:hp);}

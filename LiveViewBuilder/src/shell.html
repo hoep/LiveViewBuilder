@@ -104,8 +104,13 @@
   </div>
   <div class="side">
     <div class="sideresize" id="sideResize" title="Breite ziehen"></div>
+    <div class="sidebargrip" id="sideGrip" title="Panel schweben lassen / verschieben">
+      <span class="sbgdots">⣿</span>
+      <button class="btn" id="sideFloat" title="Schweben / andocken"><svg class="i"><use href="#ic-cube"/></svg></button>
+    </div>
     <div class="tabs">
-      <div class="tab on" data-tab="vars">Variablen</div>
+      <div class="tab on" data-tab="pages">Seiten</div>
+      <div class="tab" data-tab="vars">Variablen</div>
       <div class="tab" data-tab="palette">Palette</div>
       <div class="tab" data-tab="colors">Farben</div>
       <div class="tab" data-tab="icons">Icons</div>
@@ -113,7 +118,10 @@
       <div class="tab" data-tab="settings">Einstellungen</div>
       <div class="tab" data-tab="props">Eigenschaften</div>
     </div>
-    <div class="pane on" data-pane="vars">
+    <div class="pane on" data-pane="pages">
+      <div class="pagetree" id="pageTree"></div>
+    </div>
+    <div class="pane" data-pane="vars">
       <input class="search" id="search" placeholder="Suche: Name · Pfad · ID  (Enter)">
       <div class="tree" id="tree"></div>
     </div>

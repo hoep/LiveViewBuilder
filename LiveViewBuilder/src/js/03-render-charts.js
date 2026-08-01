@@ -362,7 +362,13 @@
     });
   }
 
-  function renderChartData(w){if(w.ctype==='daylight')setDaylight(w);else if(w.ctype==='spark'||w.type==='spark')setSpark(w);else if(w.ctype==='waterfall'||w.type==='waterfall')setWaterfall(w);else if(w.ctype==='pie'||w.ctype==='donut'||w.ctype==='rose')setPie(w);else if(w.type==='chart'&&w.calYear&&String(w.agg)==='3')setCalBar(w);else setLine(w);}
+  // Kalenderjahr-Modus (Jaen-Dez-Monatsbalken) HAENGT ALLEIN am Zeitraum: cal-Flag UND
+  // Einheit Monat. Frueher entschied die Zeichnung nach den Alt-Feldern w.calYear/w.agg,
+  // die Datenabfrage aber nach w.range - kopierte man einen Jahreschart und stellte ihn auf
+  // "7 Tage", zeigte die Achse weiter Monate und es kam nichts an. Jetzt entscheidet beides
+  // ueber dieselbe Funktion.
+  function _chCalMode(w){var r=_chRange(w);return !!r.cal && r.unit==='month';}
+  function renderChartData(w){if(w.ctype==='daylight')setDaylight(w);else if(w.ctype==='spark'||w.type==='spark')setSpark(w);else if(w.ctype==='waterfall'||w.type==='waterfall')setWaterfall(w);else if(w.ctype==='pie'||w.ctype==='donut'||w.ctype==='rose')setPie(w);else if(w.type==='chart'&&_chCalMode(w))setCalBar(w);else setLine(w);}
   function setPie(w){var ec=_ec[w.id];if(!ec)return;var ids=[w.varId,w.varId2,w.varId3].filter(function(x){return x;});
     var data=ids.map(function(id,i){var o=(w.sopt&&w.sopt[i])||{};var lv=_lastVals[id],v=lv?parseFloat(String(lv.v).replace(',','.')):0;if(isNaN(v))v=0;return {name:o.name||(i===0?(w.label||'Serie 1'):'Serie '+(i+1)),value:Math.max(0,v),itemStyle:{color:o.color||autoColorHex(i)}};});
     var donut=(w.ctype==='donut'),rose=(w.ctype==='rose');
@@ -389,7 +395,7 @@
       data:data,markPoint:{silent:true,symbol:'circle',symbolSize:5,itemStyle:{color:acc},label:{show:false},data:data.length?[{coord:data[data.length-1]}]:[]}};
     if(w.fill!==false)ser.areaStyle={color:accA(.16,acc)};
     ec.setOption({backgroundColor:'transparent',animation:!!bcfg().chartAnim,grid:{left:2,right:2,top:6,bottom:4},
-      tooltip:{trigger:'axis',confine:true},
+      tooltip:{trigger:'axis',confine:true,valueFormatter:function(v){return _chNum(w,v);}},
       xAxis:{type:'time',show:false},yAxis:{type:'value',scale:true,show:false},
       series:[ser]},true);
   }
@@ -448,11 +454,19 @@
   function _chUnit(w){var u=(w&&w.chUnit!=null&&w.chUnit!=='')?w.chUnit:((w&&(w.ctype==='waterfall'||w.type==='waterfall'))?_wfUnit(w):'');return u||'';}
   function _chDec(w,v){
     if(w&&w.dec!=null&&w.dec!=='')return Math.max(0,Math.min(6,parseInt(w.dec)));
-    var a=Math.abs(v||0);return (a<10)?2:((a<100)?1:0);      // automatisch: kleine Werte feiner
+    // Automatisch: grosse Zahlen ohne Nachkommastellen, kleine hoechstens eine. Alles
+    // andere ueberladen den Tooltip mit Scheingenauigkeit (1789,2166084... W).
+    var a=Math.abs(v||0);
+    if(a>=100)return 0;
+    if(a>=10)return (a===Math.round(a))?0:1;   // 42 -> 42, 42,3 -> 42,3
+    if(a>=1) return 1;
+    return (a===0)?0:1;                          // 0,2 -> 0,2 ; genau 0 -> 0
   }
   function _chNum(w,v,withUnit){
     if(v==null||isNaN(v))return '–';
-    var s=Number(v).toFixed(_chDec(w,v)).replace('.',',');
+    var neg=v<0, a=Math.abs(Number(v)), s=a.toFixed(_chDec(w,v));
+    var parts=s.split('.'); parts[0]=parts[0].replace(/\B(?=(\d{3})+(?!\d))/g,'.'); // Tausenderpunkt
+    s=(neg?'-':'')+parts.join(',');
     var u=(withUnit===false)?'':_chUnit(w);
     return u?(s+' '+u):s;
   }
@@ -570,12 +584,16 @@
     }
     var ax0=_axShow(w);
     var nL=0,nR=0;yaxes.forEach(function(a){if(a.side==='R')nR++;else nL++;});var iL=0,iR=0;
+    // Tooltip-Zahl: eine Achse -> mit Einheit; mehrere (gemischte Einheiten) -> nur Zahl,
+    // sonst haengte an jeder Reihe dieselbe (falsche) Einheit.
+    var _multiAx=(nL+nR)>1;
+    var _lineFmt=function(v){return _chNum(w,v,!_multiAx);};
     var yA=yaxes.map(function(a,ix){var right=(a.side==='R'),off=right?(iR++*48):(iL++*48);
       return {type:'value',position:(right?'right':'left'),offset:off,name:(a.name||''),nameTextStyle:{color:cssv('--muted'),fontSize:_ecF(w,'axname',9)},nameGap:7,
         scale:(a.min==null||a.min===''),min:(a.min!=null&&a.min!==''?parseFloat(a.min):null),max:(a.max!=null&&a.max!==''?parseFloat(a.max):null),
         axisLine:{show:ax0.line,lineStyle:{color:cssv('--line')}},axisTick:{show:ax0.ticks,lineStyle:{color:cssv('--line')}},axisLabel:_axLabY(w,ax0,a),splitLine:{show:(ax0.yGrid&&ix===0),lineStyle:{color:cssv('--line-soft')}},splitNumber:(w.gridDivs>0?parseInt(w.gridDivs):null)};});
     var lp=w.legend?(w.legPos||'top'):''; // Legende reserviert Platz am jeweiligen Rand (sonst Ueberlappung)
-    var opt={backgroundColor:'transparent',animation:!!bcfg().chartAnim,grid:{left:6+Math.max(0,nL-1)*48+(lp==='left'?60:0),right:8+Math.max(0,nR-1)*48+(lp==='right'?60:0),top:6+_titleSpace(w)+(lp==='top'?20:0),bottom:(w.zoom?34:14)+(lp==='bottom'?18:0),containLabel:true},tooltip:{trigger:'axis'},
+    var opt={backgroundColor:'transparent',animation:!!bcfg().chartAnim,grid:{left:6+Math.max(0,nL-1)*48+(lp==='left'?60:0),right:8+Math.max(0,nR-1)*48+(lp==='right'?60:0),top:6+_titleSpace(w)+(lp==='top'?20:0),bottom:(w.zoom?34:14)+(lp==='bottom'?18:0),containLabel:true},tooltip:{trigger:'axis',valueFormatter:_lineFmt},
       legend:_legendOpt(w,w.legend),
       title:_titleOpt(w),
       xAxis:{type:'time',boundaryGap:anyBar,splitNumber:_axSplitX(w),axisLine:{show:ax0.line,lineStyle:{color:cssv('--line')}},axisTick:{show:ax0.ticks},axisLabel:_axLabX(w,ax0,false),splitLine:{show:ax0.xGrid,lineStyle:{color:cssv('--line-soft')}}},
@@ -776,7 +794,7 @@
     if(w.ctype==='daylight')  {fetchDaylight(w);return;} // eigener Datenweg (Jahresberechnung, keine Historie)
     if(w.ctype==='waterfall'||w.type==='waterfall')return; // Wasserfall liest ausschliesslich Live-Werte (_lastVals)
     var W=_chWindow(w);
-    if(w.type==='chart'&&W.cal&&W.unit==='month'){fetchCalYear(w);return;}
+    if(w.type==='chart'&&_chCalMode(w)){fetchCalYear(w);return;}
     var S=_chSeries(w).filter(function(s){return s&&s.vid;});if(!S.length)return;
     var cols=[cssv('--accent'),cssv('--info'),cssv('--warm')],out=[],cmp=[],done=0;
     var off=(w.cmpOn?OFFS[w.cmpOff||'1d']:0),poff=(w._pOff||0),mTo=W.to,mFrom=W.from,lvl=W.level,aggF=W.aggF;
