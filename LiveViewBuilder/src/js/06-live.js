@@ -17,6 +17,66 @@
   // Speed: Index id -> [{w,root}] statt bei jedem Wert ALLE Widgets zu durchlaufen.
   // Enthält jede von einem Widget referenzierte ID (varId/2/3, visVar, fc.hi/lo/pq, links/src/snk/items/rows.vid) —
   // deckt damit sowohl pollVals-Bindungen als auch die Sub-Element-Slots (data-vid/viddot/vidbar) ab.
+  // ---- Rechenformeln in Variablenfeldern: "=Ausdruck" mit + - * / und Klammern.
+  // Variable = Token mit '#' oder Ganzzahl >= 10000; sonst Konstante. Spiegelbild von
+  // LVB_Formula* in functions.php (PHP) - beide muessen identisch rechnen.
+  function _fIsFormula(s){return typeof s==='string'&&s.charAt(0)==='=';}
+  function _fVarId(t){
+    if(!t)return null;
+    if(t.charAt(0)==='#'){var r=t.slice(1);return /^[0-9]+$/.test(r)?parseInt(r,10):null;}
+    if(/^[0-9]+$/.test(t)&&parseInt(t,10)>=10000)return parseInt(t,10);
+    return null;
+  }
+  function _fParse(expr){ // -> RPN-Array oder null
+    var s=String(expr).replace(/^\s+/,'');if(s.charAt(0)==='=')s=s.slice(1);
+    var n=s.length,i=0,out=[],ops=[],prec={'u-':3,'*':2,'/':2,'+':1,'-':1},prev='';
+    while(i<n){
+      var c=s.charAt(i);
+      if(c===' '||c==='\t'){i++;continue;}
+      if(c==='#'||(c>='0'&&c<='9')||c==='.'){
+        var j=i;if(c==='#')j++;
+        while(j<n&&((s.charAt(j)>='0'&&s.charAt(j)<='9')||s.charAt(j)==='.'))j++;
+        out.push(s.slice(i,j));i=j;prev='num';continue;
+      }
+      if(c==='('){ops.push('(');i++;prev='(';continue;}
+      if(c===')'){while(ops.length&&ops[ops.length-1]!=='(')out.push(ops.pop());if(!ops.length)return null;ops.pop();i++;prev='num';continue;}
+      if(c==='+'||c==='-'||c==='*'||c==='/'){
+        var op=c;
+        if(op==='-'&&(prev===''||prev==='('||prev==='op'))op='u-';
+        if(op!=='u-'){while(ops.length&&ops[ops.length-1]!=='('&&prec[ops[ops.length-1]]>=prec[op])out.push(ops.pop());}
+        ops.push(op);i++;prev='op';continue;
+      }
+      return null;
+    }
+    while(ops.length){var t=ops.pop();if(t==='(')return null;out.push(t);}
+    return out.length?out:null;
+  }
+  function _fIds(expr){var r=_fParse(expr);if(!r)return [];var seen={},ids=[];r.forEach(function(t){var v=_fVarId(t);if(v!==null&&!seen[v]){seen[v]=1;ids.push(v);}});return ids;}
+  function _fEvalNum(expr){ // aktuellen Formelwert aus _lastVals; null falls eine Komponente fehlt
+    var rpn=_fParse(expr);if(!rpn)return null;var st=[];
+    for(var i=0;i<rpn.length;i++){var t=rpn[i];
+      if(t==='u-'){if(!st.length)return null;st.push(-st.pop());continue;}
+      if(t==='+'||t==='-'||t==='*'||t==='/'){if(st.length<2)return null;var b=st.pop(),a=st.pop();st.push(t==='+'?a+b:t==='-'?a-b:t==='*'?a*b:(b===0?0:a/b));continue;}
+      var vid=_fVarId(t);
+      if(vid!==null){var d=_lastVals[vid];if(!d)return null;var num=parseFloat(String(d.v).replace(',','.'));st.push(isNaN(num)?0:num);}
+      else st.push(parseFloat(t));
+    }
+    return st.length===1?st[0]:null;
+  }
+  function _fFmt(v){var a=Math.abs(v),dd=a>=100?0:(a>=10?1:(a>=1?2:3));return v.toFixed(dd).replace('.',',');}
+  // add() so umhuellen, dass ein Formelfeld sowohl den Formel-Token (fuer die Verteilung)
+  // als auch seine Komponenten-IDs (fuer den Poll) liefert.
+  function _emit(add){return function(id){if(_fIsFormula(id)){add(id);_fIds(id).forEach(function(cid){add(cid);});}else add(id);};}
+  // Nach jedem Poll: jeden Formel-Token aus seinen Komponenten neu berechnen und verteilen.
+  function _recalcFormulas(){
+    if(!_vidx)return;
+    for(var key in _vidx){
+      if(!_fIsFormula(key))continue;
+      var v=_fEvalNum(key);if(v===null)continue;
+      var prev=_lastVals[key];
+      if(!prev||String(prev.v)!==String(v))applyVal(key,{v:v,f:_fFmt(v),u:'',c:Math.floor(Date.now()/1000)});
+    }
+  }
   var _vidx=null;
   function _vidxAdd(id,w,root){if(!id)return;(_vidx[id]=_vidx[id]||[]).push({w:w,root:root});}
   function _collectIds(w,add){ // alle Variablen-IDs eines Widgets an add() geben
@@ -27,19 +87,19 @@
     if(w.elements)w.elements.forEach(function(o){if(o){add(o.vid);add(o.speedVid);add(o.socVid);}});
     if(w.tankVid)add(w.tankVid);
   }
-  function _vidxOne(w,root){_collectIds(w,function(id){_vidxAdd(id,w,root);});}
+  function _vidxOne(w,root){_collectIds(w,_emit(function(id){_vidxAdd(id,w,root);}));}
   var _allIds=null;
   function allViewIds(){ // Vereinigung ALLER Variablen-IDs über alle Ansichten -> Poll hält den Cache für jede Seite warm
     if(_allIds)return _allIds;var set={};
-    try{Object.keys(store.views||{}).forEach(function(vn){var v=store.views[vn];((v&&v.widgets)||[]).forEach(function(w){_collectIds(w,function(id){if(id)set[id]=1;});});});}catch(e){}
+    try{Object.keys(store.views||{}).forEach(function(vn){var v=store.views[vn];((v&&v.widgets)||[]).forEach(function(w){_collectIds(w,_emit(function(id){if(id)set[id]=1;}));});});}catch(e){}
     // Leisten-Widgets (store.chrome) gehoeren zu KEINER Ansicht - ohne sie wuerde der Poll
     // ihre Variablen nie abfragen und die Kacheln blieben dauerhaft auf "-".
-    try{if(typeof chromeAllKids==='function')chromeAllKids().forEach(function(w){_collectIds(w,function(id){if(id)set[id]=1;});});}catch(e){}
+    try{if(typeof chromeAllKids==='function')chromeAllKids().forEach(function(w){_collectIds(w,_emit(function(id){if(id)set[id]=1;}));});}catch(e){}
     _allIds=Object.keys(set);return _allIds;
   }
   function invalidateAllIds(){_allIds=null;}
   function applyCached(){ // beim Seitenwechsel: aktuelle Widgets sofort aus dem Cache füllen (kein „–"-Flackern)
-    if(!_vidx)buildVidx();_liveSrc='cache';for(var id in _vidx){var d=_lastVals[id];if(d)applyVal(parseInt(id),d);}
+    if(!_vidx)buildVidx();_liveSrc='cache';for(var id in _vidx){var d=_lastVals[id];if(d)applyVal(_fIsFormula(id)?id:parseInt(id),d);}_recalcFormulas();
   }
   function buildVidx(){
     _vidx={};
@@ -92,11 +152,12 @@
   }
   function pollVals(){
     if(!_vidx)buildVidx();
-    var ids=Object.keys(_vidx); // nur aktuelle Ansicht -> kleine URL; Warm-Cache aller Seiten liefert der WebSocket-Push
-    if(!ids.length)return;
+    var ids=Object.keys(_vidx).filter(function(k){return /^[0-9]+$/.test(k);}); // nur echte IDs pollen (Formel-Token ausgenommen)
+    if(!ids.length){_recalcFormulas();return;}
     fetch('?api=val&ids='+ids.join(',')+'&since='+_pvSince,{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
       if(!j)return;if(j.ts)_pvSince=j.ts;if(!j.values)return;
       _liveSrc='poll';for(var id in j.values){applyVal(parseInt(id),j.values[id]);}
+      _recalcFormulas();
     }).catch(function(){});
   }
   function startPV(ms){stopPV();_pvT=setInterval(pollVals,ms||1200);}
