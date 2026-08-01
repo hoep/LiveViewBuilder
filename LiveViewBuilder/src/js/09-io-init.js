@@ -190,6 +190,7 @@
       if(RUN){try{var _lt=localStorage.getItem('lvtheme');if(_lt)store.theme=_lt;var _ls=localStorage.getItem('lvskin');if(_ls&&allSkins()[_ls])store.skin=_ls;}catch(_){}}
       applySkin();GS=bcfg().gs;if(bcfg().sideW){var _sd=$('.side');if(_sd)_sd.style.width=bcfg().sideW+'px';}
       var _sv=VIEWNAME||lvPage();switchView((_sv&&store.views&&store.views[_sv])?_sv:store.current);buildSwatches();buildIconLib();buildBlocks();buildSkins();buildSettings();buildLayoutList();syncPalette();decoratePalette();chromeUI(); // ?view= auch im Edit-Modus berücksichtigen; syncPalette ergänzt fehlende Registry-Widgets
+      if(!RUN&&!DOKU&&typeof loadBuilderSettings==='function')loadBuilderSettings(); // Zoom/Tab/Schwebemodus aus builder-settings.json
       if(RUN){enterRun();}else{toast('Geladen: '+(_target||'Standard')+' · '+Object.keys(store.views).length+' Ansicht(en)');}
     }).catch(function(err){
       // ACHTUNG: Dieser catch umschliesst die GESAMTE Kette oben - migrateStore, switchView,
