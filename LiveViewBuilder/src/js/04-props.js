@@ -27,14 +27,19 @@
     }finally{_rpBusy=false;}
   }
   function _renderProps(){
+    // Doku-Seite: Erklaerung des Widgets ueber die Einstellungen setzen.
+    var _dkw=(typeof sel!=='undefined')&&sel&&Object.keys(sel).length===1?widget(Object.keys(sel)[0]):null;
+    var _dkh=(typeof dokuDocBlock==='function')?dokuDocBlock(_dkw):'';
     var w=widget(selId),p=$('#props');
-    if(!w){p.innerHTML='<div class="hint">Kein Element ausgewählt.</div>';return;}
+    if(!w){p.innerHTML=(typeof DOKU!=='undefined'&&DOKU)
+      ?'<div class="hint">Auf ein Widget klicken – hier erscheinen seine Erklärung und alle Einstellungen.<br><br>Oben in der Leiste zwischen <b>Bedienen</b> und <b>Bearbeiten</b> umschalten.</div>'
+      :'<div class="hint">Kein Element ausgewählt.</div>';return;}
     try{
     var typeOpts=Object.keys(TYPES).map(function(t){return '<option value="'+t+'">'+TYPES[t]+'</option>';}).join('');
     var lbl2={thermostat:'Ziel-Var',light:'Helligkeit',cover:'Befehls-Var',weather:'Vorhersage (JSON)',weatherpro:'Vorhersage (JSON)',sun:'Untergang',suncard:'Untergang',media:'Zustand',room:'Metrik 2',vacuum:'Batterie',valuecard:'Toggle/Akzent-Var'}[w.type];
     var lbl3={cover:'Status-Text',media:'Lautstärke',room:'Metrik 3',vacuum:'Start/Stop',thermostat:'Modus/Profil-Var',valuecard:'Balken-Var'}[w.type];
     var _inBar=(typeof chromeOwnerOf==='function')?chromeOwnerOf(w.id):null;
-    p.innerHTML=(Object.keys(sel).length>=2?alignSection():'')
+    p.innerHTML=_dkh+(Object.keys(sel).length>=2?alignSection():'')
       +(_inBar?('<div class="prop" style="border-color:var(--accent)"><div style="font-size:11px;color:var(--muted);margin-bottom:5px">Liegt in der Leiste <b>'+esc(_inBar.name||'Leiste')+'</b> — erscheint damit auf allen Seiten.</div>'
         +'<button class="btn" id="pChOut" style="padding:5px 9px">Zurück auf die Seite</button></div>'):'')
       +'<div class="prop">'
@@ -153,6 +158,16 @@
     if($('#fcAdd'))$('#fcAdd').onclick=function(){if(!w.fc)w.fc=[];w.fc.push({d:'',ic:'cloudsun',hi:0,lo:0,pq:0});render();renderProps();};
     $$('[data-le]',p).forEach(function(inp){inp.oninput=inp.onchange=function(){var pr=inp.dataset.le.split('.'),key=pr[0],i=+pr[1],k=pr[2];if(!w[key]||!w[key][i])return;w[key][i][k]=(/vid$/i.test(k))?(parseInt(inp.value)||0):inp.value;render();};});
     $$('[data-ledel]',p).forEach(function(b){b.onclick=function(){var pr=b.dataset.ledel.split('.');w[pr[0]].splice(+pr[1],1);render();renderProps();};});
+    // Eintrag verschieben: mit dem Nachbarn tauschen. Das erhaelt alle Felder der Zeile,
+    // im Gegensatz zu Loeschen-und-neu-Anlegen. Gilt fuer JEDE Liste im Builder.
+    function _leMove(b,attr,d){b.onclick=function(){
+      var pr=b.getAttribute(attr).split('.'),k=pr[0],i=+pr[1],a=w[k];
+      if(!a||i+d<0||i+d>=a.length)return;
+      var t=a[i];a[i]=a[i+d];a[i+d]=t;
+      render();renderProps();commit();
+    };}
+    $$('[data-leup]',p).forEach(function(b){_leMove(b,'data-leup',-1);});
+    $$('[data-ledn]',p).forEach(function(b){_leMove(b,'data-ledn', 1);});
     $$('[data-leadd]',p).forEach(function(b){b.onclick=function(){var key=b.dataset.leadd;if(!w[key])w[key]=[];w[key].push(key==='links'?{from:'',to:'',vid:0}:(key==='steps'?{title:'',vid:0,type:'auf',color:'#00cdab'}:{label:'',vid:0}));render();renderProps();};});
     $$('[data-fpick]',p).forEach(function(b){b.onclick=function(){showTab('vars');toast('Variable im Baum anklicken');_bindField={wid:w.id,path:b.dataset.fpick};};}); // generischer Feld-Pick (Pfad, z. B. fc.0.hi)
     $$('[data-fid]',p).forEach(function(inp){inp.onchange=function(){setPath(w,inp.dataset.fid,parseInt(inp.value)||0);render();renderProps();};});
@@ -223,7 +238,7 @@
   function winCtl(w){var r=w.range||{n:(w.hours>0?w.hours:24),unit:'hour'};return row('Zeitraum','<input id="pWinN" type="number" min="1" style="width:64px" value="'+(r.n||24)+'"> <select id="pWinU">'+_WINU.map(function(u){return '<option value="'+u[0]+'"'+((r.unit||'hour')===u[0]?' selected':'')+'>'+u[1]+'</option>';}).join('')+'</select>');}
   function winWire(w,cb){function set(patch){var r=w.range||{n:(w.hours>0?w.hours:24),unit:'hour'};w.range={n:r.n,unit:r.unit};for(var k in patch)w.range[k]=patch[k];cb();}if($('#pWinN'))$('#pWinN').oninput=function(){set({n:parseInt(this.value)||1});};if($('#pWinU'))$('#pWinU').onchange=function(){set({unit:this.value});};}
   function listEditor(w,key,title,cols){
-    var arr=w[key]||[];var gtc=cols.map(function(){return '1fr';}).join(' ')+' 22px';
+    var arr=w[key]||[];var gtc=cols.map(function(){return '1fr';}).join(' ')+' 20px 20px 22px';
     var rows=arr.map(function(r,i){
       return '<div class="fcrow" style="display:grid;grid-template-columns:'+gtc+';gap:4px;margin-bottom:4px">'
         +cols.map(function(c){if(c.type==='color'){var cv=String(r[c.k]!=null?r[c.k]:'');return '<input type="color" data-le="'+key+'.'+i+'.'+c.k+'" value="'+(/^#[0-9a-fA-F]{6}$/.test(cv)?cv:'#00cdab')+'" title="'+esc(c.ph||'Farbe')+'">';}if(c.type==='select'){
@@ -236,7 +251,11 @@
           var sv=String(r[c.k]!=null?r[c.k]:(c.def||''));return '<select data-le="'+key+'.'+i+'.'+c.k+'">'+(c.options||[]).map(function(o){return '<option value="'+o[0]+'"'+(sv===o[0]?' selected':'')+'>'+esc(o[1])+'</option>';}).join('')+'</select>';}/* skincolor: Auswahl der Skin-Farben statt Freitext - verhindert Tippfehler, die
            still verworfen wuerden, und laesst unbekannte Altwerte als "Eigene" stehen. */
         if(c.type==='skincolor'){return skinSel(String(r[c.k]!=null?r[c.k]:''),'data-le="'+key+'.'+i+'.'+c.k+'"');}return '<input data-le="'+key+'.'+i+'.'+c.k+'" value="'+esc(String(r[c.k]!=null?r[c.k]:''))+'" placeholder="'+c.ph+'">';}).join('')
-        +'<button class="btn" data-ledel="'+key+'.'+i+'" style="padding:2px"><svg class="i"><use href="#ic-minus"/></svg></button></div>';
+        // Reihenfolge aendern: Der erste Eintrag kann nicht hoch, der letzte nicht runter -
+        // die Knoepfe werden dort abgeblendet statt versteckt, damit die Spalten nicht springen.
+        +'<button class="btn" data-leup="'+key+'.'+i+'" title="nach oben" style="padding:2px'+(i===0?';opacity:.28;pointer-events:none':'')+'"><svg class="i"><use href="#ic-chevup"/></svg></button>'
+        +'<button class="btn" data-ledn="'+key+'.'+i+'" title="nach unten" style="padding:2px'+(i===arr.length-1?';opacity:.28;pointer-events:none':'')+'"><svg class="i"><use href="#ic-chevdn"/></svg></button>'
+        +'<button class="btn" data-ledel="'+key+'.'+i+'" style="padding:2px" title="löschen"><svg class="i"><use href="#ic-minus"/></svg></button></div>';
     }).join('');
     return '<div class="prop" style="margin-top:8px"><div style="font-size:11px;color:var(--muted);margin-bottom:5px">'+title+'</div>'+rows+'<button class="btn" data-leadd="'+key+'"><svg class="i"><use href="#ic-plus"/></svg></button></div>';
   }

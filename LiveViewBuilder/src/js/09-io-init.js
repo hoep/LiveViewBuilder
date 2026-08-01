@@ -155,6 +155,18 @@
   };
   $('#runmenu').onclick=function(){$('#runlist').classList.toggle('open');};
   function load(){
+    // Doku-Modus: nichts laden. Der Store entsteht aus der Widget-Registry, damit die
+    // Seite ohne gespeicherte Ansicht funktioniert und nie veraltet.
+    if(typeof DOKU!=='undefined'&&DOKU){
+      if(typeof dokuSeed==='function')dokuSeed();   // Demo-Werte in _lastVals, bevor gerendert wird
+      store=buildDokuStore();
+      applySkin();GS=bcfg().gs;
+      switchView(store.current);buildSwatches();buildIconLib();buildBlocks();buildSkins();buildSettings();
+      buildLayoutList();syncPalette();decoratePalette();chromeUI();
+      mode='preview';stage.classList.remove('edit');stage.classList.add('preview'); // sofort bedienbar
+      toast('Dokumentation: '+Object.keys(WIDGETS).length+' Widgets auf '+Object.keys(store.views).length+' Seiten');
+      return;
+    }
     fetch('?api=layout'+(_target?('&file='+encodeURIComponent(_target)):''),{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
       if(j&&j.views&&Object.keys(j.views).length){store=j;if(!store.current||!store.views[store.current])store.current=Object.keys(store.views)[0];}
       else if(j&&j.widgets){store={views:{'Ansicht 1':j},current:'Ansicht 1'};} // Migration altes Einzel-Format
