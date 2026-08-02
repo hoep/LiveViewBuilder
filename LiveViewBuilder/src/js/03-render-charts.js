@@ -827,12 +827,21 @@
     ensureCmp(w,function(p){
       var el=$('.w[data-id="'+w.id+'"]',canvas);if(!el)return;
       var cur=p?p.cur:null,past=p?p.past:null,ok=(cur!=null&&past!=null);
-      var diff=ok?cur-past:null,pct=(ok&&past!==0)?diff/Math.abs(past)*100:(ok?0:null);
-      var dir=!ok?'flat':(Math.abs(diff)<1e-9?'flat':(diff>0?'up':'dn'));
+      var diff=ok?cur-past:null;
+      // "praktisch null": faengt Zaehler-Rauschen ab (nachts ist der Ertrag heute UND gestern
+      // ~0, z. B. 0,00008 kWh). Eine Prozentrechnung diff/|past| ergaebe dann absurde Werte
+      // wie +117 %. Deshalb: ist die Basis (Vorperiode) verschwindend klein, gibt es nur dann
+      // einen Prozentwert (0 %), wenn auch die Aenderung ~0 ist; sonst wird der Absolutwert
+      // gezeigt (echter Sprung von ~0 auf etwas). Standardvariablen (Temperatur o. Ae.) haben
+      // nie eine Basis < EPS, sind also unberuehrt.
+      var EPS=1e-3, smallBase=ok&&Math.abs(past)<EPS;
+      var pct=!ok?null:(smallBase?(Math.abs(diff)<EPS?0:null):diff/Math.abs(past)*100);
+      var dir=!ok?'flat':(Math.abs(diff)<EPS?'flat':(diff>0?'up':'dn'));
       var tone=(dir==='flat')?'muted':(((dir==='up')!==!!w.cmpInvert)?'ok':'crit');
       var arrow=dir==='up'?'▲':(dir==='dn'?'▼':'→');
       var counter=(p&&p.type===1);
-      var val=!ok?'–':((w.cmpMode==='abs')?fmtDelta(diff,true)+(w.unit?' '+w.unit:''):fmtDelta(pct,true)+' %');
+      var showAbs=(w.cmpMode==='abs')||(pct===null); // Basis ~0 mit echter Aenderung -> Absolutwert statt %
+      var val=!ok?'–':(showAbs?fmtDelta(diff,true)+(w.unit?' '+w.unit:''):fmtDelta(pct,true)+' %');
       var cap='ggü. '+(STAGELBL[cmpStage(w)]||'gestern');
       if(counter&&cur!=null&&w.type==='kpi'){var mv=el.querySelector('[data-role=val]');if(mv)mv.textContent=fmtDelta(cur,false);} // Zähler: Hauptwert = Verbrauch aktuelle Periode
       if(w.type==='kpi'){var s=el.querySelector('[data-role=cmp]');if(s){s.className='hks '+(tone==='ok'?'up':(tone==='crit'?'dn':''));s.textContent=arrow+' '+val+' '+cap;}}
