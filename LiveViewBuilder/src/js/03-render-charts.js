@@ -1,6 +1,8 @@
-  function _wActionKind(w){ // welche Interaktion hat das Widget? -> Hover-Affordance-Klasse
+  function _wActionKind(w,inPopup){ // welche Interaktion hat das Widget? -> Hover-Affordance-Klasse
     var t=w.type, hold=!!(w.longPopup||w.longNav), tap=false;
-    if(w.closePopup||w.popupTo||w.scriptId||w.openMenu||w.navBack||w.navTo||(w.regSlot&&w.regView))tap=true;
+    // closePopup ist NUR in einem Popup sinnvoll (Schliessen-Button). Auf einer normalen Seite
+    // ist es wirkungslos und darf keinen (irrefuehrenden) Hover erzeugen.
+    if((inPopup&&w.closePopup)||w.popupTo||w.scriptId||w.openMenu||w.navBack||w.navTo||(w.regSlot&&w.regView))tap=true;
     else if((t==='tile'||t==='button')&&(w.navTo||w.varId))tap=true;
     else if(t==='switch'||t==='light'||t==='alarm'||t==='select'||t==='dial'||(t==='slider'&&_rMode(w)==='dial'))tap=!!w.varId; // Dial ist jetzt eine Variante von slider (rmode)
     else if(t==='cover')tap=!!(w.varId||w.varId2);
@@ -1146,7 +1148,7 @@
     oc.innerHTML='';
     _popup.widgets.forEach(function(w){
       var dd=document.createElement('div');dd.className='w t-'+w.type+(w.lineMode?' wline':'');dd.dataset.id=w.id;
-      var _ak=_wActionKind(w);if(_ak)dd.classList.add(_ak); // Hover-Affordance auch im Popup
+      var _ak=_wActionKind(w,true);if(_ak)dd.classList.add(_ak); // Hover-Affordance auch im Popup (closePopup zaehlt hier)
       dd.style.left=w.x+'px';dd.style.top=w.y+'px';dd.style.width=w.w+'px';dd.style.height=w.h+'px';
       dd.innerHTML='<div class="winner">'+widgetInner(w)+'</div>';
       if(w.type==='value'&&w.valfs){var vv=$('.v',dd);if(vv)vv.style.fontSize=w.valfs+'px';}
