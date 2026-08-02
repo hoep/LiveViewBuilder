@@ -7300,8 +7300,11 @@ defWidget('meterlist',{
     },
     mount:function(w){fetchMsgs(w);},
     click:function(w,el,e){
-      var sw=e.target.closest('[data-msgsw]'); // Quelle live umschalten
-      if(sw){var cur=_msgSrc(w),nx=(cur==='homematic')?'symcon':'homematic';try{localStorage.setItem('lvmsgsrc_'+w.id,nx);}catch(_){}render();fetchMsgs(w);return true;}
+      var sw=e.target.closest('[data-msgsw]'); // Quelle live umschalten (in-place, KEIN globales render -> kein Flackern)
+      if(sw){var cur=_msgSrc(w),nx=(cur==='homematic')?'symcon':'homematic';try{localStorage.setItem('lvmsgsrc_'+w.id,nx);}catch(_){}
+        var sp=sw.querySelectorAll('span');if(sp[0])sp[0].classList.toggle('on',nx==='symcon');if(sp[1])sp[1].classList.toggle('on',nx==='homematic');
+        var b0=$('[data-role=msgl]',el);if(b0){b0._sig=undefined;b0.innerHTML='<div class="hmsge">…</div>';b0.classList.remove('is-count');}
+        fetchMsgs(w);return true;}
       var ab=e.target.closest('[data-hmack]'); // Homematic-Meldung bestätigen
       if(ab){var addr=ab.getAttribute('data-haddr'),type=ab.getAttribute('data-htype'),box=$('[data-role=msgl]',el);ab.disabled=true;
         fetch('?api=hmack&ip='+encodeURIComponent(w.hmIP||'')+'&addr='+encodeURIComponent(addr)+'&type='+encodeURIComponent(type)+'&key='+encodeURIComponent(TOKEN),{cache:'no-store'})
