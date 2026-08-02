@@ -9,7 +9,7 @@
     else if(t==='vacuum')tap=!!w.varId3;
     else if(t==='campro')tap=!!w.mediaId;
     else if(t==='skinswitch')tap=true;
-    else if(t==='valuecard')tap=!!(w.varId2&&!w.v2acc); // nur mit Toggle klickbar
+    else if(t==='valuecard')tap=!!(w.varId2&&!w.v2acc&&!w.rngOn); // nur mit echtem Toggle klickbar; im Bereichsmodus ist varId2 das Minimum, keine Aktion
     else if(t==='colorpick'){var _cm=w.cmode||'wheel';tap=(_cm==='wheel'||_cm==='cie'||_cm==='button');} // Farbwähler: box/slider sind reine Anzeige bzw. Slider -> kein Ganz-Widget-Hover
     else{var wc=WIDGETS[t];if(wc&&wc.click&&!wc.noHover)tap=true;} // noHover: interne Teil-Klicks (z. B. msglog-Chips) sollen kein Ganz-Widget-Hover erzeugen
     return tap?(hold?'act-both':'act-tap'):(hold?'act-hold':'');
