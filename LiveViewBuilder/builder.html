@@ -565,18 +565,19 @@
      teilen sich die Hoehe (flex:1) und sind selbst Query-Container - dadurch skalieren Icon,
      Name, Untertitel, Wert/Pill und Padding pro Zeile mit der jeweiligen Zeilenhoehe. Bei
      vielen Zeilen greift die Mindesthoehe und die Liste scrollt. */
-  /* Info-Liste skaliert mit der Kachelgroesse: die Liste ist Query-Container, alle Masse
-     (Icon, Name, Untertitel, Wert/Pill, Padding, Abstand) skalieren ueber cqmin der Karte.
-     Zeilen behalten ihre natuerliche Hoehe (kein Strecken); passen nicht alle rein, scrollt
-     die Liste. Groessere Karte -> groessere, aus der Ferne lesbare Eintraege. */
-  .hinfos{display:flex;flex-direction:column;gap:clamp(4px,3cqmin,9px);padding:clamp(6px,4cqmin,10px);height:100%;overflow:auto;box-sizing:border-box;container-type:size}
-  .hinfo{display:flex;align-items:center;gap:clamp(7px,4cqmin,12px);padding:clamp(6px,4cqmin,11px) clamp(9px,4cqmin,13px);background:var(--tile);border:1px solid var(--line);border-radius:var(--r-s);flex:none}
-  .hinfo .hibi{width:clamp(22px,13cqmin,42px);height:clamp(22px,13cqmin,42px);border-radius:clamp(7px,4cqmin,11px);background:var(--surface-2);display:grid;place-items:center;flex:none;color:var(--accent)}
+  /* Info-Liste skaliert mit der Kachelgroesse: die Zeilen TEILEN sich die Listenhoehe
+     (flex:1) und schrumpfen/wachsen damit direkt mit der Karte. Jede Zeile ist ihr eigener
+     Query-Container - Icon, Name, Untertitel, Wert/Pill und Abstand skalieren ueber die
+     jeweilige ZEILENHOEHE (cqh). Mindesthoehe je Zeile fuer Lesbarkeit; passen nicht alle
+     rein, scrollt die Liste. */
+  .hinfos{display:flex;flex-direction:column;gap:clamp(3px,2cqmin,8px);padding:clamp(5px,3cqmin,10px);height:100%;overflow:auto;box-sizing:border-box;container-type:size}
+  .hinfo{display:flex;align-items:center;gap:clamp(6px,6cqh,12px);padding:0 clamp(8px,6cqh,13px);background:var(--tile);border:1px solid var(--line);border-radius:var(--r-s);flex:1 1 0;min-height:28px;overflow:hidden;container-type:size}
+  .hinfo .hibi{width:clamp(20px,52cqh,42px);height:clamp(20px,52cqh,42px);border-radius:clamp(6px,14cqh,11px);background:var(--surface-2);display:grid;place-items:center;flex:none;color:var(--accent)}
   .hinfo .hibi svg{width:48%;height:48%}
-  .hinfo .hin{flex:1;font-size:clamp(11px,7cqmin,22px);min-width:0;line-height:1.2}
-  .hinfo .hin small{display:block;color:var(--faint);font-size:clamp(9px,5cqmin,15px);line-height:1.25}
-  .hinfo .hiv{font-family:var(--fm);font-weight:600;font-size:clamp(11px,7cqmin,22px);font-variant-numeric:tabular-nums;flex:none}
-  .hinfo .hpill{font-size:clamp(9px,5cqmin,14px)}
+  .hinfo .hin{flex:1;font-size:clamp(11px,30cqh,22px);min-width:0;line-height:1.15;overflow:hidden}
+  .hinfo .hin small{display:block;color:var(--faint);font-size:clamp(9px,22cqh,15px);line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .hinfo .hiv{font-family:var(--fm);font-weight:600;font-size:clamp(11px,30cqh,22px);font-variant-numeric:tabular-nums;flex:none}
+  .hinfo .hpill{font-size:clamp(9px,22cqh,14px)}
   /* KPI */
   .hkpi{display:flex;align-items:center;gap:12px;padding:12px;height:100%;box-sizing:border-box;container-type:size}
   .hkpi .hkbi{width:var(--wf-ic);height:var(--wf-ic);border-radius:11px;background:var(--surface-2);display:grid;place-items:center;flex:none;color:var(--wicon,var(--accent))}
