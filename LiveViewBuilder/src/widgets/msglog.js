@@ -11,11 +11,11 @@
     var f={};_SEVS.forEach(function(s){f[s]=_sevDef(w,s)?1:0;});return f;
   }
   // Effektive Quelle: nur wenn eine CCU-IP hinterlegt ist, ist Homematic ueberhaupt moeglich;
-  // im Frontend per Umschalter (localStorage) uebersteuerbar, sonst der Builder-Standard w.src.
+  // im Frontend per Umschalter (localStorage) uebersteuerbar, sonst der Builder-Standard w.msgSrc.
   function _msgSrc(w){
     if(!w.hmIP)return 'symcon';
     try{var o=localStorage.getItem('lvmsgsrc_'+w.id);if(o==='symcon'||o==='homematic')return o;}catch(e){}
-    return (w.src==='homematic')?'homematic':'symcon';
+    return (w.msgSrc==='homematic')?'homematic':'symcon';
   }
   function _chips(w){var f=_msgFilter(w);return _SEVS.map(function(s){return '<span class="hmsgchip'+(f[s]?'':' off')+'" data-sevchip="'+s+'" style="--cc:'+_SEVCLR[s]+'">'+s+'</span>';}).join('');}
   function _srcSwitch(w){ // Live-Umschalter Symcon/Homematic (nur mit CCU-IP)
@@ -70,8 +70,8 @@
     defaults:function(w){w.label='Meldungen';w.max=25;},
     render:function(w){return '<div class="hmsg"><div class="hmsgtop"><span class="hmsgt">'+escL(w.label||'Meldungen')+'</span>'+_srcSwitch(w)+'<span class="hmsgchips">'+_chips(w)+'</span></div><div class="hmsgl'+(w.view==='count'?' is-count':'')+'" data-role="msgl"><div class="hmsge">…</div></div></div>';},
     props:function(w){return '<div class="pgh">Quelle</div>'
-      +row('Typ','<select id="pMsgSrc"><option value="symcon"'+(w.src!=='homematic'?' selected':'')+'>Symcon-Log</option><option value="homematic"'+(w.src==='homematic'?' selected':'')+'>Homematic-CCU</option></select>')
-      +(w.src==='homematic'?(
+      +row('Typ','<select id="pMsgSrc"><option value="symcon"'+(w.msgSrc!=='homematic'?' selected':'')+'>Symcon-Log</option><option value="homematic"'+(w.msgSrc==='homematic'?' selected':'')+'>Homematic-CCU</option></select>')
+      +(w.msgSrc==='homematic'?(
          row('CCU-IP','<input id="pMsgHmIP" value="'+esc(w.hmIP||'')+'" placeholder="z. B. 10.10.20.240">')
         +row('Bestätigen erlauben','<input type="checkbox" id="pMsgHmAck"'+(w.hmAck?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">Haken je Meldung → CCU-Servicemeldung quittieren</span>')
         +'<div style="font-size:11px;color:var(--muted);margin:2px 2px 6px">Liest die Servicemeldungen (BidCos + HmIP) direkt von der CCU. Ist eine IP gesetzt, kann man im Live-Betrieb per Kopf-Umschalter zwischen Symcon und Homematic wechseln.</div>'
@@ -85,7 +85,7 @@
       +row('Max. Einträge','<input id="pMsgN" type="number" min="1" max="200" value="'+(w.max||25)+'">')
       +row('Aktualisierung (Sek.)','<input id="pMsgIv" type="number" min="1" max="600" value="'+(w.refreshSec||'')+'" placeholder="'+(bcfg().refreshSec||15)+' (global)">');},
     wire:function(w){
-      if($('#pMsgSrc'))$('#pMsgSrc').onchange=function(){w.src=(this.value==='homematic')?'homematic':undefined;render();renderProps();fetchMsgs(w);commit();};
+      if($('#pMsgSrc'))$('#pMsgSrc').onchange=function(){w.msgSrc=(this.value==='homematic')?'homematic':undefined;render();renderProps();fetchMsgs(w);commit();};
       if($('#pMsgHmIP'))$('#pMsgHmIP').onchange=function(){w.hmIP=this.value.trim()||undefined;render();fetchMsgs(w);commit();};
       if($('#pMsgHmAck'))$('#pMsgHmAck').onchange=function(){w.hmAck=this.checked?1:undefined;fetchMsgs(w);commit();};
       if($('#pMsgView'))$('#pMsgView').onchange=function(){w.view=(this.value==='count')?'count':undefined;render();fetchMsgs(w);commit();};
