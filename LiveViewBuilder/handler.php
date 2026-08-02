@@ -147,6 +147,49 @@ if ($api === 'bset') {
     return;
 }
 
+// ---- Homematic-CCU Servicemeldungen lesen (nur IP; XML-RPC 2001/2010 + ReGaHss-Namen) ----
+if ($api === 'hmmsg') {
+    header('Content-Type: application/json; charset=utf-8');
+    $ip = (string) ($_GET['ip'] ?? '');
+    if (!LVB_HmPrivateIp($ip)) { echo json_encode(['error' => 'ip', 'messages' => []]); return; }
+    // Typ -> Severity-Chip des bestehenden Widgets (gleiche Farben/Filter)
+    $sevMap = ['ERROR' => 'ERROR', 'FAULT_REPORTING' => 'ERROR', 'SABOTAGE' => 'ERROR',
+        'UNREACH' => 'WARNING', 'STICKY_UNREACH' => 'WARNING', 'LOWBAT' => 'WARNING', 'LOW_BAT' => 'WARNING',
+        'DUTYCYCLE' => 'WARNING', 'DUTY_CYCLE' => 'WARNING', 'CONFIG_PENDING' => 'NOTIFY', 'UPDATE_PENDING' => 'NOTIFY'];
+    $names = LVB_HmNameMap($ip, (string) $DATADIR);
+    $seen = []; $out = [];
+    foreach ([2001 => 'BidCos-RF', 2010 => 'HmIP-RF'] as $port => $iface) {
+        $xml = LVB_HmXmlRpc($ip, $port, 'getServiceMessages');
+        foreach (LVB_HmParseServiceMessages($xml) as $m) {
+            $addr = $m['addr']; $type = $m['type'];
+            if ($addr === '' || $type === '') continue;
+            $val = $m['val'];
+            if ($val === '0' || $val === 'false') continue;   // nur anstehende Meldungen (getServiceMessages liefert ohnehin nur aktive)
+            $key = $addr . '|' . $type; if (isset($seen[$key])) continue; $seen[$key] = 1;
+            $dev  = explode(':', $addr)[0];
+            $name = $names[$dev] ?? $dev;
+            $out[] = ['sev' => ($sevMap[$type] ?? 'NOTIFY'), 'type' => $type, 'addr' => $addr,
+                'iface' => $iface, 'name' => $name, 'm' => $name . '  ·  ' . $type, 't' => ''];
+        }
+    }
+    echo json_encode(['messages' => $out, 'count' => count($out)]);
+    return;
+}
+
+// ---- Homematic-Servicemeldung bestaetigen (token):  ?api=hmack&ip=&addr=&type=&key=TOKEN ----
+if ($api === 'hmack') {
+    header('Content-Type: application/json; charset=utf-8');
+    if (!hash_equals($TOKEN, (string) ($_GET['key'] ?? ''))) { http_response_code(403); echo json_encode(['error' => 'forbidden']); return; }
+    $ip = (string) ($_GET['ip'] ?? '');
+    if (!LVB_HmPrivateIp($ip)) { echo json_encode(['error' => 'ip']); return; }
+    $addr = preg_replace('/[^A-Za-z0-9:_-]/', '', (string) ($_GET['addr'] ?? ''));
+    $type = preg_replace('/[^A-Z_]/', '', (string) ($_GET['type'] ?? ''));
+    if ($addr === '' || $type === '') { echo json_encode(['error' => 'param']); return; }
+    $r = LVB_HmRega($ip, 'var o=dom.GetObject("AL-' . $addr . '.' . $type . '");if(o){o.AlReceipt();WriteLine("ok");}else{WriteLine("no");}');
+    echo json_encode(['ok' => ($r !== null && strpos($r, 'ok') !== false)]);
+    return;
+}
+
 // ---- IPS-Meldungen aus dem Logfile (ohne DEBUG), neueste zuerst ----
 if ($api === 'messages') {
     header('Content-Type: application/json; charset=utf-8');

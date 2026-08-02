@@ -794,9 +794,13 @@
     },
     "msglog": {
       titel: "Meldungen",
-      zweck: "Zeigt die letzten Einträge des IP-Symcon-Logfiles (/var/log/symcon/logfile.log, DEBUG ausgefiltert) mit Zeit, Kategorie, Quelle und Text. Die Kategorien lassen sich im Betrieb per Pille ein- und ausblenden.",
+      zweck: "Zeigt Meldungen aus zwei Quellen: dem IP-Symcon-Logfile (DEBUG ausgefiltert) ODER den Servicemeldungen einer Homematic-CCU (per XML-RPC + ReGaHss, es genügt die CCU-IP). Kategorien per Pille filterbar; Ansicht als Liste oder als Kompakt-Zähler je Severity.",
       funktionen: [
-        {name: "Standard-Filter (Builder)", beschreibung: "Sechs Kästchen ERROR, WARNING, CUSTOM, NOTIFY, MESSAGE, SUCCESS. Nur angehakte Kategorien werden vom Server geholt. Ohne eigene Einstellung sind ERROR, WARNING und CUSTOM aktiv."},
+        {name: "Typ (Quelle)", beschreibung: "Symcon-Log oder Homematic-CCU. Bei Homematic wird die CCU-IP eingetragen; gelesen werden BidCos- und HmIP-Servicemeldungen zusammen, Gerätenamen werden aufgelöst."},
+        {name: "Quelle live umschalten (kein Feld)", beschreibung: "Ist eine CCU-IP hinterlegt, erscheint im Kopf ein kleiner Umschalter Symcon/HM. Ein Tipp wechselt die Quelle im Betrieb (je Gerät gespeichert)."},
+        {name: "Bestätigen erlauben (nur Homematic)", beschreibung: "Blendet je Meldung einen Haken ein, der die Servicemeldung auf der CCU quittiert (ReGaHss AlReceipt). Danach wird die Liste neu geladen."},
+        {name: "Darstellung", beschreibung: "Liste (Zeilen mit Farbpunkt, Kategorie und Text) oder Kompakt: nur die große Anzahl je Severity — skaliert mit der Kachelgröße. Der Severity-Filter gilt für beide Ansichten und beide Quellen."},
+        {name: "Standard-Filter (Builder)", beschreibung: "Sechs Kästchen ERROR, WARNING, CUSTOM, NOTIFY, MESSAGE, SUCCESS. Nur angehakte Kategorien werden geholt/gezählt. Ohne eigene Einstellung sind ERROR, WARNING und CUSTOM aktiv. Homematic-Typen werden gemappt: UNREACH/LOWBAT/CONFIG_PENDING → WARNING/NOTIFY, FAULT_REPORTING/SABOTAGE → ERROR."},
         {name: "Pillen im Betrieb (kein Feld)", beschreibung: "Ein Tipp auf eine farbige Kategorie-Pille im Kopf des Widgets schaltet diese Kategorie um. Der Zustand wird je Gerät im Browser gespeichert (localStorage, Schlüssel lvmsg_<Widget-ID>) und überlagert dort den Builder-Filter."},
         {name: "Neuen folgen", beschreibung: "Kästchen (Vorgabe an): scrollt bei neuen Meldungen ans Ende der Liste — aber nur, wenn man bereits ganz unten steht. Wer nach oben gescrollt hat, wird nicht weggerissen."},
         {name: "Max. Einträge", beschreibung: "Wie viele Meldungen gehalten werden, 1 bis 120 (Vorgabe 25). Der Server durchsucht das Log rückwärts und liefert die letzten Treffer der aktiven Kategorien — zeitunabhängig, aber begrenzt auf die letzten rund 3 MB der Logdatei."},
