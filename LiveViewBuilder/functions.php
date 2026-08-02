@@ -423,3 +423,90 @@ function LVB_FormulaEval(string $expr, array $vals) // vals: id -> float ; -> fl
     return count($st) === 1 ? $st[0] : null;
 }
 
+// ===== Homematic-CCU: Servicemeldungen lesen/bestaetigen (nur IP noetig) ==============
+// Liste via XML-RPC getServiceMessages (BidCos 2001 + HmIP 2010), Geraetenamen via ReGaHss
+// (8181, ID_DEVICES), Bestaetigen via ReGaHss AL-<Adresse>.<Typ> -> AlReceipt(). Kein Passwort
+// noetig im LAN. IP wird auf private Netze beschraenkt (SSRF-Schutz).
+
+function LVB_HmPrivateIp($ip): bool
+{
+    if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4) === false) return false;
+    // Oeffentliche/Sonder-Adressen ablehnen: nur private LAN-Ziele erlaubt.
+    return filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4 | FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) === false;
+}
+
+function LVB_HmXmlRpc(string $ip, int $port, string $method, int $timeout = 6)
+{
+    $body = '<?xml version="1.0"?><methodCall><methodName>' . $method . '</methodName><params></params></methodCall>';
+    $ch = curl_init("http://$ip:$port/");
+    curl_setopt_array($ch, [CURLOPT_POST => true, CURLOPT_POSTFIELDS => $body, CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT => $timeout, CURLOPT_CONNECTTIMEOUT => 4, CURLOPT_HTTPHEADER => ['Content-Type: text/xml']]);
+    $r = curl_exec($ch); $code = curl_getinfo($ch, CURLINFO_HTTP_CODE); curl_close($ch);
+    return ($code == 200) ? $r : null;
+}
+
+function LVB_HmRega(string $ip, string $script, int $timeout = 8)
+{
+    $ch = curl_init("http://$ip:8181/tclrega.exe");
+    curl_setopt_array($ch, [CURLOPT_POST => true, CURLOPT_POSTFIELDS => $script, CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT => $timeout, CURLOPT_CONNECTTIMEOUT => 4]);
+    $r = curl_exec($ch); $code = curl_getinfo($ch, CURLINFO_HTTP_CODE); curl_close($ch);
+    if ($code != 200 || $r === false) return null;
+    $p = strpos($r, '<xml>');                     // ReGaHss haengt <xml>...</xml> an die Ausgabe an
+    if ($p !== false) $r = substr($r, 0, $p);
+    return $r;
+}
+
+function LVB_HmUtf8($s): string
+{
+    // ReGaHss liefert je nach Firmware ISO-8859-1 oder UTF-8; sauber nach UTF-8 vereinheitlichen.
+    return (mb_detect_encoding($s, 'UTF-8', true) === 'UTF-8') ? $s : mb_convert_encoding($s, 'UTF-8', 'ISO-8859-1');
+}
+
+function LVB_HmParseServiceMessages($xml): array
+{
+    $out = [];
+    if (!$xml) return $out;
+    $prev = libxml_use_internal_errors(true);
+    $sx = simplexml_load_string($xml);
+    libxml_use_internal_errors($prev);
+    if (!$sx) return $out;
+    $items = $sx->xpath('//params/param/value/array/data/value'); // aeussere Array-Eintraege = je eine Meldung
+    if (!$items) return $out;
+    foreach ($items as $it) {
+        $vals = $it->xpath('./array/data/value');                 // Tripel [Adresse, Typ, Wert]
+        if (!$vals || count($vals) < 2) continue;
+        // Der Wert steht getypt als <value><boolean>1</boolean></value> - der direkte Text ist
+        // dann leer, die "1" steckt im Kindknoten. Also erst direkten Text, sonst Kind lesen.
+        $v = '1';
+        if (isset($vals[2])) {
+            $v = trim((string) $vals[2]);
+            if ($v === '') { foreach ($vals[2]->children() as $c) { $v = trim((string) $c); break; } }
+        }
+        $out[] = ['addr' => trim((string) $vals[0]), 'type' => trim((string) $vals[1]), 'val' => $v];
+    }
+    return $out;
+}
+
+function LVB_HmNameMap(string $ip, string $dir): array
+{
+    // Adresse(Geraet) -> Name; 10 min gecacht je CCU (aendert sich selten, 145 Geraete).
+    $cf = rtrim($dir, '/') . '/hm-names-' . md5($ip) . '.json';
+    if (is_file($cf) && (time() - filemtime($cf) < 600)) {
+        $c = json_decode((string) @file_get_contents($cf), true);
+        if (is_array($c) && $c) return $c;
+    }
+    $r = LVB_HmRega($ip, 'string s;object d;foreach(s,dom.GetObject(ID_DEVICES).EnumUsedIDs()){d=dom.GetObject(s);WriteLine(d.Address()#"\t"#d.Name());}');
+    $map = [];
+    if ($r !== null) {
+        foreach (preg_split('/\r?\n/', $r) as $ln) {
+            if (strpos($ln, "\t") === false) continue;
+            [$a, $n] = explode("\t", $ln, 2);
+            $a = trim($a); $n = trim($n);
+            if ($a !== '') $map[$a] = LVB_HmUtf8($n);
+        }
+    }
+    if ($map) @file_put_contents($cf, json_encode($map, JSON_UNESCAPED_UNICODE));
+    return $map;
+}
+
