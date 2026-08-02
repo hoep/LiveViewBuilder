@@ -620,11 +620,11 @@
 
   /* ===== Wertkarte (valuecard) — generische Karte aus KPI/Bar/Pill/Toggle-Bausteinen ===== */
   /* Bereichsleiste: Minimum links, Maximum rechts, der Ist-Wert als Marke dazwischen. */
-  .hvcrng{display:flex;align-items:center;gap:8px;margin-top:2px}
+  .hvcrng{display:flex;align-items:center;gap:clamp(5px,4cqmin,10px);margin-top:2px}
   .hvcrng .rmin,.hvcrng .rmax{font-size:var(--wf-lbl);color:var(--faint);font-family:var(--fm);white-space:nowrap;flex:none}
-  .hvcrng .rtrack{position:relative;flex:1;height:6px;border-radius:3px;
+  .hvcrng .rtrack{position:relative;flex:1;height:clamp(4px,5cqh,9px);border-radius:999px;
     background:linear-gradient(90deg,var(--info) 0%,var(--ok) 45%,var(--warn) 75%,var(--crit) 100%);opacity:.85}
-  .hvcrng .rdot{position:absolute;top:50%;width:12px;height:12px;border-radius:50%;
+  .hvcrng .rdot{position:absolute;top:50%;width:clamp(8px,9cqmin,15px);height:clamp(8px,9cqmin,15px);border-radius:50%;
     background:var(--text);border:2px solid var(--surface);transform:translate(-50%,-50%);box-shadow:0 0 0 1px var(--line)}
   /* Doku-Seite: Erklaerungsblock ueber den Einstellungen */
   .dkdoc{border:1px solid var(--line);border-radius:var(--r-s);background:var(--surface-2);padding:10px 12px;margin-bottom:10px}
@@ -644,8 +644,12 @@
   .hdd .ddc{fill:var(--text);font-size:26px;font-weight:700;text-anchor:middle}
   .hdd .ddcs{fill:var(--muted);font-size:15px;text-anchor:middle}
   .hdd .ddtl,.hdd .ddbl{font-size:19px;font-weight:700;text-anchor:middle}
-  .hvcard{display:flex;flex-direction:column;height:100%;box-sizing:border-box;padding:12px 14px;gap:5px}
-  .hvctop{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:26px}
+  /* container-type:size macht die Karte selbst zum Query-Container - erst dadurch loesen die
+     cqh/cqmin-Einheiten in --wf-* gegen die KARTENGROESSE auf (statt gegen den Viewport, was
+     sonst immer den Maximalwert lieferte). So skalieren Wert, Titel, Label, Icon und Balken
+     mit der Kachelgroesse. Padding/Gap skalieren mit, damit auf kleinen Karten Platz bleibt. */
+  .hvcard{display:flex;flex-direction:column;height:100%;box-sizing:border-box;padding:clamp(7px,6cqmin,14px) clamp(9px,7cqmin,16px);gap:clamp(2px,2cqh,6px);container-type:size}
+  .hvctop{display:flex;align-items:center;justify-content:space-between;gap:clamp(5px,4cqmin,10px);min-height:clamp(14px,18cqh,26px)}
   .hvctl{display:flex;align-items:center;gap:10px;min-width:0}
   .hvcard .hkbi{width:var(--wf-ic);height:var(--wf-ic);border-radius:9px;background:var(--surface-2);display:grid;place-items:center;flex:none;color:var(--wicon,var(--accent))}
   .hvcard .hkbi svg{width:48%;height:48%}
