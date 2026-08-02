@@ -1150,6 +1150,7 @@
         <div class="pgh">Diagramme</div>
         <div class="pitem" data-add="chart" title="Varianten inkl. Sparkline und Wasserfall (in den Eigenschaften)">Chart</div>
         <div class="pitem" data-add="sankey">Sankey</div>
+        <div class="pitem" data-add="doubledonut" title="Zwei gespiegelte Halb-Donuts in einem Kreis">Doppel-Donut</div>
         <div class="pitem" data-add="statetl">Zustands-Timeline</div>
         <div class="pitem" data-add="statelog">Zustands-Verlauf</div>
         <div class="pitem" data-add="flow">Fluss</div>
@@ -1390,6 +1391,7 @@
     phone:['Diverse','<path d="M5 4h4l2 5l-2.5 1.5a11 11 0 0 0 5 5l1.5 -2.5l5 2v4a2 2 0 0 1 -2 2a16 16 0 0 1 -15 -15a2 2 0 0 1 2 -2" />'],
     wblank:['Widget','<path d="M9 12h6" /> <path d="M12 9v6" /> <path d="M3 5a2 2 0 0 1 2 -2h14a2 2 0 0 1 2 2v14a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-14" />'],
     wchart:['Widget','<path d="M4 19l16 0" /> <path d="M4 15l4 -6l4 2l4 -5l4 4" />'],
+    wdonut:['Widget','<path d="M4 12a8 8 0 0 1 16 0" /> <path d="M4 12a8 8 0 0 0 16 0" />'],
     wbars:['Widget','<path d="M3 13a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v6a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1l0 -6" /> <path d="M15 9a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v10a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1l0 -10" /> <path d="M9 5a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v14a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1l0 -14" /> <path d="M4 20h14" />'],
     wlist:['Widget','<path d="M9 6l11 0" /> <path d="M9 12l11 0" /> <path d="M9 18l11 0" /> <path d="M5 6l0 .01" /> <path d="M5 12l0 .01" /> <path d="M5 18l0 .01" />'],
     wgrid:['Widget','<path d="M4 5a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1l0 -4" /> <path d="M14 5a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1l0 -4" /> <path d="M4 15a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1l0 -4" /> <path d="M14 15a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1l0 -4" />'],
@@ -2991,7 +2993,7 @@
       +row('Name','<input id="pName" value="'+esc(w.name||'')+'" placeholder="eindeutige Kennung (intern)">')
       +((w.type==='camera'||w.type==='image')?row('Media-ID','<input id="pMedia" value="'+(w.mediaId||'')+'" placeholder="Media-ID">')
           :(w.type==='line'||w.type==='shape')?row('Farbe','<input id="pColor" type="color" value="'+(w.color||'#00cdab')+'">')
-          :(['text','calendar','clock','component','eventctl','objinfo','infolist','meterlist','statuslist','statusgrid','devlist','chart','skinswitch','windrose','rangeslider','raincard','circlerange','cie'].indexOf(w.type)<0&&!(w.type==='html'&&w.htmlSrc==='custom')&&!(w.type==='colorpick'&&(w.cmode||'wheel')==='cie')?row('Variable','<input id="pVar" value="'+esc(String(w.varId||''))+'" placeholder="ID oder =Formel"> <button class="btn" id="pPick" style="padding:6px 8px">wählen</button><div style="font-size:11px;color:var(--muted);margin:4px 2px 0">Formel möglich: <b>=45552+49633</b>, <b>=(#20726+#40754)/2</b> — Aggregat &amp; Live werden aus den Einzelvariablen berechnet.</div>'):''))
+          :(['text','calendar','clock','component','eventctl','objinfo','infolist','meterlist','statuslist','statusgrid','devlist','chart','skinswitch','windrose','rangeslider','raincard','circlerange','cie'].indexOf(w.type)<0&&!(w.type==='html'&&w.htmlSrc==='custom')&&!(w.type==='colorpick'&&(w.cmode||'wheel')==='cie')?row('Variable','<input id="pVar" value="'+esc(String(w.varId||''))+'" placeholder="ID oder =Formel"> <button class="btn" id="pPick" style="padding:6px 8px">wählen</button>')+'<div style="font-size:11px;color:var(--muted);line-height:1.4;margin:2px 4px 7px">Formel möglich: <b>=45552+49633</b>, <b>=(#20726+#40754)/2</b> — Aggregat &amp; Live aus den Einzelvariablen.</div>':''))
       +((w.type==='kpi'||w.type==='delta')?('<div class="pgh">Vergleich (Zeitversatz)</div>'
         +row('Aktiv','<input type="checkbox" id="pCmpOn"'+(w.cmpOn?' checked':'')+'>')
         +(w.cmpOn?(row('Aggregationsstufe',stageSel('pCmpStage',cmpStage(w)))+row('Zählervariable','<input type="checkbox" id="pCmpCnt"'+(w.cmpCounter?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">Verbrauch je Periode</span>')+(!w.cmpCounter?row('Periodenmittel','<input type="checkbox" id="pCmpAvg"'+(w.cmpAvg?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">Mittel über die Periode statt Punktwert</span>'):'')+row('Anzeige','<select id="pCmpMode"><option value="pct"'+((w.cmpMode||'pct')==='pct'?' selected':'')+'>Prozent</option><option value="abs"'+(w.cmpMode==='abs'?' selected':'')+'>Absolut</option></select>')+row('Veränderung invertieren','<input type="checkbox" id="pCmpInv"'+(w.cmpInvert?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">Rückgang = gut (z. B. Verbrauch) — nur Farbe dreht, Pfeil bleibt</span>')):'')
@@ -6365,7 +6367,7 @@ defWidget('devlist',{
     var c1=$('[data-role=ddcv]',el);if(c1)c1.textContent=(w.varId3?_ddTxt(w.varId3):'');
   }
   defWidget('doubledonut',{
-    label:'Doppel-Donut', paletteIcon:'wgauge', size:[220,200],
+    label:'Doppel-Donut', paletteIcon:'wdonut', size:[220,200],
     defaults:function(w){w.topMin=0;w.topMax=100;w.botMin=0;w.botMax=100;w.ddTop='ok';w.ddBot='info';w.ddW=22;},
     render:function(w){
       var C=_DD_C,R=_DD_R,tc=_ddCol(w.ddTop,'var(--ok)'),bc=_ddCol(w.ddBot,'var(--info)');
@@ -6388,9 +6390,12 @@ defWidget('devlist',{
       var g=(cap==='butt')?0:5;
       var top=_ddArc(C,C,R,180+g,360-g,1), bot=_ddArc(C,C,R,180-g,0+g,0);
       var trk='var(--surface-2)';
-      function p(d,role,col){return '<path d="'+d+'"'+(role?' data-role="'+role+'"':'')+' fill="none" stroke="'+col+'" stroke-width="'+SW+'" stroke-linecap="'+cap+'"/>';}
+      function p(d,role,col,lc){return '<path d="'+d+'"'+(role?' data-role="'+role+'"':'')+' fill="none" stroke="'+col+'" stroke-width="'+SW+'" stroke-linecap="'+(lc||cap)+'"/>';}
+      // Der Track bekommt IMMER gerade Enden. Mit runden Kappen entstuenden an den Bogenenden
+      // (v. a. oben bei 3 Uhr) dunkle, wertunabhaengige Halbkreise, die wie ein schwarzer
+      // Punkt neben dem Donut wirken. Die farbige Fuellung behaelt ihre eingestellte Rundung.
       return '<div class="hdd"><svg viewBox="0 0 240 240" preserveAspectRatio="xMidYMid meet"'+(gsty?(' style="'+gsty+'"'):'')+'>'
-        +p(top,'',trk)+p(bot,'',trk)+p(top,'ddtf',tc)+p(bot,'ddbf',bc)
+        +p(top,'',trk,'butt')+p(bot,'',trk,'butt')+p(top,'ddtf',tc)+p(bot,'ddbf',bc)
         +'<text class="ddc" data-role="ddcv" x="120" y="'+cY+'" style="font-size:'+fsC+'px"></text>'
         +(w.sub?'<text class="ddcs" x="120" y="'+(cY+fsS+9)+'" style="font-size:'+fsS+'px">'+escL(w.sub)+'</text>':'')
         +'<text class="ddtl" data-role="ddtl" x="120" y="'+tY+'" style="fill:'+tc+';font-size:'+fsV+'px"></text>'

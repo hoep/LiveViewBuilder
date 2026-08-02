@@ -36,7 +36,7 @@
     var c1=$('[data-role=ddcv]',el);if(c1)c1.textContent=(w.varId3?_ddTxt(w.varId3):'');
   }
   defWidget('doubledonut',{
-    label:'Doppel-Donut', paletteIcon:'wgauge', size:[220,200],
+    label:'Doppel-Donut', paletteIcon:'wdonut', size:[220,200],
     defaults:function(w){w.topMin=0;w.topMax=100;w.botMin=0;w.botMax=100;w.ddTop='ok';w.ddBot='info';w.ddW=22;},
     render:function(w){
       var C=_DD_C,R=_DD_R,tc=_ddCol(w.ddTop,'var(--ok)'),bc=_ddCol(w.ddBot,'var(--info)');
@@ -59,9 +59,12 @@
       var g=(cap==='butt')?0:5;
       var top=_ddArc(C,C,R,180+g,360-g,1), bot=_ddArc(C,C,R,180-g,0+g,0);
       var trk='var(--surface-2)';
-      function p(d,role,col){return '<path d="'+d+'"'+(role?' data-role="'+role+'"':'')+' fill="none" stroke="'+col+'" stroke-width="'+SW+'" stroke-linecap="'+cap+'"/>';}
+      function p(d,role,col,lc){return '<path d="'+d+'"'+(role?' data-role="'+role+'"':'')+' fill="none" stroke="'+col+'" stroke-width="'+SW+'" stroke-linecap="'+(lc||cap)+'"/>';}
+      // Der Track bekommt IMMER gerade Enden. Mit runden Kappen entstuenden an den Bogenenden
+      // (v. a. oben bei 3 Uhr) dunkle, wertunabhaengige Halbkreise, die wie ein schwarzer
+      // Punkt neben dem Donut wirken. Die farbige Fuellung behaelt ihre eingestellte Rundung.
       return '<div class="hdd"><svg viewBox="0 0 240 240" preserveAspectRatio="xMidYMid meet"'+(gsty?(' style="'+gsty+'"'):'')+'>'
-        +p(top,'',trk)+p(bot,'',trk)+p(top,'ddtf',tc)+p(bot,'ddbf',bc)
+        +p(top,'',trk,'butt')+p(bot,'',trk,'butt')+p(top,'ddtf',tc)+p(bot,'ddbf',bc)
         +'<text class="ddc" data-role="ddcv" x="120" y="'+cY+'" style="font-size:'+fsC+'px"></text>'
         +(w.sub?'<text class="ddcs" x="120" y="'+(cY+fsS+9)+'" style="font-size:'+fsS+'px">'+escL(w.sub)+'</text>':'')
         +'<text class="ddtl" data-role="ddtl" x="120" y="'+tY+'" style="fill:'+tc+';font-size:'+fsV+'px"></text>'
