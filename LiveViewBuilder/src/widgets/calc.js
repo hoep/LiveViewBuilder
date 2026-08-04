@@ -24,6 +24,6 @@
       else if(m==='diff')r=vals[0]-vals.slice(1).reduce(function(a,b){return a+b;},0);
       else if(m==='count')r=vals.filter(function(x){return x>0;}).length;
       var dec=(w.dec!=null?w.dec:1),v=$('[data-role=val]',el);
-      if(v)v.textContent=(isNaN(r)?'–':r.toFixed(m==='count'?0:dec).replace('.',','))+(w.unit?' '+w.unit:'');
+      if(v){if(isNaN(r))v.textContent=(w.nullText||'–');else{var _r=(w.scale!=null&&w.scale!==''&&+w.scale!==1)?r*(+w.scale):r;v.textContent=_fmtNum(_r,{dec:(m==='count'?0:dec),thousand:w.thousand,numAbbrev:w.numAbbrev})+(w.unit?' '+w.unit:'');}}
     }
   });

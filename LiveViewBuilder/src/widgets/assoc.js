@@ -18,7 +18,7 @@
     var dfNum=dfTxt!==''&&/^[+\-]?[\d.,\s]+$/.test(dfTxt);
     var stTxt=(m&&m.text!=null&&m.text!=='')?m.text:((a&&a.name!=null&&a.name!=='')?a.name:(dfTxt||(d?String(d.v):'–')));
     var value,pillTxt;
-    if(dfNum){var _an=parseFloat(dfTxt.replace(/\s/g,'').replace(',','.'));value=(w.dec!=null&&!isNaN(_an))?_an.toFixed(w.dec).replace('.',','):dfTxt;if(w.unit)value+=' '+w.unit;pillTxt=(m&&m.text)||(a&&a.name)||'';}
+    if(dfNum){var _an=parseFloat(dfTxt.replace(/\s/g,'').replace(',','.'));value=(w.dec!=null&&!isNaN(_an))?_fmtNum((w.scale!=null&&w.scale!==''&&+w.scale!==1)?_an*(+w.scale):_an,{dec:w.dec,thousand:w.thousand,numAbbrev:w.numAbbrev}):dfTxt;if(w.unit)value+=' '+w.unit;pillTxt=(m&&m.text)||(a&&a.name)||'';}
     else if(asPill){value='';pillTxt=stTxt;}
     else{value=stTxt;pillTxt='';}
     var nav=!!(w.popupTo||w.navTo);
