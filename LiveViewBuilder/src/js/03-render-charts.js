@@ -11,7 +11,7 @@
     else if(t==='cover')tog=!!(w.varId||w.varId2);
     else if(t==='thermostat')tog=!!(w.varId2||w.varId3);
     else if(t==='media')tog=!!w.varId2;
-    else if(t==='vacuum')tog=!!w.varId3;
+    else if(t==='bot')tog=!!w.varId3;
     else if(t==='skinswitch')tog=true;
     else if(t==='valuecard')tog=(w.vcMode==='select'?!!w.varId:!!(w.varId2&&!w.v2acc&&!w.rngOn)); // Auswahl-Modus oder echter Toggle; im Bereichsmodus ist varId2 das Minimum, keine Aktion
     else if(t==='colorpick'){var _cm=w.cmode||'wheel';tog=(_cm==='wheel'||_cm==='cie'||_cm==='button');} // Farbwähler: box/slider sind reine Anzeige bzw. Slider -> kein Ganz-Widget-Hover
@@ -41,7 +41,7 @@
     sun:{val:'[data-role=val]',ico:null}, objinfo:{val:'[data-role=oival]',ico:null},
     alarm:{val:'[data-role=val]',ico:null}, clock:{val:'.hctime',ico:null},
     timer:{val:'.httime',ico:null}, tempbar:{val:'.htval',ico:null},
-    vacuum:{val:'.hvst',ico:null}, thermostat:{val:'.htc-ist',ico:null},
+    bot:{val:'.hvst',ico:null}, thermostat:{val:'.htc-ist',ico:null},
     slider:{val:'[data-role=val]',ico:null}, cover:{val:'[data-role=val]',ico:null}
   };
   // position:relative + left/top statt transform: wirkt auch auf inline-Elemente (z. B. der Wert-<span>),
@@ -105,7 +105,7 @@
       _applyPosOffsets(w,d); // Wert/Icon frei positionieren (valDX/valDY, icoDX/icoDY)
       if(w.bg&&!w.bgT)d.style.background=w.bg;if(w.fg){var _rf=_readableFg(w.fg,(w.bgT?null:w.bg));if(_rf)d.style.color=_rf;}
       if(w.iconColor)d.style.setProperty('--wicon',_skinColor(w.iconColor)||w.iconColor); // zentrale Icon-Farbe
-      if(_hasIconGfx(w)){var _ie=d.querySelector('.iconwrap,.wvic,.swic,.htbadge,.htico,.hbicon,.hl2ic,.hchipic,.hricon,.hkbi,.hassoc-chip,[data-role=badge]');if(_ie)_applyIconGfx(w,_ie);} // universelle Icon-/Grafik-Gestaltung (opt-in)
+      if(_hasIconGfx(w)){var _ie=d.querySelector('.iconwrap,.wvic,.swic,.htbadge,.htico,.hbicon,.hl2ic,.hchipic,.hricon,.hkbi,.hassoc-chip,.hvicon,[data-role=badge]');if(_ie)_applyIconGfx(w,_ie);} // universelle Icon-/Grafik-Gestaltung (opt-in)
       if(w.textTransform)d.style.textTransform=w.textTransform; // universelle Groß-/Kleinschreibung (opt-in)
       if(w.ff){d.style.setProperty('--w-ff',w.ff);d.classList.add('tw-ff');}if(w.fwt){d.style.setProperty('--w-fwt',w.fwt);d.classList.add('tw-fwt');}if(w.fsty){d.style.setProperty('--w-fsty',w.fsty);d.classList.add('tw-fsty');}if(w.fsz){d.style.setProperty('--w-fsz',w.fsz+'px');d.classList.add('tw-fsz');} // Typografie: auf innere Elemente erzwingen
       return d;
