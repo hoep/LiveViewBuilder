@@ -21,7 +21,7 @@
   // Grundregel: NUR generisch konsumierte bzw. neue, per Default inerte Felder - dupliziert kein bestehendes props()-Feld.
   // Typen, deren Wert durch die zentrale Format-Pipeline (applyVal-txt bzw. compute*) laeuft.
   // Wird wellenweise erweitert, sobald ein Widget die Universal-Keys nachweislich konsumiert.
-  var UNIV_VALUE_TYPES=['value','kpi','bar','tempbar','chip','room','cval','sval','valuecard','calc','assoc'];
+  var UNIV_VALUE_TYPES=['value','kpi','bar','tempbar','chip','room','cval','sval','valuecard','calc','assoc','gauge','gaugepro'];
   function _uRefresh(w){render();if(w.type==='cval'&&typeof computeCounterVal==='function')computeCounterVal(w);else if(w.type==='sval'&&typeof computeAggVal==='function')computeAggVal(w);else if(w.varId&&_lastVals[w.varId])applyVal(w.varId,_lastVals[w.varId]);commit();}
   var UNIV_PRESUF_TYPES=['value','kpi','cval','sval','bar','tempbar','chip','valuecard'];
   var UNIV_ICON_TYPES=['icon','value','switch','tile','button','light','chip','room','kpi','assoc','valuecard'];
