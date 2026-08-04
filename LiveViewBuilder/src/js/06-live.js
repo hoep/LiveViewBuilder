@@ -162,8 +162,15 @@
     var dec=e.getAttribute('data-dec'),sc=e.getAttribute('data-scale'),un=e.getAttribute('data-unit'),pre=e.getAttribute('data-pre'),suf=e.getAttribute('data-suf'),nt=e.getAttribute('data-nulltext');
     if(dec==null&&sc==null&&un==null&&pre==null&&suf==null&&nt==null)return base; // keine Attribute -> unveraendert
     if(d.v==null||String(d.v).trim()==='')return (nt!=null&&nt!=='')?nt:base;
-    var out=base,n=parseFloat(String(d.v).replace(',','.'));
-    if(!isNaN(n)&&(dec!=null||sc!=null)){if(sc!=null&&sc!==''&&+sc!==1)n=n*(+sc);out=_fmtNum(n,{dec:(dec!=null&&dec!=='')?parseInt(dec):null});}
+    var out,n=parseFloat(String(d.v).replace(',','.'));
+    if(!isNaN(n)&&(dec!=null||sc!=null)){                       // numerisches Reformat aus dem Rohwert
+      if(sc!=null&&sc!==''&&+sc!==1)n=n*(+sc);
+      out=_fmtNum(n,{dec:(dec!=null&&dec!=='')?parseInt(dec):null});
+      if(!un&&d.u!=null&&String(d.u).trim()!=='')out=out+' '+String(d.u).trim(); // keine eigene Einheit -> Profil-Einheit behalten
+    }else if(un){                                               // nur eigene Einheit: Profil-Einheit aus base strippen (sonst doppelt)
+      var pu=(d.u!=null)?String(d.u):'',bs=String(base);
+      out=(pu!==''&&bs.length>=pu.length&&bs.slice(-pu.length)===pu)?bs.slice(0,-pu.length).replace(/\s+$/,''):bs;
+    }else out=base;
     if(un)out=out+' '+un;
     return (pre||'')+out+(suf||'');
   }
