@@ -1,4 +1,11 @@
-  :root{--bg:#0d1315;--surface:#141c1f;--surface-2:#1a2428;--tile:#131b1e;--line:#25333a;--line-soft:#1b262b;--text:#e7eef0;--muted:#8ba0a6;--faint:#63757b;--accent:#00cdab;--accent-2:#0a8f79;--ok:#39d08a;--warn:#f2b441;--crit:#f2685a;--info:#5ab6ff;--warm:#f2a03d;--sun:#f5c026;--moon:#9db8e6;--sky-day:#5a92d6;--sky-night:#2f3a78;--ring:0 0 0 3px color-mix(in oklab,#00cdab 38%,transparent);--r:12px;--r-s:9px;--fu:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,system-ui,sans-serif;--fm:ui-monospace,"SF Mono",Menlo,Consolas,monospace;color-scheme:dark}
+  /* Selbst gehostete Schriften (OFL/gratis, lokal via ?api=font ausgeliefert - kein externes CDN). Variable Fonts: eine Datei deckt den ganzen Gewichtsbereich ab. */
+  @font-face{font-family:'Inter';font-style:normal;font-weight:100 900;font-display:swap;src:url('?api=font&file=inter-wght-normal.woff2') format('woff2')}
+  @font-face{font-family:'Inter';font-style:italic;font-weight:100 900;font-display:swap;src:url('?api=font&file=inter-wght-italic.woff2') format('woff2')}
+  @font-face{font-family:'Lora';font-style:normal;font-weight:400 700;font-display:swap;src:url('?api=font&file=lora-wght-normal.woff2') format('woff2')}
+  @font-face{font-family:'Lora';font-style:italic;font-weight:400 700;font-display:swap;src:url('?api=font&file=lora-wght-italic.woff2') format('woff2')}
+  @font-face{font-family:'Fraunces';font-style:normal;font-weight:100 900;font-display:swap;src:url('?api=font&file=fraunces-opsz-normal.woff2') format('woff2')}
+  @font-face{font-family:'JetBrains Mono';font-style:normal;font-weight:100 800;font-display:swap;src:url('?api=font&file=jetbrains-mono-wght-normal.woff2') format('woff2')}
+  :root{--bg:#0d1315;--surface:#141c1f;--surface-2:#1a2428;--tile:#131b1e;--line:#25333a;--line-soft:#1b262b;--text:#e7eef0;--muted:#8ba0a6;--faint:#63757b;--accent:#00cdab;--accent-2:#0a8f79;--ok:#39d08a;--warn:#f2b441;--crit:#f2685a;--info:#5ab6ff;--warm:#f2a03d;--sun:#f5c026;--moon:#9db8e6;--sky-day:#5a92d6;--sky-night:#2f3a78;--ring:0 0 0 3px color-mix(in oklab,#00cdab 38%,transparent);--r:12px;--r-s:9px;--fu:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,system-ui,sans-serif;--fm:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,Consolas,monospace;color-scheme:dark}
   *{box-sizing:border-box}
   /* iOS-Safari bläht Textblöcke sonst je nach Blockbreite automatisch auf ("text auto-inflation") -
      das erzeugte auf dem iPhone unterschiedlich große Doku-Schrift. 100% = Autovergrößerung aus. */
@@ -23,6 +30,7 @@
   body.run #cwrap{margin:0;width:auto!important;height:auto!important}
   #canvas.grid{background-image:linear-gradient(rgba(255,255,255,.09) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.09) 1px,transparent 1px);background-size:var(--gs) var(--gs),var(--gs) var(--gs)}
   .w{position:absolute;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-s);overflow:hidden;-webkit-user-select:none;user-select:none;container-type:size}
+  .wsrc{position:absolute;top:3px;right:4px;z-index:6;font-size:9px;line-height:1;padding:2px 5px;border-radius:6px;background:color-mix(in oklab,var(--surface-2) 82%,transparent);color:var(--faint);letter-spacing:.02em;pointer-events:none;opacity:.8;font-weight:600}
   .w *{scrollbar-width:none}.w *::-webkit-scrollbar{width:0;height:0;background:transparent} /* Widgets zeigen nie Scrollbars (Scrollen bleibt möglich) */
   .winner{position:absolute;left:0;top:0;width:100%;height:100%;transform-origin:top left;isolation:isolate;
     /* isolation:isolate -> eigener Stacking-Kontext je Widget. Sonst steigt ein interner

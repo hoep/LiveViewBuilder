@@ -57,6 +57,24 @@ if ($api === 'asset') {
     return;
 }
 
+// ---- Selbst gehostete Schriften (OFL/gratis, lokal ausgeliefert) ----
+// ?api=font&file=<name>.woff2 -> assets/fonts/<name>.woff2 (kein externes CDN).
+if ($api === 'font') {
+    $file = (string) ($_GET['file'] ?? '');
+    if (!preg_match('/^[a-z0-9-]+\.woff2$/', $file)) { http_response_code(400); echo 'bad request'; return; }
+    $path = $DIR . '/assets/fonts/' . $file;
+    if (!is_file($path)) { http_response_code(404); echo 'not found'; return; }
+    $blob = (string) file_get_contents($path);
+    $etag = '"' . md5($blob) . '"';
+    header('Content-Type: font/woff2');
+    header('Cache-Control: public, max-age=31536000, immutable');
+    header('ETag: ' . $etag);
+    if (trim((string) ($_SERVER['HTTP_IF_NONE_MATCH'] ?? '')) === $etag) { http_response_code(304); return; }
+    header('Content-Length: ' . strlen($blob));
+    echo $blob;
+    return;
+}
+
 // ---- Live-Objektbaum (lazy + Suche nach Name/Pfad/ID) ----
 if ($api === 'tree') {
     header('Content-Type: application/json; charset=utf-8');

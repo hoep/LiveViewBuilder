@@ -89,7 +89,22 @@
       var uw=((j.units&&j.units.units_wind)||'').toLowerCase();
       var windC=function(v){if(v==null)return null;if(/mph/.test(uw))return v*1.60934;if(/kt|knot/.test(uw))return v*1.852;if(/kph|km/.test(uw))return v;if(/mps|m\/s/.test(uw))return v*3.6;return _msKmh(v);};
       var cc=j.current_conditions;if(cc)cur={temp:cc.air_temperature,cond:cc.conditions,icon:tempestIcon(cc.icon)||wCondIcon(cc.conditions),humidity:cc.relative_humidity,wind:windC(cc.wind_avg)};
-      var dl=(j.forecast&&j.forecast.daily)||[];dl.forEach(function(d){days.push({hi:d.air_temp_high,lo:d.air_temp_low,cond:d.conditions,icon:tempestIcon(d.icon)||wCondIcon(d.conditions),pop:(d.precip_probability!=null)?Math.round(d.precip_probability):null,ts:d.day_start_local||null});});
+      var hrsAll=(j.forecast&&j.forecast.hourly)||[]; // Tempest liefert im Tages-Forecast weder Regenmenge noch Wind -> aus den Stunden je Tag aggregieren
+      var dl=(j.forecast&&j.forecast.daily)||[];dl.forEach(function(d){
+        var ds=d.day_start_local||null,de=(ds!=null)?ds+86400:null;
+        var psum=0,pn=0,wmax=null,gmax=null,wdirAt=null,hsum=0,hn=0,prsum=0,prn=0;
+        if(ds!=null)hrsAll.forEach(function(h){if(!h||h.time==null||h.time<ds||h.time>=de)return;
+          if(h.precip!=null){psum+=h.precip;pn++;}
+          var wv=windC(h.wind_avg);if(wv!=null&&(wmax==null||wv>wmax)){wmax=wv;wdirAt=h.wind_direction;}
+          var gv=windC(h.wind_gust);if(gv!=null&&(gmax==null||gv>gmax))gmax=gv;
+          if(h.relative_humidity!=null){hsum+=h.relative_humidity;hn++;}
+          if(h.sea_level_pressure!=null){prsum+=h.sea_level_pressure;prn++;}
+        });
+        days.push({hi:d.air_temp_high,lo:d.air_temp_low,cond:d.conditions,icon:tempestIcon(d.icon)||wCondIcon(d.conditions),
+          pop:(d.precip_probability!=null)?Math.round(d.precip_probability):null,ts:ds,
+          precip:pn?Math.round(psum*10)/10:null,wind:(wmax!=null)?Math.round(wmax):null,gust:(gmax!=null)?Math.round(gmax):null,
+          wdir:wdirAt,hum:hn?Math.round(hsum/hn):null,press:prn?Math.round(prsum/prn):null});
+      });
       var hl=(j.forecast&&j.forecast.hourly)||[];hl.forEach(function(h){hours.push({hi:h.air_temperature,lo:h.air_temperature,cond:h.conditions,icon:tempestIcon(h.icon)||wCondIcon(h.conditions),pop:(h.precip_probability!=null)?Math.round(h.precip_probability):null,ts:h.time||null,feels:h.feels_like,hum:h.relative_humidity,wind:windC(h.wind_avg),gust:windC(h.wind_gust),wdir:h.wind_direction,press:h.sea_level_pressure,clouds:null,uv:h.uv,precip:h.precip});});
     } else if(f==='openmeteo'){
       if(j.current)cur={temp:j.current.temperature_2m,cond:wmoText(j.current.weather_code),icon:wmoIcon(j.current.weather_code),humidity:j.current.relative_humidity_2m,wind:j.current.wind_speed_10m};
@@ -100,6 +115,15 @@
       cur={temp:t,cond:cnd,icon:(j.icon?(tempestIcon(j.icon)||wCondIcon(j.icon)):wCondIcon(cnd)),humidity:(j.humidity!=null?j.humidity:j.relative_humidity),wind:(j.wind!=null?j.wind:(j.wind_speed!=null?j.wind_speed:j.windspeed))};
     }
     return {fmt:f,cur:cur,days:days,hours:hours};
+  }
+  // Anzeigename der erkannten Datenquelle (für den kleinen Quellen-Badge)
+  function wSrcLabel(fmt){return ({owm:'OpenWeatherMap',tempest:'Tempest',openmeteo:'Open-Meteo',flat:'JSON'})[fmt]||(fmt?String(fmt):'');}
+  // Kleinen Quellen-Hinweis in der Ecke des Widgets setzen/ausblenden (geteilt von Wetter/Wetter+/Meteogramm)
+  function wSetSrcBadge(w,fmt){
+    var el=$('.w[data-id="'+w.id+'"]',canvas);if(!el)return;
+    var b=el.querySelector(':scope > .wsrc');var show=(w.showSrc!==false)&&fmt;
+    if(show){if(!b){b=document.createElement('span');b.className='wsrc';el.appendChild(b);}b.textContent=wSrcLabel(fmt);b.style.display='';}
+    else if(b){b.style.display='none';}
   }
   function _wt(n,dec){if(n==null||n==='')return null;var v=parseFloat(n);if(isNaN(v))return null;return (dec?(Math.round(v*10)/10):Math.round(v));}
   function _wtxt(n,dec){var v=_wt(n,dec);return v==null?'–':String(v).replace('.',',');}
@@ -129,6 +153,7 @@
     var cl=w.varId&&_lastVals[w.varId],cData=cl?parseWeatherJSON(cl.v,w.wfmt):null;              // Aktuell = Variable
     var fl=(w.varId2&&_lastVals[w.varId2])||cl,fData=fl?parseWeatherJSON(fl.v,w.wfmt):cData;       // Vorhersage = Variable2 (sonst dieselbe)
     var unit=(w.wunit!=null?w.wunit:'°'),cur=cData&&cData.cur;
+    wSetSrcBadge(w,(fData&&fData.fmt)||(cData&&cData.fmt));   // Quellen-Badge (vor den früh­en returns setzen)
     // je aktuellem Wert optional eine Variable; sonst Fallback aufs JSON
     var _ln=function(id){var lv=id&&_lastVals[id];if(!lv)return null;var n=parseFloat(String(lv.v).replace(',','.'));return isNaN(n)?null:n;};
     var _lt=function(id){var lv=id&&_lastVals[id];if(!lv)return null;return (lv.f!=null&&lv.f!=='')?lv.f:String(lv.v);};
@@ -184,11 +209,13 @@
       +row('Temp-Einheit','<input id="pWUnit" value="'+esc(w.wunit!=null?w.wunit:'°')+'" style="width:60px" placeholder="°">')
       +'<div class="pgh">Aktuelle Werte (optional als Variable)</div>'
       +fieldPick(w,'vTemp','Temperatur')+fieldPick(w,'vCond','Zustand')+fieldPick(w,'vHum','Feuchte %')+fieldPick(w,'vWind','Wind km/h')+fieldPick(w,'vRain','Regen (bool)')
-      +'<div class="hint" style="font-size:11px;color:var(--muted)">Leer = Wert aus dem JSON. Zustand-Variable liefert Text → Icon automatisch. <b>Regen</b>: ist die Variable wahr (true/1/&gt;0), wird die aktuelle Anzeige auf Regen gesetzt.</div>';
+      +'<div class="hint" style="font-size:11px;color:var(--muted)">Leer = Wert aus dem JSON. Zustand-Variable liefert Text → Icon automatisch. <b>Regen</b>: ist die Variable wahr (true/1/&gt;0), wird die aktuelle Anzeige auf Regen gesetzt.</div>'
+      +row('Datenquelle anzeigen','<input type="checkbox" id="pWShowSrc"'+((w.showSrc!==false)?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">kleiner Hinweis in der Ecke (z.&nbsp;B. Tempest)</span>');
   }
   function wJsonWire(w){
-    if($('#pWFmt'))$('#pWFmt').onchange=function(){w.wfmt=this.value;render();commit();};
+    if($('#pWFmt'))$('#pWFmt').onchange=function(){w.wfmt=this.value;render();applyWeather(w);commit();};
     if($('#pWUnit'))$('#pWUnit').oninput=function(){w.wunit=this.value;render();applyWeather(w);};
+    if($('#pWShowSrc'))$('#pWShowSrc').onchange=function(){w.showSrc=this.checked?undefined:false;applyWeather(w);commit();};
   }
   function _wMount(w){applyWeather(w);}
   function _wLive(w,el,id,d,base,txt,on){applyWeather(w);return true;}
