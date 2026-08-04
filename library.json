@@ -3,6 +3,7 @@
     "name": "LiveView Builder",
     "author": "Peter Höllwarth",
     "url": "https://github.com/hoep/LiveViewBuilder",
+    "license": "MIT",
     "compatibility": {
         "version": "7.1"
     },
