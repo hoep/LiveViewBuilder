@@ -128,7 +128,7 @@
       $$('.asev',box).forEach(function(sel){sel.onchange=function(){var k=sel.getAttribute('data-akey');if(!w.assocMap)w.assocMap={};if(!w.assocMap[k])w.assocMap[k]={};if(sel.value)w.assocMap[k].color=sel.value;else delete w.assocMap[k].color;w.assocOn=true;render();renderProps();refreshAssocLive(w);commit();};}); // Skin-Farbe (Icon+Text), passt sich dem Theme an
     });}
   function assignIcon(id){
-    if(_iconPick){var wp=widget(_iconPick.wid);if(wp){wp[_iconPick.field]=id;render();select(wp.id);renderProps();toast('Icon: '+id);}_iconPick=null;return;}
+    if(_iconPick){var wp=widget(_iconPick.wid);if(wp){if(_iconPick.path)setPath(wp,_iconPick.path,id);else wp[_iconPick.field]=id;render();select(wp.id);renderProps();toast('Icon: '+id);}_iconPick=null;return;}
     if(_assocPick){var wa=widget(_assocPick.wid);if(wa){if(!wa.assocMap)wa.assocMap={};if(!wa.assocMap[_assocPick.key])wa.assocMap[_assocPick.key]={};wa.assocMap[_assocPick.key].icon=id;wa.assocOn=true;render();select(wa.id);renderProps();refreshAssocLive(wa);toast('Status-Icon: '+id);}_assocPick=null;return;}
     var ICONABLE=['icon','value','switch','bar','tile','button','light','chip','weather','weatherpro','room','kpi','assoc']; // wie die Icon-Zeile in renderProps
     var ids=Object.keys(sel);if(!ids.length&&selId)ids=[selId];

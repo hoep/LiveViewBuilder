@@ -1,6 +1,6 @@
   // C1: nutzt das Widget diese Variablen-ID als Daten-Bindung? (spiegelt pollVals, ohne visVar)
   function widgetDataId(w,id){
-    if(w.varId===id||w.varId2===id||w.varId3===id||w.condVar===id||w.vTemp===id||w.vCond===id||w.vHum===id||w.vWind===id||w.vRain===id)return true;
+    if(w.varId===id||w.varId2===id||w.varId3===id||w.cmpVid===id||w.ackVid===id||w.condVar===id||w.vTemp===id||w.vCond===id||w.vHum===id||w.vWind===id||w.vRain===id)return true;
     var A=['items','links','rows','src','snk','fc','elements','stages','steps'],i,j,o;
     for(i=0;i<A.length;i++){var a=w[A[i]];if(a)for(j=0;j<a.length;j++){o=a[j];if(o&&(o.vid===id||o.subvid===id||o.hi===id||o.lo===id||o.pq===id||o.cond===id||o.speedVid===id||o.socVid===id))return true;}}
     return false;
@@ -51,7 +51,33 @@
     while(ops.length){var t=ops.pop();if(t==='(')return null;out.push(t);}
     return out.length?out:null;
   }
-  function _fIds(expr){var r=_fParse(expr);if(!r)return [];var seen={},ids=[];r.forEach(function(t){var v=_fVarId(t);if(v!==null&&!seen[v]){seen[v]=1;ids.push(v);}});return ids;}
+  function _fIds(expr){if(_fIsStr(expr))return _fIdsStr(expr);var r=_fParse(expr);if(!r)return [];var seen={},ids=[];r.forEach(function(t){var v=_fVarId(t);if(v!==null&&!seen[v]){seen[v]=1;ids.push(v);}});return ids;}
+  // ---- String-Verkettung: "=#35768."°C ".#27635."%"" -> Text aus Variablen + Literalen (PHP-Punkt-Operator).
+  // Erkennung: eine Formel, die ein Text-Literal ("..." oder '...') enthaelt. Rein Anzeige (Live), kein Aggregat.
+  function _fIsStr(s){return _fIsFormula(s)&&/["']/.test(s);}
+  function _fParseStr(expr){ // -> [{str}|{vid}] oder null; '.' verkettet, Leerraum wird ignoriert
+    var s=String(expr).replace(/^\s+/,'');if(s.charAt(0)==='=')s=s.slice(1);
+    var n=s.length,i=0,out=[];
+    while(i<n){var c=s.charAt(i);
+      if(c===' '||c==='\t'||c==='.'){i++;continue;} // Leerraum + Verkettungspunkt
+      if(c==='"'||c==="'"){var q=c,j=i+1,buf='';while(j<n&&s.charAt(j)!==q){buf+=s.charAt(j);j++;}if(j>=n)return null;out.push({str:buf});i=j+1;continue;}
+      if(c==='#'){var j2=i+1;while(j2<n&&s.charAt(j2)>='0'&&s.charAt(j2)<='9')j2++;if(j2===i+1)return null;out.push({vid:parseInt(s.slice(i+1,j2),10)});i=j2;continue;}
+      return null; // unerwartetes Zeichen -> keine gueltige String-Formel
+    }
+    return out.length?out:null;
+  }
+  function _fVarText(vid){ // Anzeigewert einer Variable OHNE Profil-Einheit (Einheit gibt der Nutzer selbst als Literal an)
+    var d=_lastVals[vid];if(!d)return null;
+    var base=(d.f!=null&&d.f!=='')?String(d.f):String(d.v),u=(d.u!=null)?String(d.u):'';
+    if(u!==''&&base.length>=u.length&&base.slice(-u.length)===u)base=base.slice(0,-u.length).replace(/\s+$/,'');
+    return base;
+  }
+  function _fEvalStr(expr){ // verkettetes Ergebnis oder null, falls eine beteiligte Variable (noch) fehlt
+    var toks=_fParseStr(expr);if(!toks)return null;var res='';
+    for(var i=0;i<toks.length;i++){var t=toks[i];if(t.str!=null){res+=t.str;continue;}var tx=_fVarText(t.vid);if(tx===null)return null;res+=tx;}
+    return res;
+  }
+  function _fIdsStr(expr){var toks=_fParseStr(expr);if(!toks)return [];var seen={},ids=[];toks.forEach(function(t){if(t.vid!=null&&!seen[t.vid]){seen[t.vid]=1;ids.push(t.vid);}});return ids;}
   function _fEvalNum(expr){ // aktuellen Formelwert aus _lastVals; null falls eine Komponente fehlt
     var rpn=_fParse(expr);if(!rpn)return null;var st=[];
     for(var i=0;i<rpn.length;i++){var t=rpn[i];
@@ -72,20 +98,23 @@
     if(!_vidx)return;
     for(var key in _vidx){
       if(!_fIsFormula(key))continue;
-      var v=_fEvalNum(key);if(v===null)continue;
+      var isStr=_fIsStr(key),val,ftxt,sflag;
+      if(isStr){val=_fEvalStr(key);if(val===null)continue;ftxt=val;sflag=1;}
+      else{val=_fEvalNum(key);if(val===null)continue;ftxt=_fFmt(val);sflag=0;}
       var prev=_lastVals[key];
-      if(!prev||String(prev.v)!==String(v))applyVal(key,{v:v,f:_fFmt(v),u:'',c:Math.floor(Date.now()/1000)});
+      if(!prev||String(prev.v)!==String(val))applyVal(key,{v:val,f:ftxt,u:'',s:sflag,c:Math.floor(Date.now()/1000)});
     }
   }
   var _vidx=null;
   function _vidxAdd(id,w,root){if(!id)return;(_vidx[id]=_vidx[id]||[]).push({w:w,root:root});}
   function _collectIds(w,add){ // alle Variablen-IDs eines Widgets an add() geben
-    add(w.varId);add(w.varId2);add(w.varId3);add(w.visVar);add(w.condVar);add(w.vTemp);add(w.vCond);add(w.vHum);add(w.vWind);add(w.vRain);
+    add(w.varId);add(w.varId2);add(w.varId3);add(w.cmpVid);add(w.ackVid);add(w.visVar);add(w.condVar);add(w.vTemp);add(w.vCond);add(w.vHum);add(w.vWind);add(w.vRain);
     if(w.fc)w.fc.forEach(function(r){add(r.hi);add(r.lo);add(r.pq);add(r.cond);});
     ['links','src','snk','items','rows','steps','series'].forEach(function(k){if(w[k])w[k].forEach(function(o){if(o)add(o.vid);});});
-    if(w.stages)w.stages.forEach(function(o){if(o){add(o.vid);add(o.subvid);}}); // Pipeline-Stationen (Wert + Zusatzwert)
+    if(w.stages)w.stages.forEach(function(o){if(o){add(o.vid);add(o.subvid);add(o.sv);}}); // Pipeline-Stationen (Wert + Zusatzwert + Status-Var fuer bedingten Fluss)
     if(w.elements)w.elements.forEach(function(o){if(o){add(o.vid);add(o.speedVid);add(o.socVid);}});
     if(w.tankVid)add(w.tankVid);
+    if(w.type==='container'&&w.kids)w.kids.forEach(function(k){if(k)_collectIds(k,add);}); // Container: IDs der Kinder mitsammeln (Poll)
   }
   function _vidxOne(w,root){_collectIds(w,_emit(function(id){_vidxAdd(id,w,root);}));}
   var _allIds=null;
@@ -108,6 +137,7 @@
     // sonst nie Live-Werte bekommen (weder im Builder noch im Run).
     if(typeof chromeAllKids==='function')chromeAllKids().forEach(function(w){_vidxOne(w,canvas);});
     if(_compKids&&_compKids.length)_compKids.forEach(function(w){_vidxOne(w,canvas);});
+    if(typeof _contKids!=='undefined'&&_contKids&&_contKids.length)_contKids.forEach(function(w){_vidxOne(w,canvas);}); // Container-Kinder live versorgen
     if(_tickKids&&_tickKids.length)_tickKids.forEach(function(w){_vidxOne(w,canvas);});
     if(_popup&&_popup.widgets){var _ov=$('#ovcanvas');if(_ov)_popup.widgets.forEach(function(w){_vidxOne(w,_ov);});}
   }
@@ -130,12 +160,14 @@
     var base=(d.f!==''&&d.f!=null)?d.f:d.v,on=(d.v===true||d.v===1||d.v==='1');
     var _bs=String(base),_pu=(d.u!=null)?String(d.u):''; // Profil-Einheit vom Server
     var num=(_pu!==''&&_bs.length>=_pu.length&&_bs.slice(-_pu.length)===_pu)?_bs.slice(0,-_pu.length).replace(/\s+$/,''):_bs; // Wert ohne Profil-Einheit
-    $$('[data-vid="'+id+'"]',canvas).forEach(function(e){e.textContent=base;}); // generische Slots (Forecast etc.)
-    $$('[data-viddot="'+id+'"]',canvas).forEach(function(e){e.classList.toggle('on',on);}); // Status-Dots / Bewegung
-    $$('[data-vidbar="'+id+'"]',canvas).forEach(function(e){var nb=parseFloat(String(d.v).replace(',','.'));if(!isNaN(nb))e.style.width=Math.max(0,Math.min(100,nb))+'%';}); // Meter-Balken
+    if(!_fIsFormula(id)){ // Formel-Token sind nie echte data-vid-Attribute; ihr String (mit ", =, +) würde den CSS-Selektor sprengen
+      $$('[data-vid="'+id+'"]',canvas).forEach(function(e){e.textContent=base;}); // generische Slots (Forecast etc.)
+      $$('[data-viddot="'+id+'"]',canvas).forEach(function(e){e.classList.toggle('on',on);}); // Status-Dots / Bewegung
+      $$('[data-vidbar="'+id+'"]',canvas).forEach(function(e){var nb=parseFloat(String(d.v).replace(',','.'));if(!isNaN(nb))e.style.width=Math.max(0,Math.min(100,nb))+'%';}); // Meter-Balken
+    }
     function _apply1(w,root){try{
       var el=$('.w[data-id="'+w.id+'"]',root);if(!el)return;
-      var _dn=null;if(w.dec!=null){var _rr=parseFloat(String(d.v).replace(',','.'));if(!isNaN(_rr))_dn=_rr.toFixed(w.dec).replace('.',',');} // eigene Nachkommastellen aus Rohwert
+      var _dn=null;if(w.dec!=null&&!d.s){var _rr=parseFloat(String(d.v).replace(',','.'));if(!isNaN(_rr))_dn=_rr.toFixed(w.dec).replace('.',',');} // eigene Nachkommastellen aus Rohwert (nicht bei String-Formel)
       var _vb=(_dn!=null)?((w.suf||w.unit)?_dn:(_pu?(_dn+' '+_pu.trim()):_dn)):((w.suf||w.unit)?num:base); // dec -> Zahl (+ Profil-Einheit falls keine Widget-Einheit); sonst wie gehabt
       var _b=w.fmt?fmtVal(w,d,base):_vb;var txt=(w.pre||w.suf)?((w.pre||'')+_b+(w.suf||'')):_b; // Format + Präfix/Suffix
       if(w.icon&&AICONS[w.icon]&&w.varId===id){var _ai=$('svg[data-ai]',el);if(_ai)_ai.outerHTML=iconSVG(w.icon,d.v);} // adaptives Icon (0–100 % / Zustand)
@@ -306,8 +338,11 @@
   function insertBlock(name,px,py){
     var b=(store.blocks||{})[name];if(!b)return;
     var ox=(px!=null?snap(Math.max(0,px)):snap(40)),oy=(py!=null?snap(Math.max(0,py)):snap(40));
-    selClear();var newIds=[];
-    (b.widgets||[]).forEach(function(cw){var c=JSON.parse(JSON.stringify(cw));c.id=uid();c.x=snap(ox+(cw.x||0));c.y=snap(oy+(cw.y||0));state.widgets.push(c);newIds.push(c.id);});
+    selClear();var newIds=[],gmap={};
+    (b.widgets||[]).forEach(function(cw){var c=JSON.parse(JSON.stringify(cw));c.id=uid();c.x=snap(ox+(cw.x||0));c.y=snap(oy+(cw.y||0));
+      if(c.group){if(!gmap[c.group])gmap[c.group]='g'+uid();c.group=gmap[c.group];}                 // Gruppen je Einfügung neu binden
+      if(c.type==='container'&&c.kids)c.kids.forEach(function(k){if(k)k.id=uid();});                 // Container: Kind-IDs neu vergeben (sonst Kollision bei Mehrfach-Einfügung)
+      state.widgets.push(c);newIds.push(c.id);});
     render();newIds.forEach(function(i){sel[i]=true;});selId=newIds[newIds.length-1]||null;markSel();renderProps();commit();
   }
   function buildBlocks(){

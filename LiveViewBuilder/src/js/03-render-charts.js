@@ -1,21 +1,57 @@
-  function _wActionKind(w,inPopup){ // welche Interaktion hat das Widget? -> Hover-Affordance-Klasse
-    var t=w.type, hold=!!(w.longPopup||w.longNav), tap=false;
-    // closePopup ist NUR in einem Popup sinnvoll (Schliessen-Button). Auf einer normalen Seite
-    // ist es wirkungslos und darf keinen (irrefuehrenden) Hover erzeugen.
-    if((inPopup&&w.closePopup)||w.popupTo||w.scriptId||w.openMenu||w.navBack||w.navTo||(w.regSlot&&w.regView))tap=true;
-    else if((t==='tile'||t==='button')&&(w.navTo||w.varId))tap=true;
-    else if(t==='switch'||t==='light'||t==='alarm'||t==='select'||t==='dial'||(t==='slider'&&_rMode(w)==='dial'))tap=!!w.varId; // Dial ist jetzt eine Variante von slider (rmode)
-    else if(t==='cover')tap=!!(w.varId||w.varId2);
-    else if(t==='thermostat')tap=!!(w.varId2||w.varId3);
-    else if(t==='media')tap=!!w.varId2;
-    else if(t==='vacuum')tap=!!w.varId3;
-    else if(t==='campro')tap=!!w.mediaId;
-    else if(t==='skinswitch')tap=true;
-    else if(t==='valuecard')tap=!!(w.varId2&&!w.v2acc&&!w.rngOn); // nur mit echtem Toggle klickbar; im Bereichsmodus ist varId2 das Minimum, keine Aktion
-    else if(t==='colorpick'){var _cm=w.cmode||'wheel';tap=(_cm==='wheel'||_cm==='cie'||_cm==='button');} // Farbwähler: box/slider sind reine Anzeige bzw. Slider -> kein Ganz-Widget-Hover
-    else{var wc=WIDGETS[t];if(wc&&wc.click&&!wc.noHover)tap=true;} // noHover: interne Teil-Klicks (z. B. msglog-Chips) sollen kein Ganz-Widget-Hover erzeugen
-    return tap?(hold?'act-both':'act-tap'):(hold?'act-hold':'');
+  function _wActionKind(w,inPopup){ // Hover-Affordance: Navigation (nav) vs. echte Schaltaktion (tog) vs. Lang-Druck (hold) getrennt
+    var t=w.type, hold=!!(w.longPopup||w.longNav);
+    // NAVIGATION: oeffnet Popup/Seite/Skript/Menue/Region oder geht zurueck. closePopup ist NUR im Popup sinnvoll.
+    var nav=!!((inPopup&&w.closePopup)||w.popupTo||w.scriptId||w.openMenu||w.navBack||w.navTo||(w.regSlot&&w.regView));
+    if(t==='campro')nav=nav||!!w.mediaId; // Vollbild-Kamera -> oeffnet etwas
+    // SCHALTAKTION in-place: schreibt eine Variable / loest RequestAction aus (nur wenn keine Navigation greift)
+    var tog=false;
+    if(t==='switch')tog=(w.swMode==='multi')?false:!!w.varId; // Multi-State: Segmente sind die Klickziele -> KEIN Ganz-Widget-Hover
+    else if(t==='light'||t==='alarm'||t==='select'||t==='dial'||(t==='slider'&&_rMode(w)==='dial'))tog=!!w.varId; // Dial ist jetzt eine Variante von slider (rmode)
+    else if(t==='tile'||t==='button')tog=!nav&&!!w.varId; // ohne Navigationsziel schaltet die Variable
+    else if(t==='cover')tog=!!(w.varId||w.varId2);
+    else if(t==='thermostat')tog=!!(w.varId2||w.varId3);
+    else if(t==='media')tog=!!w.varId2;
+    else if(t==='vacuum')tog=!!w.varId3;
+    else if(t==='skinswitch')tog=true;
+    else if(t==='valuecard')tog=(w.vcMode==='select'?!!w.varId:!!(w.varId2&&!w.v2acc&&!w.rngOn)); // Auswahl-Modus oder echter Toggle; im Bereichsmodus ist varId2 das Minimum, keine Aktion
+    else if(t==='colorpick'){var _cm=w.cmode||'wheel';tog=(_cm==='wheel'||_cm==='cie'||_cm==='button');} // Farbwähler: box/slider sind reine Anzeige bzw. Slider -> kein Ganz-Widget-Hover
+    else{var wc=WIDGETS[t];if(wc&&wc.click&&!wc.noHover)tog=true;} // noHover: interne Teil-Klicks (z. B. msglog-Chips) sollen kein Ganz-Widget-Hover erzeugen
+    var cls=[];
+    if(nav)cls.push('act-nav');       // Navigation hat optischen Vorrang (anheben)
+    else if(tog)cls.push('act-tog');  // sonst: in-place-Schaltaktion (getoenter Innen-Ring)
+    if(hold)cls.push('act-hold');
+    return cls.join(' ');
   }
+  // ===== Freie Positionierung von Wert & Icon (alle kompakten Wert/Icon-Widgets) =====
+  // Pro Typ die Selektoren des Wert- und des Icon-Elements (ermittelt per Widget-Audit).
+  // val/ico werden per transform:translate(valDX/valDY | icoDX/icoDY) verschoben - nicht-destruktiv,
+  // Layout bleibt, das Element rueckt nur optisch. transform erzeugt einen eigenen Stapelkontext,
+  // der dank .winner{isolation:isolate} das Widget nicht verlaesst.
+  var POS_SEL={
+    value:{val:'[data-role=val]',ico:'.wvic'}, valuecard:{val:'.hvcval',ico:'.hkbi'},
+    kpi:{val:'[data-role=val]',ico:'.hkbi'}, chip:{val:'[data-role=val]',ico:'.hchipic'},
+    tile:{val:'[data-role=val]',ico:'.htbadge'}, room:{val:'[data-role=val]',ico:'.hricon'},
+    bar:{val:'[data-role=val]',ico:'.baric'}, switch:{val:'[data-role=sw]',ico:'.swic'},
+    light:{val:'.hl2val',ico:'.hl2ic'}, weather:{val:'[data-role=val]',ico:'[data-role=cico]'},
+    assoc:{val:'[data-role=aval]',ico:'.hassoc-chip'}, button:{val:null,ico:'.hbicon'},
+    icon:{val:null,ico:'.iconwrap'}, checkbox:{val:'[data-role=cbx]',ico:null},
+    eventctl:{val:'[data-role=evsw]',ico:null}, calc:{val:'[data-role=val]',ico:null},
+    cval:{val:'[data-role=val]',ico:null}, sval:{val:'[data-role=val]',ico:null},
+    delta:{val:'[data-role=val]',ico:null}, raincard:{val:'[data-role=val]',ico:null},
+    sun:{val:'[data-role=val]',ico:null}, objinfo:{val:'[data-role=oival]',ico:null},
+    alarm:{val:'[data-role=val]',ico:null}, clock:{val:'.hctime',ico:null},
+    timer:{val:'.httime',ico:null}, tempbar:{val:'.htval',ico:null},
+    vacuum:{val:'.hvst',ico:null}, thermostat:{val:'.htc-ist',ico:null},
+    slider:{val:'[data-role=val]',ico:null}, cover:{val:'[data-role=val]',ico:null}
+  };
+  // position:relative + left/top statt transform: wirkt auch auf inline-Elemente (z. B. der Wert-<span>),
+  // transform greift bei nicht-ersetzten inline-Boxen nicht.
+  function _posOne(root,selc,dx,dy){if(!selc)return;var e=root.querySelector(selc);if(!e)return;
+    if(dx||dy){e.style.position='relative';e.style.left=(dx||0)+'px';e.style.top=(dy||0)+'px';e.style.zIndex='2';}
+    else{e.style.position='';e.style.left='';e.style.top='';e.style.zIndex='';}}
+  function _applyPosOffsets(w,root){var m=POS_SEL[w.type];if(!m)return;
+    if(m.val)_posOne(root,m.val,w.valDX||0,w.valDY||0);
+    if(m.ico)_posOne(root,m.ico,w.icoDX||0,w.icoDY||0);}
   function render(){
     disposeCharts();
     _tickKids=[];   // verschachtelte Ticker-Widgets werden während des Render-Laufs neu gesammelt
@@ -39,12 +75,15 @@
       var _frameOn=(w.frame!=null)?w.frame:!state.page.noframe;if(!_frameOn)d.classList.add('no-frame'); // Kachel-Rahmen: Widget-Override sonst Ansicht-Standard
       if(w.bgT)d.classList.add('bg-t'); // Hintergrund transparent (Rahmen bleibt davon unberuehrt)
       if(w.lblWrap)d.classList.add('lbl-wrap'); // Beschriftungen duerfen umbrechen
-      var _ak=_wActionKind(w);if(_ak)d.classList.add(_ak); // Hover-Affordance: tap/hold/both (CSS greift nur ausserhalb Edit)
+      var _ak=_wActionKind(w);if(_ak)_ak.split(' ').forEach(function(c){d.classList.add(c);}); // Hover-Affordance: nav/tog/hold (CSS greift nur ausserhalb Edit)
       if(w.name&&_refSet[w.name])d.classList.add('ref-hidden'); // in Laufzeile referenziert -> immer aus (bearbeiten über die Laufzeile)
       else if(w.hidden)d.classList.add('run-hidden'); // manuell versteckt -> im Run aus, im Edit gestrichelt sichtbar (CSS)
       var _inner;try{_inner=widgetInner(w);}catch(_e){_inner='<div style="padding:6px;font-size:11px;color:var(--crit)">⚠ '+esc(w.type||'?')+'</div>';} // ein defektes Widget darf das Rendern nicht abbrechen
-      d.innerHTML='<div class="winner">'+_inner+'</div><div class="rz rz-n" data-rz="n"></div><div class="rz rz-s" data-rz="s"></div><div class="rz rz-e" data-rz="e"></div><div class="rz rz-w" data-rz="w"></div><div class="rz rz-ne" data-rz="ne"></div><div class="rz rz-nw" data-rz="nw"></div><div class="rz rz-se" data-rz="se"></div><div class="rz rz-sw" data-rz="sw"></div>';
+      // Reset-Knopf im Builder: nur bei positionierbaren Widgets mit gesetztem Offset, sichtbar erst bei Auswahl (CSS)
+      var _posBtn=(mode==='edit'&&POS_SEL[w.type]&&(w.valDX||w.valDY||w.icoDX||w.icoDY))?'<button class="posreset" data-posreset="1" title="Position von Wert/Icon zurücksetzen">↺</button>':'';
+      d.innerHTML='<div class="winner">'+_inner+'</div>'+_posBtn+'<div class="rz rz-n" data-rz="n"></div><div class="rz rz-s" data-rz="s"></div><div class="rz rz-e" data-rz="e"></div><div class="rz rz-w" data-rz="w"></div><div class="rz rz-ne" data-rz="ne"></div><div class="rz rz-nw" data-rz="nw"></div><div class="rz rz-se" data-rz="se"></div><div class="rz rz-sw" data-rz="sw"></div>';
       if(w.type==='value'&&w.valfs){var v=$('.v',d);if(v)v.style.fontSize=w.valfs+'px';}
+      _applyPosOffsets(w,d); // Wert/Icon frei positionieren (valDX/valDY, icoDX/icoDY)
       if(w.bg&&!w.bgT)d.style.background=w.bg;if(w.fg){var _rf=_readableFg(w.fg,(w.bgT?null:w.bg));if(_rf)d.style.color=_rf;}
       if(w.iconColor)d.style.setProperty('--wicon',_skinColor(w.iconColor)||w.iconColor); // zentrale Icon-Farbe
       if(w.ff){d.style.setProperty('--w-ff',w.ff);d.classList.add('tw-ff');}if(w.fwt){d.style.setProperty('--w-fwt',w.fwt);d.classList.add('tw-fwt');}if(w.fsty){d.style.setProperty('--w-fsty',w.fsty);d.classList.add('tw-fsty');}if(w.fsz){d.style.setProperty('--w-fsz',w.fsz+'px');d.classList.add('tw-fsz');} // Typografie: auf innere Elemente erzwingen
@@ -62,7 +101,7 @@
   // der Seite anfassen - Popup-Widgets tragen dieselben IDs wie die Seiten-Widgets.
   function rootOfEl(el){var oc=$('#ovcanvas');return (el&&oc&&oc.contains(el))?oc:canvas;}
   function activateWidget(w,root){
-    if(w.type==='gauge'||w.type==='chart'||w.type==='spark'||w.type==='sankey'||w.type==='gaugepro'||w.type==='waterfall')initEChart(w,root);
+    if(w.type==='gauge'||w.type==='chart'||w.type==='spark'||w.type==='sankey'||w.type==='gaugepro'||w.type==='waterfall'||w.type==='meteogram'||w.type==='multiring')initEChart(w,root);
     if(w.type==='camera'||w.type==='campro')refreshCam(w,root);
     if(w.type==='html'){if(w.htmlSrc==='custom')setHtmlContent(w,w.html||'',root);else fetchHtml(w,root);}
     if(w.type==='weekplan')fetchWeekplan(w,root);
@@ -83,9 +122,11 @@
       }catch(_e){} // ein defektes Widget darf Init/Interaktion der anderen nicht blockieren
     });
     _compKids=[];allWidgets().forEach(function(w){if(w.type==='component')expandComponent(w);}); // M3: Komponenten-Instanzen expandieren
+    _contKids=[];state.widgets.forEach(function(w){if(w.type==='container')expandContainer(w);}); // Container-Kinder zeichnen (echte, editierbare Widgets)
     // mount-Hooks auch für Klone (Laufband/Komponenten) + Werte aus Cache spiegeln -> Status-Bild/Wetter/cval usw. erscheinen sofort, nicht erst bei Wertänderung
     function _mountKid(w){try{var _mw=WIDGETS[w.type];if(_mw&&_mw.mount)_mw.mount(w);}catch(e){}}
     if(_compKids&&_compKids.length)_compKids.forEach(_mountKid);
+    if(_contKids&&_contKids.length)_contKids.forEach(function(w){try{activateWidget(w,canvas);}catch(e){}_mountKid(w);}); // Container-Kinder: Diagramme/Kameras + mount
     if(_tickKids&&_tickKids.length)_tickKids.forEach(_mountKid);
     var eh=$('#emptyhint');if(!eh){eh=document.createElement('div');eh.id='emptyhint';eh.textContent='Element aus der Palette hierher ziehen — oder eine Variable im Baum anklicken';canvas.appendChild(eh);}eh.style.display=state.widgets.length?'none':'flex';
     invalidateVidx();buildVidx();applyCached();_pvSince=0;pollVals();commit();tick();drawStructure(); // Cache sofort anwenden (kein Flackern beim Seitenwechsel), dann frisch pollen
@@ -225,17 +266,21 @@
       series.push({type:'custom',silent:true,z:1,data:levels.map(function(v){return (v==null?0:v);}),
         renderItem:function(params,api){
           var i=params.dataIndex;if(i>=levels.length-1||levels[i]==null)return;
+          if(w.barHoriz){var qA=api.coord([levels[i],i]),qB=api.coord([levels[i],i+1]),bh=api.size([0,1])[1],hh=bh*0.4;
+            return {type:'line',shape:{x1:qA[0],y1:qA[1]+hh,x2:qB[0],y2:qB[1]-hh},style:{stroke:cssv('--faint'),lineWidth:1,lineDash:[4,3]}};}
           var pA=api.coord([i,levels[i]]),pB=api.coord([i+1,levels[i]]),band=api.size([1,0])[0],half=band*0.4;
           return {type:'line',shape:{x1:pA[0]+half,y1:pA[1],x2:pB[0]-half,y2:pB[1]},style:{stroke:cssv('--faint'),lineWidth:1,lineDash:[4,3]}};
         }});
     }
     var axw=_axShow(w);
-    ec.setOption({backgroundColor:'transparent',animation:!!bcfg().chartAnim,grid:{left:8,right:10,top:6+_titleSpace(w),bottom:4,containLabel:true},
+    var opt={backgroundColor:'transparent',animation:!!bcfg().chartAnim,grid:{left:8,right:10,top:6+_titleSpace(w),bottom:4,containLabel:true},
       title:_titleOpt(w),
       tooltip:{trigger:'axis',axisPointer:{type:'shadow'},formatter:function(ps){var p=ps&&ps.length?ps[ps.length-1]:null;if(!p)return '';return (p.name||'')+': '+_chNum(w,p.value);}},
       xAxis:{type:'category',data:cats,axisTick:{show:axw.ticks},axisLine:{show:axw.line,lineStyle:{color:cssv('--line')}},axisLabel:{show:axw.xLab,color:cssv('--faint'),fontSize:_axFs(w),interval:0},splitLine:{show:axw.xGrid,lineStyle:{color:cssv('--line-soft')}}},
       yAxis:{type:'value',name:unit,nameTextStyle:{color:cssv('--muted'),fontSize:_ecF(w,'axname',9)},nameGap:7,axisLine:{show:axw.line,lineStyle:{color:cssv('--line')}},axisTick:{show:axw.ticks},axisLabel:_axLabY(w,axw),splitLine:{show:axw.yGrid,lineStyle:{color:cssv('--line-soft')}}},
-      series:series},true);
+      series:series};
+    if(w.barHoriz)_hbCat(opt);   // liegende Balken
+    ec.setOption(opt,true);
   }
   function initEChart(w,root){
     if(typeof echarts==='undefined')return;
@@ -244,6 +289,8 @@
     if(w.type==='gauge'){setGauge(w,_lastVals[w.varId]);}
     else if(w.type==='gaugepro'){setGaugePro(w,_lastVals[w.varId]);}
     else if(w.type==='sankey'){setSankey(w);}
+    else if(w.type==='meteogram'){setMeteogram(w);}
+    else if(w.type==='multiring'){setMultiring(w);}
     else if(w.type==='waterfall'||w.ctype==='waterfall'){setWaterfall(w);} // Live-Werte, KEINE Historie
     else if(w.ctype==='pie'||w.ctype==='donut'){renderChartData(w);}
     else{ fetchHist(w); } // immer frisch laden (auch ctype 'spark') (Query ~2ms); _hist-Cache ist wegen seiten-kollidierender IDs nicht verlaesslich
@@ -370,7 +417,7 @@
   // "7 Tage", zeigte die Achse weiter Monate und es kam nichts an. Jetzt entscheidet beides
   // ueber dieselbe Funktion.
   function _chCalMode(w){var r=_chRange(w);return !!r.cal && r.unit==='month';}
-  function renderChartData(w){if(w.ctype==='daylight')setDaylight(w);else if(w.ctype==='spark'||w.type==='spark')setSpark(w);else if(w.ctype==='waterfall'||w.type==='waterfall')setWaterfall(w);else if(w.ctype==='pie'||w.ctype==='donut'||w.ctype==='rose')setPie(w);else if(w.type==='chart'&&_chCalMode(w))setCalBar(w);else setLine(w);}
+  function renderChartData(w){if(w.ctype==='daylight')setDaylight(w);else if(w.ctype==='heatmap')setHeatmap(w);else if(w.ctype==='spark'||w.type==='spark')setSpark(w);else if(w.ctype==='waterfall'||w.type==='waterfall')setWaterfall(w);else if(w.ctype==='pie'||w.ctype==='donut'||w.ctype==='rose')setPie(w);else if(w.type==='chart'&&_chCalMode(w))setCalBar(w);else setLine(w);}
   function setPie(w){var ec=_ec[w.id];if(!ec)return;var ids=[w.varId,w.varId2,w.varId3].filter(function(x){return x;});
     var data=ids.map(function(id,i){var o=(w.sopt&&w.sopt[i])||{};var lv=_lastVals[id],v=lv?parseFloat(String(lv.v).replace(',','.')):0;if(isNaN(v))v=0;return {name:o.name||(i===0?(w.label||'Serie 1'):'Serie '+(i+1)),value:Math.max(0,v),itemStyle:{color:o.color||autoColorHex(i)}};});
     var donut=(w.ctype==='donut'),rose=(w.ctype==='rose');
@@ -562,6 +609,29 @@
     if(p==='center')o.left='center';else if(p==='right')o.right=6;else o.left=4;
     return o;}
   function _titleSpace(w){return _titleOn(w)?18:0;} // Platz im Grid reservieren, sonst überlappt der Titel
+  // ---- Liegende Balken: Achsen tauschen (Kategorie/Zeit -> y, Wert -> x) ----
+  function _hbShowEnds(ax){if(!ax)return;ax.axisLabel=ax.axisLabel||{};ax.axisLabel.showMinLabel=true;ax.axisLabel.showMaxLabel=true;} // erste+letzte Rubrik immer beschriften
+  // _hbCat: kategoriebasierte Balken (Wasserfall/Kalender) — Daten sind 1D (Index), nur Achsen tauschen.
+  function _hbCat(opt){var x=opt.xAxis,y=opt.yAxis;opt.xAxis=y;opt.yAxis=x;if(opt.yAxis){opt.yAxis.inverse=true;_hbShowEnds(opt.yAxis);}
+    (opt.series||[]).forEach(function(s){if(s.label&&s.label.position==='top')s.label.position='right';});}
+  // _hbLine: Zeitreihen-Balken — Datenpaare [t,v] -> [v,t], Achsen + Achsindex tauschen; Wertachsen links/rechts -> unten/oben.
+  function _hbLine(opt,w){
+    var vax=opt.yAxis, tax=opt.xAxis;                       // vax = Wertachse(n), tax = Zeitachse
+    var vArr=Array.isArray(vax)?vax:[vax], nB=0,nT=0;
+    vArr.forEach(function(a){if(a&&a.position==='right')nT++;else nB++;});
+    if(tax){tax.inverse=true;_hbShowEnds(tax);}
+    opt.xAxis=vax; opt.yAxis=tax;
+    var iB=0,iT=0;
+    vArr.forEach(function(a){if(!a)return;if(a.position==='right'){a.position='top';a.offset=(iT++)*34;}else{a.position='bottom';a.offset=(iB++)*34;}});
+    var lp=w.legend?(w.legPos||'top'):'';
+    opt.grid={left:6+(lp==='left'?60:0),right:8+(lp==='right'?60:0),
+      top:6+_titleSpace(w)+(lp==='top'?20:0)+Math.max(0,nT-1)*34,
+      bottom:(w.zoom?34:16)+(lp==='bottom'?18:0)+Math.max(0,nB-1)*34,containLabel:true};
+    (opt.series||[]).forEach(function(s){
+      if(s.data&&s.data.length&&Array.isArray(s.data[0]))s.data=s.data.map(function(p){return [p[1],p[0]];});
+      if(s.yAxisIndex!=null){s.xAxisIndex=s.yAxisIndex;delete s.yAxisIndex;}
+      if(s.label&&s.label.position==='top')s.label.position='right';});
+    if(opt.dataZoom)opt.dataZoom.forEach(function(z){if(z.type==='inside'){z.yAxisIndex=0;delete z.xAxisIndex;}else{z.orient='vertical';z.yAxisIndex=0;z.width=13;z.right=4;delete z.height;delete z.bottom;z.top=6+_titleSpace(w);}});}
   function setLine(w){
     var ec=_ec[w.id];if(!ec)return;var ct=w.ctype||'area',hs=chartSeries(w),defs=_chSeries(w);
     var forceStack=(ct==='barstack'),stacked=(w.stack||forceStack),anyBar=false,yaxes=_chYAxes(w);
@@ -607,6 +677,7 @@
     // Achsen, damit nichts Neues zu lernen ist. Jede Marke sagt: WAS wird markiert
     // (Art), an WELCHER Reihe, WIE dargestellt und in welcher Farbe.
     _annApply(w,series);
+    if(w.barHoriz&&(ct==='bar'||ct==='barstack'))_hbLine(opt,w);   // liegende Balken
     ec.setOption(opt,true);
   }
   // Kalenderjahr-Modus (Balken, Monatlich): x = Jän–Dez, exaktes Jahr (+ Vorjahr bei Vergleich), via generische ?api=aggregated
@@ -622,7 +693,7 @@
     series.push({type:'bar',name:String(m.curY||'Jahr'),itemStyle:{color:acc,borderRadius:br},data:m.cur,label:lbl});
     var lp=showLeg?(w.legPos||'top'):'',axc=_axShow(w);
     _annApply(w,series);   // Kalenderjahr-Balken: Marken gelten hier genauso
-    ec.setOption({backgroundColor:'transparent',animation:!!bcfg().chartAnim,grid:{left:8+(lp==='left'?60:0),right:10+(lp==='right'?60:0),top:6+_titleSpace(w)+(lp==='top'?20:0),bottom:4+(lp==='bottom'?18:0),containLabel:true},
+    var opt={backgroundColor:'transparent',animation:!!bcfg().chartAnim,grid:{left:8+(lp==='left'?60:0),right:10+(lp==='right'?60:0),top:6+_titleSpace(w)+(lp==='top'?20:0),bottom:4+(lp==='bottom'?18:0),containLabel:true},
       tooltip:{trigger:'axis',valueFormatter:function(v){return _chNum(w,v);}},
       legend:_legendOpt(w,showLeg),
       title:_titleOpt(w),
@@ -631,7 +702,9 @@
         min:(w.ymin!=null&&w.ymin!==''?parseFloat(w.ymin):null),max:(w.ymax!=null&&w.ymax!==''?parseFloat(w.ymax):null),
         axisLine:{show:axc.line,lineStyle:{color:cssv('--line')}},axisTick:{show:axc.ticks},axisLabel:_axLabY(w,axc),
         splitLine:{show:axc.yGrid,lineStyle:{color:cssv('--line-soft')}},splitNumber:(w.gridDivs>0?parseInt(w.gridDivs):null)},
-      series:series},true);
+      series:series};
+    if(w.barHoriz)_hbCat(opt);   // liegende Balken
+    ec.setOption(opt,true);
   }
   function fetchCalYear(w){
     var EMPTY=[null,null,null,null,null,null,null,null,null,null,null,null];
@@ -792,7 +865,43 @@
         splitLine:{show:ax.yGrid,lineStyle:{color:cssv('--line-soft')}}},
       series:series},true);
   }
+  // ---- Heatmap: Wochentag (Zeilen) x Stunde (Spalten), aggregiert aus stuendlicher Historie EINER Variable ----
+  function fetchHeatmap(w){
+    var vid=(_chSeries(w)[0]||{}).vid||w.varId;
+    if(!vid){_hist[w.id]={heat:null};if(_ec[w.id])setHeatmap(w);return;}
+    var days=Math.max(1,Math.min(120,w.hmDays||14)),now=Math.floor(Date.now()/1000),from=now-days*86400;
+    var res=([5,15,30,60].indexOf(w.hmRes)>=0)?w.hmRes:60;   // Minuten je Spalte
+    var level=(res>=60)?0:5;                                 // fein -> 5-Min-Archiv als Basis, sonst Stunde
+    var cols=Math.round(1440/res),aggF=(w.aggField==='sum')?'sum':'avg';
+    fetch('?api=aggregated&id='+encodeURIComponent(vid)+'&level='+level+'&from='+from+'&to='+now,{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
+      var sum=[],cnt=[],d,c;for(d=0;d<7;d++){sum[d]=[];cnt[d]=[];for(c=0;c<cols;c++){sum[d][c]=0;cnt[d][c]=0;}}
+      ((j&&j.rows)||[]).forEach(function(b){if(b[aggF]==null)return;var dt=new Date(b.t*1000),wd=(dt.getDay()+6)%7,slot=Math.floor((dt.getHours()*60+dt.getMinutes())/res);if(slot<0)slot=0;if(slot>=cols)slot=cols-1;sum[wd][slot]+=b[aggF];cnt[wd][slot]++;});
+      var data=[],mn=Infinity,mx=-Infinity;
+      for(d=0;d<7;d++)for(c=0;c<cols;c++){var k=cnt[d][c];if(k>0){var v=(aggF==='sum')?sum[d][c]:(sum[d][c]/k);v=Math.round(v*100)/100;data.push([c,d,v]);if(v<mn)mn=v;if(v>mx)mx=v;}}
+      _hist[w.id]={heat:{data:data,min:(mn===Infinity?0:mn),max:(mx===-Infinity?1:mx),cols:cols,res:res}};
+      if(_ec[w.id])setHeatmap(w);
+    }).catch(function(){_hist[w.id]={heat:null};if(_ec[w.id])setHeatmap(w);});
+  }
+  function setHeatmap(w){
+    var ec=_ec[w.id];if(!ec)return;var H=_hist[w.id]&&_hist[w.id].heat;
+    var WD=['Mo','Di','Mi','Do','Fr','Sa','So'],fs=_axFs(w),muted=cssv('--muted');
+    if(!H||!H.data.length){ec.setOption({backgroundColor:'transparent',title:{text:(_hist[w.id]&&_hist[w.id].heat===null)?'keine Verlaufsdaten':'lädt …',left:'center',top:'middle',textStyle:{color:cssv('--faint'),fontSize:_ecF(w,'title',12),fontWeight:'normal'}},xAxis:{show:false},yAxis:{show:false},visualMap:{show:false},series:[]},true);return;}
+    var res=H.res||60,cols=H.cols||24,xlab=[],c;
+    for(c=0;c<cols;c++){var mm=c*res;xlab.push((mm%60===0)?('0'+(mm/60)).slice(-2):'');}   // nur volle Stunden beschriften
+    function _hlbl(ci){var mm=ci*res;return ('0'+Math.floor(mm/60)).slice(-2)+':'+('0'+(mm%60)).slice(-2);}
+    var SCH={accent:[cssv('--surface-2'),cssv('--accent')],heat:['#153a4a','#2e8b8b','#3bd6c6','#f2b441','#f2685a'],cool:['#4aa3ff','#39d08a','#f2b441','#f2685a']};
+    var pal=SCH[w.hmScheme]||SCH.heat, thin=(cols>48);
+    ec.setOption({backgroundColor:'transparent',animation:!!bcfg().chartAnim,
+      tooltip:{position:'top',backgroundColor:cssv('--surface-2'),borderColor:cssv('--line'),textStyle:{color:cssv('--text'),fontSize:_ecF(w,'label',10)},formatter:function(p){return WD[p.value[1]]+' '+_hlbl(p.value[0])+' · '+_chNum(w,p.value[2]);}},
+      title:_titleOpt(w),
+      grid:{left:6,right:6,top:6+_titleSpace(w),bottom:26,containLabel:true},
+      xAxis:{type:'category',data:xlab,splitArea:{show:!thin,areaStyle:{color:['transparent','rgba(127,127,127,0.04)']}},axisLine:{show:false},axisTick:{show:false},axisLabel:{color:muted,fontSize:fs,interval:0,hideOverlap:true}},
+      yAxis:{type:'category',data:WD,inverse:true,splitArea:{show:true,areaStyle:{color:['transparent','rgba(127,127,127,0.04)']}},axisLine:{show:false},axisTick:{show:false},axisLabel:{color:muted,fontSize:fs}},
+      visualMap:{min:H.min,max:H.max,calculable:true,orient:'horizontal',left:'center',bottom:2,itemWidth:12,itemHeight:90,textStyle:{color:muted,fontSize:fs},inRange:{color:pal}},
+      series:[{type:'heatmap',data:H.data,progressive:0,itemStyle:{borderColor:cssv('--surface'),borderWidth:(thin?0:1)},label:{show:!!w.labels&&!thin,fontSize:fs,color:cssv('--text'),formatter:function(p){return _chNum(w,p.value[2]);}},emphasis:{itemStyle:{shadowBlur:6,shadowColor:'rgba(0,0,0,.45)'}}}]},true);
+  }
   function fetchHist(w){
+    if(w.ctype==='heatmap'){fetchHeatmap(w);return;} // Wochentag x Stunde (eigener Aggregat-Weg)
     if(w.ctype==='daylight')  {fetchDaylight(w);return;} // eigener Datenweg (Jahresberechnung, keine Historie)
     if(w.ctype==='waterfall'||w.type==='waterfall')return; // Wasserfall liest ausschliesslich Live-Werte (_lastVals)
     var W=_chWindow(w);
@@ -1009,6 +1118,7 @@
     }
     allWidgets().forEach(_one);   // Seiteninhalt UND Leisten (Uhr/Timer/Sonne)
     if(_compKids&&_compKids.length)_compKids.forEach(_one); // Uhr/Timer/Sonne in Komponenten
+    if(_contKids&&_contKids.length)_contKids.forEach(_one); // ... und in Containern
     if(_tickKids&&_tickKids.length)_tickKids.forEach(_one); // ... und in der Laufzeile
   }
   setInterval(tick,1000);
@@ -1052,7 +1162,7 @@
     var sh=c.attachShadow({mode:'open'}); // Shadow DOM: transparent + style-isoliert (iOS-Weiß-Bug entfällt)
     var _skin=(w.htmlSkin!==false)?_skinVars():null; // Skin erzwingen (Schrift + nicht passende Farben)
     var _skinCss=_skin?('#shwrap{color:'+_skin.text+';font-family:'+_skin.font+'}#shwrap *{font-family:inherit!important}'):'';
-    sh.innerHTML='<style>:host{display:block;background:transparent}#shwrap{transform-origin:top left;background:transparent}'+_skinCss+'</style>'+headHtml+'<div id="shwrap">'+bodyHtml+'</div>';
+    sh.innerHTML='<style>:host{display:block;background:transparent;-webkit-text-size-adjust:100%;text-size-adjust:100%}#shwrap{transform-origin:top left;background:transparent;-webkit-text-size-adjust:100%;text-size-adjust:100%}'+_skinCss+'</style>'+headHtml+'<div id="shwrap">'+bodyHtml+'</div>';
     if(_skin){var _wrp=sh.getElementById('shwrap');if(_wrp)_fixHtmlColors(_wrp,_skin);}
     applyHtmlScale(w);}
   function fetchHtml(w,root){if(!w.varId)return;fetch('?api=html&id='+w.varId,{cache:'no-store'}).then(function(r){return r.text();}).then(function(t){setHtmlContent(w,t,root);}).catch(function(){});}
@@ -1127,7 +1237,7 @@
   function widget(id){var w=state.widgets.filter(function(x){return x.id===id;})[0];if(w)return w;
     var ck0=chromeAllKids().filter(function(x){return x.id===id;})[0];if(ck0)return ck0; /* Widget in einer Leiste */
     var cd0=chromeDef(id);if(cd0)return cd0; /* die Leiste selbst (fuer Auswahl + Eigenschaften) */
-    if(_compKids&&_compKids.length){var ck=_compKids.filter(function(x){return x.id===id;})[0];if(ck)return ck;}if(_tickKids&&_tickKids.length){var tk=_tickKids.filter(function(x){return x.id===id;})[0];if(tk)return tk;}if(_popup&&_popup.widgets)return _popup.widgets.filter(function(x){return x.id===id;})[0];return w;}
+    if(_compKids&&_compKids.length){var ck=_compKids.filter(function(x){return x.id===id;})[0];if(ck)return ck;}if(_contKids&&_contKids.length){var kk=_contKids.filter(function(x){return x.id===id;})[0];if(kk)return kk;}if(_tickKids&&_tickKids.length){var tk=_tickKids.filter(function(x){return x.id===id;})[0];if(tk)return tk;}if(_popup&&_popup.widgets)return _popup.widgets.filter(function(x){return x.id===id;})[0];return w;}
   // A1: Overlay/Popup — eine Ansicht als schwebendes Fenster über der aktuellen Ansicht
   var _popup=null;
   var _navStack=[]; // B3: Seiten-Verlauf für Zurück-Navigation
@@ -1148,7 +1258,7 @@
     oc.innerHTML='';
     _popup.widgets.forEach(function(w){
       var dd=document.createElement('div');dd.className='w t-'+w.type+(w.lineMode?' wline':'');dd.dataset.id=w.id;
-      var _ak=_wActionKind(w,true);if(_ak)dd.classList.add(_ak); // Hover-Affordance auch im Popup (closePopup zaehlt hier)
+      var _ak=_wActionKind(w,true);if(_ak)_ak.split(' ').forEach(function(c){dd.classList.add(c);}); // Hover-Affordance auch im Popup (closePopup zaehlt hier)
       dd.style.left=w.x+'px';dd.style.top=w.y+'px';dd.style.width=w.w+'px';dd.style.height=w.h+'px';
       dd.innerHTML='<div class="winner">'+widgetInner(w)+'</div>';
       if(w.type==='value'&&w.valfs){var vv=$('.v',dd);if(vv)vv.style.fontSize=w.valfs+'px';}
@@ -1171,6 +1281,9 @@
   function closePopup(){var ov=$('#overlay');if(ov)ov.classList.remove('open');var oc=$('#ovcanvas');if(oc)oc.innerHTML='';_popup=null;invalidateVidx();}
   // M3: Custom Controls — eine Ansicht als parametrierbare, wiederverwendbare Komponente (Master), Instanzen remappen IDs (Alias)
   var _compKids=[];
+  var _contKids=[]; // Container-Kinder: echte, editierbare Widget-Instanzen (liegen in w.kids)
+  var _cbase={};    // Laufzeit: contId -> {w,h} eingefrorene Artboard-Größe im Editor (NICHT persistiert)
+  function _contBBox(w){var cw=0,ch=0;(w.kids||[]).forEach(function(k){if(k&&k.type!=='container'){cw=Math.max(cw,(k.x||0)+(k.w||0));ch=Math.max(ch,(k.y||0)+(k.h||0));}});return {w:Math.max(20,cw+6),h:Math.max(20,ch+6)};}
   var _tickKids=[]; // Ticker-Laufband: darin laufende Widget-Instanzen (Live wie _compKids)
   var _regions={}; // B2: Slot-Name -> aktuell angezeigte Ansicht (Laufzeit)
   function setRegion(slot,view){if(!slot)return;_regions[slot]=view;render();}
@@ -1187,6 +1300,36 @@
       inner+='<div class="w t-'+c.type+(c.lineMode?' wline':'')+(c.bgT?' bg-t':'')+(c.lblWrap?' lbl-wrap':'')+'" data-id="'+c.id+'" style="position:absolute;left:'+c.x+'px;top:'+c.y+'px;width:'+c.w+'px;height:'+c.h+'px'+((c.bg&&!c.bgT)?';background:'+c.bg:'')+(c.fg?(function(){var r=_readableFg(c.fg,(c.bgT?null:c.bg));return r?';color:'+r:'';})():'')+'"><div class="winner">'+widgetInner(c)+'</div></div>';
       _compKids.push(c);});
     host.innerHTML=inner+'</div>';}
+  // ---- Container: Kinder (w.kids) einbetten; Kinder sind echte, editierbare Widgets ----
+  //  Design-Fläche = Hüllbox aller Kinder. EDIT: 1:1 (kein störendes Auto-Resize; nur wenn der Inhalt die Box
+  //  sprengt, schrumpft er soweit, dass alle Kinder sichtbar/editierbar bleiben). BETRIEB/Mobil/Webview:
+  //  Inhalt wird proportional auf die Box eingepasst (füllt den Platz, ALLE Kinder sichtbar, nichts abgeschnitten).
+  function expandContainer(w){
+    var body=$('.w[data-id="'+w.id+'"] [data-role=contbody]',canvas);if(!body)return;
+    if(w.baseW!==undefined||w.baseH!==undefined){delete w.baseW;delete w.baseH;} // Altlast eines früheren Fixes entfernen (falsches Artboard) -> beim nächsten commit weg
+    var pw=body.clientWidth||w.w, ph=body.clientHeight||w.h;
+    // Artboard = Hüllbox der Kinder. Editor: pro Sitzung EINGEFROREN (_cbase) -> ein Kind verschieben skaliert
+    // NICHTS neu; nur Hinzufügen/Entfernen (contFitBase) friert neu ein. Betrieb/Mobil/Webview: direkt aus der
+    // Hüllbox (Kinder sind dort statisch). Nichts wird persistiert -> keine Layout-Korruption. Maßstab wie gewohnt:
+    // Editor = 1:1 (nur verkleinern, falls Inhalt größer als Body); Betrieb = proportional einpassen.
+    var bb=(mode==='edit')?(_cbase[w.id]||(_cbase[w.id]=_contBBox(w))):_contBBox(w);
+    var bw=bb.w, bh=bb.h;
+    var fit=Math.min(pw/bw,ph/bh); if(!isFinite(fit)||fit<=0)fit=1;
+    var sc=(mode==='edit')?Math.min(1,fit):fit;
+    body.innerHTML='';
+    var inner=document.createElement('div');inner.className='continner';inner.setAttribute('data-role','continner');inner.dataset.sc=sc;
+    inner.style.cssText='position:absolute;left:0;top:0;width:'+bw+'px;height:'+bh+'px;transform-origin:top left;transform:scale('+sc+')';
+    body.appendChild(inner);
+    (w.kids||[]).forEach(function(k){if(!k||k.type==='container')return; try{var _ke=_mkWidgetEl(k);_ke.classList.add('contkid');inner.appendChild(_ke);_contKids.push(k);}catch(e){}}); // (kein Container-in-Container in v1)
+  }
+  function containerOfKid(id){for(var i=0;i<state.widgets.length;i++){var c=state.widgets[i];if(c.type==='container'&&c.kids){for(var j=0;j<c.kids.length;j++)if(c.kids[j]&&c.kids[j].id===id)return {cont:c,kid:c.kids[j],idx:j};}}return null;}
+  // Strukturelle Änderung (Kind rein/raus/gelöscht) -> eingefrorenes Artboard verwerfen, beim nächsten Render neu aus der Hüllbox
+  function contFitBase(c){if(c)delete _cbase[c.id];}
+  function containerScreenScale(contId){var inr=$('.w[data-id="'+contId+'"] [data-role=continner]',canvas);var s=inr?parseFloat(inr.dataset.sc):1;return (isFinite(s)&&s>0)?s:1;}
+  function containerInnerRect(contId){var inr=$('.w[data-id="'+contId+'"] [data-role=continner]',canvas);return inr?inr.getBoundingClientRect():null;}
+  // Container unter einem Bildschirmpunkt (px,py = Canvas-Koordinaten/zoom), ausser den mitgezogenen IDs
+  function containerHitTest(px,py,exclude){exclude=exclude||{};var hit=null;
+    state.widgets.forEach(function(c){if(c.type!=='container'||exclude[c.id])return;if(px>=c.x&&px<=c.x+c.w&&py>=c.y&&py<=c.y+c.h)hit=c;});return hit;}
   // Wert-Format pro Widget
   var FMTS={auto:'Original',kw:'kW',kwh:'kWh',w:'W',r0:'0 Dez.',r1:'1 Dez.',pct:'Prozent',time:'Uhrzeit',date:'Datum',rel:'Relativzeit'};
   var FMT_TYPES=['value','bar','chip','tile','room','sun','thermostat','weather','light','cover','slider','valuecard'];
