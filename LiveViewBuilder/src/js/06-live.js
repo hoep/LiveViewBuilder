@@ -156,6 +156,19 @@
   function _fmtNum(x,w){var neg=x<0,a=Math.abs(x);
     if(w.numAbbrev){var u='';if(a>=1e9){a/=1e9;u=' Mrd';}else if(a>=1e6){a/=1e6;u=' M';}else if(a>=1e3){a/=1e3;u=' k';}var dd=(w.dec!=null)?w.dec:(u?1:0);return (neg?'-':'')+a.toFixed(dd).replace('.',',')+u;}
     var s=(w.dec!=null)?a.toFixed(w.dec):String(a);var pp=s.split('.');if(w.thousand)pp[0]=pp[0].replace(/\B(?=(\d{3})+(?!\d))/g,'.');return (neg?'-':'')+pp.join(',');}
+  // Optionale Pro-Slot-Formatierung fuer generische [data-vid]-Slots (Listen-Zeilen etc.):
+  // data-dec / data-scale / data-unit / data-pre / data-suf / data-nulltext. Ohne Attribute = Rohwert wie bisher.
+  function _fmtSlot(e,d,base){
+    var dec=e.getAttribute('data-dec'),sc=e.getAttribute('data-scale'),un=e.getAttribute('data-unit'),pre=e.getAttribute('data-pre'),suf=e.getAttribute('data-suf'),nt=e.getAttribute('data-nulltext');
+    if(dec==null&&sc==null&&un==null&&pre==null&&suf==null&&nt==null)return base; // keine Attribute -> unveraendert
+    if(d.v==null||String(d.v).trim()==='')return (nt!=null&&nt!=='')?nt:base;
+    var out=base,n=parseFloat(String(d.v).replace(',','.'));
+    if(!isNaN(n)&&(dec!=null||sc!=null)){if(sc!=null&&sc!==''&&+sc!==1)n=n*(+sc);out=_fmtNum(n,{dec:(dec!=null&&dec!=='')?parseInt(dec):null});}
+    if(un)out=out+' '+un;
+    return (pre||'')+out+(suf||'');
+  }
+  // Baut die Format-Attribute fuer einen [data-vid]-Slot aus einer Listen-Zeile (dec/unit/scale). Leer -> kein Attribut.
+  function _slotAttrs(o,noUnit){var s='';if(o.dec!=null&&o.dec!=='')s+=' data-dec="'+(parseInt(o.dec)||0)+'"';if(!noUnit&&o.unit)s+=' data-unit="'+esc(o.unit)+'"';if(o.scale!=null&&o.scale!==''&&+o.scale!==1)s+=' data-scale="'+(+o.scale)+'"';return s;}
   function applyVal(id,d){
     if(!id||!d)return;
     var _prev=_lastVals[id];
@@ -166,7 +179,7 @@
     var _bs=String(base),_pu=(d.u!=null)?String(d.u):''; // Profil-Einheit vom Server
     var num=(_pu!==''&&_bs.length>=_pu.length&&_bs.slice(-_pu.length)===_pu)?_bs.slice(0,-_pu.length).replace(/\s+$/,''):_bs; // Wert ohne Profil-Einheit
     if(!_fIsFormula(id)){ // Formel-Token sind nie echte data-vid-Attribute; ihr String (mit ", =, +) würde den CSS-Selektor sprengen
-      $$('[data-vid="'+id+'"]',canvas).forEach(function(e){e.textContent=base;}); // generische Slots (Forecast etc.)
+      $$('[data-vid="'+id+'"]',canvas).forEach(function(e){e.textContent=_fmtSlot(e,d,base);}); // generische Slots (Forecast, Listen …) — optionale Pro-Slot-Formatierung
       $$('[data-viddot="'+id+'"]',canvas).forEach(function(e){e.classList.toggle('on',on);}); // Status-Dots / Bewegung
       $$('[data-vidbar="'+id+'"]',canvas).forEach(function(e){var nb=parseFloat(String(d.v).replace(',','.'));if(!isNaN(nb))e.style.width=Math.max(0,Math.min(100,nb))+'%';}); // Meter-Balken
     }
