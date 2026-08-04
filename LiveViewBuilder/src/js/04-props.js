@@ -24,6 +24,7 @@
   var UNIV_VALUE_TYPES=['value','kpi','bar','tempbar','chip','room','cval','sval'];
   function _uRefresh(w){render();if(w.type==='cval'&&typeof computeCounterVal==='function')computeCounterVal(w);else if(w.type==='sval'&&typeof computeAggVal==='function')computeAggVal(w);else if(w.varId&&_lastVals[w.varId])applyVal(w.varId,_lastVals[w.varId]);commit();}
   var UNIV_PRESUF_TYPES=['value','kpi','cval','sval','bar','tempbar','chip'];
+  var UNIV_ICON_TYPES=['icon','value','switch','tile','button','light','chip','room','kpi','assoc','valuecard'];
   function universalSection(w){
     var h='';
     var isVal=UNIV_VALUE_TYPES.indexOf(w.type)>=0,isPS=UNIV_PRESUF_TYPES.indexOf(w.type)>=0;
@@ -38,6 +39,21 @@
         +row('Große Zahlen kürzen','<select id="pUAbbr"><option value=""'+(!w.numAbbrev?' selected':'')+'>aus</option><option value="k"'+(w.numAbbrev==='k'?' selected':'')+'>k · M · Mrd</option></select>')
         +row('Text bei leerem Wert','<input id="pUNull" value="'+esc(w.nullText!=null?w.nullText:'')+'" style="width:120px" placeholder="–">');
     }
+    if(w.type!=='line'&&w.type!=='shape'&&w.type!=='blank'){
+      h+='<div class="pgh">Textformat</div>'
+        +row('Groß-/Kleinschreibung','<select id="pUTT"><option value=""'+(!w.textTransform?' selected':'')+'>unverändert</option><option value="uppercase"'+(w.textTransform==='uppercase'?' selected':'')+'>GROSS</option><option value="lowercase"'+(w.textTransform==='lowercase'?' selected':'')+'>klein</option><option value="capitalize"'+(w.textTransform==='capitalize'?' selected':'')+'>Erster groß</option></select>');
+    }
+    if(UNIV_ICON_TYPES.indexOf(w.type)>=0&&(w.icon||['icon','tile','button','light'].indexOf(w.type)>=0)){
+      h+='<div class="pgh">Icon &amp; Grafik</div>'
+        +row('Icon-Größe (px)','<input id="pIcoSz" type="number" min="0" style="width:90px" value="'+(w.iconSize!=null?w.iconSize:'')+'" placeholder="Standard">')
+        +row('Icon-Hintergrund',skinSel(w.iconBg,'id="pIcoBg"'))
+        +row('Icon-Form','<select id="pIcoShape">'+[['','Standard'],['circle','Kreis'],['square','Quadrat'],['rounded','Abgerundet']].map(function(o){return '<option value="'+o[0]+'"'+((w.iconShape||'')===o[0]?' selected':'')+'>'+o[1]+'</option>';}).join('')+'</select>')
+        +row('Icon-Eckenradius (px)','<input id="pIcoRad" type="number" min="0" style="width:90px" value="'+(w.iconRadius!=null?w.iconRadius:'')+'" placeholder="">')
+        +row('Icon-Rahmen (px)','<input id="pIcoBrd" type="number" min="0" style="width:70px" value="'+(w.iconBorder!=null?w.iconBorder:'')+'" placeholder="0"> '+skinSel(w.iconBorderColor,'id="pIcoBrdC"'))
+        +row('Icon-Schatten','<select id="pIcoShadow">'+[['','aus'],['soft','weich'],['strong','stark']].map(function(o){return '<option value="'+o[0]+'"'+((w.iconShadow||'')===o[0]?' selected':'')+'>'+o[1]+'</option>';}).join('')+'</select>')
+        +row('Icon-Deckkraft (%)','<input id="pIcoOp" type="number" min="0" max="100" style="width:90px" value="'+(w.iconOpacity!=null?w.iconOpacity:'')+'" placeholder="100">')
+        +row('Icon-Leuchten','<input type="checkbox" id="pIcoGlow"'+(w.iconGlow?' checked':'')+'>');
+    }
     return h;
   }
   function universalWire(w){
@@ -47,6 +63,16 @@
     if($('#pUThou'))$('#pUThou').onchange=function(){w.thousand=this.checked||undefined;_uRefresh(w);};
     if($('#pUAbbr'))$('#pUAbbr').onchange=function(){w.numAbbrev=this.value||undefined;_uRefresh(w);};
     if($('#pUNull'))$('#pUNull').oninput=function(){w.nullText=this.value||undefined;_uRefresh(w);};
+    if($('#pIcoSz'))$('#pIcoSz').oninput=function(){w.iconSize=this.value===''?undefined:(parseInt(this.value)||undefined);render();commit();};
+    if($('#pIcoBg'))$('#pIcoBg').onchange=function(){w.iconBg=this.value||undefined;render();commit();};
+    if($('#pIcoShape'))$('#pIcoShape').onchange=function(){w.iconShape=this.value||undefined;render();commit();};
+    if($('#pIcoRad'))$('#pIcoRad').oninput=function(){w.iconRadius=this.value===''?undefined:(parseInt(this.value)||0);render();commit();};
+    if($('#pIcoBrd'))$('#pIcoBrd').oninput=function(){w.iconBorder=this.value===''?undefined:(parseInt(this.value)||0);render();commit();};
+    if($('#pIcoBrdC'))$('#pIcoBrdC').onchange=function(){w.iconBorderColor=this.value||undefined;render();commit();};
+    if($('#pIcoShadow'))$('#pIcoShadow').onchange=function(){w.iconShadow=this.value||undefined;render();commit();};
+    if($('#pIcoOp'))$('#pIcoOp').oninput=function(){w.iconOpacity=this.value===''?undefined:Math.max(0,Math.min(100,parseInt(this.value)||0));render();commit();};
+    if($('#pIcoGlow'))$('#pIcoGlow').onchange=function(){w.iconGlow=this.checked||undefined;render();commit();};
+    if($('#pUTT'))$('#pUTT').onchange=function(){w.textTransform=this.value||undefined;render();commit();};
   }
   var _rpBusy=false;
   function renderProps(){

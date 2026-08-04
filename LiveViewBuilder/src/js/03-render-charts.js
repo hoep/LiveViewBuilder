@@ -67,6 +67,25 @@
     chromeKids();                        // Widgets innerhalb der Leisten zeichnen
     _renderRest();
   }
+  // Universelle Icon-/Grafik-Gestaltung (Groesse, Hintergrund, Form, Rahmen, Schatten, Deckkraft, Glow).
+  // Rein additiv: greift NUR, wenn mindestens eine Eigenschaft gesetzt ist -> bestehende Layouts unveraendert.
+  // Konsum als Inline-Style direkt auf der Icon-Huelle (kein var()-Fallback-Risiko).
+  function _hasIconGfx(w){return w.iconSize!=null||w.iconBg||w.iconShape||w.iconRadius!=null||w.iconBorder!=null||w.iconShadow||w.iconOpacity!=null||w.iconGlow;}
+  function _applyIconGfx(w,e){
+    if(w.iconSize!=null){e.style.fontSize=(+w.iconSize)+'px';var sv=e.querySelector('svg');if(sv){sv.style.width=(+w.iconSize)+'px';sv.style.height=(+w.iconSize)+'px';}}
+    var shape=w.iconShape;
+    if(w.iconBg){e.style.background=(_skinColor(w.iconBg)||w.iconBg);if(!shape)shape='rounded';}
+    if(w.iconBg||shape){e.style.display='inline-flex';e.style.alignItems='center';e.style.justifyContent='center';if(w.iconBg)e.style.padding='0.35em';}
+    if(shape==='circle')e.style.borderRadius='999px';
+    else if(shape==='square')e.style.borderRadius='0';
+    else if(shape==='rounded')e.style.borderRadius=((w.iconRadius!=null?+w.iconRadius:8))+'px';
+    if(w.iconRadius!=null&&shape!=='circle')e.style.borderRadius=(+w.iconRadius)+'px';
+    if(w.iconBorder!=null&&+w.iconBorder>0)e.style.border=(+w.iconBorder)+'px solid '+(w.iconBorderColor?(_skinColor(w.iconBorderColor)||w.iconBorderColor):'currentColor');
+    if(w.iconShadow==='soft')e.style.boxShadow='0 2px 6px rgba(0,0,0,.25)';
+    else if(w.iconShadow==='strong')e.style.boxShadow='0 4px 14px rgba(0,0,0,.4)';
+    if(w.iconOpacity!=null)e.style.opacity=String(Math.max(0,Math.min(100,+w.iconOpacity))/100);
+    if(w.iconGlow)e.style.filter='drop-shadow(0 0 6px var(--wicon,var(--accent)))';
+  }
   // Ein Widget-Element bauen (identisch für Seiteninhalt und Leisten-Inhalt)
   function _mkWidgetEl(w,_refSet){
       _refSet=_refSet||{};
@@ -86,6 +105,8 @@
       _applyPosOffsets(w,d); // Wert/Icon frei positionieren (valDX/valDY, icoDX/icoDY)
       if(w.bg&&!w.bgT)d.style.background=w.bg;if(w.fg){var _rf=_readableFg(w.fg,(w.bgT?null:w.bg));if(_rf)d.style.color=_rf;}
       if(w.iconColor)d.style.setProperty('--wicon',_skinColor(w.iconColor)||w.iconColor); // zentrale Icon-Farbe
+      if(_hasIconGfx(w)){var _ie=d.querySelector('.iconwrap,.wvic,.swic,.htbadge,.htico,.hbicon,.hl2ic,.hchipic,.hricon,.hkbi,.hassoc-chip,[data-role=badge]');if(_ie)_applyIconGfx(w,_ie);} // universelle Icon-/Grafik-Gestaltung (opt-in)
+      if(w.textTransform)d.style.textTransform=w.textTransform; // universelle Groß-/Kleinschreibung (opt-in)
       if(w.ff){d.style.setProperty('--w-ff',w.ff);d.classList.add('tw-ff');}if(w.fwt){d.style.setProperty('--w-fwt',w.fwt);d.classList.add('tw-fwt');}if(w.fsty){d.style.setProperty('--w-fsty',w.fsty);d.classList.add('tw-fsty');}if(w.fsz){d.style.setProperty('--w-fsz',w.fsz+'px');d.classList.add('tw-fsz');} // Typografie: auf innere Elemente erzwingen
       return d;
   }
