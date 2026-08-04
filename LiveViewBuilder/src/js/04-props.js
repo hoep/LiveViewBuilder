@@ -19,9 +19,11 @@
   // ===== Universelle Einstellungs-Sektion (zentral, kategorisiert) =====
   // Zieht die vereinheitlichten Kategorien in JEDES Widget ein, nach dem popupSection-Muster.
   // Grundregel: NUR generisch konsumierte bzw. neue, per Default inerte Felder - dupliziert kein bestehendes props()-Feld.
-  var UNIV_VALUE_TYPES=['value','kpi','valuecard','bar','gauge','gaugepro','tempbar','dial','chip','cval','sval','delta','room','meterlist','marquee','raincard','rangebtn','assoc'];
+  // Typen, deren Wert durch die zentrale Format-Pipeline (applyVal-txt bzw. compute*) laeuft.
+  // Wird wellenweise erweitert, sobald ein Widget die Universal-Keys nachweislich konsumiert.
+  var UNIV_VALUE_TYPES=['value','kpi','bar','tempbar','chip','room','cval','sval'];
   function _uRefresh(w){render();if(w.type==='cval'&&typeof computeCounterVal==='function')computeCounterVal(w);else if(w.type==='sval'&&typeof computeAggVal==='function')computeAggVal(w);else if(w.varId&&_lastVals[w.varId])applyVal(w.varId,_lastVals[w.varId]);commit();}
-  var UNIV_PRESUF_TYPES=['value','kpi','cval','sval'];
+  var UNIV_PRESUF_TYPES=['value','kpi','cval','sval','bar','tempbar','chip'];
   function universalSection(w){
     var h='';
     var isVal=UNIV_VALUE_TYPES.indexOf(w.type)>=0,isPS=UNIV_PRESUF_TYPES.indexOf(w.type)>=0;
