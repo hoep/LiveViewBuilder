@@ -472,7 +472,8 @@
   function _glowCol(col,a){col=(''+(col||'')).trim();var m=col.match(/^#([0-9a-fA-F]{6})$/);if(m){var n=parseInt(m[1],16);return 'rgba('+((n>>16)&255)+','+((n>>8)&255)+','+(n&255)+','+a+')';}m=col.match(/rgba?\(([^)]+)\)/);if(m){var p=m[1].split(',');return 'rgba('+(+p[0])+','+(+p[1])+','+(+p[2])+','+a+')';}return col;} // Farbe mit Alpha (für Glow)
   function setGauge(w,d){
     var ec=_ec[w.id];if(!ec)return;var raw=d?d.v:null,val=d?parseFloat(d.v):0;if(isNaN(val))val=0;
-    var mn=(w.min!=null?w.min:0),mx=(w.max!=null?w.max:100);
+    var _sc=(w.scale!=null&&w.scale!==''&&+w.scale!==1)?(+w.scale):1;val=val*_sc; // universeller Faktor (skaliert Wert + Skala mit)
+    var mn=(w.min!=null?w.min:0)*_sc,mx=(w.max!=null?w.max:100)*_sc;
     var style=w.gstyle||'classic',cmode=w.gcolor||'accent';
     if(cmode==='assoc'&&w.varId&&!_assocData[w.varId]){loadAssoc(w.varId,function(){setGauge(w,d);});}
     var t1=(w.t1!=null?w.t1:mn+(mx-mn)*0.6),t2=(w.t2!=null?w.t2:mn+(mx-mn)*0.85);
@@ -490,7 +491,7 @@
     var ser={type:'gauge',min:mn,max:mx,startAngle:ANG[0],endAngle:ANG[1],center:center,radius:radius,
       axisTick:{show:!!w.gticks,distance:2,splitNumber:4,length:4,lineStyle:{color:cssv('--faint'),width:1}},splitLine:{show:!!w.gticks,length:8,lineStyle:{color:cssv('--faint'),width:1}},axisLabel:{show:!!w.gticks,color:cssv('--faint'),fontSize:_ecF(w,'axis',8),distance:12},anchor:{show:!!w.gknob,showAbove:true,size:9,itemStyle:{color:cssv('--text')}},
       title:{show:!!w.label,offsetCenter:titOff,color:cssv('--muted'),fontSize:_ecF(w,'label',10)},
-      detail:{show:(w.gvShow!==false),valueAnimation:true,fontSize:(w.gvsz||(isFill?20:19)),fontWeight:(w.gvfwt||'normal'),fontStyle:(w.gvsty||'normal'),fontFamily:(w.gvff||'ui-monospace,monospace'),offsetCenter:detOff,color:cssv('--text'),formatter:((w.dec!=null||(w.gvUnit!=null&&w.gvUnit!==''))?function(v){var hasU=(w.gvUnit!=null&&w.gvUnit!=='');var num=(w.dec!=null)?(isNaN(v)?v:Number(v).toFixed(w.dec).replace('.',',')):(hasU?((d&&d.v!=null)?String(d.v).replace('.',','):v):((d&&d.f)?String(d.f):v));var u=hasU?w.gvUnit:((w.dec!=null&&d&&d.u)?String(d.u):'');return num+u;}:((d&&d.f)?String(d.f):'{value}'))},
+      detail:{show:(w.gvShow!==false),valueAnimation:true,fontSize:(w.gvsz||(isFill?20:19)),fontWeight:(w.gvfwt||'normal'),fontStyle:(w.gvsty||'normal'),fontFamily:(w.gvff||'ui-monospace,monospace'),offsetCenter:detOff,color:cssv('--text'),formatter:((w.dec!=null||(w.gvUnit!=null&&w.gvUnit!==''))?function(v){var hasU=(w.gvUnit!=null&&w.gvUnit!=='');var num=(w.dec!=null)?(isNaN(v)?v:_fmtNum(Number(v),{dec:w.dec,thousand:w.thousand,numAbbrev:w.numAbbrev})):(hasU?((d&&d.v!=null)?String(d.v).replace('.',','):v):((d&&d.f)?String(d.f):v));var u=hasU?w.gvUnit:((w.dec!=null&&d&&d.u)?String(d.u):'');return num+u;}:((d&&d.f)?String(d.f):'{value}'))},
       data:[{value:val,name:w.label||''}]};
     if(cmode==='graded'&&!isFill){ // Zonen entlang des Bogens, Zeiger zeigt Wert
       ser.axisLine={lineStyle:{width:width,color:[[f1,cssv('--ok')],[f2,cssv('--warm')],[1,cssv('--crit')]]}};
