@@ -497,6 +497,8 @@
   // die Einstellungen für jeden Diagrammtyp gleich wirken.
   var _EC_FS={title:'fsTitle',legend:'fsLegend',axis:'axFs',axname:'fsAxName',label:'fsLabel'};
   function _ecF(w,kind,base){var k=_EC_FS[kind],v=(w&&k)?w[k]:null;return (v>0)?parseFloat(v):_ecFS(w,base);}
+  // Schriftart der zentralen Typografie (w.ff) fuer den ECharts-Canvas aufloesen (var(--x) -> echter Wert)
+  function _ecFF(w){var f=(w&&w.ff)||'';if(!f){var d=(cssv('--fu')||'').trim();return d||null;}var m=/^var\((--[\w-]+)\)$/.exec(f);if(m){var r=(cssv(m[1])||'').trim();return r||null;}return f;}
   // ---- Zahlformat fuer Datenlabels und Tooltips ---------------------------------------------
   // Nachkommastellen aus w.dec (leer = automatisch nach Groessenordnung), Einheit aus w.chUnit
   // (Wasserfall faellt auf seine eigene Einheit zurueck). Dezimaltrennzeichen ist das Komma.

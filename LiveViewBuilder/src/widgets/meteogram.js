@@ -34,6 +34,7 @@
     var muted=cssv('--muted'),line=cssv('--line'),text=cssv('--text'),faint=cssv('--faint'),surf=cssv('--surface-2')||'#1b2426';
     var accent=cssv('--accent'),info=cssv('--info'),ok=cssv('--ok'),warm=cssv('--warm'),crit=cssv('--crit')||warm;
     var D=_mgRows(w);
+    wSetSrcBadge(w,D&&D.fmt);   // kleiner Quellen-Hinweis in der Ecke
     var icoEl=host&&host.querySelector('[data-role=mgicons]');
     if(!D){if(icoEl)icoEl.innerHTML='';ec.setOption({backgroundColor:'transparent',title:{text:'keine Wetterdaten',left:'center',top:'middle',textStyle:{color:faint,fontSize:_ecF(w,'label',12),fontWeight:'normal'}},xAxis:{show:false},yAxis:{show:false},series:[]},true);return;}
     var rows=D.rows,hourly=D.hourly,unit=(w.wunit!=null?w.wunit:'°'),WD=['So','Mo','Di','Mi','Do','Fr','Sa'];
@@ -41,8 +42,31 @@
     function some(a){return a.some(function(v){return v!=null;});}
     var temp=col('hi'),tlo=col('lo'),feels=col('feels'),pop=col('pop'),precip=col('precip'),
         wind=col('wind'),gust=col('gust'),wdir=col('wdir'),clouds=col('clouds'),hum=col('hum'),press=col('press');
-    // X-Beschriftung: stündlich = Stunde, um Mitternacht der Wochentag; täglich = Wochentag
-    var labels=rows.map(function(r,i){if(!r||!r.ts)return String(i);var dt=new Date(r.ts*1000);if(!hourly)return WD[dt.getDay()]+' '+dt.getDate()+'.';var h=dt.getHours();return h===0?WD[dt.getDay()]:(('0'+h).slice(-2));});
+    // Typografie auf den Canvas bringen (Schriftart/Gewicht/Stil aus der zentralen Typografie)
+    var _ff=_ecFF(w),_fwt=(w.fwt||null),_fsty=(w.fsty||null);
+    function _tst(o){o=o||{};if(_ff)o.fontFamily=_ff;if(_fwt&&o.fontWeight==null)o.fontWeight=_fwt;if(_fsty)o.fontStyle=_fsty;return o;}
+    // Zahlformat der Werte (Nachkommastellen einstellbar, Dezimalkomma)
+    var vdec=(w.mgDec!=null&&w.mgDec!=='')?Math.max(0,Math.min(3,parseInt(w.mgDec))):0;
+    function _mgFmt(v,dec){if(v==null||isNaN(v))return '';return Number(v).toFixed(dec!=null?dec:vdec).replace('.',',');}
+    // X-Beschriftung: Zeit-/Tagesformat einstellbar
+    function _p2(n){return ('0'+n).slice(-2);}
+    var timeFmt=w.mgTimeFmt||'hm',dayFmt=w.mgDayFmt||'dm';
+    var labels=rows.map(function(r,i){if(!r||!r.ts)return String(i);
+      var dt=new Date(r.ts*1000),h=dt.getHours(),mi=dt.getMinutes(),Dd=dt.getDate(),Mo=dt.getMonth()+1,wd=WD[dt.getDay()];
+      if(hourly){switch(timeFmt){
+        case 'h':    return _p2(h);                          // 14
+        case 'hwd':  return h===0?wd:_p2(h);                 // Mitternacht -> Wochentag, sonst 14
+        case 'hmwd': return h===0?wd:(_p2(h)+':'+_p2(mi));   // Mitternacht -> Wochentag, sonst 14:00
+        default:     return _p2(h)+':'+_p2(mi);              // 'hm' -> 14:00
+      }}
+      switch(dayFmt){
+        case 'wdd':  return wd+' '+Dd+'.';       // Mo 4.
+        case 'wd':   return wd;                  // Mo
+        case 'dmp':  return Dd+'.'+Mo+'.';       // 4.8.
+        case 'ddmm': return _p2(Dd)+'.'+_p2(Mo); // 04.08
+        case 'wddm': return wd+' '+Dd+'.'+Mo+'.';// Mo 4.8.
+        default:     return Dd+'.'+Mo;           // 'dm' -> 4.8
+      }});
     // Temperatur-Skala mit Kopfraum oben (für Wetter-Icons)
     var his=temp.filter(function(v){return v!=null;}),los=(some(tlo)?tlo:temp).filter(function(v){return v!=null;});
     var tmin=los.length?Math.min.apply(null,los):-5,tmax=his.length?Math.max.apply(null,his):20;
@@ -64,11 +88,11 @@
       grid.push({left:L,right:R,top:p.top+'%',height:p.h+'%'});
       xAxis.push({type:'category',gridIndex:gi,data:labels,boundaryGap:false,
         axisLine:{show:true,lineStyle:{color:line}},axisTick:{show:false},splitLine:{show:false},
-        axisLabel:{show:(gi===N-1),color:muted,fontSize:fL,hideOverlap:true,margin:6}});
+        axisLabel:_tst({show:(gi===N-1),color:muted,fontSize:fL,hideOverlap:true,margin:6})});
       gIdx[p.key]=gi;yIdx[p.key]=yAxis.length;
-      yAxis.push(Object.assign({gridIndex:gi,type:'value',splitNumber:3,name:nameU||'',nameLocation:'end',nameGap:5,nameTextStyle:{color:faint,fontSize:fL,align:'left'},
+      yAxis.push(Object.assign({gridIndex:gi,type:'value',splitNumber:3,name:nameU||'',nameLocation:'end',nameGap:5,nameTextStyle:_tst({color:faint,fontSize:fL,align:'left'}),
         axisLine:{show:false},axisTick:{show:false},
-        axisLabel:{color:muted,fontSize:fL,hideOverlap:true,formatter:function(v){return Math.round(v);}},
+        axisLabel:_tst({color:muted,fontSize:fL,hideOverlap:true,formatter:function(v){return _mgFmt(v,0);}}),
         splitLine:{show:true,lineStyle:{color:line,opacity:.4,type:'dashed'}}},yopt||{}));
     }
     panels.forEach(function(p,gi){
@@ -76,15 +100,26 @@
       else if(p.key==='precip')pushAxes(p,gi,{min:0,scale:true},'mm');
       else if(p.key==='cloud')pushAxes(p,gi,{min:0,max:1,show:false},'');
       else if(p.key==='wind')pushAxes(p,gi,{min:0,scale:true},'km/h');
-      if(p.key==='precip'&&(some(pop)||some(hum))){yIdx.pct=yAxis.length;yAxis.push({gridIndex:gi,type:'value',min:0,max:100,position:'right',name:'%',nameTextStyle:{color:faint,fontSize:fL},axisLine:{show:false},axisTick:{show:false},axisLabel:{color:muted,fontSize:fL,formatter:function(v){return Math.round(v);}},splitLine:{show:false}});}
+      if(p.key==='precip'&&(some(pop)||some(hum))){yIdx.pct=yAxis.length;yAxis.push({gridIndex:gi,type:'value',min:0,max:100,position:'right',name:'%',nameTextStyle:_tst({color:faint,fontSize:fL}),axisLine:{show:false},axisTick:{show:false},axisLabel:_tst({color:muted,fontSize:fL,formatter:function(v){return Math.round(v);}}),splitLine:{show:false}});}
     });
     // --- Temperatur ---
-    var tempSer={name:'Temp',type:'line',xAxisIndex:gIdx.temp,yAxisIndex:yIdx.temp,data:temp,smooth:true,showSymbol:false,lineStyle:{width:2.4,color:crit},itemStyle:{color:crit},areaStyle:{opacity:.85,color:(_mgGrad(tgrad,gmin,gmaxPlot)||accent)},z:4};
-    // Min/Max-Marken
-    tempSer.markPoint={symbol:'pin',symbolSize:0,label:{show:true,fontSize:fL,color:text,formatter:function(o){return Math.round(o.value)+unit;}},data:[{type:'max',label:{position:'top'}},{type:'min',label:{position:'bottom'}}]};
+    var tgradFill=(_mgGrad(tgrad,gmin,gmaxPlot)||accent);
+    var bandMode=(!hourly&&some(tlo));   // täglich mit Min/Max -> Fläche als Min/Max-Band statt Achse..Max
+    var _mkLbl=_tst({show:true,fontSize:fL,color:text,formatter:function(o){return _mgFmt(o.value)+unit;}});
+    var tempSer={name:'Temp',type:'line',xAxisIndex:gIdx.temp,yAxisIndex:yIdx.temp,data:temp,smooth:true,showSymbol:false,lineStyle:{width:2.4,color:crit},itemStyle:{color:crit},z:4};
+    if(!bandMode)tempSer.areaStyle={opacity:.85,color:tgradFill};   // stündlich (hi=lo): Fläche bis zur Achse wie bisher
+    // Max-Marke immer auf der Max-Kurve; Min-Marke im Bandmodus an der Min-Linie, sonst hier
+    tempSer.markPoint={symbol:'pin',symbolSize:0,label:_mkLbl,data:bandMode?[{type:'max',label:{position:'top'}}]:[{type:'max',label:{position:'top'}},{type:'min',label:{position:'bottom'}}]};
     series.push(tempSer);
     if(some(feels))series.push({name:'Gefühlt',type:'line',xAxisIndex:gIdx.temp,yAxisIndex:yIdx.temp,data:feels,smooth:true,showSymbol:false,lineStyle:{width:1,type:'dashed',color:muted},z:3});
-    if(!hourly&&some(tlo))series.push({name:'Min',type:'line',xAxisIndex:gIdx.temp,yAxisIndex:yIdx.temp,data:tlo,smooth:true,showSymbol:false,lineStyle:{width:1.4,color:info},itemStyle:{color:info},z:3});
+    if(bandMode){
+      // Min/Max-Band: unsichtbare Basis-Linie auf Min + gestapelte Fläche (Max-Min) mit dem Temperatur-Farbverlauf
+      var tspan=temp.map(function(v,i){return (v==null||tlo[i]==null)?null:(Math.round((v-tlo[i])*10)/10);});
+      series.push({name:'_tbase',type:'line',xAxisIndex:gIdx.temp,yAxisIndex:yIdx.temp,data:tlo,stack:'tband',symbol:'none',smooth:true,silent:true,lineStyle:{opacity:0},z:2});
+      series.push({name:'_tband',type:'line',xAxisIndex:gIdx.temp,yAxisIndex:yIdx.temp,data:tspan,stack:'tband',symbol:'none',smooth:true,silent:true,lineStyle:{opacity:0},areaStyle:{opacity:.85,color:tgradFill},z:2});
+      series.push({name:'Min',type:'line',xAxisIndex:gIdx.temp,yAxisIndex:yIdx.temp,data:tlo,smooth:true,showSymbol:false,lineStyle:{width:1.4,color:info},itemStyle:{color:info},z:3,
+        markPoint:{symbol:'pin',symbolSize:0,label:_mkLbl,data:[{type:'min',label:{position:'bottom'}}]}});
+    }
     // Tag/Nacht-Schattierung (als markArea auf der Temp-Reihe)
     if(nightAreas.length)tempSer.markArea={silent:true,itemStyle:{color:'rgba(127,127,127,0.10)'},data:nightAreas};
     // --- Niederschlag: Balken (Regen/Schnee) ---
@@ -116,14 +151,14 @@
       icoEl.innerHTML=rows.map(function(r){return '<span class="mgico">'+iconSVG((r&&r.icon)||'cloudsun')+'</span>';}).join('');
     }
     // ---- Zusammenbauen ----
-    function ln(l,v,u){if(v==null)return '';return '<br>'+l+': '+(Math.round(v*10)/10)+(u||'');}
+    function ln(l,v,u,dec){if(v==null)return '';return '<br>'+l+': '+_mgFmt(v,dec)+(u||'');}
     ec.setOption({backgroundColor:'transparent',animation:!!bcfg().chartAnim,
-      tooltip:{trigger:'axis',axisPointer:{type:'cross',label:{show:false}},backgroundColor:surf,borderColor:line,borderWidth:1,textStyle:{color:text,fontSize:_ecF(w,'label',10)},
+      tooltip:{trigger:'axis',axisPointer:{type:'cross',label:{show:false}},backgroundColor:surf,borderColor:line,borderWidth:1,textStyle:_tst({color:text,fontSize:_ecF(w,'label',10)}),
         formatter:function(ps){if(!ps||!ps.length)return '';var idx=ps[0].dataIndex,r=rows[idx],head=labels[idx];
-          if(r&&r.ts){var dt=new Date(r.ts*1000);head=hourly?(WD[dt.getDay()]+' '+('0'+dt.getHours()).slice(-2)+':00'):(WD[dt.getDay()]+' '+dt.getDate()+'.'+(dt.getMonth()+1)+'.');}
+          if(r&&r.ts){var dt=new Date(r.ts*1000);head=hourly?(WD[dt.getDay()]+' '+_p2(dt.getHours())+':'+_p2(dt.getMinutes())):(WD[dt.getDay()]+' '+dt.getDate()+'.'+(dt.getMonth()+1)+'.');}
           var s='<b>'+head+'</b>'+ln('Temp',temp[idx],unit);if(some(feels))s+=ln('Gefühlt',feels[idx],unit);
-          if(gIdx.precip!=null){s+=ln('Regen',pop[idx],' %');if(precip[idx]>0)s+=ln(_mgSnow(r,temp[idx])?'Schnee':'Menge',precip[idx],' mm');if(some(hum))s+=ln('Feuchte',hum[idx],' %');}
-          if(gIdx.cloud!=null)s+=ln('Wolken',clouds[idx],' %');
+          if(gIdx.precip!=null){s+=ln('Regen',pop[idx],' %',0);if(precip[idx]>0)s+=ln(_mgSnow(r,temp[idx])?'Schnee':'Menge',precip[idx],' mm',1);if(some(hum))s+=ln('Feuchte',hum[idx],' %',0);}
+          if(gIdx.cloud!=null)s+=ln('Wolken',clouds[idx],' %',0);
           if(gIdx.wind!=null){s+=ln('Wind',wind[idx],' km/h');if(some(gust))s+=ln('Böen',gust[idx],' km/h');if(wdir[idx]!=null)s+='<br>Richtung: '+_mgDir(wdir[idx]);}
           return s;}},
       axisPointer:{link:[{xAxisIndex:'all'}]},
@@ -131,7 +166,7 @@
   }
   defWidget('meteogram',{
     label:'Meteogramm', paletteIcon:'wchart', size:[460,340], noHover:true,
-    defaults:function(w){w.wfmt='auto';w.mgSteps=24;w.fcMode='hours';w.label='';w.tgrad=[{t:-5,color:'#4aa3ff'},{t:4,color:'#3bd6c6'},{t:14,color:'#39d08a'},{t:22,color:'#f2b441'},{t:32,color:'#f2685a'}];},
+    defaults:function(w){w.wfmt='auto';w.mgSteps=24;w.fcMode='hours';w.label='';w.mgTimeFmt='hm';w.mgDayFmt='dm';w.mgDec=0;w.tgrad=[{t:-5,color:'#4aa3ff'},{t:4,color:'#3bd6c6'},{t:14,color:'#39d08a'},{t:22,color:'#f2b441'},{t:32,color:'#f2685a'}];},
     render:function(w){return '<div class="mg" style="position:absolute;inset:0;container-type:size"><div data-role="chart" style="position:absolute;inset:0"></div><div data-role="mgicons" style="position:absolute;display:flex;justify-content:space-between;align-items:center;pointer-events:none;z-index:2"></div></div>';},
     props:function(w){
       if(w.type!=='meteogram')return '';
@@ -151,6 +186,12 @@
         +row('Wolken','<input type="checkbox" id="pMgCloud"'+(w.mgCloud!==false?' checked':'')+'>')
         +row('Wind','<input type="checkbox" id="pMgWind"'+(w.mgWind!==false?' checked':'')+'>')
         +row('Windrichtung (Pfeile)','<input type="checkbox" id="pMgWdir"'+(w.mgWdir!==false?' checked':'')+'>');
+      h+='<div class="pgh">Beschriftung & Format</div>';
+      if(hourly)h+=row('Zeitformat','<select id="pMgTimeFmt">'+[['hm','14:00'],['h','14 (nur Stunde)'],['hmwd','14:00 · Mitternacht = Wochentag'],['hwd','14 · Mitternacht = Wochentag']].map(function(o){return '<option value="'+o[0]+'"'+((w.mgTimeFmt||'hm')===o[0]?' selected':'')+'>'+o[1]+'</option>';}).join('')+'</select>');
+      else h+=row('Tagesformat','<select id="pMgDayFmt">'+[['dm','4.8'],['dmp','4.8.'],['ddmm','04.08'],['wdd','Mo 4.'],['wddm','Mo 4.8.'],['wd','Mo (Wochentag)']].map(function(o){return '<option value="'+o[0]+'"'+((w.mgDayFmt||'dm')===o[0]?' selected':'')+'>'+o[1]+'</option>';}).join('')+'</select>');
+      h+=row('Nachkommastellen','<input id="pMgDec" type="number" min="0" max="3" value="'+(w.mgDec!=null?w.mgDec:0)+'">');
+      h+='<div style="font-size:11px;color:var(--muted);margin:-2px 2px 6px">Schriftart, -gewicht, -stil und -größe stellst du oben unter <b>Typografie</b> ein — sie gelten auch für Achsen, Marken und Tooltip.</div>';
+      h+=row('Datenquelle anzeigen','<input type="checkbox" id="pMgShowSrc"'+((w.showSrc!==false)?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">kleiner Hinweis in der Ecke (z.&nbsp;B. Tempest)</span>');
       return h;
     },
     wire:function(w){
@@ -161,6 +202,10 @@
       if($('#pMgSteps'))$('#pMgSteps').oninput=function(){w.mgSteps=Math.max(3,Math.min(48,parseInt(this.value)||24));reMg();};
       if($('#pMgStart'))$('#pMgStart').onchange=function(){w.fcStart=parseInt(this.value)||undefined;reMg();};
       [['pMgPrecip','mgPrecip'],['pMgCloud','mgCloud'],['pMgWind','mgWind'],['pMgWdir','mgWdir']].forEach(function(p){var _e=$('#'+p[0]);if(_e)_e.onchange=function(){w[p[1]]=this.checked?undefined:false;reMg();};});
+      if($('#pMgTimeFmt'))$('#pMgTimeFmt').onchange=function(){w.mgTimeFmt=this.value;reMg();};
+      if($('#pMgDayFmt'))$('#pMgDayFmt').onchange=function(){w.mgDayFmt=this.value;reMg();};
+      if($('#pMgDec'))$('#pMgDec').oninput=function(){w.mgDec=(this.value===''?undefined:Math.max(0,Math.min(3,parseInt(this.value)||0)));reMg();};
+      if($('#pMgShowSrc'))$('#pMgShowSrc').onchange=function(){w.showSrc=this.checked?undefined:false;reMg();};
     },
     live:function(w,el,id,d,base,txt,on){if(_ec[w.id])setMeteogram(w);return true;}
   });
