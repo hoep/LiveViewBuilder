@@ -140,6 +140,7 @@
     if(typeof _contKids!=='undefined'&&_contKids&&_contKids.length)_contKids.forEach(function(w){_vidxOne(w,canvas);}); // Container-Kinder live versorgen
     if(_tickKids&&_tickKids.length)_tickKids.forEach(function(w){_vidxOne(w,canvas);});
     if(_popup&&_popup.widgets){var _ov=$('#ovcanvas');if(_ov)_popup.widgets.forEach(function(w){_vidxOne(w,_ov);});}
+    if(typeof _hover!=='undefined'&&_hover&&_hover.widgets){var _hv=$('#hovcanvas');if(_hv)_hover.widgets.forEach(function(w){_vidxOne(w,_hv);});}
   }
   function invalidateVidx(){_vidx=null;} // bei render()/Popup-Wechsel aufrufen — nächster poll/apply baut neu
   // Live-Feed (für WS-Monitor-Widget): jeder eingehende Wert wird protokolliert, mit Quelle (poll/ws)

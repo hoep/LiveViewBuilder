@@ -1,7 +1,7 @@
   function _wActionKind(w,inPopup){ // Hover-Affordance: Navigation (nav) vs. echte Schaltaktion (tog) vs. Lang-Druck (hold) getrennt
     var t=w.type, hold=!!(w.longPopup||w.longNav);
     // NAVIGATION: oeffnet Popup/Seite/Skript/Menue/Region oder geht zurueck. closePopup ist NUR im Popup sinnvoll.
-    var nav=!!((inPopup&&w.closePopup)||w.popupTo||w.scriptId||w.openMenu||w.navBack||w.navTo||(w.regSlot&&w.regView));
+    var nav=!!((inPopup&&w.closePopup)||w.popupTo||w.scriptId||w.openMenu||w.navBack||w.navTo||w.hoverTo||(w.regSlot&&w.regView));
     if(t==='campro')nav=nav||!!w.mediaId; // Vollbild-Kamera -> oeffnet etwas
     // SCHALTAKTION in-place: schreibt eine Variable / loest RequestAction aus (nur wenn keine Navigation greift)
     var tog=false;
@@ -330,6 +330,8 @@
     +row('Popup öffnen','<select id="pPopupTo"><option value="">—</option>'+Object.keys(store.views).map(function(n){return '<option value="'+esc(n)+'"'+(w.popupTo===n?' selected':'')+'>'+esc(n)+'</option>';}).join('')+'</select>')
     +row('Lang-Druck → Popup','<select id="pLongPop"><option value="">—</option>'+Object.keys(store.views).map(function(n){return '<option value="'+esc(n)+'"'+(w.longPopup===n?' selected':'')+'>'+esc(n)+'</option>';}).join('')+'</select>')
     +row('Lang-Druck → Seite','<select id="pLongNav"><option value="">—</option>'+Object.keys(store.views).map(function(n){return '<option value="'+esc(n)+'"'+(w.longNav===n?' selected':'')+'>'+esc(n)+'</option>';}).join('')+'</select>')
+    +row('Hover-Ansicht','<select id="pHoverTo"><option value="">—</option>'+Object.keys(store.views).map(function(n){return '<option value="'+esc(n)+'"'+(w.hoverTo===n?' selected':'')+'>'+esc(n)+'</option>';}).join('')+'</select>')
+    +(w.hoverTo?'<div style="font-size:11px;color:var(--warn);line-height:1.4;margin:-2px 2px 6px">Flyout beim <b>Überfahren mit der Maus</b> (Desktop). Auf Touch öffnet ein Tipp den Flyout nur, wenn keine andere Klick-Aktion gesetzt ist.</div>':'')
     +row('Region setzen','<input id="pRegSlot" value="'+esc(w.regSlot||'')+'" placeholder="Region" style="width:80px"> <select id="pRegView"><option value="">Ansicht…</option>'+Object.keys(store.views).map(function(n){return '<option value="'+esc(n)+'"'+(w.regView===n?' selected':'')+'>'+esc(n)+'</option>';}).join('')+'</select>')
     +row('Zurück','<input type="checkbox" id="pNavBack"'+(w.navBack?' checked':'')+'>')
     +row('Menü öffnen','<input type="checkbox" id="pOpenMenu"'+(w.openMenu?' checked':'')+'>')
@@ -345,6 +347,7 @@
   function btnStateWire(w){function relive(){render();if(w.varId&&_lastVals[w.varId])applyVal(w.varId,_lastVals[w.varId]);}
     if($('#pNavTo'))$('#pNavTo').onchange=function(){w.navTo=this.value||undefined;commit();};
     if($('#pPopupTo'))$('#pPopupTo').onchange=function(){w.popupTo=this.value||undefined;commit();};
+    if($('#pHoverTo'))$('#pHoverTo').onchange=function(){w.hoverTo=this.value||undefined;renderProps();commit();};
     if($('#pLongPop'))$('#pLongPop').onchange=function(){w.longPopup=this.value||undefined;commit();};
     if($('#pLongNav'))$('#pLongNav').onchange=function(){w.longNav=this.value||undefined;commit();};
     if($('#pRegSlot'))$('#pRegSlot').oninput=function(){w.regSlot=this.value||undefined;commit();};
@@ -1266,33 +1269,66 @@
   // A1: Overlay/Popup — eine Ansicht als schwebendes Fenster über der aktuellen Ansicht
   var _popup=null;
   var _navStack=[]; // B3: Seiten-Verlauf für Zurück-Navigation
-  function navGo(name){if(!store.views[name])return;if(store.current&&store.current!==name)_navStack.push(store.current);switchView(name);fitCanvas();}
+  function navGo(name){if(!store.views[name])return;closeHover();if(store.current&&store.current!==name)_navStack.push(store.current);switchView(name);fitCanvas();}
   function navBack(){if(_navStack.length){switchView(_navStack.pop());fitCanvas();}}
   function _aliasMap(w){var m={};(w.alias||[]).forEach(function(a){var f=parseInt(a.from),t=parseInt(a.to);if(f&&t)m[f]=t;});return m;}
+  // Ein Widget-Element fuer ein Overlay (Popup ODER Hover) bauen — identische Darstellung wie auf der Seite.
+  function _ovWidgetEl(w){
+    var dd=document.createElement('div');dd.className='w t-'+w.type+(w.lineMode?' wline':'');dd.dataset.id=w.id;
+    var _ak=_wActionKind(w,true);if(_ak)_ak.split(' ').forEach(function(c){dd.classList.add(c);});
+    dd.style.left=w.x+'px';dd.style.top=w.y+'px';dd.style.width=w.w+'px';dd.style.height=w.h+'px';
+    dd.innerHTML='<div class="winner">'+widgetInner(w)+'</div>';
+    if(w.type==='value'&&w.valfs){var vv=$('.v',dd);if(vv)vv.style.fontSize=w.valfs+'px';}
+    if(w.bgT)dd.classList.add('bg-t');
+    if(w.lblWrap)dd.classList.add('lbl-wrap');
+    if(w.bg&&!w.bgT)dd.style.background=w.bg;if(w.fg){var _rf2=_readableFg(w.fg,(w.bgT?null:w.bg));if(_rf2)dd.style.color=_rf2;}
+    if(w.iconColor)dd.style.setProperty('--wicon',_skinColor(w.iconColor)||w.iconColor);
+    if(_hasIconGfx(w)){var _ie=dd.querySelector('.iconwrap,.wvic,.swic,.htbadge,.htico,.hbicon,.hl2ic,.hchipic,.hricon,.hkbi,.hassoc-chip,.hvicon,[data-role=badge]');if(_ie)_applyIconGfx(w,_ie);}
+    if(w.textTransform)dd.style.textTransform=w.textTransform;
+    return dd;
+  }
+  // Alias-Remap der Widget-Kopien einer Overlay-Ansicht (Popup/Hover)
+  function _ovClone(v,alias){var map=alias||{};function mp(id){return (id&&map[id]!=null)?map[id]:id;}
+    return (v.widgets||[]).map(function(w){var c={};for(var k in w)c[k]=w[k];c.varId=mp(c.varId);c.varId2=mp(c.varId2);c.varId3=mp(c.varId3);if(c.visVar)c.visVar=mp(c.visVar);return c;});}
+  // ---- Hover-Overlay: eine Ansicht als Flyout am Widget (Desktop-Hover; Touch nur als Fallback) ----
+  var _hover=null;
+  function openHover(name,alias,anchorEl){
+    if(!name||!store.views[name]||!anchorEl)return;
+    if(_hover&&_hover.name===name&&_hover.anchor===anchorEl)return; // bereits offen fuer dieses Widget
+    closeHover();
+    var v=store.views[name],ws=_ovClone(v,alias);
+    var pw=(v.page&&v.page.w)||400,ph=(v.page&&v.page.h)||300;
+    var maxW=Math.min(window.innerWidth*0.6,520),maxH=Math.min(window.innerHeight*0.7,480);
+    var sc=Math.min(1,maxW/pw,maxH/ph);
+    var hl=$('#hoverlay'),hc=$('#hovcanvas');if(!hl||!hc)return;
+    var fw=Math.round(pw*sc),fh=Math.round(ph*sc);
+    hc.style.width=pw+'px';hc.style.height=ph+'px';hc.style.transform='scale('+sc+')';
+    hl.style.width=fw+'px';hl.style.height=fh+'px';
+    hc.innerHTML='';ws.forEach(function(w){hc.appendChild(_ovWidgetEl(w));});
+    _hover={name:name,widgets:ws,anchor:anchorEl};
+    var r=anchorEl.getBoundingClientRect(),gap=8; // Flyout am Anker (unten, sonst oben; horizontal einpassen)
+    var top=r.bottom+gap;if(top+fh>window.innerHeight-8)top=Math.max(8,r.top-gap-fh);
+    var left=r.left;if(left+fw>window.innerWidth-8)left=window.innerWidth-8-fw;if(left<8)left=8;
+    hl.style.left=left+'px';hl.style.top=top+'px';hl.classList.add('open');
+    invalidateVidx();
+    _hover.widgets.forEach(function(w){if(w.varId&&_lastVals[w.varId])applyVal(w.varId,_lastVals[w.varId]);});
+    _hover.widgets.forEach(function(w){activateWidget(w,hc);});
+    _hover.widgets.forEach(function(w){var wc=WIDGETS[w.type];if(wc&&wc.mount){try{wc.mount(w);}catch(e){}}});
+    _pvSince=0;pollVals();
+  }
+  function closeHover(){var hl=$('#hoverlay');if(hl)hl.classList.remove('open');var hc=$('#hovcanvas');if(hc)hc.innerHTML='';_hover=null;invalidateVidx();}
   function openPopup(name,alias){
     if(!name||!store.views[name]){toast('Popup-Seite fehlt: '+name);return;}
+    closeHover(); // ein Popup schliesst einen offenen Hover-Flyout
     closePopup();
-    var v=store.views[name],map=alias||{};
-    function mp(id){return (id&&map[id]!=null)?map[id]:id;}
-    var ws=(v.widgets||[]).map(function(w){var c={};for(var k in w)c[k]=w[k];c.varId=mp(c.varId);c.varId2=mp(c.varId2);c.varId3=mp(c.varId3);if(c.visVar)c.visVar=mp(c.visVar);return c;});
+    var v=store.views[name],ws=_ovClone(v,alias);
     _popup={name:name,widgets:ws,page:(v.page||{w:1440,h:900})};
     var oc=$('#ovcanvas'),card=$('#ovcard');if(!oc||!card)return;
     var pw=_popup.page.w,ph=_popup.page.h,sc=Math.min(1,(window.innerWidth*0.9)/pw,(window.innerHeight*0.84)/ph);
     oc.style.width=pw+'px';oc.style.height=ph+'px';oc.style.transform='scale('+sc+')';
     card.style.width=Math.round(pw*sc)+'px';card.style.height=Math.round(ph*sc)+'px';
     oc.innerHTML='';
-    _popup.widgets.forEach(function(w){
-      var dd=document.createElement('div');dd.className='w t-'+w.type+(w.lineMode?' wline':'');dd.dataset.id=w.id;
-      var _ak=_wActionKind(w,true);if(_ak)_ak.split(' ').forEach(function(c){dd.classList.add(c);}); // Hover-Affordance auch im Popup (closePopup zaehlt hier)
-      dd.style.left=w.x+'px';dd.style.top=w.y+'px';dd.style.width=w.w+'px';dd.style.height=w.h+'px';
-      dd.innerHTML='<div class="winner">'+widgetInner(w)+'</div>';
-      if(w.type==='value'&&w.valfs){var vv=$('.v',dd);if(vv)vv.style.fontSize=w.valfs+'px';}
-      if(w.bgT)dd.classList.add('bg-t'); // Hintergrund transparent, auch im Popup
-      if(w.lblWrap)dd.classList.add('lbl-wrap');
-      if(w.bg&&!w.bgT)dd.style.background=w.bg;if(w.fg){var _rf2=_readableFg(w.fg,(w.bgT?null:w.bg));if(_rf2)dd.style.color=_rf2;}
-      if(w.iconColor)dd.style.setProperty('--wicon',_skinColor(w.iconColor)||w.iconColor);
-      oc.appendChild(dd);
-    });
+    _popup.widgets.forEach(function(w){oc.appendChild(_ovWidgetEl(w));});
     $('#overlay').classList.add('open');
     invalidateVidx(); // Popup-Widgets in den Index aufnehmen, bevor Werte gesetzt werden
     _popup.widgets.forEach(function(w){if(w.varId&&_lastVals[w.varId])applyVal(w.varId,_lastVals[w.varId]);});

@@ -47,12 +47,31 @@
     if(w.type==='dial'&&w.varId){var dsv=el.querySelector('svg');if(dsv){var rb=dsv.getBoundingClientRect(),ccx=rb.left+rb.width/2,ccy=rb.top+rb.height/2,ang=Math.atan2(e.clientY-ccy,e.clientX-ccx)*180/Math.PI;if(ang<0)ang+=360;var rel=ang-135;if(rel<0)rel+=360;if(rel<=270){var dmn=(w.min!=null?w.min:0),dmx=(w.max!=null?w.max:100),st=w.step||1,dval=dmn+(rel/270)*(dmx-dmn);dval=Math.round(dval/st)*st;setVar(w.varId,dval);}}return;}
     if(w.type==='skinswitch'){var kb=e.target.closest('[data-skw]');if(kb){store.theme=kb.getAttribute('data-skw');applySkin();try{localStorage.setItem('lvtheme',store.theme);}catch(_){}}return;}
     if(w.type==='campro'&&w.mediaId){window.open('?api=media&id='+w.mediaId,'_blank');return;}
+    if(w.hoverTo&&store.views[w.hoverTo]){ // Fallback (Touch/Klick): nur wenn KEINE andere Aktion griff -> kollisionssicher
+      if(_hover&&_hover.anchor===el)closeHover();else openHover(w.hoverTo,_aliasMap(w),el);return;}
   }
   canvas.addEventListener('click',_wClick);
+  // Hover-Overlay (Desktop-Maus): mouseenter zeigt die Hover-Ansicht als Flyout, Verlassen schliesst (kurzer Nachlauf; Flyout haelt offen).
+  (function(){
+    var _hovT=null;
+    function _sched(){if(_hovT)clearTimeout(_hovT);_hovT=setTimeout(function(){closeHover();},200);}
+    function _keep(){if(_hovT){clearTimeout(_hovT);_hovT=null;}}
+    canvas.addEventListener('mouseover',function(e){
+      if(mode==='edit')return;
+      var el=e.target.closest('.w[data-id]');
+      if(!el){_sched();return;}
+      var w=widget(el.dataset.id);
+      if(!w||!w.hoverTo||!store.views[w.hoverTo]){_sched();return;}
+      _keep();if(!(_hover&&_hover.anchor===el))openHover(w.hoverTo,_aliasMap(w),el);
+    });
+    canvas.addEventListener('mouseleave',_sched);
+    var hl=document.getElementById('hoverlay');
+    if(hl){hl.addEventListener('mouseenter',_keep);hl.addEventListener('mouseleave',_sched);}
+  })();
   (function(){var _ovc=document.getElementById('ovcanvas');if(_ovc)_ovc.addEventListener('click',_wClick);
     var _ob=document.getElementById('ovbackdrop');if(_ob)_ob.addEventListener('click',function(){closePopup();});
     var _ox=document.getElementById('ovclose');if(_ox)_ox.addEventListener('click',function(){closePopup();});
-    document.addEventListener('keydown',function(e){if((e.key||'')==='Escape'&&_popup)closePopup();});
+    document.addEventListener('keydown',function(e){if((e.key||'')==='Escape'){if(_popup)closePopup();if(typeof _hover!=='undefined'&&_hover)closeHover();}});
   })();
   // O1: Long-Press an button/tile -> Popup
   document.addEventListener('pointerdown',function(e){

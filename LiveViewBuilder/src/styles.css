@@ -29,6 +29,10 @@
   #canvas{position:relative;margin:0;background:var(--bg);border:1px solid var(--line);border-radius:6px;box-shadow:0 20px 60px -30px #000;overflow:hidden;transform-origin:top left}
   body.run #cwrap{margin:0;width:auto!important;height:auto!important}
   #canvas.grid{background-image:linear-gradient(rgba(255,255,255,.09) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.09) 1px,transparent 1px);background-size:var(--gs) var(--gs),var(--gs) var(--gs)}
+  #hoverlay{position:fixed;z-index:60;display:none;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-s);box-shadow:0 12px 40px rgba(0,0,0,.45);overflow:hidden;pointer-events:auto}
+  #hoverlay.open{display:block;animation:hovin .12s ease-out}
+  @keyframes hovin{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+  #hovcanvas{position:relative;transform-origin:top left}
   .w{position:absolute;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-s);overflow:hidden;-webkit-user-select:none;user-select:none;container-type:size}
   .wsrc{position:absolute;top:3px;right:4px;z-index:6;font-size:9px;line-height:1;padding:2px 5px;border-radius:6px;background:color-mix(in oklab,var(--surface-2) 82%,transparent);color:var(--faint);letter-spacing:.02em;pointer-events:none;opacity:.8;font-weight:600}
   .w *{scrollbar-width:none}.w *::-webkit-scrollbar{width:0;height:0;background:transparent} /* Widgets zeigen nie Scrollbars (Scrollen bleibt möglich) */
