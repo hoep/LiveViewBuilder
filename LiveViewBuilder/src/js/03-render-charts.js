@@ -53,6 +53,7 @@
     if(m.val)_posOne(root,m.val,w.valDX||0,w.valDY||0);
     if(m.ico)_posOne(root,m.ico,w.icoDX||0,w.icoDY||0);}
   function render(){
+    if(typeof closeHover==='function')closeHover(); // offener Hover-Flyout haengt sonst verwaist ueber dem Neuaufbau (navBack/setRegion etc.)
     disposeCharts();
     _tickKids=[];   // verschachtelte Ticker-Widgets werden während des Render-Laufs neu gesammelt
     $$('.w',canvas).forEach(function(e){e.remove();});
