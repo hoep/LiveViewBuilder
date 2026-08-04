@@ -151,6 +151,11 @@
   // "seit 18:12" erst ab dem Laden der Seite zaehlen.
   var _chgAt={};
   function changedAt(id){return _chgAt[id]||0;}
+  // Universelle Zahl-Formatierung: Nachkommastellen (dec) + Tausendertrennung + Grosszahl-Kuerzung (k/M/Mrd), Dezimalkomma.
+  // Ungesetzt (dec=null, thousand/numAbbrev aus) verhaelt es sich byte-identisch zur bisherigen dec-Logik.
+  function _fmtNum(x,w){var neg=x<0,a=Math.abs(x);
+    if(w.numAbbrev){var u='';if(a>=1e9){a/=1e9;u=' Mrd';}else if(a>=1e6){a/=1e6;u=' M';}else if(a>=1e3){a/=1e3;u=' k';}var dd=(w.dec!=null)?w.dec:(u?1:0);return (neg?'-':'')+a.toFixed(dd).replace('.',',')+u;}
+    var s=(w.dec!=null)?a.toFixed(w.dec):String(a);var pp=s.split('.');if(w.thousand)pp[0]=pp[0].replace(/\B(?=(\d{3})+(?!\d))/g,'.');return (neg?'-':'')+pp.join(',');}
   function applyVal(id,d){
     if(!id||!d)return;
     var _prev=_lastVals[id];
@@ -167,9 +172,10 @@
     }
     function _apply1(w,root){try{
       var el=$('.w[data-id="'+w.id+'"]',root);if(!el)return;
-      var _dn=null;if(w.dec!=null&&!d.s){var _rr=parseFloat(String(d.v).replace(',','.'));if(!isNaN(_rr))_dn=_rr.toFixed(w.dec).replace('.',',');} // eigene Nachkommastellen aus Rohwert (nicht bei String-Formel)
+      var _dn=null;if(!d.s){var _rr=parseFloat(String(d.v).replace(',','.'));if(!isNaN(_rr)){var _scv=(w.scale!=null&&w.scale!==''&&+w.scale!==1)?(_rr*(+w.scale)):_rr;if(w.dec!=null||_scv!==_rr||w.thousand||w.numAbbrev)_dn=_fmtNum(_scv,w);}} // Nachkommastellen/Faktor/Tausender/Kürzung aus Rohwert (nicht bei String-Formel); ungesetzt = wie bisher
       var _vb=(_dn!=null)?((w.suf||w.unit)?_dn:(_pu?(_dn+' '+_pu.trim()):_dn)):((w.suf||w.unit)?num:base); // dec -> Zahl (+ Profil-Einheit falls keine Widget-Einheit); sonst wie gehabt
       var _b=w.fmt?fmtVal(w,d,base):_vb;var txt=(w.pre||w.suf)?((w.pre||'')+_b+(w.suf||'')):_b; // Format + Präfix/Suffix
+      if(w.nullText!=null&&w.nullText!==''&&(d.v==null||String(d.v).trim()===''))txt=w.nullText; // einheitlicher Text bei leerem Wert
       if(w.icon&&AICONS[w.icon]&&w.varId===id){var _ai=$('svg[data-ai]',el);if(_ai)_ai.outerHTML=iconSVG(w.icon,d.v);} // adaptives Icon (0–100 % / Zustand)
       if(w.assocOn&&w.varId===id)applyAssoc(w,el,d.v); // Icon/Farbe aus Variablen-Assoziation
       if((w.type==='kpi'||w.type==='delta')&&w.cmpOn&&w.varId===id)computeCompare(w); // Zeitversatz-Vergleich

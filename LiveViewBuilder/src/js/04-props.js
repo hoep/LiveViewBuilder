@@ -16,6 +16,36 @@
     if($('#pClosePop'))$('#pClosePop').onchange=function(){w.closePopup=this.checked||undefined;commit();};
     if($('#pScriptId'))$('#pScriptId').oninput=function(){w.scriptId=parseInt(this.value)||undefined;commit();};
   }
+  // ===== Universelle Einstellungs-Sektion (zentral, kategorisiert) =====
+  // Zieht die vereinheitlichten Kategorien in JEDES Widget ein, nach dem popupSection-Muster.
+  // Grundregel: NUR generisch konsumierte bzw. neue, per Default inerte Felder - dupliziert kein bestehendes props()-Feld.
+  var UNIV_VALUE_TYPES=['value','kpi','valuecard','bar','gauge','gaugepro','tempbar','dial','chip','cval','sval','delta','room','meterlist','marquee','raincard','rangebtn','assoc'];
+  function _uRefresh(w){render();if(w.type==='cval'&&typeof computeCounterVal==='function')computeCounterVal(w);else if(w.type==='sval'&&typeof computeAggVal==='function')computeAggVal(w);else if(w.varId&&_lastVals[w.varId])applyVal(w.varId,_lastVals[w.varId]);commit();}
+  var UNIV_PRESUF_TYPES=['value','kpi','cval','sval'];
+  function universalSection(w){
+    var h='';
+    var isVal=UNIV_VALUE_TYPES.indexOf(w.type)>=0,isPS=UNIV_PRESUF_TYPES.indexOf(w.type)>=0;
+    if(isVal||isPS)h+='<div class="pgh">Wert &amp; Format</div>';
+    if(isPS){
+      h+=row('Präfix','<input id="pUPre" value="'+esc(w.pre||'')+'" style="width:120px" placeholder="z. B. ~">')
+        +row('Suffix','<input id="pUSuf" value="'+esc(w.suf||'')+'" style="width:120px" placeholder="z. B. °C">');
+    }
+    if(isVal){
+      h+=row('Faktor','<input id="pUScale" type="number" step="any" style="width:90px" value="'+(w.scale!=null?w.scale:'')+'" placeholder="1"> <span style="font-size:11px;color:var(--muted)">Rohwert × Faktor (0.001 = W→kW)</span>')
+        +row('Tausendertrennung','<input type="checkbox" id="pUThou"'+(w.thousand?' checked':'')+'>')
+        +row('Große Zahlen kürzen','<select id="pUAbbr"><option value=""'+(!w.numAbbrev?' selected':'')+'>aus</option><option value="k"'+(w.numAbbrev==='k'?' selected':'')+'>k · M · Mrd</option></select>')
+        +row('Text bei leerem Wert','<input id="pUNull" value="'+esc(w.nullText!=null?w.nullText:'')+'" style="width:120px" placeholder="–">');
+    }
+    return h;
+  }
+  function universalWire(w){
+    if($('#pUPre'))$('#pUPre').oninput=function(){w.pre=this.value||undefined;_uRefresh(w);};
+    if($('#pUSuf'))$('#pUSuf').oninput=function(){w.suf=this.value||undefined;_uRefresh(w);};
+    if($('#pUScale'))$('#pUScale').oninput=function(){var v=this.value.trim();var n=parseFloat(v);w.scale=(v===''||n===1||isNaN(n))?undefined:n;_uRefresh(w);};
+    if($('#pUThou'))$('#pUThou').onchange=function(){w.thousand=this.checked||undefined;_uRefresh(w);};
+    if($('#pUAbbr'))$('#pUAbbr').onchange=function(){w.numAbbrev=this.value||undefined;_uRefresh(w);};
+    if($('#pUNull'))$('#pUNull').oninput=function(){w.nullText=this.value||undefined;_uRefresh(w);};
+  }
   var _rpBusy=false;
   function renderProps(){
     if(_rpBusy)return;            // Re-Entrancy vermeiden: ein change/blur-Handler darf renderProps nicht mitten im innerHTML-Umbau erneut anstoßen
@@ -88,6 +118,7 @@
       +(['icon','value','switch','bar','tile','button','light','chip','room','kpi','assoc','valuecard'].indexOf(w.type)>=0&&w.varId?'<div id="assocBox" class="assocbox"></div>':'')
       +(function(){try{return (WIDGETS[w.type]&&WIDGETS[w.type].props)?WIDGETS[w.type].props(w):'';}catch(_e){console.error('props('+w.type+')',_e);return '<div class="hint" style="color:var(--crit);font-size:11px">Eigenschaften-Fehler bei „'+esc(w.type)+'" — siehe Konsole</div>';}})()
       +((state.page.fit&&state.page.fit!=='letterbox')?respSection(w):'')
+      +universalSection(w)
       +((w.type!=='button'&&w.type!=='tile')?popupSection(w):'')
       +(w.type!=='blank'?('<div class="pgh">Sichtbarkeit</div>'
         +row('Zur Laufzeit','<input type="checkbox" id="pRunVis"'+(w.hidden?'':' checked')+'> <span style="font-size:11px;color:var(--muted)">im Betrieb anzeigen</span>')
@@ -212,6 +243,7 @@
       if($('#pPosReset'))$('#pPosReset').onclick=function(){w.valDX=w.valDY=w.icoDX=w.icoDY=undefined;render();renderProps();commit();};
     })();
     try{if(WIDGETS[w.type]&&WIDGETS[w.type].wire)WIDGETS[w.type].wire(w);}catch(_e){console.error('wire('+w.type+')',_e);} // ein defekter wire-Hook darf die Auswahl nicht blockieren
+    universalWire(w); // universelle Wert-&-Format-Verdrahtung (zentral, kategorisiert)
     if(w.type!=='button'&&w.type!=='tile')popupWire(w); // universelle Popup/Interaktion-Verdrahtung (Kachel/Button haben eigene Nav/Popup-Konfig)
     }catch(_ep){console.error('renderProps('+(w&&w.type)+')',_ep);p.innerHTML='<div class="hint" style="color:var(--crit);font-size:12px;white-space:pre-wrap">Eigenschaften-Fehler bei „'+esc(w.type)+'":\n'+esc((_ep&&_ep.message)||String(_ep))+'</div>';} // Panel zeigt den Fehler direkt an
   }
