@@ -322,3 +322,11 @@ Standard-Canvas, Standard-Skin, Aktualisierungs-Intervall, Auto-Speichern).
 ---
 
 LiveView Builder ist ein Community-Modul fuer IP-Symcon. Reine Visualisierung, keine Steuerlogik.
+
+## Lizenz
+
+Dieses Projekt steht unter der **MIT-Lizenz** (c) 2026 Peter Höllwarth - siehe `LICENSE`.
+
+Gebündelte Fremdkomponenten behalten ihre eigenen Lizenzen (siehe `THIRD-PARTY-NOTICES.md`):
+Apache ECharts unter Apache-2.0 sowie die Schriften Inter, Lora, Fraunces und JetBrains Mono
+unter der SIL Open Font License 1.1.
