@@ -25,10 +25,15 @@
   function _uRefresh(w){render();if(w.type==='cval'&&typeof computeCounterVal==='function')computeCounterVal(w);else if(w.type==='sval'&&typeof computeAggVal==='function')computeAggVal(w);else if(w.varId&&_lastVals[w.varId])applyVal(w.varId,_lastVals[w.varId]);commit();}
   var UNIV_PRESUF_TYPES=['value','kpi','cval','sval','bar','tempbar','chip','valuecard'];
   var UNIV_ICON_TYPES=['icon','value','switch','tile','button','light','chip','room','kpi','assoc','valuecard'];
+  var UNIV_DEC_TYPES=['value','kpi','valuecard','bar','gauge','gaugepro','tempbar','dial','chip','cval','sval','delta','room','meterlist','marquee','raincard','rangebtn','assoc','chart'];
+  var UNIV_LINEMODE_TYPES=['value','valuecard','bar','assoc','cval','sval','delta','tempbar'];
   function universalSection(w){
     var h='';
     var isVal=UNIV_VALUE_TYPES.indexOf(w.type)>=0,isPS=UNIV_PRESUF_TYPES.indexOf(w.type)>=0;
-    if(isVal||isPS)h+='<div class="pgh">Wert &amp; Format</div>';
+    var hasFmt=(typeof FMT_TYPES!=='undefined'&&FMT_TYPES.indexOf(w.type)>=0),hasDec=UNIV_DEC_TYPES.indexOf(w.type)>=0,hasLM=UNIV_LINEMODE_TYPES.indexOf(w.type)>=0;
+    if(isVal||isPS||hasFmt||hasDec||hasLM)h+='<div class="pgh">Wert &amp; Format</div>';
+    if(hasFmt)h+=row('Format','<select id="pFmt">'+fmtOpts(w.fmt)+'</select>');
+    if(hasDec)h+=row('Nachkommastellen','<input id="pDec" type="number" min="0" max="6" value="'+(w.dec!=null?w.dec:'')+'" placeholder="Standard">');
     if(isPS){
       h+=row('Präfix','<input id="pUPre" value="'+esc(w.pre||'')+'" style="width:120px" placeholder="z. B. ~">')
         +row('Suffix','<input id="pUSuf" value="'+esc(w.suf||'')+'" style="width:120px" placeholder="z. B. °C">');
@@ -39,6 +44,7 @@
         +row('Große Zahlen kürzen','<select id="pUAbbr"><option value=""'+(!w.numAbbrev?' selected':'')+'>aus</option><option value="k"'+(w.numAbbrev==='k'?' selected':'')+'>k · M · Mrd</option></select>')
         +row('Text bei leerem Wert','<input id="pUNull" value="'+esc(w.nullText!=null?w.nullText:'')+'" style="width:120px" placeholder="–">');
     }
+    if(hasLM)h+=row('Einzeilig bei geringer Höhe','<input type="checkbox" id="pLineMode"'+(w.lineMode?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">flach gezogen → alles in eine Zeile</span>');
     if(w.type!=='line'&&w.type!=='shape'&&w.type!=='blank'){
       h+='<div class="pgh">Textformat</div>'
         +row('Groß-/Kleinschreibung','<select id="pUTT"><option value=""'+(!w.textTransform?' selected':'')+'>unverändert</option><option value="uppercase"'+(w.textTransform==='uppercase'?' selected':'')+'>GROSS</option><option value="lowercase"'+(w.textTransform==='lowercase'?' selected':'')+'>klein</option><option value="capitalize"'+(w.textTransform==='capitalize'?' selected':'')+'>Erster groß</option></select>');
@@ -112,6 +118,7 @@
       +(_inBar?('<div class="prop" style="border-color:var(--accent)"><div style="font-size:11px;color:var(--muted);margin-bottom:5px">Liegt in der Leiste <b>'+esc(_inBar.name||'Leiste')+'</b> — erscheint damit auf allen Seiten.</div>'
         +'<button class="btn" id="pChOut" style="padding:5px 9px">Zurück auf die Seite</button></div>'):'')
       +'<div class="prop">'
+      +'<div class="pgh">Inhalt &amp; Datenquelle</div>'
       +row('Typ','<select id="pType">'+typeOpts+'</select>')
       +row('Label','<input id="pLabel" value="'+esc(w.label||'')+'">')
       +'<div style="font-size:11px;color:var(--muted);margin:-2px 2px 5px">Ein <b>\\n</b> im Text erzwingt an dieser Stelle einen Zeilenumbruch.</div>'
@@ -123,11 +130,8 @@
         +row('Aktiv','<input type="checkbox" id="pCmpOn"'+(w.cmpOn?' checked':'')+'>')
         +(w.cmpOn?(row('Aggregationsstufe',stageSel('pCmpStage',cmpStage(w)))+row('Zählervariable','<input type="checkbox" id="pCmpCnt"'+(w.cmpCounter?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">Verbrauch je Periode</span>')+(!w.cmpCounter?row('Periodenmittel','<input type="checkbox" id="pCmpAvg"'+(w.cmpAvg?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">Mittel über die Periode statt Punktwert</span>'):'')+row('Anzeige','<select id="pCmpMode"><option value="pct"'+((w.cmpMode||'pct')==='pct'?' selected':'')+'>Prozent</option><option value="abs"'+(w.cmpMode==='abs'?' selected':'')+'>Absolut</option></select>')+row('Veränderung invertieren','<input type="checkbox" id="pCmpInv"'+(w.cmpInvert?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">Rückgang = gut (z. B. Verbrauch) — nur Farbe dreht, Pfeil bleibt</span>')):'')
       ):'')
-      +(FMT_TYPES.indexOf(w.type)>=0?row('Format','<select id="pFmt">'+fmtOpts(w.fmt)+'</select>'):'')
-      +(['value','kpi','valuecard','bar','gauge','gaugepro','tempbar','dial','chip','cval','sval','delta','room','meterlist','marquee','raincard','rangebtn','assoc','chart'].indexOf(w.type)>=0?row('Nachkommastellen','<input id="pDec" type="number" min="0" max="6" value="'+(w.dec!=null?w.dec:'')+'" placeholder="Standard">'):'')
-      +(['value','valuecard','bar','assoc','cval','sval','delta','tempbar'].indexOf(w.type)>=0?row('Einzeilig bei geringer Höhe','<input type="checkbox" id="pLineMode"'+(w.lineMode?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">flach gezogen → alles in eine Zeile</span>'):'')
       +((w.type==='chart'||w.type==='spark')?(function(){if(w.type==='chart'&&(['pie','donut','rose','waterfall','daylight'].indexOf(w.ctype||'area')>=0))return ''; /* Anteils-Charts und Wasserfall haben keine Zeitachse */var r=_chRange(w);var U=[['raw','Roh'],['min','Minuten'],['hour','Stunden'],['day','Tage'],['week','Wochen'],['month','Monate'],['year','Jahre']];var sel='<select id="pRUnit">'+U.map(function(u){return '<option value="'+u[0]+'"'+(r.unit===u[0]?' selected':'')+'>'+u[1]+'</option>';}).join('')+'</select>';var s=row('Zeitraum','<input id="pRN" type="number" min="1" style="width:64px" value="'+(r.n||24)+'"> '+sel);if(r.unit==='raw')s+=row('Fenster-Einheit','<select id="pRRawU"><option value="hour"'+((r.rawUnit||'hour')==='hour'?' selected':'')+'>Stunden</option><option value="day"'+(r.rawUnit==='day'?' selected':'')+'>Tage</option></select>');else s+=row('Wert','<select id="pRAggF"><option value="avg"'+((r.aggF||'avg')==='avg'?' selected':'')+'>Mittel</option><option value="sum"'+(r.aggF==='sum'?' selected':'')+'>Summe</option></select> <span style="font-size:11px;color:var(--muted)">Z&#228;hler: &#8222;Mittel&#8220;=Verbrauch/Bucket</span>');if(r.unit==='month'&&w.type==='chart'&&w.ctype!=='spark')s+=row('Zeitmodus','<select id="pRCal"><option value=""'+(!r.cal?' selected':'')+'>Rollierend</option><option value="1"'+(r.cal?' selected':'')+'>Kalenderjahr (J&#228;n&#8211;Dez)</option></select>');return s;})():'')
-      +(['bar','gauge','slider','thermostat','gaugepro','timer','tempbar','dial'].indexOf(w.type)>=0?(row('Min','<input id="pMin" type="number" value="'+(w.min!=null?w.min:0)+'">')+row('Max','<input id="pMax" type="number" value="'+(w.max!=null?w.max:100)+'">')):'')
+      +(['bar','gauge','slider','thermostat','gaugepro','timer','tempbar','dial'].indexOf(w.type)>=0?('<div class="pgh">Skala &amp; Grenzen</div>'+row('Min','<input id="pMin" type="number" value="'+(w.min!=null?w.min:0)+'">')+row('Max','<input id="pMax" type="number" value="'+(w.max!=null?w.max:100)+'">')):'')
       +((w.type==='slider'||w.type==='thermostat'||w.type==='dial')?row('Schritt','<input id="pStep" type="number" step="0.1" value="'+(w.step||1)+'">'):'')
       +(lbl2?row(lbl2,'<input id="pVar2" value="'+esc(String(w.varId2||''))+'" placeholder="ID oder =Formel"> <button class="btn" id="pPick2" style="padding:6px 8px">wählen</button>'):'')
       +(lbl3?row(lbl3,'<input id="pVar3" value="'+esc(String(w.varId3||''))+'" placeholder="ID oder =Formel"> <button class="btn" id="pPick3" style="padding:6px 8px">wählen</button>'):'')
@@ -145,9 +149,9 @@
       +(['icon','value','switch','bar','tile','button','light','chip','room','kpi','assoc','valuecard'].indexOf(w.type)>=0?row('Icon (Fallback)','<span style="width:20px;height:20px;display:inline-flex;align-items:center;color:var(--accent)">'+(w.icon?iconSVG(w.icon):'')+'</span> <button class="btn" id="pIcon" style="padding:5px 8px">wählen</button>'+(w.icon?' <button class="btn" id="pIconX" style="padding:5px 8px" title="Icon entfernen"><svg class="i"><use href="#ic-minus"/></svg></button>':'')):'')
       +(['icon','value','switch','bar','chip','room','kpi','valuecard'].indexOf(w.type)>=0&&w.icon?row('Icon-Farbe',(function(){var SK=[['','Standard'],['accent','Akzent'],['ok','OK'],['warn','Warnung'],['crit','Kritisch'],['info','Info'],['text','Neutral']];return '<span class="iconsw" data-role="iconsw">'+SK.map(function(c){var cur=(w.iconColor||'')===c[0];var st=c[0]?('background:var(--'+c[0]+')'):'background:transparent;border-style:dashed;border-color:var(--muted)';return '<button type="button" class="iconswb'+(cur?' on':'')+'" data-skin="'+c[0]+'" title="'+esc(c[1])+'" style="'+st+'"></button>';}).join('')+'</span>';})()):'')
       +(['icon','value','switch','bar','tile','button','light','chip','room','kpi','assoc','valuecard'].indexOf(w.type)>=0&&w.varId?'<div id="assocBox" class="assocbox"></div>':'')
+      +universalSection(w)
       +(function(){try{var _p=(WIDGETS[w.type]&&WIDGETS[w.type].props)?WIDGETS[w.type].props(w):'';if(!_p||!String(_p).trim())return '';return '<div class="pgh">'+esc((TYPES[w.type]||w.type))+' — Optionen</div>'+_p;}catch(_e){console.error('props('+w.type+')',_e);return '<div class="hint" style="color:var(--crit);font-size:11px">Eigenschaften-Fehler bei „'+esc(w.type)+'" — siehe Konsole</div>';}})()
       +((state.page.fit&&state.page.fit!=='letterbox')?respSection(w):'')
-      +universalSection(w)
       +((w.type!=='button'&&w.type!=='tile')?popupSection(w):'')
       +(w.type!=='blank'?('<div class="pgh">Sichtbarkeit</div>'
         +row('Zur Laufzeit','<input type="checkbox" id="pRunVis"'+(w.hidden?'':' checked')+'> <span style="font-size:11px;color:var(--muted)">im Betrieb anzeigen</span>')
