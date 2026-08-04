@@ -1,5 +1,8 @@
   :root{--bg:#0d1315;--surface:#141c1f;--surface-2:#1a2428;--tile:#131b1e;--line:#25333a;--line-soft:#1b262b;--text:#e7eef0;--muted:#8ba0a6;--faint:#63757b;--accent:#00cdab;--accent-2:#0a8f79;--ok:#39d08a;--warn:#f2b441;--crit:#f2685a;--info:#5ab6ff;--warm:#f2a03d;--sun:#f5c026;--moon:#9db8e6;--sky-day:#5a92d6;--sky-night:#2f3a78;--ring:0 0 0 3px color-mix(in oklab,#00cdab 38%,transparent);--r:12px;--r-s:9px;--fu:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,system-ui,sans-serif;--fm:ui-monospace,"SF Mono",Menlo,Consolas,monospace;color-scheme:dark}
   *{box-sizing:border-box}
+  /* iOS-Safari bläht Textblöcke sonst je nach Blockbreite automatisch auf ("text auto-inflation") -
+     das erzeugte auf dem iPhone unterschiedlich große Doku-Schrift. 100% = Autovergrößerung aus. */
+  html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
   html,body{height:100%}
   body{margin:0;font-family:var(--fu);color:var(--text);background:var(--bg);display:flex;flex-direction:column;overflow:hidden}
   .bar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;row-gap:6px;padding:8px 12px;background:linear-gradient(180deg,var(--surface),var(--surface-2));border-bottom:1px solid var(--line);flex:none}
@@ -41,6 +44,11 @@
   .w.sel{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent),0 0 0 4px color-mix(in oklab,var(--accent) 22%,transparent)}
   .w .rz{position:absolute;display:none;z-index:6;background:transparent}
   .stage.edit .w.sel .rz{display:block}
+  /* Reset-Knopf (Position der Einzelelemente) — innen oben-rechts, nur bei ausgewaehltem Widget im Edit */
+  .w .posreset{position:absolute;top:3px;right:3px;width:19px;height:19px;border-radius:50%;border:1px solid var(--line);background:var(--surface);color:var(--text);font-size:12px;line-height:16px;text-align:center;display:none;cursor:pointer;z-index:8;padding:0}
+  .stage.edit .w.sel .posreset{display:block}
+  .w .posreset:hover{border-color:var(--accent);color:var(--accent)}
+  body.run .w .posreset{display:none!important}
   .w .rz-n{top:-4px;left:11px;right:11px;height:8px;cursor:ns-resize;border-radius:3px;background:color-mix(in oklab,var(--accent) 28%,transparent)}
   .w .rz-s{bottom:-4px;left:11px;right:11px;height:8px;cursor:ns-resize;border-radius:3px;background:color-mix(in oklab,var(--accent) 28%,transparent)}
   .w .rz-e{right:-4px;top:11px;bottom:11px;width:8px;cursor:ew-resize;border-radius:3px;background:color-mix(in oklab,var(--accent) 28%,transparent)}
@@ -65,6 +73,30 @@
   .sw .swi-off{display:flex}.sw.on .swi-off{display:none}.sw.on .swi-on{display:flex}
   /* Rückfall: ein .sw ohne eigenes .swk-Element bekommt den Knubbel per Pseudo-Element */
   .sw:not(:has(.swk))::after{content:'';position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:var(--sw-off,var(--muted));transition:.15s}
+  /* Multi-State-Schieber: N Segmente, ein gleitender Knopf (--i = aktiver Index, --n = Anzahl) */
+  .wswm .swmhost{flex:1 1 auto;min-width:0;display:flex;align-items:center}
+  .swm{position:relative;flex:1 1 auto;min-width:0;height:clamp(28px,82cqh,60px);display:grid;grid-template-columns:repeat(var(--n,2),1fr);border:1px solid var(--line);border-radius:var(--swmr,999px);background:var(--surface-2);overflow:hidden}
+  .swm.tint{background:color-mix(in oklab,var(--swmc,var(--accent)) 14%,var(--surface-2));border-color:color-mix(in oklab,var(--swmc,var(--accent)) 35%,var(--line))}
+  .swmk{position:absolute;top:2px;bottom:2px;left:0;width:calc(100%/var(--n,2));transform:translateX(calc(var(--i,0)*100%));transition:transform .18s cubic-bezier(.2,.8,.2,1),background-color .15s;background:var(--swmc,linear-gradient(135deg,var(--accent),var(--accent-2)));border-radius:calc(var(--swmr,999px) - 2px);z-index:0;box-shadow:0 1px 4px rgba(0,0,0,.25);pointer-events:none}
+  .swmk.hidden{opacity:0}
+  .swmseg{position:relative;z-index:1;min-width:0;background:transparent;border:0;color:var(--muted);font-size:var(--wf-lbl);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;white-space:nowrap;overflow:hidden;padding:0 6px;transition:color .12s,font-weight .12s}
+  .swmseg .swmst{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+  .swmseg .swmsi{display:inline-flex;align-items:center;justify-content:center;width:clamp(15px,36cqh,30px);height:clamp(15px,36cqh,30px);flex:none}
+  .swmseg .swmsi svg{width:100%;height:100%}
+  .swmseg.icon-only .swmsi{width:clamp(18px,58cqh,44px);height:clamp(18px,58cqh,44px)}
+  .swmseg.on{color:#04201b;font-weight:700}
+  /* kein Ganz-Widget-Hover beim Multi-Toggle; nur dezente Aufhellung des ueberfahrenen Segments (nur im Betrieb) */
+  .stage:not(.edit) .swmseg:not(.on):hover,#ovcanvas .swmseg:not(.on):hover{color:var(--text)}
+  .swmempty{flex:1;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:var(--wf-lbl);font-style:italic}
+  .stage.edit .swmseg{cursor:default}
+  /* Container-Widget: nimmt Kinder auf (verschachtelt, skaliert). Panel oder unsichtbar. */
+  .wcont{position:absolute;inset:0;border-radius:8px;overflow:hidden}
+  .wcont.panel{background:var(--surface);border:1px solid var(--line)}
+  .wcont .contttl{position:absolute;left:0;top:0;right:0;height:26px;display:flex;align-items:center;padding:0 10px;font-size:var(--wf-lbl);color:var(--muted);text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--line-soft);background:var(--surface-2);z-index:3;pointer-events:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .wcont .conthost2{position:absolute;left:0;right:0;top:0;bottom:0;overflow:hidden}
+  .wcont.has-ttl .conthost2{top:26px}
+  .wcont .continner{background:transparent}
+  .stage.edit .wcont:not(.panel){outline:1px dashed var(--line);outline-offset:-1px}
   .sw.on:not(:has(.swk))::after{transform:translateX(18px);background:var(--sw-on,var(--accent))}
   .stage.preview .wsw{cursor:pointer}
   .wbar{height:100%;display:flex;flex-direction:column;justify-content:center;gap:6px;padding:9px 11px}
@@ -284,10 +316,12 @@
   .flpipe{display:flex;align-items:center;height:100%;box-sizing:border-box;padding:8px 10px;overflow:auto}
   .flpipe.v{flex-direction:column}
   .flnode{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;flex:none;text-align:center;min-width:56px}
-  .flnvtop{font-family:var(--fm);font-variant-numeric:tabular-nums;font-size:13px;font-weight:600;color:var(--accent);line-height:1;white-space:nowrap;min-height:13px}
-  .flbox{width:54px;height:54px;border-radius:14px;background:var(--surface-2);border:1px solid var(--line);display:grid;place-items:center;color:var(--accent);flex:none}
+  .flnvtop{font-family:var(--fm);font-variant-numeric:tabular-nums;font-size:13px;font-weight:600;color:var(--accent);line-height:1.15;white-space:nowrap;min-height:24px;display:flex;flex-direction:column;justify-content:flex-end;align-items:center} /* gleich hohe Zone ueber der Box -> Box mittig, Linien treffen alle Boxen gleich */
+  .flbox{width:54px;height:54px;border-radius:14px;background:var(--surface-2);border:1px solid var(--line);display:grid;place-items:center;color:var(--ico,var(--accent));flex:none}
   .flbox svg{width:24px;height:24px}
-  .flnlab{font-size:11px;color:var(--muted);line-height:1.15;white-space:nowrap}
+  .flbox[data-viddot].on{color:var(--icoon,var(--ico,var(--accent)))} /* Status AN -> Icon-Farbe (an) */
+  .flbox[data-viddot]:not(.on){color:var(--icooff,var(--ico,var(--accent)))} /* Status AUS -> Icon-Farbe (aus) */
+  .flnlab{font-size:11px;color:var(--muted);line-height:1.15;white-space:nowrap;min-height:24px;display:flex;flex-direction:column;justify-content:flex-start;align-items:center} /* gleich hohe Zone unter der Box */
   .flnsub{display:block;font-size:9.5px;color:var(--faint);white-space:nowrap}
   .flconn{flex:1;min-width:24px;align-self:stretch;position:relative}
   .flpipe.v .flconn{align-self:auto;flex:none;height:24px;width:100%}
@@ -296,10 +330,20 @@
   .flconn i{position:absolute;left:0;right:0;top:50%;transform:translateY(-50%);height:3px;border-radius:3px;background:repeating-linear-gradient(90deg,var(--flcol,var(--accent)) 0 7px,transparent 7px 18px);background-size:18px 100%;animation:flpx 1.1s linear infinite;animation-duration:var(--fldur,1.1s)}
   .flpipe.v .flconn i{left:50%;right:auto;top:0;bottom:0;transform:translateX(-50%);width:3px;height:auto;background:repeating-linear-gradient(180deg,var(--flcol,var(--accent)) 0 7px,transparent 7px 18px);background-size:100% 18px;animation-name:flpy}
   .flpipe.rev .flconn i{animation-direction:reverse}
-  .flpipe.noflow .flconn i{animation-play-state:paused;background:repeating-linear-gradient(90deg,var(--muted) 0 7px,transparent 7px 18px);opacity:.5}
+  .flpipe.noflow .flconn i{animation-play-state:paused;background:repeating-linear-gradient(90deg,var(--flcoloff,var(--muted)) 0 7px,transparent 7px 18px);opacity:.5}
+  .flconn i[data-viddot]:not(.on){animation-play-state:paused;background:repeating-linear-gradient(90deg,var(--flcoloff,var(--muted)) 0 7px,transparent 7px 18px);opacity:.45} /* Station aus -> kein Fluss in dieser Leitung */
+  .flpipe.v .flconn i[data-viddot]:not(.on){background:repeating-linear-gradient(180deg,var(--flcoloff,var(--muted)) 0 7px,transparent 7px 18px)}
   @keyframes flpx{to{background-position:18px 0}}
   @keyframes flpy{to{background-position:0 18px}}
   @media(prefers-reduced-motion:reduce){.flconn i{animation:none}}
+  /* Listen-Editor: sauberer Block-Modus (opts.wrap) mit beschrifteten Feldern */
+  .lewrap{position:relative;display:flex;flex-wrap:wrap;gap:7px 9px;align-items:flex-end;padding:9px 9px 9px 22px;border:1px solid var(--line);border-radius:9px;margin-bottom:7px;background:var(--surface-2)}
+  .lewrap .lewn{position:absolute;left:6px;top:8px;font-size:9px;color:var(--faint);font-family:var(--fm)}
+  .lewrap .lewf{display:flex;flex-direction:column;gap:3px;font-size:9px;line-height:1;color:var(--faint);text-transform:uppercase;letter-spacing:.3px}
+  .lewrap .lewf>span{white-space:nowrap}
+  .lewrap .lewf input,.lewrap .lewf select{min-width:0;width:104px}
+  .lewrap .lewf input[type=color]{width:36px;padding:1px;height:24px}
+  .lewrap .lewbtns{display:flex;gap:2px;align-items:flex-end;margin-left:auto}
   .flstart{display:flex;flex-direction:column;align-items:center;gap:2px;flex:none;color:var(--muted)}
   .flstart .flslab{font-size:10px;white-space:nowrap}
   .flstart .flarr{width:28px;height:28px;fill:none;stroke:var(--muted);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
@@ -537,9 +581,9 @@
   .htemp .htbarwrap{position:relative;display:flex;align-items:flex-end;gap:5px;flex:1;min-height:0}
   .htemp .htscale{display:flex;flex-direction:column;justify-content:space-between;height:100%;font-size:var(--wf-cap);color:var(--faint);font-family:var(--fm);text-align:right}
   .htemp .htbar{position:relative;width:32px;height:100%;border-radius:16px;background:var(--surface-2);border:1px solid var(--line);overflow:hidden}
-  .htemp .htfill{position:absolute;left:0;right:0;bottom:0;height:0;background:linear-gradient(180deg,var(--accent),var(--accent-2));transition:height .4s}
+  .htemp .htfill{position:absolute;left:0;right:0;bottom:0;width:auto;height:0;background:linear-gradient(180deg,var(--accent),var(--accent-2));transition:height .4s}
   .htemp.warm .htfill{background:linear-gradient(180deg,var(--warm),#d98a1a)}
-  .htemp .htsoll{position:absolute;left:-1px;right:-1px;height:0;border-top:2px dashed var(--text);opacity:.7}
+  .htemp .htsoll{position:absolute;left:-1px;right:-1px;width:auto;height:0;border-top:2px dashed var(--text);opacity:.7}
   .htemp .htzn{font-size:var(--wf-lbl);color:var(--muted);font-weight:600}
   /* Status-Grid */
   .hsgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:8px;height:100%;align-content:start;box-sizing:border-box;overflow:auto}
@@ -568,7 +612,7 @@
   .hinfos{display:flex;flex-direction:column;gap:clamp(3px,2cqmin,8px);padding:clamp(5px,3cqmin,10px);height:100%;overflow:auto;box-sizing:border-box;container-type:size}
   .hinfo{display:flex;align-items:center;gap:clamp(6px,6cqh,12px);padding:0 clamp(8px,6cqh,13px);background:var(--tile);border:1px solid var(--line);border-radius:var(--r-s);flex:1 1 0;min-height:28px;overflow:hidden;container-type:size}
   .hinfo .hibi{width:clamp(20px,52cqh,42px);height:clamp(20px,52cqh,42px);border-radius:clamp(6px,14cqh,11px);background:var(--surface-2);display:grid;place-items:center;flex:none;color:var(--accent)}
-  .hinfo .hibi svg{width:48%;height:48%}
+  .hinfo .hibi svg{width:64%;height:64%}
   .hinfo .hin{flex:1;font-size:clamp(11px,30cqh,22px);min-width:0;line-height:1.15;overflow:hidden}
   .hinfo .hin small{display:block;color:var(--faint);font-size:clamp(9px,22cqh,15px);line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .hinfo .hiv{font-family:var(--fm);font-weight:600;font-size:clamp(11px,30cqh,22px);font-variant-numeric:tabular-nums;flex:none}
@@ -687,11 +731,14 @@
   .hsimg img{max-width:100%;max-height:100%;object-fit:contain}
   .hsimlbl{position:absolute;bottom:3px;left:6px;font-size:var(--wf-lbl);color:var(--muted)}
   /* Auswahl (Segmented) */
-    .hselhost{width:100%;height:100%;display:flex}
+    .hselhost{width:100%;height:100%;display:flex;align-items:center}
   .hsell{flex:1;min-width:0;margin:5px;border:1px solid var(--line);background:var(--surface-2);color:var(--text);border-radius:var(--r-s);cursor:pointer;font-size:var(--wf-lbl);font-weight:600;padding:4px 6px;box-sizing:border-box}
   .hsell:focus{outline:none;border-color:var(--accent)}
   .hsel{display:flex;gap:5px;width:100%;height:100%;padding:5px;box-sizing:border-box;align-items:stretch}
-  .hselb{flex:1;min-width:0;border:1px solid var(--line);background:var(--surface-2);color:var(--muted);border-radius:var(--r-s);cursor:pointer;font-size:var(--wf-lbl);font-weight:600;padding:4px 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .hselb{flex:1;min-width:0;border:1px solid var(--line);background:var(--surface-2);color:var(--muted);border-radius:var(--r-s);cursor:pointer;font-size:var(--wf-lbl);font-weight:600;padding:4px 8px;white-space:nowrap;overflow:hidden;display:flex;align-items:center;justify-content:center;gap:5px}
+  .hselb .hselt{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+  .hselb .hseli{display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;flex:none}
+  .hselb .hseli svg{width:15px;height:15px}
   .stage.preview .hselb{cursor:pointer}
   .hselb.on{background:color-mix(in oklab,var(--accent) 18%,var(--surface-2));border-color:var(--accent);color:var(--accent)}
   /* Dial (Kreis-Slider) */
@@ -744,6 +791,27 @@
   .hwp2day .trk{position:relative;height:clamp(3px,4cqh,6px);border-radius:3px;background:var(--surface-2);--trkh:clamp(3px,4cqh,6px)}
   .hwp2day .trk .fill{position:absolute;top:0;bottom:0;left:0;width:0;border-radius:3px;transition:all .4s}
   .hwp2day .trk .cnow{position:absolute;top:50%;left:0;width:calc(var(--trkh) + 3px);height:calc(var(--trkh) + 3px);border-radius:50%;transform:translate(-50%,-50%);background:var(--text);box-shadow:0 0 0 2px var(--surface);display:none;z-index:2;pointer-events:none;transition:left .4s}
+  /* Stundenmodus: horizontale Spalten (Uhrzeit / Icon / Temp / Regen%) */
+  .hwp2hrs{flex:1;display:flex;flex-direction:row;gap:clamp(1px,1cqw,7px);min-height:0;min-width:0;overflow:hidden;align-items:stretch}
+  .hwp2hr{flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:space-evenly;gap:clamp(0px,1cqh,4px);text-align:center;padding:2px 0;overflow:hidden}
+  .hwp2hr .h{font-size:clamp(8px,7cqh,13px);color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums}
+  .hwp2hr .ic{width:clamp(20px,34cqh,50px);height:clamp(20px,34cqh,50px);color:var(--warm);display:inline-flex;flex:none} /* Wetter-Icon bewusst groß/prominent */
+  .hwp2hr .ic svg{width:100%;height:100%}
+  .hwp2hr .t{font-family:var(--fm);font-weight:700;font-size:clamp(11px,13cqh,22px);font-variant-numeric:tabular-nums}
+  .hwp2hr .m{font-size:clamp(7px,6cqh,12px);color:var(--muted);white-space:nowrap;display:inline-flex;align-items:center;gap:2px;line-height:1;max-width:100%;overflow:hidden;font-variant-numeric:tabular-nums}
+  .hwp2hr .m.pr{color:var(--info)}
+  .hwp2hr .m .prmm{margin-left:3px;opacity:.85}
+  .hwp2hr .m .mi,.hwp2hr .m .hwpqi{width:clamp(8px,7cqh,13px);height:clamp(8px,7cqh,13px);flex:none}
+  .hwp2hr .m:empty{display:none}
+  /* Meteogramm: Wetter-Icon-Reihe über dem Temperatur-Panel */
+  .mg .mgico{display:inline-flex;align-items:center;justify-content:center;color:var(--warm);flex:0 0 auto}
+  .mg .mgico svg{width:clamp(11px,6cqh,22px);height:clamp(11px,6cqh,22px)}
+  /* Ring-Gauge (multiring): HTML-Legende */
+  .mr{container-type:size}
+  .mr .mrleg{position:absolute;left:6px;right:6px;bottom:3px;display:flex;flex-wrap:wrap;justify-content:center;gap:3px 12px;pointer-events:none}
+  .mr .mrlgi{font-size:clamp(8px,3.2cqmin,12px);color:var(--muted);display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
+  .mr .mrlgi i{width:8px;height:8px;border-radius:2px;flex:none}
+  .mr .mrlgi b{color:var(--text);font-family:var(--fm);font-weight:600}
   /* Sonnenbogen (suncard) */
   .hsc{position:absolute;inset:0;display:flex;flex-direction:column;padding:8px 12px;box-sizing:border-box}
   /* Meldungen-Widget */
@@ -778,6 +846,22 @@
   .hmsgcb{display:flex;flex-direction:column;align-items:center;line-height:1;color:var(--cc)}
   .hmsgcb .n{font-size:clamp(22px,20cqmin,80px);font-weight:800;font-variant-numeric:tabular-nums}
   .hmsgcb .l{font-family:var(--fm);font-size:clamp(8px,3.5cqmin,13px);font-weight:700;letter-spacing:.05em;color:var(--muted);margin-top:clamp(2px,1.5cqmin,7px)}
+  .hmsgcount.one .n{font-size:clamp(34px,46cqmin,180px)} /* Kompakt: eine grosse prominente Gesamtzahl */
+  /* Bestätigen/Verlauf (nur Symcon) */
+  .hmsgackw{display:inline-flex;gap:5px;margin-left:auto;flex:none}
+  .hmsgackb{font-family:var(--fm);font-size:10px;font-weight:700;padding:4px 10px;border-radius:999px;border:1.5px solid var(--accent);color:var(--accent);background:color-mix(in oklab,var(--accent) 14%,transparent);cursor:pointer;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;white-space:nowrap;line-height:1.35}
+  .hmsgackb.ghost{border-color:var(--line);color:var(--muted);background:transparent}
+  .hmsgackb.ghost.on{border-color:var(--accent);color:var(--accent);background:color-mix(in oklab,var(--accent) 14%,transparent)}
+  .hmsgackb:active{transform:scale(.94)}
+  .hmsgi.acked{opacity:.45}
+  .hmsgackx{margin-left:auto;flex:none;border:1px solid var(--line);background:var(--surface-2);color:var(--muted);border-radius:7px;width:24px;height:24px;display:grid;place-items:center;cursor:pointer}
+  .hmsgackx:hover{color:var(--ok);border-color:color-mix(in oklab,var(--ok) 45%,var(--line))}
+  .hmsgackx svg.i{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+  .hmsgackx:active{transform:scale(.92)}
+  .hmsgi.ackrow{grid-template-columns:auto 62px 58px auto 1fr auto}
+  .hmsgx{border:none;background:transparent;color:var(--muted);cursor:pointer;font-size:13px;line-height:1;padding:2px 5px;border-radius:6px;align-self:center;flex:none}
+  .hmsgx:hover{color:var(--crit);background:var(--surface-2)}
+  .hmsgx:active{transform:scale(.9)}
   .hscarcwrap{position:relative;flex:1;min-height:0;display:flex}
   .hscarcwrap .hscsvg{flex:1;height:100%}
   .hscnow{position:absolute;left:0;top:0;transform:translate(-50%,-150%);font-family:var(--fm);font-size:var(--wf-lbl);font-weight:600;color:var(--warm);white-space:nowrap;pointer-events:none;text-shadow:0 1px 3px rgba(0,0,0,.5)}
@@ -884,27 +968,30 @@
   body.run .w.anim-scale{animation:wscale .4s cubic-bezier(.2,.8,.2,1) both}
   body.run .w.anim-slide{animation:wslide .45s cubic-bezier(.2,.8,.2,1) both}
 
-  /* ===== Hover-Affordance: Widgets mit Aktion (tap / hold / both) — nur ausserhalb Edit-Modus ===== */
-  .stage:not(.edit) .w.act-tap,.stage:not(.edit) .w.act-hold,.stage:not(.edit) .w.act-both,
-  #ovcanvas .w.act-tap,#ovcanvas .w.act-hold,#ovcanvas .w.act-both{cursor:pointer}
-  .stage:not(.edit) .w.act-tap,.stage:not(.edit) .w.act-both,
-  #ovcanvas .w.act-tap,#ovcanvas .w.act-both{transition:transform .14s cubic-bezier(.2,.8,.2,1),outline-color .12s,box-shadow .12s}
-  /* Ring (tap/both) via outline: kein Konflikt mit wglow-box-shadow, nicht von overflow:hidden beschnitten, folgt border-radius */
-  .stage:not(.edit) .w.act-tap:hover,.stage:not(.edit) .w.act-both:hover,
-  #ovcanvas .w.act-tap:hover,#ovcanvas .w.act-both:hover{outline:2px solid color-mix(in oklab,var(--accent) 85%,transparent);outline-offset:1px;transform:translateY(-2px);z-index:7}
-  .stage:not(.edit) .w.act-tap:active,.stage:not(.edit) .w.act-both:active,
-  #ovcanvas .w.act-tap:active,#ovcanvas .w.act-both:active{transform:translateY(0) scale(.985)}
+  /* ===== Hover-Affordance — nur ausserhalb Edit-Modus. Zwei klar getrennte Sprachen: =====
+     act-nav  = oeffnet etwas (Popup/Seite/Skript/Menue/Zurueck): hebt sich an + Akzent-Ring.
+     act-tog  = schaltet in-place (Variable/Aktion): KEIN Anheben, sondern getoenter Innen-Ring.
+     act-hold = Lang-Druck-Aktion: Fuellleiste unten. Kombinierbar (z. B. act-tog act-hold). */
+  .stage:not(.edit) .w.act-nav,.stage:not(.edit) .w.act-tog,.stage:not(.edit) .w.act-hold,
+  #ovcanvas .w.act-nav,#ovcanvas .w.act-tog,#ovcanvas .w.act-hold{cursor:pointer}
+  /* NAVIGATION: anheben + Akzent-Ring (outline: kein Konflikt mit wglow, nicht von overflow:hidden beschnitten) */
+  .stage:not(.edit) .w.act-nav,#ovcanvas .w.act-nav{transition:transform .14s cubic-bezier(.2,.8,.2,1),outline-color .12s,box-shadow .12s}
+  .stage:not(.edit) .w.act-nav:hover,#ovcanvas .w.act-nav:hover{outline:2px solid color-mix(in oklab,var(--accent) 85%,transparent);outline-offset:1px;transform:translateY(-2px);z-index:7}
+  .stage:not(.edit) .w.act-nav:active,#ovcanvas .w.act-nav:active{transform:translateY(0) scale(.985)}
+  /* SCHALTAKTION in-place: getoenter Innen-Ring + leichtes Aufhellen, KEIN Anheben (klar anders als Navigation) */
+  .stage:not(.edit) .w.act-tog,#ovcanvas .w.act-tog{transition:box-shadow .12s,background-color .12s,filter .12s}
+  .stage:not(.edit) .w.act-tog:hover,#ovcanvas .w.act-tog:hover{box-shadow:inset 0 0 0 2px color-mix(in oklab,var(--accent) 50%,transparent);filter:brightness(1.05)}
+  .stage:not(.edit) .w.act-tog:active,#ovcanvas .w.act-tog:active{box-shadow:inset 0 0 0 2px var(--accent);filter:brightness(1.0)}
   /* zarter Ring fuer hold-only (ohne Anheben) */
   .stage:not(.edit) .w.act-hold:hover,#ovcanvas .w.act-hold:hover{outline:1.5px solid color-mix(in oklab,var(--accent) 42%,transparent);outline-offset:1px}
-  /* Fuellleiste unten (hold/both): fuellt in 0.55s = Long-Press-Dauer; auch bei :active (Touch = Halte-Fortschritt sichtbar) */
-  .stage:not(.edit) .w.act-hold::after,.stage:not(.edit) .w.act-both::after,
-  #ovcanvas .w.act-hold::after,#ovcanvas .w.act-both::after{content:'';position:absolute;left:0;bottom:0;height:3px;width:0;z-index:6;pointer-events:none;opacity:0;background:linear-gradient(90deg,color-mix(in oklab,var(--accent) 60%,transparent),var(--accent));box-shadow:0 0 6px color-mix(in oklab,var(--accent) 55%,transparent);border-radius:0 3px 3px 0}
-  .stage:not(.edit) .w.act-hold:hover::after,.stage:not(.edit) .w.act-hold:active::after,.stage:not(.edit) .w.act-both:hover::after,.stage:not(.edit) .w.act-both:active::after,
-  #ovcanvas .w.act-hold:hover::after,#ovcanvas .w.act-hold:active::after,#ovcanvas .w.act-both:hover::after,#ovcanvas .w.act-both:active::after{opacity:1;width:100%;transition:width .55s linear,opacity .08s}
+  /* Fuellleiste unten (hold): fuellt in 0.55s = Long-Press-Dauer; auch bei :active (Touch = Halte-Fortschritt sichtbar) */
+  .stage:not(.edit) .w.act-hold::after,#ovcanvas .w.act-hold::after{content:'';position:absolute;left:0;bottom:0;height:3px;width:0;z-index:6;pointer-events:none;opacity:0;background:linear-gradient(90deg,color-mix(in oklab,var(--accent) 60%,transparent),var(--accent));box-shadow:0 0 6px color-mix(in oklab,var(--accent) 55%,transparent);border-radius:0 3px 3px 0}
+  .stage:not(.edit) .w.act-hold:hover::after,.stage:not(.edit) .w.act-hold:active::after,
+  #ovcanvas .w.act-hold:hover::after,#ovcanvas .w.act-hold:active::after{opacity:1;width:100%;transition:width .55s linear,opacity .08s}
   @media (prefers-reduced-motion:reduce){
-    .stage:not(.edit) .w.act-tap:hover,.stage:not(.edit) .w.act-both:hover,#ovcanvas .w.act-tap:hover,#ovcanvas .w.act-both:hover{transform:none}
-    .stage:not(.edit) .w.act-hold::after,.stage:not(.edit) .w.act-both::after,#ovcanvas .w.act-hold::after,#ovcanvas .w.act-both::after{width:100%}
-    .stage:not(.edit) .w.act-hold:hover::after,.stage:not(.edit) .w.act-both:hover::after,#ovcanvas .w.act-hold:hover::after,#ovcanvas .w.act-both:hover::after{transition:opacity .12s}
+    .stage:not(.edit) .w.act-nav:hover,#ovcanvas .w.act-nav:hover{transform:none}
+    .stage:not(.edit) .w.act-hold::after,#ovcanvas .w.act-hold::after{width:100%}
+    .stage:not(.edit) .w.act-hold:hover::after,#ovcanvas .w.act-hold:hover::after{transition:opacity .12s}
   }
 
   /* Zustands-Timeline (statetl) */

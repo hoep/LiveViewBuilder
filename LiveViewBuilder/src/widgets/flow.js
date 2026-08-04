@@ -21,17 +21,24 @@
     var val=s.vid?('<span class="flnvtop" data-vid="'+s.vid+'">–</span>')
                  :(s.val?('<span class="flnvtop">'+esc(s.val)+'</span>'):'<span class="flnvtop">&nbsp;</span>');
     var sub=(s.subvid||s.sub)?('<span class="flnsub"'+(s.subvid?' data-vid="'+s.subvid+'"':'')+'>'+esc(s.sub||'')+'</span>'):'';
-    return '<span class="flnode">'+val+'<span class="flbox">'+iconSVG(s.icon||'gauge')+'</span><span class="flnlab">'+esc(s.label||'')+sub+'</span></span>';
+    var gen=s.color?(_cssColorOrEmpty(s.color)||''):'';           // Icon-Grundfarbe (Skin)
+    var act=s.svColor?(_cssColorOrEmpty(s.svColor)||''):'';       // Farbe bei Status AN (data-viddot .on)
+    var actOff=s.svColorOff?(_cssColorOrEmpty(s.svColorOff)||''):''; // Farbe bei Status AUS
+    var st=(gen?('--ico:'+gen+';'):'')+(act?('--icoon:'+act+';'):'')+(actOff?('--icooff:'+actOff+';'):'');
+    var box='<span class="flbox"'+(s.sv?(' data-viddot="'+s.sv+'"'):'')+(st?(' style="'+st+'"'):'')+'>'+iconSVG(s.icon||'gauge')+'</span>';
+    return '<span class="flnode">'+val+box+'<span class="flnlab">'+esc(s.label||'')+sub+'</span></span>';
   }
-  function flowConn(){return '<span class="flconn"><i></i></span>';}
+  // Konnektor; mit Status-Var der QUELL-Stufe (s.sv) gated -> data-viddot toggelt .on, CSS haelt den Fluss sonst an
+  function flowConn(s){var g=(s&&s.sv)?(' data-viddot="'+s.sv+'"'):'';return '<span class="flconn"><i'+g+'></i></span>';}
   function flowPipeline(w){
     var stages=w.stages||[], parts=[];
     if(w.startArrow)parts.push('<span class="flstart">'+(w.startLabel?'<span class="flslab">'+esc(w.startLabel)+'</span>':'')+'<svg class="flarr" viewBox="0 0 24 24"><path d="M3 12h14M13 6l6 6-6 6"/></svg></span>');
-    stages.forEach(function(s,i){if(i>0)parts.push(flowConn());parts.push(flowNode(s));});
-    if(w.endTank){parts.push(flowConn());
+    stages.forEach(function(s,i){if(i>0)parts.push(flowConn(stages[i-1]));parts.push(flowNode(s));});
+    if(w.endTank){parts.push(flowConn(stages[stages.length-1]));
       parts.push('<span class="fltank"><span class="fltlab">'+esc(w.tankLabel||'Becken')+'</span><span class="fltval"'+(w.tankVid?' data-vid="'+w.tankVid+'"':'')+'>'+(w.tankVal?esc(w.tankVal):'–')+'</span>'
         +'<span class="flwave"><svg viewBox="0 0 120 20" preserveAspectRatio="none"><path d="M0 11 Q15 3 30 11 T60 11 T90 11 T120 11 T150 11 T180 11 T210 11 T240 11"/><path d="M0 15 Q15 8 30 15 T60 15 T90 15 T120 15 T150 15 T180 15 T210 15 T240 15"/></svg></span></span>');}
-    return '<div class="flpipe'+(w.flDir==='v'?' v':'')+'" data-role="pipe" style="--flcol:'+esc(w.flPos||'#00cdab')+'">'+parts.join('')+'</div>';
+    var onC=_cssColorOrEmpty(w.flPos)||'var(--accent)',offC=_cssColorOrEmpty(w.flOff||'muted')||'var(--muted)';
+    return '<div class="flpipe'+(w.flDir==='v'?' v':'')+'" data-role="pipe" style="--flcol:'+onC+';--flcoloff:'+offC+'">'+parts.join('')+'</div>';
   }
   // ===== energy-Modus (Power-Flow-Card-Plus-Stil): Home-Knoten + frei konfigurierbare Kreis-Elemente =====
   var _EF_W=400,_EF_H=300,_EF_HX=200,_EF_HY=150,_EF_RH=40,_EF_RN=32;
@@ -293,14 +300,15 @@
         +listEditor(w,'elements','Typ · Name · Icon · Farbe · Leistung-ID · Speed-ID · Speed-Referenz · SoC-ID',[{k:'type',type:'select',def:'consumer',options:[['pv','PV / Erzeuger'],['grid','Netz'],['battery','Batterie'],['consumer','Verbraucher'],['other','Sonstiges']]},{k:'name',ph:'Name'},{k:'icon',ph:'icon'},{k:'color',type:'skincolor'},{k:'vid',ph:'Leist-ID'},{k:'speedVid',ph:'Speed'},{k:'speedRef',ph:'Speed-Ref'},{k:'socVid',ph:'SoC'}]);
       return h
         +'<div class="pgh">Fluss (Variable = „Variable" oben)</div>'
-        +row('Farbe','<input type="color" id="pFlCol" value="'+(w.flPos||'#00cdab')+'">')
+        +row('Farbe (Fluss)','<span style="font-size:11px;color:var(--muted)">An</span> '+skinSel(w.flPos||'accent','id="pFlCol"')+' <span style="font-size:11px;color:var(--muted);margin-left:8px">Aus</span> '+skinSel(w.flOff||'muted','id="pFlColOff"'))
         +row('Schwelle / Referenz','<input id="pFlThr" type="number" step="0.1" style="width:72px" value="'+(w.flThr!=null?w.flThr:0)+'"> <input id="pFlRef" type="number" step="0.1" style="width:72px" value="'+(w.flRef!=null?w.flRef:20)+'" placeholder="max Tempo">')
         +row('Ausrichtung','<select id="pFlDir"><option value="h"'+(w.flDir!=='v'?' selected':'')+'>Horizontal</option><option value="v"'+(w.flDir==='v'?' selected':'')+'>Vertikal</option></select>')
         +'<div class="pgh">Endpunkte</div>'
         +row('Eingangs-Pfeil','<input type="checkbox" id="pFlStart"'+(w.startArrow?' checked':'')+'> <input id="pFlStartL" value="'+esc(w.startLabel||'')+'" placeholder="Label" style="width:110px">')
         +row('Becken-Knoten','<input type="checkbox" id="pFlTank"'+(w.endTank?' checked':'')+'> <input id="pFlTankL" value="'+esc(w.tankLabel||'')+'" placeholder="Label" style="width:84px"> <input id="pFlTankV" value="'+(w.tankVid||'')+'" placeholder="Wert-ID" style="width:70px">')
         +'<div class="pgh">Stationen</div>'
-        +listEditor(w,'stages','Icon · Label · Wert-ID · Zusatz · Zusatz-ID',[{k:'icon',ph:'icon'},{k:'label',ph:'Label'},{k:'vid',ph:'Wert-ID'},{k:'sub',ph:'Zusatz'},{k:'subvid',ph:'Zus-ID'}]);
+        +'<div style="font-size:11px;color:var(--muted);margin:-2px 2px 5px">Je Station: Icon + Icon-Farbe, optional eine <b>Aktiv-Farbe</b> (überschreibt die Icon-Farbe, wenn die Status-Variable an ist), Werte, und eine <b>0/1-Status-Variable</b>, die den Fluss <b>zur nächsten</b> Station stoppt, wenn sie aus ist (z. B. Solarventil zu → keine Strömung Ventil→Pumpe).</div>'
+        +listEditor(w,'stages','Stationen',[{k:'icon',type:'icon',h:'Icon'},{k:'color',type:'skincolor',h:'Icon-Farbe'},{k:'label',ph:'Label',h:'Label'},{k:'vid',ph:'ID',h:'Wert-ID'},{k:'sub',ph:'Text',h:'Zusatz'},{k:'subvid',ph:'ID',h:'Zusatz-ID'},{k:'sv',ph:'0/1-ID',h:'Status→Fluss'},{k:'svColor',type:'skincolor',h:'Icon-Farbe (Status an)'},{k:'svColorOff',type:'skincolor',h:'Icon-Farbe (Status aus)'}],{wrap:true});
     },
     wire:function(w){
       if($('#pEfDur'))$('#pEfDur').onchange=function(){var v=parseFloat(this.value);w.efDur100=(isNaN(v)||v<=0)?undefined:v;render();commit();};
@@ -310,7 +318,7 @@
       if($('#pEfMaxCol'))$('#pEfMaxCol').onchange=function(){w.efMaxCol=(this.value===''?undefined:Math.max(0,parseInt(this.value)||0));render();commit();};
       if($('#pFlMode'))$('#pFlMode').onchange=function(){w.mode=this.value;render();renderProps();commit();};
       function b(id,prop,num){var e=$('#'+id);if(!e)return;e.oninput=e.onchange=function(){var v=num?(this.value===''?undefined:parseFloat(this.value)):(this.value||undefined);w[prop]=v;render();applyFlowState(w);commit();};}
-      b('pFlCol','flPos');b('pFlThr','flThr',1);b('pFlRef','flRef',1);b('pFlStartL','startLabel');b('pFlTankL','tankLabel');
+      b('pFlCol','flPos');b('pFlColOff','flOff');b('pFlThr','flThr',1);b('pFlRef','flRef',1);b('pFlStartL','startLabel');b('pFlTankL','tankLabel');
       if($('#pFlTankV'))$('#pFlTankV').oninput=function(){w.tankVid=parseInt(this.value)||undefined;render();commit();};
       if($('#pFlDir'))$('#pFlDir').onchange=function(){w.flDir=this.value==='v'?'v':undefined;render();applyFlowState(w);commit();};
       if($('#pFlStart'))$('#pFlStart').onchange=function(){w.startArrow=this.checked||undefined;render();commit();};

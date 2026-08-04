@@ -41,15 +41,22 @@
     for(var vn in store.views){var ws=(store.views[vn].widgets)||[];for(var i=0;i<ws.length;i++){if(ws[i].popupTo===name||ws[i].longPopup===name)return true;}}
     return false;
   }
-  function refreshViewSel(){var s=$('#viewSel');if(!s)return;s.innerHTML='';
-    var all=Object.keys(store.views),cmp=function(a,b){return a.localeCompare(b,'de',{sensitivity:'base'});};
-    var pages=all.filter(function(n){return !_isPopupView(n);}).sort(cmp);   // normale Seiten (S), alphabetisch
-    var pops=all.filter(_isPopupView).sort(cmp);                             // Popups (P), alphabetisch
-    function add(list,badge){list.forEach(function(n){var o=document.createElement('option');o.value=n;o.textContent=badge+' · '+n+(n===store.home?'  · Start':'');if(n===store.current)o.selected=true;s.appendChild(o);});}
-    add(pages,'S');add(pops,'P');
-    if(typeof buildPageTree==='function')buildPageTree();
+  function refreshViewSel(){var s=$('#viewSel');
+    if(s){s.innerHTML=''; // optionales Dropdown (falls vorhanden) fuellen ...
+      var all=Object.keys(store.views),cmp=function(a,b){return a.localeCompare(b,'de',{sensitivity:'base'});};
+      var pages=all.filter(function(n){return !_isPopupView(n);}).sort(cmp);   // normale Seiten (S), alphabetisch
+      var pops=all.filter(_isPopupView).sort(cmp);                             // Popups (P), alphabetisch
+      var add=function(list,badge){list.forEach(function(n){var o=document.createElement('option');o.value=n;o.textContent=badge+' · '+n+(n===store.home?'  · Start':'');if(n===store.current)o.selected=true;s.appendChild(o);});};
+      add(pages,'S');add(pops,'P');
+    }
+    if(typeof buildPageTree==='function')buildPageTree(); // ... die Treeview aber IMMER bauen (auch ohne Dropdown)
   }
-  function reseq(){seq=1;state.widgets.forEach(function(w){var n=parseInt(String(w.id||'w0').replace('w',''))||0;if(n>=seq)seq=n+1;});}
+  function reseq(){seq=1;var all=[];
+    // Container-Kinder MITZÄHLEN – sonst vergibt uid() IDs, die ein Kind (z. B. ein Toggle) schon hat,
+    // und beim Selektieren greifen zwei Widgets zugleich. Zusätzlich Duplikate heilen (späteres bekommt neue ID).
+    function collect(w){if(!w)return;all.push(w);var n=parseInt(String(w.id||'w0').replace('w',''))||0;if(n>=seq)seq=n+1;if(w.type==='container'&&w.kids)w.kids.forEach(collect);}
+    (state.widgets||[]).forEach(collect);
+    var seen={};all.forEach(function(w){if(!w.id||seen[w.id]){w.id='w'+(seq++);}seen[w.id]=1;});}
   function switchView(name){if(!store.views[name])return;store.current=name;state=store.views[name];if(!state.page)state.page={w:1440,h:900};if(!state.widgets)state.widgets=[];selId=null;sel={};reseq();refreshViewSel();setCanvas();invalidateSC();_scMode='';document.body.classList.remove('reflow');restoring=true;render();restoring=false;renderProps();resetHist();chromeUI();} // render() macht bereits Kamera/HTML-Init + Sofort-Poll (kein doppeltes Rendern mehr)
   function newView(asPopup){
     var n=prompt(asPopup?'Name des neuen Popups:':'Name der neuen Ansicht:',
@@ -64,6 +71,19 @@
     switchView(n);
     toast((asPopup?'Popup angelegt: ':'Ansicht angelegt: ')+n);
   }
+  function _maxWid(){var mx=0;Object.keys(store.views).forEach(function(vn){(function walk(list){(list||[]).forEach(function(x){var num=parseInt(String(x.id||'w0').replace('w',''))||0;if(num>mx)mx=num;if(x.kids)walk(x.kids);});})(store.views[vn].widgets);});return mx;}
+  function dupView(){ // ganze Ansicht/Popup duplizieren (Seite + alle Widgets, frische IDs)
+    var old=store.current;if(!old||!store.views[old])return;
+    var isPop=!!(store.views[old].page&&store.views[old].page.popup);
+    var def=old+' Kopie',i=2;while(store.views[def]){def=old+' Kopie '+i;i++;}   // eindeutiger Vorschlag
+    var n=prompt(isPop?'Name des duplizierten Popups:':'Name der duplizierten Ansicht:',def);
+    if(n===null)return;n=n.trim();if(!n)return;
+    if(store.views[n]){toast('Name existiert bereits');return;}
+    var clone=JSON.parse(JSON.stringify(store.views[old])); // tiefe Kopie inkl. page(+popup) und widgets(+kids)
+    var seq=_maxWid()+1;(function walk(list){(list||[]).forEach(function(x){x.id='w'+(seq++);if(x.kids)walk(x.kids);});})(clone.widgets);
+    store.views[n]=clone;switchView(n);commit();   // switchView -> refreshViewSel -> buildPageTree (erscheint als Orphan unter „Nicht verlinkt", bis etwas darauf verweist)
+    toast((isPop?'Popup':'Ansicht')+' dupliziert: '+n);
+  }
   function _renameViewRefs(old,n){ // alle Verweise auf einen Ansichtsnamen mitziehen (Actions, Home, Mobil)
     var cnt=0;Object.keys(store.views).forEach(function(vn){var v=store.views[vn];
       if(v.page&&v.page.mobileView===old){v.page.mobileView=n;cnt++;}
@@ -73,9 +93,10 @@
     return cnt;}
   function renameView(){var old=store.current;if(!old)return;var n=prompt('Ansicht umbenennen:',old);if(!n||n===old)return;if(store.views[n]){toast('Name existiert bereits');return;}store.views[n]=store.views[old];delete store.views[old];store.current=n;var rc=_renameViewRefs(old,n);refreshViewSel();commit();toast('Umbenannt'+(rc?' · '+rc+' Verweis(e) angepasst':''));}
   function deleteView(){var n=store.current;if(!n)return;if(!confirm('Ansicht „'+n+'" wirklich löschen?'))return;delete store.views[n];var keys=Object.keys(store.views);if(!keys.length){store.views['Ansicht 1']={page:{w:1440,h:900},widgets:[]};keys=['Ansicht 1'];}switchView(keys[0]);toast('Gelöscht');}
-  $('#viewSel').onchange=function(){switchView(this.value);};
+  if($('#viewSel'))$('#viewSel').onchange=function(){switchView(this.value);}; // Dropdown entfernt - Umschalten via Seiten-Treeview
   $('#newView').onclick=function(){newView(false);};
   if($('#newPopup'))$('#newPopup').onclick=function(){newView(true);};$('#renView').onclick=renameView;$('#delView').onclick=deleteView;
+  if($('#dupView'))$('#dupView').onclick=dupView;
   $('#homeBtn').onclick=function(){store.home=store.current;refreshViewSel();toast('Startseite: '+store.current+' (Speichern nicht vergessen)');};
   $('#cvW').addEventListener('change',function(){state.page.w=Math.max(320,parseInt(this.value)||1440);setCanvas();});
   $('#cvH').addEventListener('change',function(){state.page.h=Math.max(240,parseInt(this.value)||900);setCanvas();});
@@ -103,6 +124,9 @@
   function markDirty(){_dirty=true;var b=$('#saveBtn');if(b)b.classList.add('dirty');}
   function markSaved(){_dirty=false;var b=$('#saveBtn');if(b)b.classList.remove('dirty');}
   function saveStore(silent){
+    // NIE im Doku-Modus speichern: die Doku baut ihren Store aus der Registry (buildDokuStore)
+    // und darf das echte Live-Layout niemals ueberschreiben. Bulletproof-Guard, egal welcher Pfad ruft.
+    if(typeof DOKU!=='undefined'&&DOKU){if(!silent&&typeof toast==='function')toast('Doku-Modus: nichts gespeichert');return Promise.resolve();}
     return fetch('?api=layout&key='+encodeURIComponent(TOKEN)+(_target?('&file='+encodeURIComponent(_target)):''),{method:'POST',body:JSON.stringify(store)})
       .then(function(r){return r.json();}).then(function(j){
         if(j&&j.ok){markSaved();if(!silent)toast('Gespeichert: '+(_target||'Standard (live)')+' ('+j.bytes+' B)');}
@@ -172,11 +196,12 @@
         applySkin();GS=bcfg().gs;
         switchView(store.current);buildSwatches();buildIconLib();buildBlocks();buildSkins();buildSettings();
         buildLayoutList();syncPalette();decoratePalette();chromeUI();
-        mode='preview';stage.classList.remove('edit');stage.classList.add('preview');
-        toast('Dokumentation: '+Object.keys(WIDGETS).length+' Widgets auf '+Object.keys(store.views).length+' Seiten');
+        if(RUN){enterRun();} // /hook/doku?run=1 (oder /hook/run/…?doku=1): Doku ohne Builder-Hülle, Seiten über das Run-Menü
+        else{mode='preview';stage.classList.remove('edit');stage.classList.add('preview');
+          toast('Dokumentation: '+Object.keys(WIDGETS).length+' Widgets auf '+Object.keys(store.views).length+' Seiten');}
       };
       if(typeof DOKU_INFO!=='undefined'){_dfin();}
-      else{var _ds=document.createElement('script');_ds.src='?api=asset&name=dokudata';
+      else{var _ds=document.createElement('script');_ds.src='?api=asset&name=dokudata&v={{DOKUVER}}';
         _ds.onload=_dfin;_ds.onerror=_dfin;document.head.appendChild(_ds);}
       return;
     }
@@ -279,9 +304,19 @@
     canvas.style.position='absolute';canvas.style.left=Math.max(0,(vw-state.page.w*s)/2)+'px';canvas.style.top=Math.max(0,(vh-state.page.h*s)/2)+'px';
     canvas.style.width=state.page.w+'px';canvas.style.height=state.page.h+'px';
   }
+  var _fitVP={w:0,h:0}; // zuletzt zugrunde gelegter Viewport; Run/Kiosk auf Mobil: iOS-Adressleisten-Wackeln (nur Höhe) NICHT neu skalieren
   function fitCanvas(){
     if(!document.body.classList.contains('run'))return;
     var p=state.page,mode=effFit(p),vw=window.innerWidth,vh=window.innerHeight;
+    _fitVP={w:vw,h:vh};
+    // Doku: KEIN Fit-to-Screen (sonst wird die hohe Katalogseite in Landscape auf die Höhe geschrumpft = winziger Streifen).
+    // Stattdessen auf Breite einpassen und vertikal scrollen (CSS zoom skaliert auch die Layout-/Scrollhöhe).
+    if(DOKU&&p&&p.w>0){document.body.classList.add('reflow');if(typeof chromeFitReset==='function')chromeFitReset();
+      canvas.style.transform='none';canvas.style.transformOrigin='top left';canvas.style.position='relative';canvas.style.left='0';canvas.style.top='0';
+      var dsc=Math.min(1,(vw-2)/p.w);if(!(dsc>0))dsc=1;
+      var ml=Math.max(0,(vw-p.w*dsc)/2/dsc); // zoom skaliert margin mit -> vor-teilen; zentriert bei breitem Viewport
+      canvas.style.margin='0';canvas.style.marginLeft=ml+'px';
+      canvas.style.width=p.w+'px';canvas.style.height=p.h+'px';canvas.style.zoom=dsc;return;}
     if(bcfg().mobileOpt!==false&&isMobile()&&mode!=='reflow')mode='auto'; // Mobil: automatisch — Hochformat->Reflow (stapeln), Querformat->SmartFit (skaliert)
     if(mode==='letterbox'||!p||p.w<=0||p.h<=0||vw<8||vh<8||!state.widgets.length){document.body.classList.remove('reflow');if(typeof chromeFitReset==='function')chromeFitReset();return letterboxFit();}
     var m=(mode==='auto')?sfPick(vw,vh,p):mode;
@@ -432,4 +467,9 @@
     var box=$('#runlist');if(!box)return;box.innerHTML='';
     Object.keys(store.views).forEach(function(n){var b=document.createElement('button');b.innerHTML=(n===store.home?'<svg class="i" style="width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:1.8;vertical-align:-2px;margin-right:6px"><use href="#ic-home"/></svg>':'')+esc(n);b.onclick=function(){switchView(n);fitCanvas();$('#runlist').classList.remove('open');};box.appendChild(b);});
   }
-  var _sfRaf=0;window.addEventListener('resize',function(){if(_sfRaf)return;_sfRaf=requestAnimationFrame(function(){_sfRaf=0;fitCanvas();});});
+  var _sfRaf=0;window.addEventListener('resize',function(){if(_sfRaf)return;_sfRaf=requestAnimationFrame(function(){_sfRaf=0;
+    // Run/Kiosk auf Mobil: das Ein-/Ausblenden der Browser-Adressleiste ändert NUR die Höhe -> nicht neu skalieren
+    // (sonst springt das Layout beim ersten Tipp). Breiten-/Orientierungswechsel skaliert weiter normal.
+    var vw=window.innerWidth,vh=window.innerHeight;
+    if(document.body.classList.contains('run')&&isMobile()&&bcfg().kioskStable!==false&&vw===_fitVP.w&&Math.abs(vh-_fitVP.h)<170)return;
+    fitCanvas();});});

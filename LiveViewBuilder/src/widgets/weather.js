@@ -77,21 +77,24 @@
     var cur=null,days=[],hours=[];
     if(f==='owm'){
       if(j.current){var cw=(j.current.weather&&j.current.weather[0])||{};cur={temp:j.current.temp,cond:cw.description||cw.main,icon:owmIcon(cw),humidity:j.current.humidity,wind:_msKmh(j.current.wind_speed)};}
-      (j.daily||[]).forEach(function(d){var dw=(d.weather&&d.weather[0])||{};days.push({hi:d.temp&&d.temp.max,lo:d.temp&&d.temp.min,cond:dw.description||dw.main,icon:owmIcon(dw),pop:(d.pop!=null)?Math.round(d.pop*100):null,ts:d.dt||null});});
+      (j.daily||[]).forEach(function(d){var dw=(d.weather&&d.weather[0])||{};days.push({hi:d.temp&&d.temp.max,lo:d.temp&&d.temp.min,cond:dw.description||dw.main,icon:owmIcon(dw),pop:(d.pop!=null)?Math.round(d.pop*100):null,ts:d.dt||null,feels:(d.feels_like&&d.feels_like.day),hum:d.humidity,wind:_msKmh(d.wind_speed),gust:_msKmh(d.wind_gust),wdir:d.wind_deg,press:d.pressure,clouds:d.clouds,uv:d.uvi,precip:(d.rain!=null?d.rain:(d.snow!=null?d.snow:0))});});
       // Stundenwerte stecken im selben OneCall-JSON. Sie werden in DIESELBE Struktur wie
       // die Tage gebracht - dadurch greift die gesamte vorhandene Darstellung mit Icon,
       // Temperaturbalken und Regenwahrscheinlichkeit, statt daneben etwas Eigenes zu bauen.
       (j.hourly||[]).forEach(function(x){var xw=(x.weather&&x.weather[0])||{};
         hours.push({hi:x.temp,lo:x.temp,cond:xw.description||xw.main,icon:owmIcon(xw),
-                    pop:(x.pop!=null)?Math.round(x.pop*100):null,ts:x.dt||null});});
+                    pop:(x.pop!=null)?Math.round(x.pop*100):null,ts:x.dt||null,
+                    feels:x.feels_like,hum:x.humidity,wind:_msKmh(x.wind_speed),gust:_msKmh(x.wind_gust),wdir:x.wind_deg,press:x.pressure,clouds:x.clouds,uv:x.uvi,precip:(x.rain&&x.rain['1h'])||0});});
     } else if(f==='tempest'){
       var uw=((j.units&&j.units.units_wind)||'').toLowerCase();
       var windC=function(v){if(v==null)return null;if(/mph/.test(uw))return v*1.60934;if(/kt|knot/.test(uw))return v*1.852;if(/kph|km/.test(uw))return v;if(/mps|m\/s/.test(uw))return v*3.6;return _msKmh(v);};
       var cc=j.current_conditions;if(cc)cur={temp:cc.air_temperature,cond:cc.conditions,icon:tempestIcon(cc.icon)||wCondIcon(cc.conditions),humidity:cc.relative_humidity,wind:windC(cc.wind_avg)};
       var dl=(j.forecast&&j.forecast.daily)||[];dl.forEach(function(d){days.push({hi:d.air_temp_high,lo:d.air_temp_low,cond:d.conditions,icon:tempestIcon(d.icon)||wCondIcon(d.conditions),pop:(d.precip_probability!=null)?Math.round(d.precip_probability):null,ts:d.day_start_local||null});});
+      var hl=(j.forecast&&j.forecast.hourly)||[];hl.forEach(function(h){hours.push({hi:h.air_temperature,lo:h.air_temperature,cond:h.conditions,icon:tempestIcon(h.icon)||wCondIcon(h.conditions),pop:(h.precip_probability!=null)?Math.round(h.precip_probability):null,ts:h.time||null,feels:h.feels_like,hum:h.relative_humidity,wind:windC(h.wind_avg),gust:windC(h.wind_gust),wdir:h.wind_direction,press:h.sea_level_pressure,clouds:null,uv:h.uv,precip:h.precip});});
     } else if(f==='openmeteo'){
       if(j.current)cur={temp:j.current.temperature_2m,cond:wmoText(j.current.weather_code),icon:wmoIcon(j.current.weather_code),humidity:j.current.relative_humidity_2m,wind:j.current.wind_speed_10m};
-      var dd=j.daily;if(dd&&dd.time){for(var i=0;i<dd.time.length;i++){var wc=dd.weather_code&&dd.weather_code[i];var dts=dd.time[i]?Math.floor(new Date(dd.time[i]).getTime()/1000):null;days.push({hi:dd.temperature_2m_max&&dd.temperature_2m_max[i],lo:dd.temperature_2m_min&&dd.temperature_2m_min[i],cond:wmoText(wc),icon:wmoIcon(wc),pop:dd.precipitation_probability_max?dd.precipitation_probability_max[i]:null,ts:dts});}}
+      var dd=j.daily;if(dd&&dd.time){for(var i=0;i<dd.time.length;i++){var wc=dd.weather_code&&dd.weather_code[i];var dts=dd.time[i]?Math.floor(new Date(dd.time[i]).getTime()/1000):null;days.push({hi:dd.temperature_2m_max&&dd.temperature_2m_max[i],lo:dd.temperature_2m_min&&dd.temperature_2m_min[i],cond:wmoText(wc),icon:wmoIcon(wc),pop:dd.precipitation_probability_max?dd.precipitation_probability_max[i]:null,ts:dts,wind:dd.wind_speed_10m_max?dd.wind_speed_10m_max[i]:null,gust:dd.wind_gusts_10m_max?dd.wind_gusts_10m_max[i]:null,wdir:dd.wind_direction_10m_dominant?dd.wind_direction_10m_dominant[i]:null,uv:dd.uv_index_max?dd.uv_index_max[i]:null,precip:dd.precipitation_sum?dd.precipitation_sum[i]:null});}}
+      var hd=j.hourly;if(hd&&hd.time){for(var hi=0;hi<hd.time.length;hi++){var whc=hd.weather_code&&hd.weather_code[hi];var hts=hd.time[hi]?Math.floor(new Date(hd.time[hi]).getTime()/1000):null;var ht=hd.temperature_2m&&hd.temperature_2m[hi];hours.push({hi:ht,lo:ht,cond:wmoText(whc),icon:wmoIcon(whc),pop:hd.precipitation_probability?hd.precipitation_probability[hi]:null,ts:hts,feels:hd.apparent_temperature?hd.apparent_temperature[hi]:null,hum:hd.relative_humidity_2m?hd.relative_humidity_2m[hi]:null,wind:hd.wind_speed_10m?hd.wind_speed_10m[hi]:null,gust:hd.wind_gusts_10m?hd.wind_gusts_10m[hi]:null,wdir:hd.wind_direction_10m?hd.wind_direction_10m[hi]:null,press:hd.pressure_msl?hd.pressure_msl[hi]:null,clouds:hd.cloud_cover?hd.cloud_cover[hi]:null,uv:hd.uv_index?hd.uv_index[hi]:null,precip:hd.precipitation?hd.precipitation[hi]:null});}}
     } else if(f==='flat'){
       var t=(j.temp!=null?j.temp:j.temperature),cnd=(j.condition||j.conditions||j.description);
       cur={temp:t,cond:cnd,icon:(j.icon?(tempestIcon(j.icon)||wCondIcon(j.icon)):wCondIcon(cnd)),humidity:(j.humidity!=null?j.humidity:j.relative_humidity),wind:(j.wind!=null?j.wind:(j.wind_speed!=null?j.wind_speed:j.windspeed))};
@@ -100,6 +103,25 @@
   }
   function _wt(n,dec){if(n==null||n==='')return null;var v=parseFloat(n);if(isNaN(v))return null;return (dec?(Math.round(v*10)/10):Math.round(v));}
   function _wtxt(n,dec){var v=_wt(n,dec);return v==null?'–':String(v).replace('.',',');}
+  // Mini-Icons für die Stunden-Zusatzwerte (klein, damit das Wetter-Icon prominent bleibt)
+  var _dropMI='<svg class="mi" style="fill:currentColor;stroke:none" viewBox="0 0 24 24"><path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/></svg>';
+  var _windMI='<svg class="mi" style="fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24">'+((ICONS.wind||[])[1]||'')+'</svg>';
+  var _rainMI='<svg class="mi" style="fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24">'+((ICONS.rain||[])[1]||'')+'</svg>';
+  // Ein einzelner Zusatzwert (jede Stunden-Spalte kann mehrere übereinander zeigen). 'pr' = Regen% · mm nebeneinander.
+  function _hmFill(m,d,unit){if(!d)return '';
+    switch(m){
+      case 'hum':   return (d.hum!=null)?(_dropMI+_wtxt(d.hum)+' %'):'';
+      case 'wind':  return (d.wind!=null)?(_windMI+_wtxt(d.wind)+' km/h'):'';
+      case 'gust':  return (d.gust!=null)?(_windMI+_wtxt(d.gust)+' km/h'):'';
+      case 'press': return (d.press!=null)?(_wtxt(d.press)+' hPa'):'';
+      case 'feels': return (d.feels!=null)?(_wtxt(d.feels)+unit):'';
+      case 'clouds':return (d.clouds!=null)?(_wtxt(d.clouds)+' %'):'';
+      case 'uv':    return (d.uv!=null)?('UV '+_wtxt(d.uv,1)):'';
+      case 'pr':    var s=(d.pop!=null)?(_rainMI+_wtxt(d.pop)+' %'):'';
+                    if(d.precip!=null&&d.precip>0)s+='<span class="prmm">'+_wtxt(d.precip,1)+' mm</span>'; return s;
+      default: return '';
+    }
+  }
   // --- füllt das Widget aus der JSON-Variable ---
   var _dropSVG='<svg class="hwmic" style="fill:currentColor;stroke:none" viewBox="0 0 24 24"><path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/></svg>';
   function applyWeather(w){
@@ -129,6 +151,14 @@
     var _hMode=(w.fcMode==='hours');
     var days=(fData&&(_hMode?fData.hours:fData.days))||[],
         start=(w.fcStart!=null?w.fcStart:0),showPq=(w.showPq!==false);
+    // Stunden ab „jetzt" (Quelle liefert oft alle 24h ab Mitternacht) -> vergangene Stunden überspringen
+    if(_hMode){var _now=Date.now()/1000,_si=0;for(var _k=0;_k<days.length;_k++){if(days[_k]&&days[_k].ts&&days[_k].ts>=_now-1800){_si=_k;break;}}start=_si;
+      el.querySelectorAll('.hwp2hr').forEach(function(col,i){var d=days[start+i];
+        var hEl=col.querySelector('.h');if(hEl)hEl.textContent=(d&&d.ts)?(('0'+new Date(d.ts*1000).getHours()).slice(-2)+':00'):'';
+        var icEl=col.querySelector('.ic');if(icEl)icEl.innerHTML=iconSVG((d&&d.icon)||'cloudsun');
+        var tEl=col.querySelector('.t');if(tEl)tEl.textContent=d?(_wtxt(d.hi)+unit):'–';
+        col.querySelectorAll('[data-m]').forEach(function(sp){sp.innerHTML=_hmFill(sp.getAttribute('data-m'),d,unit);});});
+      return;}
     // Skala fuer Temperaturbalken
     var his=[],los=[];days.forEach(function(d){var h=_wt(d.hi,1),l=_wt(d.lo,1);if(h!=null)his.push(h);if(l!=null)los.push(l);});
     var gmin=(w.gmin!=null&&w.gmin!=='')?parseFloat(w.gmin):(los.length?Math.min.apply(null,los)-1:-10);
@@ -165,22 +195,39 @@
   // Erweiterter Stil (Aktuell + Vorhersage): via w.wstyle oder Alt-Typ 'weatherpro'
   function wExt(w){return w.wstyle==='extended'||w.type==='weatherpro';}
   function wEnsureExt(w){if(w.days==null)w.days=5;if(w.fcStart==null)w.fcStart=0;if(w.showPq===undefined)w.showPq=true;if(!w.tgrad)w.tgrad=[{t:-5,color:'#4aa3ff'},{t:4,color:'#3bd6c6'},{t:14,color:'#39d08a'},{t:22,color:'#f2b441'},{t:32,color:'#f2685a'}];}
+  var _wCurBlock='<div class="hwp2cur"><span class="hwp2ic" data-role="cico"></span><span class="hwp2ci"><span class="hwp2t" data-role="val">–</span><span class="hwp2sub"><span data-role="sub"></span></span><span class="hwmetrow"><span class="hwmet" data-role="wind"></span><span class="hwmet" data-role="hum"></span></span></span></div>';
   function wRenderFn(w){
-    if(wExt(w)){wEnsureExt(w);var n=Math.max(1,Math.min(12,w.days||5)),slots='';for(var i=0;i<n;i++)slots+='<div class="hwp2day" data-i="'+i+'"><span class="d">–</span><span class="ic"></span><span class="lo">–</span><div class="trk"><i class="fill"></i><i class="cnow"></i></div><span class="hi">–</span><span class="pq"></span></div>';
+    if(wExt(w)){wEnsureExt(w);var n=Math.max(1,Math.min(12,w.days||5)),i;
+      // Stundenmodus: horizontale Spalten (Uhrzeit / Icon / Temp / Regen% je Stunde), füllt die Breite.
+      if(w.fcMode==='hours'){
+        var mspec=[];if(w.hHum!==false)mspec.push('hum');if(w.hWind!==false)mspec.push('wind');if(w.hPress!==false)mspec.push('press');if(w.hPrecip!==false)mspec.push('pr');
+        var cols='';for(i=0;i<n;i++){var ms='';mspec.forEach(function(m){ms+='<span class="m '+m+'" data-m="'+m+'"></span>';});cols+='<div class="hwp2hr" data-i="'+i+'"><span class="h">–</span><span class="ic"></span><span class="t">–</span>'+ms+'</div>';}
+        var strip='<div class="hwp2hrs">'+cols+'</div>';
+        if(w.hideCur)return '<div class="hwp2">'+strip+'</div>';
+        return '<div class="hwp2">'+_wCurBlock.replace('data-role="cico">','data-role="cico">'+iconSVG(w.icon||'cloudsun'))+strip+'</div>';}
+      // Tagesmodus: eine Zeile je Tag mit Temperatur-Bereichsbalken (unverändert).
+      var slots='';for(i=0;i<n;i++)slots+='<div class="hwp2day" data-i="'+i+'"><span class="d">–</span><span class="ic"></span><span class="lo">–</span><div class="trk"><i class="fill"></i><i class="cnow"></i></div><span class="hi">–</span><span class="pq"></span></div>';
       // Der Aktuell-Block laesst sich abschalten: Stehen zwei Vorhersagekarten nebeneinander,
       // zeigen beide denselben Ist-Zustand - einmal genuegt, und die Zeilen bekommen den Platz.
       if(w.hideCur)return '<div class="hwp2"><div class="hwp2grid">'+slots+'</div></div>';
-      return '<div class="hwp2"><div class="hwp2cur"><span class="hwp2ic" data-role="cico">'+iconSVG(w.icon||'cloudsun')+'</span><span class="hwp2ci"><span class="hwp2t" data-role="val">–</span><span class="hwp2sub"><span data-role="sub"></span></span><span class="hwmetrow"><span class="hwmet" data-role="wind"></span><span class="hwmet" data-role="hum"></span></span></span></div><div class="hwp2days">'+slots+'</div></div>';}
+      return '<div class="hwp2">'+_wCurBlock.replace('data-role="cico">','data-role="cico">'+iconSVG(w.icon||'cloudsun'))+'<div class="hwp2days">'+slots+'</div></div>';}
     return '<div class="hwf hwf-cur"><div class="hwbig"><div class="hwbigico" data-role="cico">'+iconSVG(w.icon||'cloudsun')+'</div><div class="hwbigci"><div class="hwbigt" data-role="val">–</div><div class="hwbigsub"><span data-role="sub"></span></div><div class="hwmetrow"><span class="hwmet" data-role="wind"></span><span class="hwmet" data-role="hum"></span></div></div></div></div>';
   }
   function wPropsFn(w){
     var ext=wExt(w);
     var sty=(w.type==='weatherpro')?'':row('Stil','<select id="pWStyle"><option value="standard"'+(!ext?' selected':'')+'>Standard (nur Aktuell)</option><option value="extended"'+(ext?' selected':'')+'>Erweitert (+ Vorhersage)</option></select>');
-    var pr=sty+wJsonProps(w);
-    if(ext)pr+=row('Aktuell-Block','<input type="checkbox" id="pHideCur"'+(w.hideCur?'':' checked')+'> <span style="font-size:11px;color:var(--muted)">Ist-Zustand oben zeigen</span>')
-      +row('Vorhersage','<select id="pFcMode"><option value=""'+(w.fcMode!=='hours'?' selected':'')+'>Tage</option><option value="hours"'+(w.fcMode==='hours'?' selected':'')+'>Stunden</option></select>')
+    // Vorhersage-Selektor ganz oben (Editor-Prop, speicherbar): Täglich <-> Stündlich + Anzahl. „Erster Tag" nur täglich.
+    var fcSel=ext?('<div class="pgh">Vorhersage</div>'
+      +row('Modus','<select id="pFcMode"><option value=""'+(w.fcMode!=='hours'?' selected':'')+'>Täglich</option><option value="hours"'+(w.fcMode==='hours'?' selected':'')+'>Stündlich</option></select>')
       +row((w.fcMode==='hours'?'Anzahl Stunden':'Vorhersage-Tage'),'<input id="pWDays" type="number" min="1" max="12" value="'+(w.days||5)+'">')
-      +row('Erster Tag','<select id="pFcStart"><option value="0"'+((w.fcStart||0)===0?' selected':'')+'>Heute</option><option value="1"'+(w.fcStart===1?' selected':'')+'>Morgen</option></select>')
+      +(w.fcMode==='hours'?('<div class="pgh">Zusatzwerte je Stunde (einzeln zuschaltbar)</div>'
+        +row('Luftfeuchte','<input type="checkbox" id="pHHum"'+(w.hHum!==false?' checked':'')+'>')
+        +row('Wind','<input type="checkbox" id="pHWind"'+(w.hWind!==false?' checked':'')+'>')
+        +row('Luftdruck','<input type="checkbox" id="pHPress"'+(w.hPress!==false?' checked':'')+'>')
+        +row('Niederschlag (% · mm)','<input type="checkbox" id="pHPrecip"'+(w.hPrecip!==false?' checked':'')+'>')):'')
+      +(w.fcMode==='hours'?'':row('Erster Tag','<select id="pFcStart"><option value="0"'+((w.fcStart||0)===0?' selected':'')+'>Heute</option><option value="1"'+(w.fcStart===1?' selected':'')+'>Morgen</option></select>'))):'';
+    var pr=sty+fcSel+wJsonProps(w);
+    if(ext)pr+=row('Aktuell-Block','<input type="checkbox" id="pHideCur"'+(w.hideCur?'':' checked')+'> <span style="font-size:11px;color:var(--muted)">Ist-Zustand oben zeigen</span>')
       +row('Regenwahrsch.','<input type="checkbox" id="pShowPq"'+((w.showPq!==false)?' checked':'')+'>')
       +'<div class="pgh">Temperaturbalken</div>'+tgradEditor(w)+row('Skala Min/Max','<input id="pGmin" type="number" style="width:60px" value="'+(w.gmin!=null?w.gmin:'')+'" placeholder="auto"> <input id="pGmax" type="number" style="width:60px" value="'+(w.gmax!=null?w.gmax:'')+'" placeholder="auto">');
     return pr;
@@ -191,6 +238,7 @@
     if(wExt(w)){
       if($('#pHideCur'))$('#pHideCur').onchange=function(){w.hideCur=this.checked?undefined:true;render();applyWeather(w);commit();};
       if($('#pFcMode'))$('#pFcMode').onchange=function(){w.fcMode=(this.value==='hours')?'hours':undefined;render();renderProps();applyWeather(w);commit();};
+      [['pHHum','hHum'],['pHWind','hWind'],['pHPress','hPress'],['pHPrecip','hPrecip']].forEach(function(p){var _e=$('#'+p[0]);if(_e)_e.onchange=function(){w[p[1]]=this.checked?undefined:false;render();applyWeather(w);commit();};});
       if($('#pWDays'))$('#pWDays').oninput=function(){w.days=Math.max(1,Math.min(12,parseInt(this.value)||5));render();applyWeather(w);commit();};
       if($('#pFcStart'))$('#pFcStart').onchange=function(){w.fcStart=parseInt(this.value);render();applyWeather(w);commit();};
       if($('#pShowPq'))$('#pShowPq').onchange=function(){w.showPq=this.checked;render();applyWeather(w);commit();};

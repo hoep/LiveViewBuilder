@@ -4,7 +4,7 @@
   //   Ohne Zeit : pie | donut | rose | waterfall   (waterfall frueher eigenes Widget 'waterfall')
   // Vorbelegte Größe je Chart-Typ (Standard = 'area'); beim Umschalten nur übernehmen, solange
   // die Größe noch der vorherigen Standardgröße entspricht (analog colorpick.js/slider.js).
-  var CT_SIZE={spark:[150,50],waterfall:[360,220],daylight:[420,190],pie:[260,220],donut:[260,220],rose:[260,220]};
+  var CT_SIZE={spark:[150,50],waterfall:[360,220],daylight:[420,190],pie:[260,220],donut:[260,220],rose:[260,220],heatmap:[380,240]};
   function _ctSize(ct){return CT_SIZE[ct]||[340,190];}
   // Eigene Einheit fuer den Wasserfall (w.wfUnit) - NICHT w.yunit, das gehoert dem Achsensystem
   // (Kalenderjahr-Balken + Mehrfachachsen). Fallback liest einmalig alte Widgets, die vor dieser
@@ -13,22 +13,22 @@
   // Sichtbarkeit der Optionen zentral in _chartVis() — bitte dort pflegen und NICHT in verschachtelten if-Ketten.
   function _chartVis(ct){
     // ACHTUNG: 'dl' ist unten die Datenlabel-Sichtbarkeit — der Tageslaengen-Typ heisst deshalb 'dayl'.
-    var part=['pie','donut','rose'].indexOf(ct)>=0, wf=(ct==='waterfall'), sp=(ct==='spark'), dayl=(ct==='daylight');
+    var part=['pie','donut','rose'].indexOf(ct)>=0, wf=(ct==='waterfall'), sp=(ct==='spark'), dayl=(ct==='daylight'), hm=(ct==='heatmap');
     var bar=(ct==='bar'||ct==='barstack'), scat=(ct==='scatter');
-    var line=!part&&!bar&&!scat&&!wf&&!sp&&!dayl;
+    var line=!part&&!bar&&!scat&&!wf&&!sp&&!dayl&&!hm;
     return {
-      part:part, wf:wf, spark:sp, bar:bar, scat:scat, line:line, dayl:dayl,
+      part:part, wf:wf, spark:sp, bar:bar, scat:scat, line:line, dayl:dayl, hm:hm,
       lineOpt:line,                    // Glaetten / Punkte / Linienbreite / Flaechen-Verlauf
       symOpt:scat,                     // Punkte-Groesse
       br:(bar||wf),                    // Balken-Rundung (w.barRadius)
-      leg:(!wf&&!sp),                  // Legende + Position
-      dl:(!wf&&!sp&&!dayl),            // Datenlabels generisch (Wasserfall/Tageslaenge bringen eigene mit)
+      leg:(!wf&&!sp&&!hm),             // Legende + Position
+      dl:(!wf&&!sp&&!dayl&&!hm),       // Datenlabels generisch (Wasserfall/Tageslaenge/Heatmap bringen eigene mit)
       title:!sp,                       // Titelblock (Label als Titel + Position)
-      ax:(!part&&!sp),                 // Achsen & Raster (Beschriftung/Hilfslinien/Achslinien/Ticks)
-      axPlus:(!part&&!sp&&!wf&&!dayl), // Raster-Teilung, Stapeln, Zoom, Extrema, Perioden-Navigation
-      cmp:(!part&&!sp&&!wf&&!dayl),    // Vergleich (Zeitversatz)
-      ser:(!wf&&!dayl),                // Serien-Editor (Wasserfall + Tageslaenge haben eigene Datenquelle)
-      yax:(!part&&!sp&&!wf&&!dayl)     // Y-Achsen-Editor (Tageslaenge hat eine feste 0-24h-Achse)
+      ax:(!part&&!sp&&!hm),            // Achsen & Raster (Heatmap-Achsen sind fix: Stunde x Wochentag)
+      axPlus:(!part&&!sp&&!wf&&!dayl&&!hm), // Raster-Teilung, Stapeln, Zoom, Extrema, Perioden-Navigation
+      cmp:(!part&&!sp&&!wf&&!dayl&&!hm),    // Vergleich (Zeitversatz)
+      ser:(!wf&&!dayl),                // Serien-Editor (Wasserfall + Tageslaenge haben eigene Datenquelle); Heatmap nutzt 1 Serie
+      yax:(!part&&!sp&&!wf&&!dayl&&!hm)     // Y-Achsen-Editor (Tageslaenge/Heatmap haben feste Achsen)
     };
   }
   defWidget('chart',{
@@ -45,7 +45,7 @@
     props:function(w){
       if(w.type!=='chart')return '';
       var ct=w.ctype||'area',V=_chartVis(ct);
-      var h=row('Chart-Typ','<select id="pCType"><optgroup label="Zeitreihe"><option value="area"'+(ct==='area'?' selected':'')+'>Fläche</option><option value="areaspline"'+(ct==='areaspline'?' selected':'')+'>Fläche glatt (Spline)</option><option value="line"'+(ct==='line'?' selected':'')+'>Linie</option><option value="spline"'+(ct==='spline'?' selected':'')+'>Linie glatt (Spline)</option><option value="step"'+(ct==='step'?' selected':'')+'>Stufen</option><option value="steparea"'+(ct==='steparea'?' selected':'')+'>Stufenfläche</option><option value="bar"'+(ct==='bar'?' selected':'')+'>Balken</option><option value="barstack"'+(ct==='barstack'?' selected':'')+'>Balken gestapelt</option><option value="scatter"'+(ct==='scatter'?' selected':'')+'>Punkte</option></optgroup><optgroup label="Kompakt"><option value="spark"'+(ct==='spark'?' selected':'')+'>Sparkline (kompakt)</option></optgroup><optgroup label="Anteile (ohne Zeit)"><option value="pie"'+(ct==='pie'?' selected':'')+'>Kreis (Pie)</option><option value="donut"'+(ct==='donut'?' selected':'')+'>Donut</option><option value="rose"'+(ct==='rose'?' selected':'')+'>Rose (Nightingale)</option></optgroup><optgroup label="Ohne Zeit"><option value="waterfall"'+(ct==='waterfall'?' selected':'')+'>Wasserfall</option></optgroup><optgroup label="Astronomie"><option value="daylight"'+(ct==='daylight'?' selected':'')+'>Tageslänge (ganzes Jahr)</option></optgroup></select>');
+      var h=row('Chart-Typ','<select id="pCType"><optgroup label="Zeitreihe"><option value="area"'+(ct==='area'?' selected':'')+'>Fläche</option><option value="areaspline"'+(ct==='areaspline'?' selected':'')+'>Fläche glatt (Spline)</option><option value="line"'+(ct==='line'?' selected':'')+'>Linie</option><option value="spline"'+(ct==='spline'?' selected':'')+'>Linie glatt (Spline)</option><option value="step"'+(ct==='step'?' selected':'')+'>Stufen</option><option value="steparea"'+(ct==='steparea'?' selected':'')+'>Stufenfläche</option><option value="bar"'+(ct==='bar'?' selected':'')+'>Balken</option><option value="barstack"'+(ct==='barstack'?' selected':'')+'>Balken gestapelt</option><option value="scatter"'+(ct==='scatter'?' selected':'')+'>Punkte</option></optgroup><optgroup label="Kompakt"><option value="spark"'+(ct==='spark'?' selected':'')+'>Sparkline (kompakt)</option></optgroup><optgroup label="Anteile (ohne Zeit)"><option value="pie"'+(ct==='pie'?' selected':'')+'>Kreis (Pie)</option><option value="donut"'+(ct==='donut'?' selected':'')+'>Donut</option><option value="rose"'+(ct==='rose'?' selected':'')+'>Rose (Nightingale)</option></optgroup><optgroup label="Ohne Zeit"><option value="waterfall"'+(ct==='waterfall'?' selected':'')+'>Wasserfall</option></optgroup><optgroup label="Matrix"><option value="heatmap"'+(ct==='heatmap'?' selected':'')+'>Heatmap (Wochentag × Stunde)</option></optgroup><optgroup label="Astronomie"><option value="daylight"'+(ct==='daylight'?' selected':'')+'>Tageslänge (ganzes Jahr)</option></optgroup></select>');
       // ---- Tageslänge: Datenquelle ist der Standort (date_sun_info serverseitig), keine Variablen ----
       if(V.dayl){
         h+='<div style="font-size:11px;color:var(--muted);margin:2px 2px 6px">Auf- und Untergang für jeden Tag des Jahres, Fläche dazwischen = Tageslänge. Der Standort wird automatisch aus der Location-Instanz gelesen.</div>'
@@ -65,8 +65,15 @@
           {k:'type',type:'select',def:'auf',options:[['start','Start'],['auf','Auf (+)'],['ab','Ab (−)'],['sub','Zwischensumme'],['sum','Summe']]},
           {k:'color',type:'skincolor'}
         ]);
+      // ---- Heatmap: Datenquelle = 1. Serie; feste Achsen Stunde x Wochentag ----
+      if(V.hm)h+='<div style="font-size:11px;color:var(--muted);margin:2px 2px 6px">Aggregiert die stündliche Historie der <b>ersten Serie</b> (unten) zu Wochentag × Stunde. Braucht geloggte Werte.</div>'
+        +row('Zeitraum (Tage)','<input id="pHmDays" type="number" min="1" max="120" value="'+(w.hmDays||14)+'">')
+        +row('Auflösung','<select id="pHmRes"><option value="60"'+((w.hmRes||60)==60?' selected':'')+'>Stunde (24 Spalten)</option><option value="30"'+(w.hmRes==30?' selected':'')+'>30 min (48)</option><option value="15"'+(w.hmRes==15?' selected':'')+'>15 min (96)</option><option value="5"'+(w.hmRes==5?' selected':'')+'>5 min (288)</option></select> <span style="font-size:11px;color:var(--muted)">fein = 5-Min-Archiv als Basis</span>')
+        +row('Aggregation','<select id="pHmAgg"><option value="avg"'+((w.aggField!=='sum')?' selected':'')+'>Mittelwert</option><option value="sum"'+(w.aggField==='sum'?' selected':'')+'>Summe</option></select>')
+        +row('Farbschema','<select id="pHmSch"><option value="heat"'+((w.hmScheme||'heat')==='heat'?' selected':'')+'>Heat (blau→rot)</option><option value="cool"'+(w.hmScheme==='cool'?' selected':'')+'>Kühl→Warm</option><option value="accent"'+(w.hmScheme==='accent'?' selected':'')+'>Akzent</option></select>')
+        +row('Werte einblenden','<input type="checkbox" id="pHmLbl"'+(w.labels?' checked':'')+'>');
       // ---- Diagramm-Optionen ----
-      h+='<div class="pgh">'+(V.wf?'Optionen':'Diagramm-Optionen')+'</div>';
+      h+='<div class="pgh">'+(V.wf?'Optionen':(V.hm?'Datenreihe':'Diagramm-Optionen'))+'</div>';
       if(V.spark)h+=row('Linienfarbe',selOf('pSpLine',w.lineColor,['accent','ok','warn','crit','info']))
         +row('Füllung','<input type="checkbox" id="pSpFill"'+((w.fill!==false)?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">Fläche unter der Linie</span>');
       if(V.lineOpt)h+=row('Glätten (Spline)','<input type="checkbox" id="pSmooth"'+(w.smooth!==false?' checked':'')+'>')+row('Punkte','<input type="checkbox" id="pSym"'+(w.symbols?' checked':'')+'> <input id="pSymS" type="number" style="width:52px" value="'+(w.symSize||5)+'" title="Größe">')+row('Linienbreite','<input id="pLw" type="number" step="0.5" value="'+(w.lw||2)+'">')+row('Flächen-Verlauf','<input type="checkbox" id="pGrad"'+(w.grad?' checked':'')+'>');
@@ -75,6 +82,7 @@
         +row('Datenlabels','<input type="checkbox" id="pDl"'+(w.labels?' checked':'')+'>')
         +row('Verbindungslinien','<input type="checkbox" id="pWfConn"'+(w.wfConnect!==false?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">gestrichelt, zwischen den Balken</span>');
       if(V.br)h+=row('Balken-Rundung','<input id="pBr" type="number" value="'+(w.barRadius!=null?w.barRadius:3)+'">');
+      if(V.br)h+=row('Balken horizontal','<input type="checkbox" id="pBarHoriz"'+(w.barHoriz?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">liegende Balken statt Säulen</span>');
       if(V.wf)h+=row('Fallback Auf',skinSel(w.wfUp||'ok','id="pWfUp"'))+row('Fallback Ab',skinSel(w.wfDown||'crit','id="pWfDn"'));
       if(V.leg)h+=row('Legende','<input type="checkbox" id="pLeg"'+(w.legend?' checked':'')+'>')+(w.legend?row('Legende-Pos','<select id="pLegPos"><option value="top"'+((w.legPos||'top')==='top'?' selected':'')+'>oben</option><option value="bottom"'+(w.legPos==='bottom'?' selected':'')+'>unten</option><option value="left"'+(w.legPos==='left'?' selected':'')+'>links</option><option value="right"'+(w.legPos==='right'?' selected':'')+'>rechts</option></select>'):'');
       if(V.dl)h+=row('Datenlabels','<input type="checkbox" id="pDl"'+(w.labels?' checked':'')+'>');
@@ -107,7 +115,7 @@
         if(V.axPlus)h+=row('Zoom/Scroll','<input type="checkbox" id="pZoom"'+(w.zoom?' checked':'')+'>')+row('Marken-Textfarbe',skinSel(w.annFg||'','id="pAnnFg"')+' <span style="font-size:11px;color:var(--muted)">leer = wei&szlig;</span>')+listEditor(w,'anns','Marken: Art · Reihe · Text · Stil · Farbe · Einheit · Schwelle',[{k:'kind',type:'select',def:'max',options:[['max','Maximum'],['min','Minimum'],['last','Aktuell'],['first','Erster'],['avg','Mittel'],['value','Schwelle']]},{k:'ser',ph:'Reihe'},{k:'text',ph:'Text {v}'},{k:'style',type:'select',def:'pin',options:[['pin','Marke'],['line','Linie'],['both','beides']]},{k:'color',type:'skincolor'},{k:'unit',ph:'Einh.'},{k:'val',ph:'Wert'}])+row('Perioden-Navigation','<input type="checkbox" id="pPnav"'+(w.pnav?' checked':'')+'>');
       }
       if(V.cmp)h+='<div class="pgh">Vergleich (Zeitversatz)</div>'+row('Aktiv','<input type="checkbox" id="pCmpOn"'+(w.cmpOn?' checked':'')+'>')+(w.cmpOn?(row('Versatz',offSel('pCmpOff',w.cmpOff))+row('Schatten %','<input id="pCmpShade" type="number" min="0" max="90" value="'+(w.cmpShade!=null?w.cmpShade:55)+'">')):'');
-      if(V.ser)h+=seriesEditor(w,V.spark?{max:1,simple:1}:null); // Sparkline zeichnet nur die erste Serie
+      if(V.ser)h+=seriesEditor(w,(V.spark||V.hm)?{max:1,simple:1}:null); // Sparkline/Heatmap nutzen nur die erste Serie
       if(V.yax)h+=axesEditor(w);
       return h;
     },
@@ -140,12 +148,19 @@
       if($('#pWfConn'))$('#pWfConn').onchange=function(){w.wfConnect=this.checked?undefined:false;reChart();};
       if($('#pWfUp'))$('#pWfUp').oninput=$('#pWfUp').onchange=function(){w.wfUp=this.value;reChart();};
       if($('#pWfDn'))$('#pWfDn').oninput=$('#pWfDn').onchange=function(){w.wfDown=this.value;reChart();};
+      // --- Heatmap ---
+      if($('#pHmDays'))$('#pHmDays').oninput=function(){w.hmDays=Math.max(1,Math.min(120,parseInt(this.value)||14));delete _hist[w.id];fetchHist(w);commit();};
+      if($('#pHmRes'))$('#pHmRes').onchange=function(){w.hmRes=parseInt(this.value)||60;delete _hist[w.id];fetchHist(w);commit();};
+      if($('#pHmAgg'))$('#pHmAgg').onchange=function(){w.aggField=(this.value==='sum')?'sum':undefined;delete _hist[w.id];fetchHist(w);commit();};
+      if($('#pHmSch'))$('#pHmSch').onchange=function(){w.hmScheme=this.value;reChart();};
+      if($('#pHmLbl'))$('#pHmLbl').onchange=function(){w.labels=this.checked;reChart();};
       // --- gemeinsam ---
       if($('#pSmooth'))$('#pSmooth').onchange=function(){w.smooth=this.checked;reChart();};
       if($('#pSym'))$('#pSym').onchange=function(){w.symbols=this.checked;reChart();};
       if($('#pSymS'))$('#pSymS').oninput=function(){w.symSize=parseFloat(this.value)||5;reChart();};
       if($('#pLw'))$('#pLw').oninput=function(){w.lw=parseFloat(this.value)||2;reChart();};
       if($('#pBr'))$('#pBr').oninput=function(){w.barRadius=parseFloat(this.value)||0;reChart();};
+      if($('#pBarHoriz'))$('#pBarHoriz').onchange=function(){w.barHoriz=this.checked||undefined;reChart();};
       if($('#pGrad'))$('#pGrad').onchange=function(){w.grad=this.checked;reChart();};
       if($('#pLeg'))$('#pLeg').onchange=function(){w.legend=this.checked;renderProps();reChart();};
       if($('#pLegPos'))$('#pLegPos').onchange=function(){w.legPos=this.value;reChart();};
@@ -183,6 +198,7 @@
     },
     // Anteile -> setPie, Wasserfall -> setWaterfall (Live-Werte, KEIN Historien-Nachzug), sonst (inkl. spark) entprellte Historie
     live:function(w,el,id,d,base,txt,on){var ct=w.ctype||'area';
+      if(ct==='heatmap')return; // historische Aggregation, kein Live-Nachzug
       if(ct==='pie'||ct==='donut'||ct==='rose'){if(_ec[w.id])setPie(w);}
       else if(ct==='waterfall'){if((w.steps||[]).some(function(s){return s.vid===id;}))setWaterfall(w);}
       else if(_ec[w.id])chartPushRefresh(w);}

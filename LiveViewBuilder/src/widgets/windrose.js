@@ -16,7 +16,15 @@
     var nd=el.querySelector('[data-role=needle]'),cd=el.querySelector('[data-role=wcard]'),sp=el.querySelector('[data-role=wspd]');
     if(nd){if(deg==null){nd.style.opacity='0.15';}else{nd.style.opacity='1';nd.setAttribute('transform','rotate('+deg.toFixed(1)+' 50 50)');}}
     if(cd)cd.textContent=(deg==null)?'–':_wrCard(deg);
-    if(sp){var s2=w.varId2&&_lastVals[w.varId2];sp.textContent=s2?String(s2.f!=null&&s2.f!==''?s2.f:s2.v):'';}
+    if(sp){var s2=w.varId2&&_lastVals[w.varId2],out='';
+      if(s2){
+        if(w.dec!=null||w.unit){ // eigene Formatierung: dec Nachkommastellen + Einheit
+          var n=parseFloat(String(s2.v).replace(',','.'));
+          var numTxt=isNaN(n)?String((s2.f!=null&&s2.f!=='')?s2.f:s2.v):(w.dec!=null?n.toFixed(w.dec).replace('.',','):String(s2.v));
+          out=numTxt+(w.unit?(' '+w.unit):'');
+        }else out=String((s2.f!=null&&s2.f!=='')?s2.f:s2.v); // sonst Symcon-Formatierung
+      }
+      sp.textContent=out;}
   }
   defWidget('windrose',{
     label:'Windrose', paletteIcon:'wind', size:[150,150],
@@ -38,12 +46,17 @@
     },
     mount:function(w){var el=$('.w[data-id="'+w.id+'"]',canvas);if(el)_wrApply(w,el);},
     props:function(w){return row('Richtung (Var)','<input id="pWrDir" value="'+(w.varId||'')+'" placeholder="ID (Grad o. NW)"> <button class="btn" id="pWrDirP" style="padding:6px 8px">wählen</button>')
-      +row('Geschw. (Var)','<input id="pWrSpd" value="'+(w.varId2||'')+'" placeholder="ID (optional)"> <button class="btn" id="pWrSpdP" style="padding:6px 8px">wählen</button>');},
+      +row('Geschw. (Var)','<input id="pWrSpd" value="'+(w.varId2||'')+'" placeholder="ID (optional)"> <button class="btn" id="pWrSpdP" style="padding:6px 8px">wählen</button>')
+      +row('Nachkommastellen','<input id="pWrDec" type="number" min="0" max="4" style="width:60px" value="'+(w.dec!=null?w.dec:'')+'" placeholder="auto">')
+      +row('Einheit','<input id="pWrUnit" value="'+esc(w.unit||'')+'" style="width:100px" placeholder="z. B. km/h">')
+      +'<div style="font-size:11px;color:var(--muted);margin:-2px 2px 4px">Gilt für den Geschwindigkeitswert in der Mitte. Ohne Nachkommastellen/Einheit greift die Symcon-Formatierung.</div>';},
     wire:function(w){
       if($('#pWrDir'))$('#pWrDir').oninput=function(){w.varId=parseInt(this.value)||0;render();};
       if($('#pWrDirP'))$('#pWrDirP').onclick=function(){showTab('vars');_bindTarget=w.id;};
       if($('#pWrSpd'))$('#pWrSpd').oninput=function(){w.varId2=parseInt(this.value)||0;render();};
       if($('#pWrSpdP'))$('#pWrSpdP').onclick=function(){showTab('vars');_bindTarget2=w.id;};
+      if($('#pWrDec'))$('#pWrDec').oninput=function(){w.dec=this.value===''?undefined:parseInt(this.value);render();var e=$('.w[data-id="'+w.id+'"]',canvas);if(e)_wrApply(w,e);};
+      if($('#pWrUnit'))$('#pWrUnit').oninput=function(){w.unit=this.value||undefined;render();var e=$('.w[data-id="'+w.id+'"]',canvas);if(e)_wrApply(w,e);};
     },
     live:function(w,el,id,d,base,txt,on){_wrApply(w,el);}
   });

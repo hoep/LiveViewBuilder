@@ -61,9 +61,9 @@
   <button class="btn" id="undoBtn" title="Rückgängig (Ctrl+Z)"><svg class="i"><use href="#ic-undo"/></svg></button>
   <button class="btn" id="redoBtn" title="Wiederholen (Ctrl+Y)"><svg class="i"><use href="#ic-redo"/></svg></button>
   <div class="sp"></div>
-  <select class="btn" id="viewSel" title="Ansicht"></select>
   <button class="btn" id="newView" title="Neue Ansicht"><svg class="i"><use href="#ic-plus"/></svg></button>
   <button class="btn" id="newPopup" title="Neues Popup anlegen (zeigt nie Bar oder Sidebar)"><svg class="i"><use href="#ic-cube"/></svg></button>
+  <button class="btn" id="dupView" title="Aktuelle Ansicht/Popup duplizieren (mit allen Widgets)"><svg class="i"><use href="#ic-saveas"/></svg></button>
   <button class="btn" id="renView" title="Umbenennen"><svg class="i"><use href="#ic-pencil"/></svg></button>
   <button class="btn" id="delView" title="Ansicht löschen"><svg class="i"><use href="#ic-trash"/></svg></button>
   <button class="btn" id="homeBtn" title="Aktuelle Ansicht als Startseite (Kiosk-Default)"><svg class="i"><use href="#ic-home"/></svg></button>
@@ -133,10 +133,12 @@
         <div class="pgh">Grundelemente</div>
         <div class="pitem" data-add="blank">Leer</div>
         <div class="pitem" data-add="component">Komponente</div>
+        <div class="pitem" data-add="container">Container</div>
         <div class="pitem" data-add="value">Wert</div>
         <div class="pitem" data-add="text">Text</div>
         <div class="pitem" data-add="icon">Icon</div>
         <div class="pitem" data-add="line">Linie</div>
+        <div class="pitem" data-add="shape">Form</div>
         <div class="pgh">Steuerung</div>
         <div class="pitem" data-add="switch">Schalter</div>
         <div class="pitem" data-add="checkbox">Checkbox</div>
@@ -146,6 +148,9 @@
         <div class="pitem" data-add="colorpick" title="Varianten: Farbkreis · CIE · RGB-Slider · RGB-Taste · RGB-Box (in den Eigenschaften)">Farbwähler</div>
         <div class="pitem" data-add="marquee">Lauftext</div>
         <div class="pitem" data-add="textbox">Eingabe</div>
+        <div class="pitem" data-add="select">Auswahl</div>
+        <div class="pitem" data-add="eventctl">Ereignis</div>
+        <div class="pitem" data-add="skinswitch">Skin-Wechsler</div>
         <div class="pitem" data-add="flowline">Energiefluss-Linie</div>
         <div class="pitem" data-add="thermostat">Thermostat</div>
         <div class="pitem" data-add="cover">Rollo</div>
@@ -156,6 +161,8 @@
         <div class="pgh">Anzeige</div>
         <div class="pitem" data-add="chip">Chip</div>
         <div class="pitem" data-add="assoc">Zustand</div>
+        <div class="pitem" data-add="statusimage">Status-Bild</div>
+        <div class="pitem" data-add="objinfo">Objekt-Info</div>
         <div class="pitem" data-add="gauge">Gauge</div>
         <div class="pitem" data-add="gaugepro">Gauge+</div>
         <div class="pitem" data-add="bar">Balken</div>
@@ -180,11 +187,13 @@
         <div class="pitem" data-add="chart" title="Varianten inkl. Sparkline und Wasserfall (in den Eigenschaften)">Chart</div>
         <div class="pitem" data-add="sankey">Sankey</div>
         <div class="pitem" data-add="doubledonut" title="Zwei gespiegelte Halb-Donuts in einem Kreis">Doppel-Donut</div>
+        <div class="pitem" data-add="multiring" title="Mehrere konzentrische Ringe (ECharts Ring-Gauge): Gauge oder Donut, gemeinsame Winkel, Min/Max je Ring">Ring-Gauge</div>
         <div class="pitem" data-add="statetl">Zustands-Timeline</div>
         <div class="pitem" data-add="statelog">Zustands-Verlauf</div>
         <div class="pitem" data-add="flow">Fluss</div>
         <div class="pgh">Wetter &amp; Zeit</div>
         <div class="pitem" data-add="weather">Wetter</div>
+        <div class="pitem" data-add="meteogram" title="Meteogramm: mehrere Panels (Temperatur, Niederschlag, Wind, Wolken/Feuchte, Druck) mit gemeinsamer Zeitachse; stündlich oder täglich">Meteogramm</div>
         <div class="pitem" data-add="windrose">Windrose</div>
         <div class="pitem" data-add="raincard">Regenmenge</div>
         <div class="pitem" data-add="sun">Sonne</div>
@@ -192,19 +201,13 @@
         <div class="pitem" data-add="clock">Uhr</div>
         <div class="pitem" data-add="timer">Timer</div>
         <div class="pitem" data-add="calendar">Kalender</div>
+        <div class="pitem" data-add="weekplan">Wochenplan</div>
         <div class="pgh">Medien</div>
         <div class="pitem" data-add="camera">Kamera</div>
         <div class="pitem" data-add="campro">Kamera+</div>
         <div class="pitem" data-add="html">HTML</div>
         <div class="pitem" data-add="image">Bild</div>
-        <div class="pitem" data-add="statusimage">Status-Bild</div>
-        <div class="pitem" data-add="select">Auswahl</div>
-        <div class="pitem" data-add="shape">Form</div>
         <div class="pitem" data-add="webview">WebView</div>
-        <div class="pitem" data-add="weekplan">Wochenplan</div>
-        <div class="pitem" data-add="eventctl">Ereignis</div>
-        <div class="pitem" data-add="objinfo">Objekt-Info</div>
-        <div class="pitem" data-add="skinswitch">Skin-Wechsler</div>
         <div class="pgh">Bausteine (eigene)</div>
         <div id="blocks" style="grid-column:1/-1;display:flex;flex-direction:column;gap:5px"></div>
       </div>

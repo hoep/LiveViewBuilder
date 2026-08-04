@@ -1,4 +1,12 @@
   // ===== Widget: Temp-Säule (tempbar) — vertikale Temperatur-Säule mit Soll-Marke und Pill =====
+  // Wert-/Füllstand-Anwendung geteilt von mount (Start aus Cache) UND live (Wertänderung),
+  // sonst bleibt die Säule leer, bis sich der Wert einmal ändert.
+  function _tbApply(w,el,d,txt){
+    if(!d||!el)return;
+    var tv=el.querySelector('[data-role=val]');if(tv)tv.textContent=(txt!=null?txt:((d.f!=null&&d.f!=='')?d.f:d.v));
+    var tmn=(w.min!=null?w.min:16),tmx=(w.max!=null?w.max:24),nv=parseFloat(String(d.v).replace(',','.')),ff=el.querySelector('[data-role=fill]');
+    if(ff&&!isNaN(nv))ff.style.height=Math.max(0,Math.min(100,(nv-tmn)/((tmx-tmn)||1)*100))+'%';
+  }
   defWidget('tempbar',{
     label:'Temp-Säule', paletteIcon:'temperature', size:[110,190],
     defaults:function(w){w.label='EG';w.min=16;w.max=24;w.soll=22;w.pill='Komfort';w.pillState='ok';},
@@ -10,5 +18,6 @@
       if($('#pPillState'))$('#pPillState').onchange=function(){w.pillState=this.value;render();};
       if($('#pWarm'))$('#pWarm').onchange=function(){w.warm=this.checked||undefined;render();};
     },
-    live:function(w,el,id,d,base,txt,on){if(w.varId===id){var tv=$('[data-role=val]',el);if(tv)tv.textContent=txt;var tmn=(w.min!=null?w.min:16),tmx=(w.max!=null?w.max:24),nv=parseFloat(String(d.v).replace(',','.')),ff=$('[data-role=fill]',el);if(ff&&!isNaN(nv))ff.style.height=Math.max(0,Math.min(100,(nv-tmn)/((tmx-tmn)||1)*100))+'%';}return;}
+    mount:function(w){var el=$('.w[data-id="'+w.id+'"]',canvas);if(el&&w.varId&&_lastVals[w.varId])_tbApply(w,el,_lastVals[w.varId]);},
+    live:function(w,el,id,d,base,txt,on){if(w.varId===id)_tbApply(w,el,d,txt);return;}
   });
