@@ -32,6 +32,7 @@
       zweck: "Zeigt den aktuellen Zustand einer Variablen als Kachel aus Icon, grossem Wert/Text, Statuspille und Label. Der Zustandstext, das Icon und die Farbe kommen entweder aus einer eigenen Zuordnungsliste oder aus den Assoziationen des Variablenprofils.",
       funktionen: [
         {name: "Variable", beschreibung: "Quelle des Zustands. Beim Einbinden werden die Profil-Assoziationen der Variablen geladen; die Kachel aktualisiert sich bei jedem neuen Wert."},
+        {name: "Wert & Format (gemeinsam)", beschreibung: "Ist der Zustandswert numerisch, formatieren Faktor/Skalierung, Tausendertrennung, grosse Zahlen kuerzen und Nachkommastellen den grossen Wert (zusaetzlich zum eigenen Feld „Einheit\")."},
         {name: "Darstellung", beschreibung: "Automatisch (crit fuellt) / Getoent / Vollflaeche. Legt fest, wie die Zustandsfarbe wirkt: getoenter Hintergrund mit farbiger linker Kante, komplette Farbflaeche mit weisser Schrift, oder automatisch (Farbwort crit/fehler/error/alarm fuellt, jede andere Farbe toent, ohne Farbe neutrale Kachel)."},
         {name: "Anzeige", beschreibung: "Icon + Wert + Label / Nur Icon / Wert + Label. 'Nur Icon' blendet das Label aus, 'Wert + Label' den Icon-Chip - die grosse Wertzeile bleibt in beiden Faellen vorhanden."},
         {name: "Zustand als", beschreibung: "Grosser Wert oder Pille. Bei 'Pille' wandert der Zustandstext in die kleine Pille oben rechts, die grosse Zeile bleibt leer - sinnvoll, wenn nur das Icon zaehlt."},
@@ -116,6 +117,7 @@
       zweck: "Rechnet aus mehreren Variablen einen einzelnen Wert und zeigt ihn wie eine Wertkachel an. Moeglich sind Summe, Mittel, Minimum, Maximum, Differenz und das Zaehlen aktiver Quellen.",
       funktionen: [
         {name: "Rechnung", beschreibung: "Summe, Mittel, Min, Max, 'Differenz (1 - Rest)' (erste Quelle minus Summe aller weiteren) oder 'Anzahl > 0' (zaehlt Quellen mit positivem Wert). Vorgabe ist Summe."},
+        {name: "Wert & Format (gemeinsam)", beschreibung: "Zusaetzlich zur Einheit und den Nachkommastellen wirken Faktor/Skalierung, Tausendertrennung, grosse Zahlen kuerzen (k/M/Mrd) und Text bei leerem Wert auf das Ergebnis."},
         {name: "Quellen: Variablen-ID", beschreibung: "Listeneditor mit beliebig vielen Variablen-IDs (Vorgabe: zwei leere Zeilen). Die Reihenfolge zaehlt bei 'Differenz'. Quellen ohne gueltigen Zahlenwert werden uebersprungen; ist keine gueltig, steht '-'."},
         {name: "Einheit", beschreibung: "Freitext, der hinter das Ergebnis gehaengt wird (z. B. kWh, W, Grad C)."},
         {name: "Nachkommastellen", beschreibung: "Eigenes Feld des Widgets, 0 bis 4 Stellen, Vorgabe 1; bei 'Anzahl > 0' wird immer ganzzahlig ausgegeben. Der Punkt wird durch ein Komma ersetzt."},
@@ -554,6 +556,7 @@
       titel: "Gauge",
       zweck: "Rundinstrument auf ECharts-Basis fuer einen numerischen Wert zwischen Min und Max. Vier Bauformen vom klassischen Bogen bis zum Donut-Ring, Farbe wahlweise fest, nach Schwellen abgestuft oder aus den Profil-Assoziationen.",
       funktionen: [
+        {name: "Wert & Format (gemeinsam)", beschreibung: "Faktor/Skalierung (z. B. 0.001 = W→kW, skaliert Wert UND Skala), Tausendertrennung, grosse Zahlen kuerzen (k/M/Mrd) und Nachkommastellen wirken auf die Wertanzeige. Die Einheit stellt das eigene Feld „Einheit\" (gvUnit) ein."},
         {name: "Variable", beschreibung: "Angezeigter Wert; nicht numerische Werte werden als 0 behandelt."},
         {name: "Min / Max", beschreibung: "Skalenanfang und -ende (Vorgabe 0 und 100); daraus ergeben sich Zeigerstellung und die Lage der Farbzonen."},
         {name: "Nachkommastellen", beschreibung: "Rundet die Wertanzeige; ohne Angabe wird der formatierte Wert des Profils uebernommen. Dezimaltrennzeichen ist das Komma."},
@@ -580,6 +583,7 @@
       titel: "Gauge+",
       zweck: "Dasselbe Rundinstrument wie Gauge, nur mit Grenzwert-Abstufung (gruen/warm/rot) als Voreinstellung. Gedacht fuer Messwerte, bei denen die Zone wichtiger ist als der Zahlenwert.",
       funktionen: [
+        {name: "Wert & Format (gemeinsam)", beschreibung: "Wie bei Gauge: Faktor/Skalierung, Tausendertrennung, grosse Zahlen kuerzen und Nachkommastellen wirken auf die Wertanzeige; Einheit ueber „Einheit\" (gvUnit)."},
         {name: "Variable", beschreibung: "Angezeigter Messwert."},
         {name: "Min / Max", beschreibung: "Skalenanfang und -ende; bestimmen zugleich die Lage der Farbzonen."},
         {name: "Nachkommastellen", beschreibung: "Rundung der Wertanzeige, Komma als Dezimaltrennzeichen."},
@@ -1424,6 +1428,7 @@
       zweck: "Generische Karte: Icon/Titel oben links, oben rechts ein Schalter ODER ein Badge, grosser Zahlenwert mit Einheit, Beschriftung, optional Bereichs-Leiste, Fortschrittsbalken oder Auswahl-Knoepfe. Die Merkmale sind FREI KOMBINIERBAR (z. B. Dosier-Karte = Schalter + Balken, Filterzeit = Akzent + Balken + Badge). Die Darstellung ist nur ein Schnell-Preset, das die passenden Optionen setzt.",
       funktionen: [
         {name: "Darstellung (Preset)", beschreibung: "Schnellwahl, die die passenden Optionen unten setzt: Einfacher Wert, Zielbereich (Badge OK/PRUEFEN aus Min/Max), Bereich Min-Max (Skala), Balken, Schalter (Var 2) oder Auswahl (Profil-Zuordnungen von Var 1 als schaltbare Knoepfe). Danach lassen sich die Merkmale beliebig kombinieren."},
+        {name: "Wert & Format (gemeinsam)", beschreibung: "Faktor/Skalierung, Tausendertrennung, grosse Zahlen kuerzen (k/M/Mrd), Nachkommastellen sowie Praefix/Suffix und Text bei leerem Wert formatieren den grossen Zahlenwert (Einheit ueber das eigene Feld „Einheit\")."},
         {name: "Variable (Var 1)", beschreibung: "Hauptwert; grosse Zahl, live aktualisiert. Im Auswahl-Modus die schaltbare Variable, deren Profil-Werte als Knoepfe erscheinen."},
         {name: "Var 2", beschreibung: "Schaltkanal (Toggle oben rechts, Klick schreibt 1/0) — ODER, mit 'Var 2 = Akzent', faerbt sie die ganze Kachel — ODER, im Bereichsmodus, das Minimum. Dient sonst auch als Quelle der Zustandsfaerbung."},
         {name: "Var 3", beschreibung: "Quelle des Fortschrittsbalkens (leer = Hauptwert) bzw. im Bereichsmodus das Maximum."},
