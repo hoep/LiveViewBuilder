@@ -10,8 +10,6 @@
         return '<div class="wv wv1'+(w.icon?' hasic':'')+'"'+st+'>'+ic+'<div class="wv1line">'+lab+'<span class="v" data-role="val">–</span></div></div>';}
       return '<div class="wv'+(w.icon?' hasic':'')+'"'+st+'>'+ic+'<div class="wvbody" style="min-width:0'+al+'"><div class="l">'+escL(w.label||'')+'</div><div class="v" data-role="val">–</div></div></div>';},
     props:function(w){return row('Wert-Größe (px)','<input id="pFs" type="number" value="'+(w.valfs||24)+'">')
-      +row('Präfix','<input id="pPre" value="'+esc(w.pre||'')+'" placeholder="z. B. ~">')
-      +row('Suffix','<input id="pSuf" value="'+esc(w.suf||'')+'" placeholder="z. B. °C">')
       +row('Ausrichtung','<select id="pAlign"><option value=""'+(!w.align?' selected':'')+'>Links</option><option value="center"'+(w.align==='center'?' selected':'')+'>Zentriert</option><option value="right"'+(w.align==='right'?' selected':'')+'>Rechts</option></select>')
       +row('Einzeilig','<input type="checkbox" id="pOneline"'+(w.oneline?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">Icon + Wert nebeneinander (Label optional)</span>')
       +(w.icon?row('Icon-X ab links (px)','<input id="pIcx" type="number" value="'+(w.icx!=null?w.icx:'')+'" placeholder="Standard">'):'')
@@ -27,8 +25,6 @@
     wire:function(w){
       function relive(){if(w.varId&&_lastVals[w.varId])applyVal(w.varId,_lastVals[w.varId]);}
       if($('#pFs'))$('#pFs').oninput=function(){w.valfs=parseInt(this.value)||24;render();};
-      if($('#pPre'))$('#pPre').oninput=function(){w.pre=this.value||undefined;relive();};
-      if($('#pSuf'))$('#pSuf').oninput=function(){w.suf=this.value||undefined;relive();};
       if($('#pAlign'))$('#pAlign').onchange=function(){w.align=this.value||undefined;render();};
       if($('#pOneline'))$('#pOneline').onchange=function(){w.oneline=this.checked||undefined;render();};
       if($('#pIcx'))$('#pIcx').oninput=function(){w.icx=this.value===''?undefined:(parseInt(this.value)||0);render();};
