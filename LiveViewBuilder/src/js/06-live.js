@@ -362,7 +362,9 @@
   if($('#blockBtn'))$('#blockBtn').onclick=saveBlock;
   // ---------- Skins (Design-Konfigurator: Farben/Schriften, Dark+Light) ----------
   var SKIN_TOKENS=['bg','surface','surface-2','tile','line','line-soft','text','muted','faint','accent','accent-2','ok','warn','crit','info','warm'];
-  var SKIN_FU='-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,system-ui,sans-serif',SKIN_FM='ui-monospace,"SF Mono",Menlo,Consolas,monospace';
+  // Selbst gehostete Schriften (OFL/gratis, via ?api=font). Inter = UI-Sans, JetBrains Mono = Mono, Lora = Serif (Claude).
+  var SKIN_FU='"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,system-ui,sans-serif',SKIN_FM='"JetBrains Mono",ui-monospace,"SF Mono",Menlo,Consolas,monospace';
+  var SKIN_SERIF='"Lora",Georgia,"Times New Roman",serif';
   var BUILTIN={
     'Standard':{fu:SKIN_FU,fm:SKIN_FM,
       dark:{bg:'#0d1315',surface:'#141c1f','surface-2':'#1a2428',tile:'#131b1e',line:'#25333a','line-soft':'#1b262b',text:'#e7eef0',muted:'#8ba0a6',faint:'#63757b',accent:'#00cdab','accent-2':'#0a8f79',ok:'#39d08a',warn:'#f2b441',crit:'#f2685a',info:'#5ab6ff',warm:'#f2a03d'},
@@ -372,7 +374,11 @@
       light:{bg:'#eef0f7',surface:'#ffffff','surface-2':'#f3f4fb',tile:'#f8f9fe',line:'#dde0ef','line-soft':'#eaecf7',text:'#1a1f38',muted:'#5b6285',faint:'#9298b8',accent:'#4f46e5','accent-2':'#6366f1',ok:'#1a9c6b',warn:'#c8871a',crit:'#d64535',info:'#2f6fe0',warm:'#d98a1a'}},
     'Bernstein':{fu:SKIN_FU,fm:SKIN_FM,
       dark:{bg:'#141110',surface:'#1e1a17','surface-2':'#262019',tile:'#1a1613',line:'#39301f','line-soft':'#241d16',text:'#f0e9df',muted:'#a89b88',faint:'#77685a',accent:'#f5a524','accent-2':'#d98a1a',ok:'#39d08a',warn:'#f2b441',crit:'#f2685a',info:'#5ab6ff',warm:'#f5a524'},
-      light:{bg:'#f5f1ea',surface:'#fffdf9','surface-2':'#f3ede2',tile:'#faf6ef',line:'#e2d7c4','line-soft':'#efe8db',text:'#2a2115',muted:'#6f6250',faint:'#a2917a',accent:'#c8871a','accent-2':'#a56f14',ok:'#1a9c6b',warn:'#c8871a',crit:'#d64535',info:'#2f7fd6',warm:'#c8871a'}}
+      light:{bg:'#f5f1ea',surface:'#fffdf9','surface-2':'#f3ede2',tile:'#faf6ef',line:'#e2d7c4','line-soft':'#efe8db',text:'#2a2115',muted:'#6f6250',faint:'#a2917a',accent:'#c8871a','accent-2':'#a56f14',ok:'#1a9c6b',warn:'#c8871a',crit:'#d64535',info:'#2f7fd6',warm:'#c8871a'}},
+    // „Claude" — Anthropic-Clay/Creme: warmes Off-White (hell) bzw. warmes Anthrazit (dunkel), Akzent = Claude-Terrakotta, Serifen-UI (Lora)
+    'Claude':{fu:SKIN_SERIF,fm:SKIN_FM,
+      dark:{bg:'#201e1a',surface:'#2a2723','surface-2':'#322e29',tile:'#24211c',line:'#3b362e','line-soft':'#2b2721',text:'#ece7dd',muted:'#a69e90',faint:'#6f685b',accent:'#d9805c','accent-2':'#c4613e',ok:'#5cb682',warn:'#e0a83e',crit:'#e8705c',info:'#6fa8db',warm:'#cc785c'},
+      light:{bg:'#f0eee6',surface:'#fbfaf6','surface-2':'#f1eee4',tile:'#f6f4ec',line:'#e1dbcc','line-soft':'#ece7da',text:'#2b2620',muted:'#6a6459',faint:'#9a9284',accent:'#be5d39','accent-2':'#a24c2c',ok:'#4f9d69',warn:'#c88a2a',crit:'#c64c3c',info:'#3f7cb3',warm:'#cc785c'}}
   };
   // Weitere Standard-Skins — nur Akzentfarben variiert (Neutrals = Standard, je Dark+Light)
   var _cl=function(o){var r={},k;for(k in o)r[k]=o[k];return r;};
