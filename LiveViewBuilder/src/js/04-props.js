@@ -24,7 +24,7 @@
   var UNIV_VALUE_TYPES=['value','kpi','bar','tempbar','chip','room','cval','sval','valuecard','calc','assoc','gauge','gaugepro'];
   function _uRefresh(w){render();if(w.type==='cval'&&typeof computeCounterVal==='function')computeCounterVal(w);else if(w.type==='sval'&&typeof computeAggVal==='function')computeAggVal(w);else if(w.varId&&_lastVals[w.varId])applyVal(w.varId,_lastVals[w.varId]);commit();}
   var UNIV_PRESUF_TYPES=['value','kpi','cval','sval','bar','tempbar','chip','valuecard'];
-  var UNIV_ICON_TYPES=['icon','value','switch','tile','button','light','chip','room','kpi','assoc','valuecard'];
+  var UNIV_ICON_TYPES=['icon','value','switch','tile','button','light','chip','room','kpi','assoc','valuecard','bot'];
   var UNIV_DEC_TYPES=['value','kpi','valuecard','bar','gauge','gaugepro','tempbar','dial','chip','cval','sval','delta','room','meterlist','marquee','raincard','rangebtn','assoc','chart'];
   var UNIV_LINEMODE_TYPES=['value','valuecard','bar','assoc','cval','sval','delta','tempbar'];
   function universalSection(w){
@@ -111,8 +111,8 @@
       :'<div class="hint">Kein Element ausgewählt.</div>';return;}
     try{
     var typeOpts=Object.keys(TYPES).map(function(t){return '<option value="'+t+'">'+TYPES[t]+'</option>';}).join('');
-    var lbl2={doubledonut:'Unterer Wert',thermostat:'Ziel-Var',light:'Helligkeit',cover:'Befehls-Var',weather:'Vorhersage (JSON)',weatherpro:'Vorhersage (JSON)',sun:'Untergang',suncard:'Untergang',media:'Zustand',room:'Metrik 2',vacuum:'Batterie',valuecard:'Toggle/Akzent-Var'}[w.type];
-    var lbl3={doubledonut:'Mittelwert',cover:'Status-Text',media:'Lautstärke',room:'Metrik 3',vacuum:'Start/Stop',thermostat:'Modus/Profil-Var',valuecard:'Balken-Var'}[w.type];
+    var lbl2={doubledonut:'Unterer Wert',thermostat:'Ziel-Var',light:'Helligkeit',cover:'Befehls-Var',weather:'Vorhersage (JSON)',weatherpro:'Vorhersage (JSON)',sun:'Untergang',suncard:'Untergang',media:'Zustand',room:'Metrik 2',bot:'Batterie',valuecard:'Toggle/Akzent-Var'}[w.type];
+    var lbl3={doubledonut:'Mittelwert',cover:'Status-Text',media:'Lautstärke',room:'Metrik 3',bot:'Start/Stop',thermostat:'Modus/Profil-Var',valuecard:'Balken-Var'}[w.type];
     var _inBar=(typeof chromeOwnerOf==='function')?chromeOwnerOf(w.id):null;
     p.innerHTML=_dkh+(Object.keys(sel).length>=2?alignSection():'')
       +(_inBar?('<div class="prop" style="border-color:var(--accent)"><div style="font-size:11px;color:var(--muted);margin-bottom:5px">Liegt in der Leiste <b>'+esc(_inBar.name||'Leiste')+'</b> — erscheint damit auf allen Seiten.</div>'
@@ -146,7 +146,7 @@
         +row('Stil','<select id="pFsty"><option value=""'+(!w.fsty?' selected':'')+'>Normal</option><option value="italic"'+(w.fsty==='italic'?' selected':'')+'>Kursiv</option></select>')
         +row('Schriftgröße (px)','<input id="pFsz" type="number" min="0" value="'+(w.fsz||'')+'" placeholder="Standard">')
       ):'')
-      +(['icon','value','switch','bar','tile','button','light','chip','room','kpi','assoc','valuecard'].indexOf(w.type)>=0?row('Icon (Fallback)','<span style="width:20px;height:20px;display:inline-flex;align-items:center;color:var(--accent)">'+(w.icon?iconSVG(w.icon):'')+'</span> <button class="btn" id="pIcon" style="padding:5px 8px">wählen</button>'+(w.icon?' <button class="btn" id="pIconX" style="padding:5px 8px" title="Icon entfernen"><svg class="i"><use href="#ic-minus"/></svg></button>':'')):'')
+      +(['icon','value','switch','bar','tile','button','light','chip','room','kpi','assoc','valuecard','bot'].indexOf(w.type)>=0?row('Icon (Fallback)','<span style="width:20px;height:20px;display:inline-flex;align-items:center;color:var(--accent)">'+(w.icon?iconSVG(w.icon):'')+'</span> <button class="btn" id="pIcon" style="padding:5px 8px">wählen</button>'+(w.icon?' <button class="btn" id="pIconX" style="padding:5px 8px" title="Icon entfernen"><svg class="i"><use href="#ic-minus"/></svg></button>':'')):'')
       +(['icon','value','switch','bar','chip','room','kpi','valuecard'].indexOf(w.type)>=0&&w.icon?row('Icon-Farbe',(function(){var SK=[['','Standard'],['accent','Akzent'],['ok','OK'],['warn','Warnung'],['crit','Kritisch'],['info','Info'],['text','Neutral']];return '<span class="iconsw" data-role="iconsw">'+SK.map(function(c){var cur=(w.iconColor||'')===c[0];var st=c[0]?('background:var(--'+c[0]+')'):'background:transparent;border-style:dashed;border-color:var(--muted)';return '<button type="button" class="iconswb'+(cur?' on':'')+'" data-skin="'+c[0]+'" title="'+esc(c[1])+'" style="'+st+'"></button>';}).join('')+'</span>';})()):'')
       +(['icon','value','switch','bar','tile','button','light','chip','room','kpi','assoc','valuecard'].indexOf(w.type)>=0&&w.varId?'<div id="assocBox" class="assocbox"></div>':'')
       +universalSection(w)
