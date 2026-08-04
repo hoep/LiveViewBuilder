@@ -24,7 +24,18 @@
       var p0=$('#props'),ae=document.activeElement;
       if(ae&&ae.blur&&p0&&p0.contains(ae))ae.blur();  // Blur JETZT auslösen (nicht mitten im innerHTML), sonst "node no longer a child"
       _renderProps();
+      if(typeof DOKU!=='undefined'&&DOKU&&widget(selId))_dokuStripVars();  // im Doku-Editor: variablengebundene Felder ausblenden
     }finally{_rpBusy=false;}
+  }
+  // Doku-Editor: alle variablengebundenen Eingaben ausblenden (Variable/Var2/Var3, fieldPick, Serien-/Listen-VarID + Formel-Hinweise).
+  function _dokuStripVars(){
+    var p=$('#props');if(!p)return;
+    ['pVar','pVar2','pVar3','pPick','pPick2','pPick3'].forEach(function(id){var e=$('#'+id,p);if(e){var r=e.closest('.prow');if(r)r.style.display='none';}});
+    $$('[data-fid]',p).forEach(function(inp){var r=inp.closest('.prow');if(r)r.style.display='none';});          // fieldPick-Variablenzeilen
+    $$('[data-spick]',p).forEach(function(b){b.style.display='none';});                                          // Serien „Var"-Knopf
+    $$('[data-sf]',p).forEach(function(inp){if(/\.vid$/.test(inp.getAttribute('data-sf')||''))inp.style.display='none';}); // Serien-VarID
+    $$('[data-le]',p).forEach(function(inp){if(/\.vid$/.test(inp.getAttribute('data-le')||''))inp.style.display='none';}); // Listen-VarID
+    Array.prototype.forEach.call(p.querySelectorAll('div'),function(d){if(!d.children.length){var t=d.textContent||'';if(/Formel möglich|Text verketten/.test(t))d.style.display='none';}}); // Formel-Hinweise
   }
   function _renderProps(){
     // Doku-Seite: Erklaerung des Widgets ueber die Einstellungen setzen.
@@ -49,7 +60,7 @@
       +row('Name','<input id="pName" value="'+esc(w.name||'')+'" placeholder="eindeutige Kennung (intern)">')
       +((w.type==='camera'||w.type==='image')?row('Media-ID','<input id="pMedia" value="'+(w.mediaId||'')+'" placeholder="Media-ID">')
           :(w.type==='line'||w.type==='shape')?row('Farbe','<input id="pColor" type="color" value="'+(w.color||'#00cdab')+'">')
-          :(['text','calendar','clock','component','eventctl','objinfo','infolist','meterlist','statuslist','statusgrid','devlist','msglog','chart','skinswitch','windrose','rangeslider','raincard','circlerange','cie'].indexOf(w.type)<0&&!(w.type==='html'&&w.htmlSrc==='custom')&&!(w.type==='colorpick'&&(w.cmode||'wheel')==='cie')?row('Variable','<input id="pVar" value="'+esc(String(w.varId||''))+'" placeholder="ID oder =Formel"> <button class="btn" id="pPick" style="padding:6px 8px">wählen</button>')+'<div style="font-size:11px;color:var(--muted);line-height:1.4;margin:2px 4px 7px">Formel möglich: <b>=45552+49633</b>, <b>=(#20726+#40754)/2</b> — Aggregat &amp; Live aus den Einzelvariablen.</div>':''))
+          :(['text','calendar','clock','component','eventctl','objinfo','infolist','meterlist','statuslist','statusgrid','devlist','msglog','chart','skinswitch','windrose','rangeslider','raincard','circlerange','cie'].indexOf(w.type)<0&&!(w.type==='html'&&w.htmlSrc==='custom')&&!(w.type==='colorpick'&&(w.cmode||'wheel')==='cie')?row('Variable','<input id="pVar" value="'+esc(String(w.varId||''))+'" placeholder="ID oder =Formel"> <button class="btn" id="pPick" style="padding:6px 8px">wählen</button>')+'<div style="font-size:11px;color:var(--muted);line-height:1.4;margin:2px 4px 7px">Formel möglich: <b>=45552+49633</b>, <b>=(#20726+#40754)/2</b> — Aggregat &amp; Live aus den Einzelvariablen.<br>Text verketten (Live): <b>=#35768.&quot;°C &quot;.#27635.&quot;%&quot;</b> — Variablen &amp; Text mit dem Punkt.</div>':''))
       +((w.type==='kpi'||w.type==='delta')?('<div class="pgh">Vergleich (Zeitversatz)</div>'
         +row('Aktiv','<input type="checkbox" id="pCmpOn"'+(w.cmpOn?' checked':'')+'>')
         +(w.cmpOn?(row('Aggregationsstufe',stageSel('pCmpStage',cmpStage(w)))+row('Zählervariable','<input type="checkbox" id="pCmpCnt"'+(w.cmpCounter?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">Verbrauch je Periode</span>')+(!w.cmpCounter?row('Periodenmittel','<input type="checkbox" id="pCmpAvg"'+(w.cmpAvg?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">Mittel über die Periode statt Punktwert</span>'):'')+row('Anzeige','<select id="pCmpMode"><option value="pct"'+((w.cmpMode||'pct')==='pct'?' selected':'')+'>Prozent</option><option value="abs"'+(w.cmpMode==='abs'?' selected':'')+'>Absolut</option></select>')+row('Veränderung invertieren','<input type="checkbox" id="pCmpInv"'+(w.cmpInvert?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">Rückgang = gut (z. B. Verbrauch) — nur Farbe dreht, Pfeil bleibt</span>')):'')
@@ -62,7 +73,7 @@
       +((w.type==='slider'||w.type==='thermostat'||w.type==='dial')?row('Schritt','<input id="pStep" type="number" step="0.1" value="'+(w.step||1)+'">'):'')
       +(lbl2?row(lbl2,'<input id="pVar2" value="'+esc(String(w.varId2||''))+'" placeholder="ID oder =Formel"> <button class="btn" id="pPick2" style="padding:6px 8px">wählen</button>'):'')
       +(lbl3?row(lbl3,'<input id="pVar3" value="'+esc(String(w.varId3||''))+'" placeholder="ID oder =Formel"> <button class="btn" id="pPick3" style="padding:6px 8px">wählen</button>'):'')
-      +(w.type!=='line'?row('Farben','<input id="pFg" type="color" value="'+(w.fg||'#e7eef0')+'" title="Textfarbe"> <input id="pBg" type="color" value="'+(w.bg||'#141c1f')+'" title="Hintergrund"> <button class="btn" id="pClr" style="padding:5px 8px" title="Farben zurücksetzen"><svg class="i"><use href="#ic-minus"/></svg></button>'):'')
+      +(w.type!=='line'?row('Farben','<span style="display:inline-flex;align-items:center;gap:4px;margin-right:12px;font-size:11px;color:var(--muted)">Text <input id="pFg" type="color" value="'+(w.fg||'#e7eef0')+'" title="Textfarbe"></span><span style="display:inline-flex;align-items:center;gap:4px;margin-right:8px;font-size:11px;color:var(--muted)">Hintergrund <input id="pBg" type="color" value="'+(w.bg||'#141c1f')+'" title="Kachelhintergrund"></span><button class="btn" id="pClr" style="padding:5px 8px" title="Farben zurücksetzen"><svg class="i"><use href="#ic-minus"/></svg></button>'):'')
       +(w.type!=='line'&&w.type!=='shape'?row('Rahmen','<select id="pFrame"><option value=""'+(w.frame==null?' selected':'')+'>Ansicht-Standard</option><option value="1"'+(w.frame===true?' selected':'')+'>An</option><option value="0"'+(w.frame===false?' selected':'')+'>Aus</option></select>'):'')
       +(w.type!=='line'?row('Hintergrund','<select id="pBgT"><option value=""'+(!w.bgT?' selected':'')+'>Deckend</option><option value="1"'+(w.bgT?' selected':'')+'>Transparent</option></select>'):'')
       +(w.type!=='line'?row('Beschriftung','<input type="checkbox" id="pLblWrap"'+(w.lblWrap?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">mehrzeilig statt abschneiden</span>'):'')
@@ -85,6 +96,7 @@
         +(w.visVar?(row('Zeigen wenn','<select id="pVisMode"><option value="truthy"'+((w.visMode||'truthy')==='truthy'?' selected':'')+'>wahr / ≠0</option><option value="eq"'+(w.visMode==='eq'?' selected':'')+'>= Wert</option><option value="ne"'+(w.visMode==='ne'?' selected':'')+'>≠ Wert</option><option value="ge"'+(w.visMode==='ge'?' selected':'')+'>≥ Wert</option><option value="le"'+(w.visMode==='le'?' selected':'')+'>≤ Wert</option></select>')+((w.visMode&&w.visMode!=='truthy')?row('Wert','<input id="pVisVal" value="'+esc(w.visVal!=null?w.visVal:'')+'">'):'')):'')):'')
       +(w.type!=='blank'?row('Animation','<select id="pAnim"><option value=""'+(!w.anim?' selected':'')+'>keine</option><option value="fade"'+(w.anim==='fade'?' selected':'')+'>Fade</option><option value="scale"'+(w.anim==='scale'?' selected':'')+'>Scale</option><option value="slide"'+(w.anim==='slide'?' selected':'')+'>SlideUp</option></select>'):'')
       +row('Ebene','<button class="btn" id="pZFront" style="padding:4px 9px">nach vorn</button> <button class="btn" id="pZBack" style="padding:4px 9px">nach hinten</button>')
+      +posSection(w)
       +'<div class="xy">'+cell('X','pX',w.x)+cell('Y','pY',w.y)+cell('B','pW',w.w)+cell('H','pH',w.h)+'</div>'
       +'<button class="btn danger" id="pDel">Löschen</button>'
       +'</div>'
@@ -158,7 +170,7 @@
     if($('#pVar3'))$('#pVar3').onchange=function(){var _v=(this.value||'').trim();w.varId3=(_v.charAt(0)==='=')?_v:(parseInt(_v)||0);delete _hist[w.id];render();};
     if($('#pPick3'))$('#pPick3').onclick=function(){showTab('vars');toast('Untergang-Variable im Baum anklicken');_bindTarget3=w.id;};
     ['pX','pY','pW','pH'].forEach(function(k){var el=$('#'+k);el.oninput=function(){var v=parseInt(el.value)||0;if(k==='pX')w.x=v;if(k==='pY')w.y=v;if(k==='pW')w.w=Math.max(40,v);if(k==='pH')w.h=Math.max(28,v);render();};});
-    $('#pDel').onclick=function(){var ids=Object.keys(sel).length?Object.keys(sel):[w.id];state.widgets=state.widgets.filter(function(x){return ids.indexOf(x.id)<0;});if(typeof chromeList==='function')chromeList().forEach(function(_b){if(_b.widgets)_b.widgets=_b.widgets.filter(function(x){return ids.indexOf(x.id)<0;});});selClear();render();renderProps();};
+    $('#pDel').onclick=function(){var ids=Object.keys(sel).length?Object.keys(sel):[w.id];var _s={};ids.forEach(function(id){_s[id]=1;});state.widgets=state.widgets.filter(function(x){return ids.indexOf(x.id)<0;});if(typeof chromeList==='function')chromeList().forEach(function(_b){if(_b.widgets)_b.widgets=_b.widgets.filter(function(x){return ids.indexOf(x.id)<0;});});delFromContainers(_s);selClear();render();renderProps();};
     $$('[data-al]',p).forEach(function(bt){bt.onclick=function(){var a=bt.dataset.al;if(a==='disth')distributeSel('h');else if(a==='distv')distributeSel('v');else if(a==='group')groupSel();else if(a==='ungroup')ungroupSel();else alignSel(a);};});
     $$('[data-fc]',p).forEach(function(inp){inp.oninput=inp.onchange=function(){var pr=inp.dataset.fc.split('.'),i=+pr[0],k=pr[1];if(!w.fc||!w.fc[i])return;w.fc[i][k]=(k==='hi'||k==='lo'||k==='pq')?(parseInt(inp.value)||0):inp.value;render();};});
     $$('[data-fcdel]',p).forEach(function(b){b.onclick=function(){w.fc.splice(+b.dataset.fcdel,1);render();renderProps();};});
@@ -175,7 +187,8 @@
     };}
     $$('[data-leup]',p).forEach(function(b){_leMove(b,'data-leup',-1);});
     $$('[data-ledn]',p).forEach(function(b){_leMove(b,'data-ledn', 1);});
-    $$('[data-leadd]',p).forEach(function(b){b.onclick=function(){var key=b.dataset.leadd;if(!w[key])w[key]=[];w[key].push(key==='links'?{from:'',to:'',vid:0}:(key==='steps'?{title:'',vid:0,type:'auf',color:'#00cdab'}:{label:'',vid:0}));render();renderProps();};});
+    $$('[data-leadd]',p).forEach(function(b){b.onclick=function(){var key=b.dataset.leadd;if(!w[key])w[key]=[];w[key].push(key==='links'?{from:'',to:'',vid:0}:(key==='steps'?{title:'',vid:0,type:'auf',color:'#00cdab'}:(key==='states')?{v:'',text:'',icon:'',color:''}:(key==='options')?{value:'',text:'',icon:'',color:''}:{label:'',vid:0}));render();renderProps();};});
+    $$('[data-leico]',p).forEach(function(b){b.onclick=function(){_iconPick={wid:w.id,path:b.dataset.leico};showTab('icons');toast('Icon für diese Zeile wählen');};});
     $$('[data-fpick]',p).forEach(function(b){b.onclick=function(){showTab('vars');toast('Variable im Baum anklicken');_bindField={wid:w.id,path:b.dataset.fpick};};}); // generischer Feld-Pick (Pfad, z. B. fc.0.hi)
     $$('[data-fid]',p).forEach(function(inp){inp.onchange=function(){setPath(w,inp.dataset.fid,parseInt(inp.value)||0);render();renderProps();};});
     $$('[data-fclr]',p).forEach(function(b){b.onclick=function(){setPath(w,b.dataset.fclr,0);render();renderProps();};});
@@ -192,11 +205,19 @@
     function _zList(x){var ow=(typeof chromeOwnerOf==='function')?chromeOwnerOf(x.id):null;return (ow&&ow.widgets)?ow.widgets:state.widgets;}
     if($('#pZFront'))$('#pZFront').onclick=function(){var L=_zList(w),i=L.indexOf(w);if(i>=0){L.splice(i,1);L.push(w);}render();select(w.id);commit();};
     if($('#pZBack'))$('#pZBack').onclick=function(){var L=_zList(w),i=L.indexOf(w);if(i>=0){L.splice(i,1);L.unshift(w);}render();select(w.id);commit();};
+    (function(){ // freie Position von Wert/Icon: live anwenden (oninput), persistieren (onchange)
+      function _posLive(){var el=$('.w[data-id="'+w.id+'"]',canvas);if(el&&typeof _applyPosOffsets==='function')_applyPosOffsets(w,el);}
+      function bindPos(id,prop){var e=$('#'+id);if(!e)return;e.oninput=function(){w[prop]=parseInt(this.value)||undefined;_posLive();};e.onchange=function(){commit();};}
+      bindPos('pPosValX','valDX');bindPos('pPosValY','valDY');bindPos('pPosIcoX','icoDX');bindPos('pPosIcoY','icoDY');
+      if($('#pPosReset'))$('#pPosReset').onclick=function(){w.valDX=w.valDY=w.icoDX=w.icoDY=undefined;render();renderProps();commit();};
+    })();
     try{if(WIDGETS[w.type]&&WIDGETS[w.type].wire)WIDGETS[w.type].wire(w);}catch(_e){console.error('wire('+w.type+')',_e);} // ein defekter wire-Hook darf die Auswahl nicht blockieren
     if(w.type!=='button'&&w.type!=='tile')popupWire(w); // universelle Popup/Interaktion-Verdrahtung (Kachel/Button haben eigene Nav/Popup-Konfig)
     }catch(_ep){console.error('renderProps('+(w&&w.type)+')',_ep);p.innerHTML='<div class="hint" style="color:var(--crit);font-size:12px;white-space:pre-wrap">Eigenschaften-Fehler bei „'+esc(w.type)+'":\n'+esc((_ep&&_ep.message)||String(_ep))+'</div>';} // Panel zeigt den Fehler direkt an
   }
   function row(l,html){return '<div class="prow"><label>'+l+'</label>'+html+'</div>';}
+  function delFromContainers(idset){ // Kinder aus w.kids entfernen (Loeschen/Ausschneiden)
+    (state.widgets||[]).forEach(function(c){if(c.type==='container'&&c.kids&&c.kids.length){var _n=c.kids.length;c.kids=c.kids.filter(function(k){return !(k&&idset[k.id]);});if(c.kids.length!==_n&&typeof contFitBase==='function')contFitBase(c);}});}
   function moveToTicker(w){ // Widget benennen, in erste Laufzeile referenzieren, auf der Seite ausblenden
     // Laufzeile auch in einer Leiste suchen - dort liegt sie beim gemeinsamen Kopfbereich.
     var tk=allWidgets().filter(function(x){return x.type==='ticker';})[0];
@@ -212,6 +233,18 @@
   function fieldPick(w,path,label){var v=getPath(w,path)||''; // Variable an ein beliebiges Feld (Pfad) binden: Eingabe + wählen + entfernen
     return '<div class="prow"><label>'+label+'</label><input data-fid="'+path+'" value="'+(v||'')+'" placeholder="ID" style="width:60px"> <button class="btn" data-fpick="'+path+'" style="padding:5px 7px">wählen</button>'+(v?' <button class="btn" data-fclr="'+path+'" style="padding:5px 7px" title="entfernen">×</button>':'')+'</div>';}
   function cell(l,id,v){return '<div class="prow"><label style="width:18px">'+l+'</label><input id="'+id+'" type="number" value="'+v+'"></div>';}
+  function poscell(l,id,v){return '<div class="prow"><label style="width:44px">'+l+'</label><input id="'+id+'" type="number" value="'+(v!=null?v:'')+'" placeholder="0"></div>';}
+  function posSection(w){ // freie Positionierung von Wert & Icon (nur fuer kompakte Wert/Icon-Widgets)
+    var m=(typeof POS_SEL!=='undefined')?POS_SEL[w.type]:null;if(!m)return '';
+    var hasVal=!!m.val, hasIco=!!m.ico&&(!!w.icon||['icon','button','switch','light'].indexOf(w.type)>=0);
+    if(!hasVal&&!hasIco)return '';
+    var h='<div class="pgh">Position (frei)</div>'
+      +'<div style="font-size:11px;color:var(--muted);margin:-2px 2px 5px">Wert/Icon im Widget verschieben (px, relativ). Oder <b>Alt&#8202;+&#8202;ziehen</b> direkt am Element im Editor.</div>';
+    if(hasVal)h+=poscell('Wert X','pPosValX',w.valDX)+poscell('Wert Y','pPosValY',w.valDY);
+    if(hasIco)h+=poscell('Icon X','pPosIcoX',w.icoDX)+poscell('Icon Y','pPosIcoY',w.icoDY);
+    h+='<button class="btn" id="pPosReset" style="padding:4px 9px;margin-top:4px">Position zurücksetzen</button>';
+    return h;
+  }
   function tgradEditor(w){
     var arr=w.tgrad||[];
     var rows=arr.map(function(s,i){return '<div class="serow"><input data-tg="t.'+i+'" type="number" value="'+(s.t!=null?s.t:0)+'" placeholder="°C" style="width:64px"><input type="color" data-tg="color.'+i+'" value="'+(s.color||'#00cdab')+'"><button class="btn" data-tgdel="'+i+'" style="padding:2px"><svg class="i"><use href="#ic-minus"/></svg></button></div>';}).join('');
@@ -244,8 +277,18 @@
   var _WINU=[['hour','Stunden'],['day','Tage'],['week','Wochen'],['month','Monate']];
   function winCtl(w){var r=w.range||{n:(w.hours>0?w.hours:24),unit:'hour'};return row('Zeitraum','<input id="pWinN" type="number" min="1" style="width:64px" value="'+(r.n||24)+'"> <select id="pWinU">'+_WINU.map(function(u){return '<option value="'+u[0]+'"'+((r.unit||'hour')===u[0]?' selected':'')+'>'+u[1]+'</option>';}).join('')+'</select>');}
   function winWire(w,cb){function set(patch){var r=w.range||{n:(w.hours>0?w.hours:24),unit:'hour'};w.range={n:r.n,unit:r.unit};for(var k in patch)w.range[k]=patch[k];cb();}if($('#pWinN'))$('#pWinN').oninput=function(){set({n:parseInt(this.value)||1});};if($('#pWinU'))$('#pWinU').onchange=function(){set({unit:this.value});};}
-  function listEditor(w,key,title,cols){
-    var arr=w[key]||[];var gtc=cols.map(function(){return '1fr';}).join(' ')+' 20px 20px 22px';
+  function _leFld(key,i,c,r){var d='data-le="'+key+'.'+i+'.'+c.k+'"';
+    if(c.type==='color'){var cv=String(r[c.k]!=null?r[c.k]:'');return '<input type="color" '+d+' value="'+(/^#[0-9a-fA-F]{6}$/.test(cv)?cv:'#00cdab')+'">';}
+    if(c.type==='select'){if((r[c.k]==null||r[c.k]==='')&&c.def!=null&&c.def!=='')r[c.k]=c.def;var sv=String(r[c.k]!=null?r[c.k]:(c.def||''));return '<select '+d+'>'+(c.options||[]).map(function(o){return '<option value="'+o[0]+'"'+(sv===o[0]?' selected':'')+'>'+esc(o[1])+'</option>';}).join('')+'</select>';}
+    if(c.type==='skincolor')return skinSel(String(r[c.k]!=null?r[c.k]:''),d);
+    if(c.type==='icon'){var iv=String(r[c.k]!=null?r[c.k]:'');return '<button class="btn" data-leico="'+key+'.'+i+'.'+c.k+'" title="'+esc(c.ph||'Icon')+(iv?(' ('+esc(iv)+')'):'')+'" style="padding:3px;display:flex;align-items:center;justify-content:center"><span style="width:16px;height:16px;display:inline-flex;align-items:center;justify-content:center;color:var(--accent)">'+(iv?iconSVG(iv):'+')+'</span></button>';}
+    return '<input '+d+' value="'+esc(String(r[c.k]!=null?r[c.k]:''))+'" placeholder="'+esc(c.ph||'')+'">';}
+  function _leBtns(key,i,n){return '<button class="btn" data-leup="'+key+'.'+i+'" title="hoch" style="padding:2px'+(i===0?';opacity:.28;pointer-events:none':'')+'"><svg class="i"><use href="#ic-chevup"/></svg></button><button class="btn" data-ledn="'+key+'.'+i+'" title="runter" style="padding:2px'+(i===n-1?';opacity:.28;pointer-events:none':'')+'"><svg class="i"><use href="#ic-chevdn"/></svg></button><button class="btn" data-ledel="'+key+'.'+i+'" style="padding:2px" title="löschen"><svg class="i"><use href="#ic-minus"/></svg></button>';}
+  function listEditor(w,key,title,cols,opts){opts=opts||{};
+    var arr=w[key]||[];
+    if(opts.wrap){var wr=arr.map(function(r,i){return '<div class="lewrap"><span class="lewn">'+(i+1)+'</span>'+cols.map(function(c){return '<label class="lewf"><span>'+esc(c.h||c.ph||c.k)+'</span>'+_leFld(key,i,c,r)+'</label>';}).join('')+'<span class="lewbtns">'+_leBtns(key,i,arr.length)+'</span></div>';}).join('');
+      return '<div class="prop" style="margin-top:8px"><div style="font-size:11px;color:var(--muted);margin-bottom:5px">'+title+'</div>'+wr+'<button class="btn" data-leadd="'+key+'"><svg class="i"><use href="#ic-plus"/></svg></button></div>';}
+    var gtc=cols.map(function(){return '1fr';}).join(' ')+' 20px 20px 22px';
     var rows=arr.map(function(r,i){
       return '<div class="fcrow" style="display:grid;grid-template-columns:'+gtc+';gap:4px;margin-bottom:4px">'
         +cols.map(function(c){if(c.type==='color'){var cv=String(r[c.k]!=null?r[c.k]:'');return '<input type="color" data-le="'+key+'.'+i+'.'+c.k+'" value="'+(/^#[0-9a-fA-F]{6}$/.test(cv)?cv:'#00cdab')+'" title="'+esc(c.ph||'Farbe')+'">';}if(c.type==='select'){
@@ -257,14 +300,18 @@
           if((r[c.k]==null||r[c.k]==='')&&c.def!=null&&c.def!=='')r[c.k]=c.def;
           var sv=String(r[c.k]!=null?r[c.k]:(c.def||''));return '<select data-le="'+key+'.'+i+'.'+c.k+'">'+(c.options||[]).map(function(o){return '<option value="'+o[0]+'"'+(sv===o[0]?' selected':'')+'>'+esc(o[1])+'</option>';}).join('')+'</select>';}/* skincolor: Auswahl der Skin-Farben statt Freitext - verhindert Tippfehler, die
            still verworfen wuerden, und laesst unbekannte Altwerte als "Eigene" stehen. */
-        if(c.type==='skincolor'){return skinSel(String(r[c.k]!=null?r[c.k]:''),'data-le="'+key+'.'+i+'.'+c.k+'"');}return '<input data-le="'+key+'.'+i+'.'+c.k+'" value="'+esc(String(r[c.k]!=null?r[c.k]:''))+'" placeholder="'+c.ph+'">';}).join('')
+        if(c.type==='skincolor'){return skinSel(String(r[c.k]!=null?r[c.k]:''),'data-le="'+key+'.'+i+'.'+c.k+'"');}
+        if(c.type==='icon'){var iv=String(r[c.k]!=null?r[c.k]:'');return '<button class="btn" data-leico="'+key+'.'+i+'.'+c.k+'" title="'+esc(c.ph||'Icon wählen')+(iv?(' ('+esc(iv)+')'):'')+'" style="padding:3px;display:flex;align-items:center;justify-content:center"><span style="width:16px;height:16px;display:inline-flex;align-items:center;justify-content:center;color:var(--accent)">'+(iv?iconSVG(iv):'+')+'</span></button>';}
+        return '<input data-le="'+key+'.'+i+'.'+c.k+'" value="'+esc(String(r[c.k]!=null?r[c.k]:''))+'" placeholder="'+c.ph+'">';}).join('')
         // Reihenfolge aendern: Der erste Eintrag kann nicht hoch, der letzte nicht runter -
         // die Knoepfe werden dort abgeblendet statt versteckt, damit die Spalten nicht springen.
         +'<button class="btn" data-leup="'+key+'.'+i+'" title="nach oben" style="padding:2px'+(i===0?';opacity:.28;pointer-events:none':'')+'"><svg class="i"><use href="#ic-chevup"/></svg></button>'
         +'<button class="btn" data-ledn="'+key+'.'+i+'" title="nach unten" style="padding:2px'+(i===arr.length-1?';opacity:.28;pointer-events:none':'')+'"><svg class="i"><use href="#ic-chevdn"/></svg></button>'
         +'<button class="btn" data-ledel="'+key+'.'+i+'" style="padding:2px" title="löschen"><svg class="i"><use href="#ic-minus"/></svg></button></div>';
     }).join('');
-    return '<div class="prop" style="margin-top:8px"><div style="font-size:11px;color:var(--muted);margin-bottom:5px">'+title+'</div>'+rows+'<button class="btn" data-leadd="'+key+'"><svg class="i"><use href="#ic-plus"/></svg></button></div>';
+    // Spaltenüberschriften (ausgerichtet auf das Zeilenraster) -> man sieht, welches Feld welche Bedeutung hat (z. B. Farbe vs. Status)
+    var hdr=arr.length?('<div style="display:grid;grid-template-columns:'+gtc+';gap:4px;margin-bottom:3px;font-size:9px;line-height:1;color:var(--faint);text-transform:uppercase;letter-spacing:.3px">'+cols.map(function(c){return '<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+esc(c.h||c.ph||'')+'">'+esc(c.h||c.ph||'')+'</span>';}).join('')+'<span></span><span></span><span></span></div>'):'';
+    return '<div class="prop" style="margin-top:8px"><div style="font-size:11px;color:var(--muted);margin-bottom:5px">'+title+'</div>'+hdr+rows+'<button class="btn" data-leadd="'+key+'"><svg class="i"><use href="#ic-plus"/></svg></button></div>';
   }
 
   // ---------- Hinzufügen ----------
@@ -377,7 +424,11 @@
     }
     return res;
   }
-  function addCopies(src){if(!src.length)return;var gmap={};var copies=src.map(function(w){var c=JSON.parse(JSON.stringify(w));c.id=uid();c.x=(c.x||0)+16;c.y=(c.y||0)+16;delete c.name;delete c.hidden;if(c.group){if(!gmap[c.group])gmap[c.group]='g'+uid();c.group=gmap[c.group];}return c;});copies.forEach(function(c){state.widgets.push(c);});sel={};copies.forEach(function(c){sel[c.id]=true;});selId=copies.slice(-1)[0].id;render();renderProps();commit();}
+  function addCopies(src){if(!src||!src.length)return;
+    var _kidIds={};src.forEach(function(w){if(w&&w.type==='container'&&w.kids)w.kids.forEach(function(k){if(k)_kidIds[k.id]=1;});});
+    src=src.filter(function(w){return w&&!_kidIds[w.id];}); // Kinder eines mitkopierten Containers nicht separat duplizieren
+    if(!src.length)return;
+    var gmap={};var copies=src.map(function(w){var c=JSON.parse(JSON.stringify(w));c.id=uid();c.x=(c.x||0)+16;c.y=(c.y||0)+16;delete c.name;delete c.hidden;if(c.group){if(!gmap[c.group])gmap[c.group]='g'+uid();c.group=gmap[c.group];}if(c.type==='container'&&c.kids)c.kids.forEach(function(k){if(k)k.id=uid();});return c;});copies.forEach(function(c){state.widgets.push(c);});sel={};copies.forEach(function(c){sel[c.id]=true;});selId=copies.slice(-1)[0].id;render();renderProps();commit();}
   // Ausrichten / Verteilen (auf die aktuelle Mehrfachauswahl)
   function selWidgets(){return Object.keys(sel).map(widget).filter(Boolean);}
   function alignSel(kind){
@@ -424,16 +475,45 @@
     }
     if(el.dataset.refsrc){var _ow=widget(el.dataset.refsrc);if(_ow){select(_ow.id);e.preventDefault();return;}} // Laufzeilen-Kachel: referenziertes Original auswählen (kein Drag)
     var w=widget(el.dataset.id);
-    var _rz=e.target.dataset.rz;if(_rz){select(w.id);drag={mode:'rz',dir:_rz,w:w,sx:e.clientX,sy:e.clientY,ox:w.x,oy:w.y,ow:w.w,oh:w.h};e.preventDefault();return;} // Resize von jeder Kante/Ecke
+    // Reset-Knopf im Builder: nur die freie Positionierung der Einzelelemente auf Standard zuruecksetzen
+    if(w&&e.target.closest('[data-posreset]')){w.valDX=w.valDY=w.icoDX=w.icoDY=undefined;render();select(w.id);renderProps();commit();if(typeof toast==='function')toast('Position zurückgesetzt');e.preventDefault();e.stopPropagation();return;}
+    // Alt+Ziehen direkt auf Wert/Icon -> dieses Element frei verschieben (statt des Widgets)
+    if(e.altKey&&typeof POS_SEL!=='undefined'&&POS_SEL[w.type]){
+      var _pm=POS_SEL[w.type],_pk=null,_ptgt=null,_pe;
+      if(_pm.ico&&(_pe=el.querySelector(_pm.ico))&&_pe.contains(e.target)){_pk='ico';_ptgt=_pe;}
+      else if(_pm.val&&(_pe=el.querySelector(_pm.val))&&_pe.contains(e.target)){_pk='val';_ptgt=_pe;}
+      if(_pk){select(w.id);drag={mode:'pos',w:w,pk:_pk,tgt:_ptgt,sx:e.clientX,sy:e.clientY,ox:(_pk==='ico'?(w.icoDX||0):(w.valDX||0)),oy:(_pk==='ico'?(w.icoDY||0):(w.valDY||0))};e.preventDefault();return;}
+    }
+    // Container-Kind? -> Drag skaliert mit der Container-Skalierung, kein Snapping
+    var _kidInfo=(typeof containerOfKid==='function')?containerOfKid(w.id):null;
+    var _kidSc=_kidInfo?containerScreenScale(_kidInfo.cont.id):0;
+    var _rz=e.target.dataset.rz;if(_rz){select(w.id);drag={mode:'rz',dir:_rz,w:w,sx:e.clientX,sy:e.clientY,ox:w.x,oy:w.y,ow:w.w,oh:w.h,kidSc:_kidSc||0,kid:_kidInfo};e.preventDefault();return;} // Resize von jeder Kante/Ecke (auch Container-Kinder – manuell, 1:1)
+    // Fokus-Kohaerenz: beim (nicht-additiven) Anklicken die Auswahl auf denselben Kontext beschraenken.
+    // Ein Top-Level-Element entfernt Container-Kinder aus der Auswahl (und umgekehrt) -> nie bleibt das
+    // zuletzt bearbeitete Container-Kind markiert/mitgezogen, sobald ein anderes Element den Fokus bekommt.
+    var _wc=_kidInfo?_kidInfo.cont.id:null;
+    if(!e.shiftKey){Object.keys(sel).forEach(function(id){if(id===w.id)return;var _oi=(typeof containerOfKid==='function')?containerOfKid(id):null,_oc=_oi?_oi.cont.id:null;if(_wc!==_oc){delete sel[id];}});markSel();}
     if(e.shiftKey){select(w.id,true);}
     else if(!sel[w.id]){select(w.id);}
     else{selId=w.id;renderProps();}
-    drag={mode:'mv',items:Object.keys(sel).map(widget).filter(Boolean).map(function(x){return {w:x,ox:x.x,oy:x.y};}),sx:e.clientX,sy:e.clientY};
+    drag={mode:'mv',items:Object.keys(sel).map(widget).filter(Boolean).filter(function(x){var _xi=(typeof containerOfKid==='function')?containerOfKid(x.id):null,_xc=_xi?_xi.cont.id:null;return _xc===_wc;}).map(function(x){return {w:x,ox:x.x,oy:x.y};}),sx:e.clientX,sy:e.clientY,kidSc:_kidSc||0,kid:_kidInfo};
     e.preventDefault();
   });
   window.addEventListener('mousemove',function(e){
     if(marq){var r=canvas.getBoundingClientRect(),x=(e.clientX-r.left)/zoom,y=(e.clientY-r.top)/zoom,L=Math.min(x,marq.x0),T=Math.min(y,marq.y0),W=Math.abs(x-marq.x0),H=Math.abs(y-marq.y0);marq.el.style.left=L+'px';marq.el.style.top=T+'px';marq.el.style.width=W+'px';marq.el.style.height=H+'px';marq.rect={L:L,T:T,R:L+W,B:T+H};return;}
-    if(!drag)return;var dx=(e.clientX-drag.sx)/zoom,dy=(e.clientY-drag.sy)/zoom;
+    if(!drag)return;var _dsc=drag.kidSc||1;var dx=(e.clientX-drag.sx)/zoom/_dsc,dy=(e.clientY-drag.sy)/zoom/_dsc; // Kind: zusaetzlich durch Container-Scale teilen
+    if(drag.mode==='pos'){var pnx=Math.round(drag.ox+dx),pny=Math.round(drag.oy+dy); // Wert/Icon frei verschieben
+      if(drag.pk==='ico'){drag.w.icoDX=pnx||undefined;drag.w.icoDY=pny||undefined;}else{drag.w.valDX=pnx||undefined;drag.w.valDY=pny||undefined;}
+      if(drag.tgt){drag.tgt.style.position='relative';drag.tgt.style.left=pnx+'px';drag.tgt.style.top=pny+'px';drag.tgt.style.zIndex='2';}
+      var _fx=$('#'+(drag.pk==='ico'?'pPosIcoX':'pPosValX'));if(_fx)_fx.value=pnx;var _fy=$('#'+(drag.pk==='ico'?'pPosIcoY':'pPosValY'));if(_fy)_fy.value=pny;
+      badge(e,(drag.pk==='ico'?'Icon':'Wert')+' '+pnx+' , '+pny);return;}
+    if(drag.mode==='rz'&&drag.kidSc){var kdir=drag.dir||'se',knx=drag.ox,kny=drag.oy,knw=drag.ow,knh=drag.oh; // Container-Kind: skaliert, ohne Snapping
+      if(kdir.indexOf('e')>=0)knw=drag.ow+dx; if(kdir.indexOf('w')>=0)knw=drag.ow-dx;
+      if(kdir.indexOf('s')>=0)knh=drag.oh+dy; if(kdir.indexOf('n')>=0)knh=drag.oh-dy;
+      knw=Math.max(20,knw);knh=Math.max(16,knh);
+      if(kdir.indexOf('w')>=0)knx=drag.ox+drag.ow-knw;
+      if(kdir.indexOf('n')>=0)kny=drag.oy+drag.oh-knh;
+      drag.w.x=Math.round(knx);drag.w.y=Math.round(kny);drag.w.w=Math.round(knw);drag.w.h=Math.round(knh);applyGeom(drag.w);badge(e,Math.round(knw)+' × '+Math.round(knh)+' px');return;}
     if(drag.mode==='rz'){var dir=drag.dir||'se',nx=drag.ox,ny=drag.oy,nw=drag.ow,nh=drag.oh;
       if(dir.indexOf('e')>=0)nw=drag.ow+dx; if(dir.indexOf('w')>=0)nw=drag.ow-dx;
       if(dir.indexOf('s')>=0)nh=drag.oh+dy; if(dir.indexOf('n')>=0)nh=drag.oh-dy;
@@ -443,6 +523,13 @@
       if(dir.indexOf('w')>=0)nx=drag.ox+drag.ow-nw; // rechte Kante fix
       if(dir.indexOf('n')>=0)ny=drag.oy+drag.oh-nh; // untere Kante fix
       drag.w.x=Math.max(0,nx);drag.w.y=Math.max(0,ny);drag.w.w=Math.round(nw);drag.w.h=Math.round(nh);applyGeom(drag.w);badge(e,Math.round(nw)+' × '+Math.round(nh)+' px');return;}
+    if(drag.kidSc){ // Container-Kind verschieben (skaliert, kein Snapping); auf den sichtbaren Body klemmen -> faellt nicht mehr versehentlich heraus, kann ihn aber voll nutzen
+      var _cc=drag.kid&&drag.kid.cont,_bd=_cc?$('.w[data-id="'+_cc.id+'"] [data-role=contbody]',canvas):null,_sc=drag.kidSc||1;
+      var _bw=_bd?(_bd.clientWidth/_sc):1e5,_bh=_bd?(_bd.clientHeight/_sc):1e5;
+      drag.items.forEach(function(it){var _nx=Math.round(it.ox+dx),_ny=Math.round(it.oy+dy);
+        _nx=Math.max(0,Math.min(_nx,Math.max(0,_bw-it.w.w)));_ny=Math.max(0,Math.min(_ny,Math.max(0,_bh-it.w.h)));
+        it.w.x=_nx;it.w.y=_ny;applyGeom(it.w);});
+      badge(e,Math.round(drag.items[0].w.x)+' , '+Math.round(drag.items[0].w.y));return;}
     var g=snapAlign(drag.items,dx,dy,e.altKey);
     drag.items.forEach(function(it){var nx2=Math.max(0,it.ox+g.dx),ny2=Math.max(0,it.oy+g.dy);
       var ow=(typeof chromeOwnerOf==='function')?chromeOwnerOf(it.w.id):null; // in einer Leiste: nicht hinausschieben
@@ -454,6 +541,35 @@
   function badge(e,txt){var b=$('#selbadge');b.textContent=txt;b.style.left=(e.clientX+16)+'px';b.style.top=(e.clientY+16)+'px';b.style.display='block';}
   window.addEventListener('mouseup',function(e){
     $('#selbadge').style.display='none';
+    // Container-Kind losgelassen: ausserhalb des Containers -> auf die Seite loesen, innerhalb -> nur speichern
+    if(drag&&drag.mode==='mv'&&drag.kid&&drag.items&&drag.items.length){
+      var _cr=canvas.getBoundingClientRect(),_cpx=(e.clientX-_cr.left)/zoom,_cpy=(e.clientY-_cr.top)/zoom,_c=drag.kid.cont,_M=32;
+      // Herauslösen erst, wenn deutlich ausserhalb losgelassen (Toleranz _M) -> kein versehentliches Herausfallen
+      var _far=(_cpx<_c.x-_M||_cpx>_c.x+_c.w+_M||_cpy<_c.y-_M||_cpy>_c.y+_c.h+_M);
+      if(_far){var _kid=drag.items[0].w,_co0=(typeof chromeContent==='function')?chromeContent():{x:0,y:0};
+        var _i=(_c.kids||[]).indexOf(_kid);if(_i>=0)_c.kids.splice(_i,1);
+        if(typeof contFitBase==='function')contFitBase(_c); // Fläche an verbleibende Kinder anpassen
+        _kid.x=Math.max(0,Math.round(_cpx-_co0.x-_kid.w/2));_kid.y=Math.max(0,Math.round(_cpy-_co0.y-_kid.h/2));
+        state.widgets.push(_kid);clearGuides();drag=null;selClear();sel[_kid.id]=true;selId=_kid.id;render();renderProps();commit();
+        if(typeof toast==='function')toast('Kind aus Container gelöst');return;}
+      clearGuides();drag=null;render();renderProps();commit();return; // drin bleiben (auf die Fläche geklemmt)
+    }
+    // Seiten-Widget ueber einem Container loslassen -> hineinlegen (Koordinaten in die Design-Flaeche umgerechnet)
+    if(drag&&drag.mode==='mv'&&!drag.kid&&drag.items&&drag.items.length&&typeof containerHitTest==='function'){
+      var _r3=canvas.getBoundingClientRect(),_px3=(e.clientX-_r3.left)/zoom,_py3=(e.clientY-_r3.top)/zoom,_exc={};
+      drag.items.forEach(function(it){_exc[it.w.id]=1;});
+      var _cont=containerHitTest(_px3,_py3,_exc);
+      var _movers=drag.items.map(function(it){return it.w;}).filter(function(x){return x.type!=='container'&&state.widgets.indexOf(x)>=0;});
+      if(_cont&&_movers.length){var _ir=containerInnerRect(_cont.id),_sc=containerScreenScale(_cont.id);
+        _movers.forEach(function(mw){var _wel=$('.w[data-id="'+mw.id+'"]',canvas),_wr=_wel?_wel.getBoundingClientRect():null,_dx=8,_dy=8;
+          if(_wr&&_ir){_dx=Math.round((_wr.left-_ir.left)/(zoom*_sc));_dy=Math.round((_wr.top-_ir.top)/(zoom*_sc));}
+          var _mi=state.widgets.indexOf(mw);if(_mi>=0)state.widgets.splice(_mi,1);
+          mw.x=Math.max(0,_dx);mw.y=Math.max(0,_dy);delete mw.group;delete mw.gmaster;
+          if(!_cont.kids)_cont.kids=[];_cont.kids.push(mw);});
+        if(typeof contFitBase==='function')contFitBase(_cont); // Fläche an neue Kinder anpassen
+        clearGuides();drag=null;selClear();sel[_cont.id]=true;selId=_cont.id;render();renderProps();commit();
+        if(typeof toast==='function')toast(_movers.length+' in Container gelegt');return;}
+    }
     // Ein gezogenes Seiten-Widget ueber einer Leiste loslassen -> dorthin verschieben.
     // Ohne das koennte man Widgets nur aus der Palette in eine Leiste bekommen.
     if(drag&&drag.mode==='mv'&&drag.items&&drag.items.length&&typeof chromeHitTest==='function'){

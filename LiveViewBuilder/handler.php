@@ -198,7 +198,7 @@ if ($api === 'messages') {
         $g = @glob('/var/log/symcon/logfile*.log');
         if ($g) { usort($g, function ($a, $b) { return filemtime($b) - filemtime($a); }); $path = $g[0]; }
     }
-    $max = (int) ($_GET['n'] ?? 60); if ($max < 1) $max = 60; if ($max > 200) $max = 200;
+    $max = (int) ($_GET['n'] ?? 60); if ($max < 1) $max = 60; if ($max > 500) $max = 500;
     // Optionaler Severity-Filter: nur diese Kategorien zählen -> liefert die letzten $max Treffer (zeitunabhängig)
     $sevf = [];
     if (isset($_GET['sev']) && $_GET['sev'] !== '') {
