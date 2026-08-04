@@ -5,6 +5,8 @@
     +row('Lang-Druck → Seite','<select id="pLongNav">'+vopts(w.longNav)+'</select>')
     +row('Popup öffnen','<select id="pPopupTo">'+vopts(w.popupTo)+'</select>')
     +row('Lang-Druck → Popup','<select id="pLongPop">'+vopts(w.longPopup)+'</select>')
+    +row('Hover-Ansicht','<select id="pHoverTo">'+vopts(w.hoverTo)+'</select>')
+    +(w.hoverTo?'<div style="font-size:11px;color:var(--warn);line-height:1.4;margin:-2px 2px 6px">Erscheint als Flyout beim <b>Überfahren mit der Maus</b> (Desktop). Auf Touch-Geräten gibt es kein Hover: dort öffnet ein Tipp den Flyout <b>nur, wenn das Widget keine andere Klick-Aktion hat</b> (sonst gewinnt Seite/Popup/Schalten).</div>':'')
     +row('Popup schließen','<input type="checkbox" id="pClosePop"'+(w.closePopup?' checked':'')+'>')
     +row('Skript ID','<input id="pScriptId" value="'+(w.scriptId||'')+'" placeholder="bei Klick ausführen">')
     +(w.popupTo?listEditor(w,'alias','Alias: Vorlagen-ID → echte Geräte-ID',[{k:'from',ph:'Vorlage'},{k:'to',ph:'echte ID'}]):'');}
@@ -12,6 +14,7 @@
     if($('#pNavToG'))$('#pNavToG').onchange=function(){w.navTo=this.value||undefined;commit();};
     if($('#pLongNav'))$('#pLongNav').onchange=function(){w.longNav=this.value||undefined;commit();};
     if($('#pPopupTo'))$('#pPopupTo').onchange=function(){w.popupTo=this.value||undefined;renderProps();commit();};
+    if($('#pHoverTo'))$('#pHoverTo').onchange=function(){w.hoverTo=this.value||undefined;renderProps();commit();};
     if($('#pLongPop'))$('#pLongPop').onchange=function(){w.longPopup=this.value||undefined;commit();};
     if($('#pClosePop'))$('#pClosePop').onchange=function(){w.closePopup=this.checked||undefined;commit();};
     if($('#pScriptId'))$('#pScriptId').oninput=function(){w.scriptId=parseInt(this.value)||undefined;commit();};
