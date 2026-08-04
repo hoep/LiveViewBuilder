@@ -1373,14 +1373,14 @@
       groesse: [230,90],
       demo: {"varId": 16467, "max": 86400, "label": "Bis Sonnenuntergang"}
     },
-    "vacuum": {
-      titel: "Vacuum",
-      zweck: "Karte fuer Saug- oder Maehroboter: Statustext, Batteriestand und zwei Buttons, die Start und Stop in eine Befehlsvariable schreiben.",
+    "bot": {
+      titel: "Roboter",
+      zweck: "Karte fuer Saug- oder Maehroboter (frueher „Vacuum\"): Statustext, Batteriestand und zwei Buttons, die Start und Stop in eine Befehlsvariable schreiben. Alte Layouts mit Typ vacuum werden automatisch auf bot migriert.",
       funktionen: [
         {name: "Variable", beschreibung: "Statusvariable. Ihr formatierter Wert steht als Statustext neben dem Roboter-Icon."},
         {name: "Batterie", beschreibung: "Zweite Variable (varId2), rechts in der Kopfzeile in Mono-Schrift und gedaempfter Farbe als Batterie-/Ladeanzeige."},
         {name: "Start/Stop", beschreibung: "Dritte Variable (varId3). Der Button Start schreibt 1, Stop schreibt 0. Ohne diese Variable bleiben die Buttons wirkungslos; erst mit ihr wird die Karte als antippbar markiert."},
-        {name: "Roboter-Icon", beschreibung: "Fest das Icon mower in Akzentfarbe, nicht ueber die Icon-Auswahl aenderbar."},
+        {name: "Roboter-Icon", beschreibung: "Standard ist das Icon mower in Akzentfarbe; ueber die gemeinsame Icon-Auswahl aenderbar (z. B. vacuum/vacuumbot fuer Saugroboter)."},
         {name: "Live-Aktualisierung", beschreibung: "Status und Batterie werden einzeln nachgezogen, sobald sich die jeweilige Variable aendert."},
         {name: "Format", beschreibung: "Die gemeinsame Formatwahl steht fuer diesen Typ nicht zur Verfuegung; die Anzeige folgt der Profilformatierung der Variablen. Nachkommastellen sind ebenfalls nicht einstellbar."},
         {name: "Label", beschreibung: "Wird von der Karte selbst nicht gezeichnet - der Kopfbereich zeigt Icon, Status und Batterie. Das Label bleibt fuer Name/Identifikation nutzbar."},

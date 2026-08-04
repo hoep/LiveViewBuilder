@@ -28,7 +28,8 @@
     spark      : {type:'chart', key:'ctype', val:'spark'},
     waterfall  : {type:'chart', key:'ctype', val:'waterfall'},
     // --- Altlast frueherer Versionen ---
-    powerflow  : {type:'flow'}
+    powerflow  : {type:'flow'},
+    vacuum     : {type:'bot'}   // umbenannt: Saug-/Maehroboter -> generischer Roboter
   };
   var MIG_MAXD=12; // Sicherheitsnetz gegen zu tiefe/zyklische Strukturen
 

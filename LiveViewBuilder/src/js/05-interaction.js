@@ -41,7 +41,7 @@
     // jetzt in widgets/cover.js, wo sie die einstellbaren Befehlswerte auswerten kann.
     if(w.type==='media'&&w.varId2){if(e.target.closest('[data-role=mplay]')){var md=_lastVals[w.varId2];var mc=md?(md.v===true||md.v===1||md.v==='1'):false;setVar(w.varId2,mc?0:1);}return;}
     if(w.type==='alarm'&&w.varId){if(e.target.closest('[data-role=aon]'))setVar(w.varId,1);else if(e.target.closest('[data-role=aoff]'))setVar(w.varId,0);return;}
-    if(w.type==='vacuum'&&w.varId3){if(e.target.closest('[data-role=vstart]'))setVar(w.varId3,1);else if(e.target.closest('[data-role=vstop]'))setVar(w.varId3,0);return;}
+    if(w.type==='bot'&&w.varId3){if(e.target.closest('[data-role=vstart]'))setVar(w.varId3,1);else if(e.target.closest('[data-role=vstop]'))setVar(w.varId3,0);return;}
     if(w.type==='select'&&w.varId){var sb=e.target.closest('.hselb');if(sb){setVar(w.varId,sb.getAttribute('data-selval'));$$('.hselb',el).forEach(function(b){b.classList.toggle('on',b===sb);});return;}
       var seg=e.target.closest('.swmseg');if(seg){setVar(w.varId,seg.getAttribute('data-swval'));if(typeof _selMark==='function')_selMark(w,el,seg.getAttribute('data-swval'));}return;}
     if(w.type==='dial'&&w.varId){var dsv=el.querySelector('svg');if(dsv){var rb=dsv.getBoundingClientRect(),ccx=rb.left+rb.width/2,ccy=rb.top+rb.height/2,ang=Math.atan2(e.clientY-ccy,e.clientX-ccx)*180/Math.PI;if(ang<0)ang+=360;var rel=ang-135;if(rel<0)rel+=360;if(rel<=270){var dmn=(w.min!=null?w.min:0),dmx=(w.max!=null?w.max:100),st=w.step||1,dval=dmn+(rel/270)*(dmx-dmn);dval=Math.round(dval/st)*st;setVar(w.varId,dval);}}return;}
