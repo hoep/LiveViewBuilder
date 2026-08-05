@@ -571,6 +571,17 @@ if ($api === 'week') {
     return;
 }
 
+// ---- Rollos/Beschattung (shading-Widget): IPSShadowing-Geräte lesen (frei) ----
+//      Proxy auf das Backend-Skript "LVB_ShadingAPI" (Ident unter #23491). Schreiben laeuft
+//      ueber ?api=setvar (RequestAction auf die IPSShadowing-Steuervariablen).
+if ($api === 'shading') {
+    header('Content-Type: application/json; charset=utf-8');
+    $sid = (int) (@IPS_GetObjectIDByIdent('LVB_ShadingAPI', 23491) ?: 0);
+    if ($sid <= 0 || !IPS_ScriptExists($sid)) { echo json_encode(['ok' => false, 'err' => 'backend']); return; }
+    echo IPS_RunScriptWaitEx($sid, ['op' => (string) ($_GET['op'] ?? 'list'), 'device' => (string) ($_GET['device'] ?? '')]);
+    return;
+}
+
 // ---- Veröffentlichen: einmaliger Reload-Push an alle Run-Clients (bewusst, NICHT an Autosave gekoppelt) ----
 if ($api === 'publish') {
     header('Content-Type: application/json; charset=utf-8');
