@@ -1337,6 +1337,19 @@
       groesse: [260,230],
       demo: {"label":"Büro","deviceId":900701}
     },
+    "shadeprofile": {
+      titel: "Beschattungs-Profil",
+      zweck: "Bearbeitet ein IPSShadowing-Profil (Weather, Tagesbeginn/-ende, Sonne, Temperatur). Jede bedienbare Einstellung des Profils wird automatisch als passendes Element gezeigt - Schalter, Auswahl, Zahl oder Textfeld - und sofort geschrieben.",
+      funktionen: [
+        {name: "Profil waehlen", beschreibung: "Im Panel wird das Profil aus allen IPSShadowing-Profilen gewaehlt, nach Klasse gruppiert (Weather / BgnOfDay / EndOfDay / Sun / Temp)."},
+        {name: "Automatische Elemente", beschreibung: "Boolean -> Schalter, Auswahl-Profil -> Klappliste (Optionen aus dem Variablenprofil), Zahl -> Eingabe, Text -> Textfeld. Es werden nur bedienbare Variablen gezeigt; Status/Name bleiben aussen vor."},
+        {name: "Sofort schreiben", beschreibung: "Jede Aenderung schreibt direkt in die Profilvariable (RequestAction) und liest den Status neu."},
+        {name: "Status", beschreibung: "Zeigt die ProfileInfo-Zeile des Profils (z. B. berechnete Zeit, aktive/inaktive Bedingung)."},
+      ],
+      hinweis: "Ein IPSShadowing-Profil ist GLOBAL - es gilt fuer alle Rollos, die es verwenden. Lesen ueber ?api=shading&op=profile, Schreiben ueber ?api=setvar. Doku-Vorschau rein lokal (Beispielprofil).",
+      groesse: [280,300],
+      demo: {"label":"Tagesbeginn Normal","profileId":900901}
+    },
     "weekedit": {
       titel: "Wochenplan-Editor",
       zweck: "Bearbeitet einen beliebigen Symcon-Wochenplan (Ereignis) direkt im Dashboard: Pool-Filterzeiten, Maehroboter, Zirkulationspumpe usw. Die Werte sind die im Plan definierten Aktionen (mit Name und Farbe); Darstellung als Farbbaender je Wochentag plus Slot-Editor.",
