@@ -43,8 +43,8 @@
   function hfSessWire(w){if($('#hfSessInp'))$('#hfSessInp').onchange=function(){w.session=this.value||undefined;commit();var el=$('.w[data-id="'+w.id+'"]',canvas);if(el){var s=WIDGETS[w.type];var host=el.querySelector('.winner')||el;host.innerHTML=s.render(w);if(s._bind)s._bind(w,el);}hfEmit(w);};}
 
   // ---------- heatrooms (Controller): Raum-Tabs + Titel ----------
-  defWidget('heatrooms',{
-    label:'Heizung · Räume', paletteIcon:'thermostat', size:[720,120],
+  defWidget('rooms',{
+    label:'Räume', paletteIcon:'thermostat', size:[720,120],
     defaults:function(w){w.session='heat';w.rooms=[];},
     render:function(w){var r=hfReady(w);if(r.err)return hfMsg(r.err);if(r.loading)return hfMsg('Heizung lädt …');var s=r.s,day=hpDayObj(s),n=(day.end||[]).length;
       return '<div class="hplan hfbox">'+hpRoomsBar(w,s)
@@ -65,8 +65,8 @@
   // ---------- heatcurve (=Step-Kurve): ziehbare Sollkurve ----------
   function hfCurveInner(w,s){return '<div class="hp-main hfcurve">'+hpCurve(w,s)
     +'<div class="hp-clegend"><span class="hp-cl-l">Sollkurve – Griffe ziehen ändert Grenze &amp; Temperatur</span><span class="hp-cl-r">'+hpNowText(s)+'</span></div></div>';}
-  defWidget('heatcurve',{
-    label:'Heizung · Sollkurve', paletteIcon:'wchart', size:[560,320],
+  defWidget('curve',{
+    label:'Sollkurve', paletteIcon:'wchart', size:[560,320],
     defaults:function(w){w.session='heat';},
     render:function(w){var r=hfReady(w);if(r.err)return hfMsg(r.err);if(r.loading)return hfMsg('Kurve lädt …');return '<div class="hplan hfbox">'+hfCurveInner(w,r.s)+'</div>';},
     mount:function(w){var el=$('.w[data-id="'+w.id+'"]',canvas)||$('.w[data-id="'+w.id+'"]',$('#ovcanvas'));if(!el)return;hfSub(w);hfEnsure(w,el);},
@@ -81,8 +81,8 @@
   });
 
   // ---------- heatweek: Wochenübersicht ----------
-  defWidget('heatweek',{
-    label:'Heizung · Woche', paletteIcon:'wbars', size:[420,240],
+  defWidget('week',{
+    label:'Woche', paletteIcon:'wbars', size:[420,240],
     defaults:function(w){w.session='heat';},
     render:function(w){var r=hfReady(w);if(r.err)return hfMsg(r.err);if(r.loading)return hfMsg('Woche lädt …');return '<div class="hplan hfbox"><div class="hp-main">'+hpWeekView(w,r.s)+'</div></div>';},
     mount:function(w){var el=$('.w[data-id="'+w.id+'"]',canvas)||$('.w[data-id="'+w.id+'"]',$('#ovcanvas'));if(!el)return;hfSub(w);hfEnsure(w,el);},
@@ -92,8 +92,8 @@
   });
 
   // ---------- heatslots: Wochentag-Wahl + Slot-Pillen ----------
-  defWidget('heatslots',{
-    label:'Heizung · Slots', paletteIcon:'wlist', size:[560,150],
+  defWidget('slots',{
+    label:'Slots', paletteIcon:'wlist', size:[560,150],
     defaults:function(w){w.session='heat';},
     render:function(w){var r=hfReady(w);if(r.err)return hfMsg(r.err);if(r.loading)return hfMsg('Slots lädt …');var s=r.s;
       return '<div class="hplan hfbox"><div class="hp-days">'+HP_DAYS.map(function(d,i){return '<button class="hp-day'+(i==s.day?' on':'')+'" data-hpday="'+i+'">'+d+'</button>';}).join('')+'</div>'
@@ -106,8 +106,8 @@
   });
 
   // ---------- heateditor: Präsenz + Slot-Editor + Übertragen + Speichern ----------
-  defWidget('heateditor',{
-    label:'Heizung · Editor', paletteIcon:'wtile', size:[260,470],
+  defWidget('editor',{
+    label:'Editor', paletteIcon:'wtile', size:[260,470],
     defaults:function(w){w.session='heat';},
     render:function(w){var r=hfReady(w);if(r.err)return hfMsg(r.err);if(r.loading)return hfMsg('Editor lädt …');var s=r.s,day=hpDayObj(s);
       var h='<div class="hplan hfbox"><div class="hp-side">'+hpSlotEditor(s,day)+hpPresenceBox(s);
