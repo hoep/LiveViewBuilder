@@ -1372,7 +1372,7 @@
   .rlg-h b{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);font-weight:700}
   .rlg-h span{font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
   .rlg-h hr{flex:1;border:0;border-top:1px solid var(--line-soft)}
-  .rlg-row{display:grid;grid-template-columns:1fr 132px 46px 92px;align-items:center;gap:14px;padding:5px 6px;border-left:2px solid transparent;border-radius:0 6px 6px 0;cursor:pointer}
+  .rlg-row{display:grid;grid-template-columns:1fr 132px 46px 22px 52px 92px;align-items:center;gap:14px;padding:5px 6px;border-left:2px solid transparent;border-radius:0 6px 6px 0;cursor:pointer}
   .rlg-row+.rlg-row{border-top:1px solid var(--line-soft)}
   .rlg-row:hover{background:color-mix(in oklab,var(--text) 4%,transparent)}
   .rlg-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px}
@@ -1383,6 +1383,14 @@
   .rlg-rail:hover .rlg-thumb{background:var(--text)}
   .rlg-pct{text-align:right;font-size:13px;font-variant-numeric:tabular-nums;font-weight:600}
   .rlg-pct u{text-decoration:none;color:var(--faint);font-weight:400;font-size:11px;margin-left:1px}
+  .rlg-temp{text-align:right;font-size:12.5px;font-variant-numeric:tabular-nums;color:var(--muted)}
+  .rlg-temp.est{color:var(--faint);font-style:italic}
+  .rlg-sun{display:flex;align-items:center;justify-content:center;color:var(--faint)}
+  .rlg-sun svg{display:block}
+  .rlg-sun.on{color:#f5a623;filter:drop-shadow(0 0 4px rgba(245,166,35,calc(.15 + .55*var(--inc,0))));opacity:calc(.55 + .45*var(--inc,0))}
+  .rlg-sun.dim{color:var(--faint);opacity:.5}
+  .rlg-sun.off{opacity:0}
+  .rlg-row.is-sel .rlg-sun.on{color:#ffb733}
   .rlg-tog{display:inline-flex;justify-self:end;border:1px solid var(--line-soft);border-radius:20px;padding:2px;background:var(--tile)}
   .rlg-tog b{font-size:10px;font-weight:600;padding:3px 9px;border-radius:16px;color:var(--faint);cursor:pointer;transition:.15s}
   .rlg-tog:not(.man) b.auto{background:var(--accent);color:#04211b}
@@ -1394,6 +1402,46 @@
   .span-prog{display:grid;grid-template-columns:82px 1fr;align-items:center;gap:6px}
   .span-prog span{font-size:11px;color:var(--muted)}
   .span-prog select{border:1px solid var(--line-soft);background:var(--tile);color:var(--text);font:inherit;font-size:12px;padding:4px;border-radius:6px;width:100%}
+  /* Sonnenstands-Panel */
+  .span-sun{margin:10px 0 4px;padding:9px 11px;border:1px solid var(--line-soft);border-radius:10px;background:var(--tile)}
+  .span-sun.is-hit{border-color:color-mix(in oklab,#f5a623 55%,var(--line));background:color-mix(in oklab,#f5a623 9%,var(--tile))}
+  .span-sun-none{color:var(--muted);font-size:12px;font-style:italic}
+  .span-sun-h{display:flex;justify-content:space-between;align-items:baseline;gap:10px;font-size:12.5px;color:var(--text);flex-wrap:wrap}
+  .span-sun-h b{font-weight:700}
+  .span-sun.is-hit .span-sun-h b{color:#e0921a}
+  .span-sun-az{font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
+  .span-sunbar{position:relative;height:16px;margin:8px 0 3px;border-radius:5px;background:var(--surface-2,var(--surface));overflow:hidden}
+  .span-sunbar .sb-day{position:absolute;top:0;bottom:0;background:color-mix(in oklab,var(--info,#4a90d9) 22%,transparent)}
+  .span-sunbar .sb-hit{position:absolute;top:0;bottom:0;background:linear-gradient(180deg,#ffcb52,#f5a623)}
+  .span-sunbar.prof{margin-top:4px}
+  .span-sunbar .sb-prof{position:absolute;top:0;bottom:0;background:linear-gradient(180deg,#3dd6b0,#00cdab)}
+  .span-sun-legend{display:flex;gap:16px;font-size:10.5px;color:var(--muted);margin:7px 0 1px}
+  .span-sun-legend .lg::before{content:"";display:inline-block;width:11px;height:8px;border-radius:2px;margin-right:5px;vertical-align:middle}
+  .span-sun-legend .lg.gold::before{background:linear-gradient(180deg,#ffcb52,#f5a623)}
+  .span-sun-legend .lg.teal::before{background:linear-gradient(180deg,#3dd6b0,#00cdab)}
+  .span-sunbar .sb-now{position:absolute;top:-2px;bottom:-2px;width:2px;background:var(--text);box-shadow:0 0 0 1px var(--surface)}
+  .span-sunbar .sb-tick{position:absolute;top:0;bottom:0;width:1px;background:color-mix(in oklab,var(--text) 12%,transparent)}
+  .span-sun-when{font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
+  .span-sun-when .sw{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:5px;vertical-align:middle}
+  .span-sun-when .sw.gold{background:#f5a623}
+  .span-sun-when .sw.teal{background:var(--accent)}
+  /* Sonnenkompass */
+  .cmp{width:100%;max-width:360px;display:block;margin:8px auto 4px}
+  .cmp-hit{fill:#f5a623;opacity:.15}
+  .cmp-prof{fill:var(--accent);opacity:.20}
+  .span-status{display:flex;gap:8px;margin:8px 0 6px}
+  .span-badge{flex:1;background:var(--tile);border:1px solid var(--line-soft);border-radius:10px;padding:7px 9px;font-size:10.5px;color:var(--muted)}
+  .span-badge b{display:block;font-size:13px;color:var(--text);margin-top:2px;font-variant-numeric:tabular-nums}
+  .span-badge.on-sun{border-color:#f5a623;background:color-mix(in oklab,#f5a623 12%,var(--tile))}
+  .span-badge.on-prof{border-color:var(--accent);background:color-mix(in oklab,var(--accent) 12%,var(--tile))}
+  /* Sonnensimulation */
+  .span-sim{display:flex;align-items:center;gap:10px;margin:10px 0 2px;padding:7px 10px;border:1px solid var(--line-soft);border-radius:10px;background:var(--tile)}
+  .span-sim-play{flex:0 0 auto;width:30px;height:26px;border:1px solid var(--line-soft);border-radius:7px;background:var(--surface);color:var(--text);cursor:pointer;font-size:11px}
+  .span-sim-play.on,.span-sim-play:hover{border-color:var(--accent);color:var(--accent)}
+  .span-sim-range{flex:1;accent-color:var(--accent);cursor:pointer}
+  .span-sim-lbl{flex:0 0 auto;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums;min-width:172px;text-align:right}
+  .span-sim-now{flex:0 0 auto;border:1px solid var(--line-soft);border-radius:16px;background:var(--surface);color:var(--muted);font-size:11px;font-weight:600;padding:4px 12px;cursor:pointer}
+  .span-sim-now.on{background:var(--accent);color:#04211b;border-color:transparent}
 
   /* ===== Stepper (stepper) ===== */
   .stpr{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;gap:5px;padding:8px 10px;box-sizing:border-box}
