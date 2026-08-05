@@ -659,6 +659,12 @@
       if(s.data&&s.data.length&&Array.isArray(s.data[0]))s.data=s.data.map(function(p){return [p[1],p[0]];});
       if(s.yAxisIndex!=null){s.xAxisIndex=s.yAxisIndex;delete s.yAxisIndex;}
       if(s.label&&s.label.position==='top')s.label.position='right';});
+    // Balkendicke deckeln, damit ALLE liegenden Balken in die Widget-Hoehe passen (sonst laufen sie
+    // auf der Zeitachse oben/unten aus dem Widget). Dick = verfuegbare Hoehe / Balkenzahl.
+    var _nbars=0;(opt.series||[]).forEach(function(s){if(s.type==='bar'&&s.data)_nbars+=s.data.length;});
+    if(_nbars>0){var _avail=Math.max(60,(w.h||300)-(opt.grid.top||24)-(opt.grid.bottom||24)-14);
+      var _bw=Math.max(3,Math.floor(_avail/_nbars*0.82));
+      (opt.series||[]).forEach(function(s){if(s.type==='bar')s.barMaxWidth=_bw;});}
     if(opt.dataZoom)opt.dataZoom.forEach(function(z){if(z.type==='inside'){z.yAxisIndex=0;delete z.xAxisIndex;}else{z.orient='vertical';z.yAxisIndex=0;z.width=13;z.right=4;delete z.height;delete z.bottom;z.top=6+_titleSpace(w);}});}
   function setLine(w){
     var ec=_ec[w.id];if(!ec)return;var ct=w.ctype||'area',hs=chartSeries(w),defs=_chSeries(w);
