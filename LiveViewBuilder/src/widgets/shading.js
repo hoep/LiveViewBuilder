@@ -12,7 +12,7 @@
   var SH_ALLPROGS = ['day','night','temp','present','bgn','end','sun'];
 
   function shSt(w){return _shState[w.id]||(_shState[w.id]={loaded:false,data:null,err:''});}
-  function shProgs(w){return (w.progs&&w.progs.length)?w.progs:SH_DEFPROGS;}
+  function shProgs(w){return Array.isArray(w.progs)?w.progs:SH_DEFPROGS;}  // [] = keine Programme (kompakte Karte)
 
   function shDemo(w){return {ok:true,id:900701,name:(w&&w.label)||'Büro',group:'EG',
     position:{vid:900711,value:35}, automatic:{vid:900712,value:true},
@@ -56,24 +56,39 @@
     if(typeof DOKU!=='undefined'&&DOKU){_shDevices=[{id:900701,name:'Büro',group:'EG'},{id:900702,name:'Markise',group:'Markise'}];cb&&cb();return;}
     fetch('?api=shading&op=list',{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){_shDevices=(j&&j.devices)||[];cb&&cb();}).catch(function(){_shDevices=[];cb&&cb();});
   }
+  // Sammel-Cache: EIN ?api=getall speist ALLE Rollo-Karten (statt 17 Einzelabrufe)
+  var _shAll=null, _shAllTs=0, _shAllWait=null;
+  function shLoadAll(force,cb){
+    if(typeof DOKU!=='undefined'&&DOKU){cb&&cb();return;}
+    if(!force&&_shAll&&(Date.now()-_shAllTs<5000)){cb&&cb();return;}
+    if(_shAllWait){_shAllWait.push(cb);return;}                       // parallele Aufrufe bündeln
+    _shAllWait=[cb];
+    fetch('?api=shading&op=getall',{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
+      var m={}; ((j&&j.devices)||[]).forEach(function(d){m[d.id]=d;}); _shAll=m; _shAllTs=Date.now();
+      var q=_shAllWait; _shAllWait=null; q.forEach(function(c){c&&c();});
+    }).catch(function(){ var q=_shAllWait; _shAllWait=null; (q||[]).forEach(function(c){c&&c();}); });
+  }
   function shFetch(w,el){var st=shSt(w);
     if(typeof DOKU!=='undefined'&&DOKU){st.data=shDemo(w);st.loaded=true;st.err='';shRepaint(w,el);return;}
     if(!w.deviceId){st.loaded=true;st.data=null;shRepaint(w,el);return;}
-    fetch('?api=shading&op=get&device='+w.deviceId,{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
-      if(j&&j.ok){st.data=j;st.err='';}else st.err='Rollo nicht lesbar'; st.loaded=true; shRepaint(w,el);
-    }).catch(function(){st.err='Verbindungsfehler';st.loaded=true;shRepaint(w,el);});
+    shLoadAll(false,function(){ st.data=(_shAll&&_shAll[w.deviceId])||null; st.err=st.data?'':'Rollo nicht lesbar'; st.loaded=true; shRepaint(w,el); });
   }
-  function shWrite(w,el,vid,val){ if(!vid)return; setVar(vid,val); shSt(w)._wrote=1;
-    setTimeout(function(){shFetch(w,el);},500);   // kurz nachladen -> Karte zeigt neuen Zustand
+  function shWrite(w,el,vid,val){ if(!vid)return; setVar(vid,val);
+    setTimeout(function(){ shLoadAll(true,function(){ var st=shSt(w); if(_shAll&&_shAll[w.deviceId])st.data=_shAll[w.deviceId]; shRepaint(w,el); }); },500);
   }
-  // Live-Aktualisierung aller sichtbaren Rollo-Karten
+  // Live-Aktualisierung: EIN Sammelabruf, dann alle sichtbaren Karten neu zeichnen
   function shStartTimer(){ if(_shTimer||(typeof DOKU!=='undefined'&&DOKU))return; _shTimer=setInterval(shTick,7000); }
-  function shTick(){ Object.keys(_shState).forEach(function(id){var st=_shState[id];if(!st.loaded)return;
-    var el=document.querySelector('.w[data-id="'+id+'"]');if(!el)return; var w=(typeof widget==='function')?widget(id):null; if(!w||!w.deviceId)return;
-    fetch('?api=shading&op=get&device='+w.deviceId,{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
-      if(j&&j.ok){st.data=j; if(document.activeElement&&el.contains(document.activeElement))return; /* nicht mitten in Bedienung neu zeichnen */ shRepaint(w,el);}
-    }).catch(function(){});
-  }); }
+  function shTick(){
+    var vis=Object.keys(_shState).filter(function(id){return _shState[id].loaded&&document.querySelector('.w[data-id="'+id+'"]');});
+    if(!vis.length)return;
+    shLoadAll(true,function(){
+      vis.forEach(function(id){var st=_shState[id],w=(typeof widget==='function')?widget(id):null;if(!w||!w.deviceId)return;
+        var el=document.querySelector('.w[data-id="'+id+'"]');if(!el)return;
+        if(_shAll&&_shAll[w.deviceId])st.data=_shAll[w.deviceId];
+        if(document.activeElement&&el.contains(document.activeElement))return;   // nicht während Bedienung neu zeichnen
+        shRepaint(w,el);});
+    });
+  }
 
   // ============================ PAINT/BIND ============================
   function shElOf(w,root){return $('.w[data-id="'+w.id+'"]',root||canvas);}
