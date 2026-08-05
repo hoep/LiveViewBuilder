@@ -1322,6 +1322,21 @@
       groesse: [960,600],
       demo: {"label":"Heizplan","rooms":[{"idx":12,"group":"EG"},{"idx":3,"group":"EG"},{"idx":14,"group":"EG"},{"idx":16,"group":"EG"},{"idx":1,"group":"OG"},{"idx":5,"group":"OG"},{"idx":20,"group":"DG"},{"idx":24,"group":"DG"}]}
     },
+    "weekedit": {
+      titel: "Wochenplan-Editor",
+      zweck: "Bearbeitet einen beliebigen Symcon-Wochenplan (Ereignis) direkt im Dashboard: Pool-Filterzeiten, Maehroboter, Zirkulationspumpe usw. Die Werte sind die im Plan definierten Aktionen (mit Name und Farbe); Darstellung als Farbbaender je Wochentag plus Slot-Editor.",
+      funktionen: [
+        {name: "Plan waehlen", beschreibung: "Im Panel wird der Wochenplan (Ereignis) aus einer Liste aller Wochenplaene des Systems gewaehlt. Aktionen und Farben kommen automatisch aus dem Plan."},
+        {name: "Wochentage & Gruppen", beschreibung: "Mo-So anwaehlbar. Symcon fasst Tage zu Gruppen zusammen (z. B. Mo-Fr, Sa+So) - der Editor zeigt, fuer welche Tage die gerade bearbeitete Gruppe gilt; Aenderungen wirken auf alle Tage der Gruppe."},
+        {name: "Wochenuebersicht", beschreibung: "Sieben Farbband-Zeilen, je Tag die Schaltpunkte nach Aktionsfarbe. Ein Tag anklicken oeffnet ihn."},
+        {name: "Slot-Editor", beschreibung: "Je Schaltpunkt: Aktion aus der Liste waehlen, Startzeit in -1h/-10m/+10m/+1h-Schritten. Der erste Punkt liegt fix auf 00:00. \"+ Einfuegen\" / \"- Loeschen\" (mind. 1)."},
+        {name: "jetzt", beschreibung: "Oben rechts die aktuell gueltige Aktion, aus dem Plan zur aktuellen Uhrzeit berechnet."},
+        {name: "Speichern", beschreibung: "Schreibt die Schaltpunkte der Gruppe zurueck in den Symcon-Wochenplan (IPS_SetEventScheduleGroupPoint); ueberzaehlige Punkte werden entfernt."},
+      ],
+      hinweis: "Lesen/Schreiben ueber ?api=week (Symcon-Wochenplan-Ereignisse, EventType 2); Schreiben ist token-geschuetzt. Diese Doku-Vorschau ist rein lokal (Beispiel-Plan, kein Zugriff auf echte Ereignisse, speichert nichts).",
+      groesse: [720,460],
+      demo: {"label":"Wochenplan","eventId":900801}
+    },
     "ticker": {
       titel: "Laufzeile",
       zweck: "Endlos laufendes Meldungsband mit farbigem Titelblock und Zaehler fuer kritische Eintraege. Eine Zeile kann statischer Text mit Variablenwert sein, ein inline angelegtes Widget oder die Referenz auf ein bereits vorhandenes, benanntes Widget.",
