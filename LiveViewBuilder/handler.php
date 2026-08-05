@@ -479,11 +479,12 @@ if ($api === 'heat') {
             'room'     => (string) ($_GET['room'] ?? ''),
             'presence' => (string) ($_GET['presence'] ?? ''),
             'dryrun'   => (string) ($_GET['dryrun'] ?? ''),
+            'root'     => (string) ($_GET['root'] ?? ''),
             'data'     => $data,
         ]);
         return;
     }
-    echo IPS_RunScriptWaitEx($sid, ['op' => $op, 'room' => (string) ($_GET['room'] ?? '')]);
+    echo IPS_RunScriptWaitEx($sid, ['op' => $op, 'room' => (string) ($_GET['room'] ?? ''), 'root' => (string) ($_GET['root'] ?? '')]);
     return;
 }
 

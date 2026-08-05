@@ -1304,7 +1304,9 @@
       titel: "Heizplan",
       zweck: "Voll interaktiver Wochen-Temperaturplan der HomeMatic-Heizungssteuerung: Raum waehlen, Praesenz-Profil (Normal/Erweitert/Abgesenkt) umschalten, Tages-Sollkurve mit ziehbaren Griffen bearbeiten, Wochenuebersicht anspringen, Slots per Stepper feinjustieren, auf andere Tage uebertragen und mit einem Klick ans Thermostat speichern.",
       funktionen: [
-        {name: "Raeume & Gruppen", beschreibung: "Im Panel waehlbar, welche Raeume die Tab-Leiste zeigt und welcher Etage (EG/OG/DG, EG = Firma) sie zugeordnet sind. \"Firma -> EG vorbelegen\" setzt die Firmenraeume in einem Schritt. Die Raumliste kommt live aus der Steuerung (#53700)."},
+        {name: "Datenquelle (Root-ID)", beschreibung: "Wurzel-Objekt der Heizungssteuerung im Panel einstellbar (leer = Standard #53700). Die Raumliste wird live von dieser Wurzel geholt."},
+        {name: "Raeume & Gruppen (Liste)", beschreibung: "Zeilen-Editor: pro Zeile ein darzustellender Raum (Root-Variable) + Etage EG/OG/DG (EG = Firma). \"+ Raum\", Vorlagen \"Firma -> EG\" und \"Alle Raeume\". Die Tab-Leiste gruppiert nach Etage."},
+        {name: "Farben", beschreibung: "Akzentfarbe des Widgets (Skin-Farbe oder eigene) und die Temperatur-Farbskala (5 Stuetzstellen kuehl->warm) sind im Panel anpassbar; \"Farben zuruecksetzen\" stellt die Vorgabe wieder her."},
         {name: "Praesenz-Profil", beschreibung: "Normal / Erweitert / Abgesenkt. Jedes Profil zeigt seinen Wochen-Durchschnitt; das an der Heizung aktive Profil ist mit \"aktiv\" markiert. Umschalten laedt das jeweilige Wochenprofil des Raums."},
         {name: "Sollkurve (ziehbar)", beschreibung: "Der gewaehlte Tag als Stufenkurve ueber 24 h. Plateau senkrecht ziehen aendert die Solltemperatur (Raster 0,5 C, 5-30 C), den runden Grenzgriff waagrecht ziehen verschiebt die Slotgrenze (Raster 10 min, durch die Nachbarslots begrenzt). Die \"jetzt\"-Linie zeigt die aktuelle Uhrzeit."},
         {name: "Ist/Soll live", beschreibung: "Rechts in der Kurvenlegende: aktuelle Uhrzeit, geplanter Soll-Wert und die vom Thermostat gemessene Ist-Temperatur (ACTUAL_TEMPERATURE), alle 60 s aktualisiert. Reine Ventilantriebe ohne Fuehler (HM-CC-TC) liefern kein Ist - dann entfaellt die Anzeige."},
@@ -1316,7 +1318,7 @@
         {name: "Farben / Rahmen / Hintergrund / Typografie", beschreibung: "Gemeinsame Gestaltung. Die Temperatur-Farbskala nutzt die Skin-Akzentfarbe und deckt sich mit den bestehenden Heizungs-Anzeigen."},
         {name: "Interaktion / Sichtbarkeit / Geometrie", beschreibung: "Gemeinsame Sektionen. Hinweis: gesetzte Klick-Aktionen (Seite/Popup/Skript) koennen mit der Bedienung des Editors kollidieren."},
       ],
-      hinweis: "Daten und Speichern laufen ueber ?api=heat (Proxy auf das IPS-Skript HM_Heizung_LVB, das die serialisierten HomeMatic-Wochenprofile liest, prueft und schreibt). Diese Doku-Vorschau ist rein lokal: Sie zeigt Beispieldaten, greift NIE auf die echte Steuerung zu und speichert nichts.",
+      hinweis: "Daten und Speichern laufen ueber ?api=heat (Proxy auf das IPS-Skript HM_Heizung_LVB, das die serialisierten HomeMatic-Wochenprofile liest, prueft und schreibt). Diese Doku-Vorschau ist rein lokal: Sie zeigt Beispieldaten, greift NIE auf die echte Steuerung zu und speichert nichts. Tipp fuer eine eigene Vollbild-Seite: in den Seiten-Einstellungen \"Fit sperren\" aktivieren, dann bleibt die Seite am Handy/Tablet immer im skalierten Querformat statt in eine schmale Spalte umzubrechen.",
       groesse: [960,600],
       demo: {"label":"Heizplan","rooms":[{"idx":12,"group":"EG"},{"idx":3,"group":"EG"},{"idx":14,"group":"EG"},{"idx":16,"group":"EG"},{"idx":1,"group":"OG"},{"idx":5,"group":"OG"},{"idx":20,"group":"DG"},{"idx":24,"group":"DG"}]}
     },
