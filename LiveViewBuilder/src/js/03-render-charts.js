@@ -985,11 +985,13 @@
       // nie eine Basis < EPS, sind also unberuehrt.
       var EPS=1e-3, smallBase=ok&&Math.abs(past)<EPS;
       var pct=!ok?null:(smallBase?(Math.abs(diff)<EPS?0:null):diff/Math.abs(past)*100);
-      var dir=!ok?'flat':(Math.abs(diff)<EPS?'flat':(diff>0?'up':'dn'));
+      var showAbs=(w.cmpMode==='abs')||(pct===null); // Basis ~0 mit echter Aenderung -> Absolutwert statt %
+      var _dnum=!ok?null:(showAbs?diff:pct);          // die TATSAECHLICH gezeigte Groesse (Prozent bzw. Absolut)
+      var _dr=(_dnum==null)?0:Math.round(_dnum*10)/10;// auf Anzeige-Genauigkeit runden -> Pfeil passt zum gezeigten Wert
+      var dir=(_dnum==null)?'flat':(_dr>0?'up':(_dr<0?'dn':'flat')); // Pfeil folgt dem Vorzeichen des gezeigten Werts, nicht dem Absolut-Delta
       var tone=(dir==='flat')?'muted':(((dir==='up')!==!!w.cmpInvert)?'ok':'crit');
       var arrow=dir==='up'?'▲':(dir==='dn'?'▼':'→');
       var counter=(p&&p.type===1);
-      var showAbs=(w.cmpMode==='abs')||(pct===null); // Basis ~0 mit echter Aenderung -> Absolutwert statt %
       var val=!ok?'–':(showAbs?fmtDelta(diff,true)+(w.unit?' '+w.unit:''):fmtDelta(pct,true)+' %');
       var cap='ggü. '+(STAGELBL[cmpStage(w)]||'gestern');
       if(counter&&cur!=null&&w.type==='kpi'){var mv=el.querySelector('[data-role=val]');if(mv)mv.textContent=_cmpFmtMain(w,cur);} // Zähler: Hauptwert = Verbrauch aktuelle Periode (universelle Formatierung)
