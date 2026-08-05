@@ -488,6 +488,89 @@ if ($api === 'heat') {
     return;
 }
 
+// ---- Wochenplan-Editor (weekedit-Widget): generischer Symcon-Wochenplan (EventType 2) ----
+//      op=list|get frei lesen, op=set token-geschützt. Schreibt Schaltpunkte einer Gruppe:
+//      Punkt setzen/hinzufügen via IPS_SetEventScheduleGroupPoint, Überzahl löschen via
+//      ungültiger Zeit (Stunde -1) — laut Symcon-Doku.
+if ($api === 'week') {
+    header('Content-Type: application/json; charset=utf-8');
+    $op = (string) ($_GET['op'] ?? 'list');
+
+    if ($op === 'list') {
+        $out = [];
+        foreach (IPS_GetEventList() as $eid) {
+            $e = IPS_GetEvent($eid);
+            if ((int) ($e['EventType'] ?? -1) !== 2) continue;
+            $out[] = ['id' => $eid, 'name' => IPS_GetName($eid), 'path' => LVB_ObjPath($eid), 'actions' => count($e['ScheduleActions'] ?? [])];
+        }
+        echo json_encode(['ok' => true, 'plans' => $out]);
+        return;
+    }
+
+    if ($op === 'get') {
+        $id = (int) ($_GET['id'] ?? 0);
+        if ($id <= 0 || !IPS_EventExists($id)) { echo json_encode(['ok' => false, 'err' => 'event']); return; }
+        $e = IPS_GetEvent($id);
+        if ((int) ($e['EventType'] ?? -1) !== 2) { echo json_encode(['ok' => false, 'err' => 'notweekplan']); return; }
+        $actions = [];
+        foreach ($e['ScheduleActions'] ?? [] as $a) $actions[] = ['id' => (int) $a['ID'], 'name' => $a['Name'], 'color' => sprintf('#%06X', ((int) $a['Color']) & 0xFFFFFF)];
+        $groups = [];
+        foreach ($e['ScheduleGroups'] ?? [] as $g) {
+            $days = (int) $g['Days']; $dayList = [];
+            for ($d = 0; $d < 7; $d++) if ($days & (1 << $d)) $dayList[] = $d;      // Bit0 = Montag
+            $pts = [];
+            foreach ($g['Points'] ?? [] as $p) $pts[] = ['h' => (int) $p['Start']['Hour'], 'm' => (int) $p['Start']['Minute'], 'actionId' => (int) $p['ActionID']];
+            usort($pts, fn($x, $y) => ($x['h'] * 60 + $x['m']) - ($y['h'] * 60 + $y['m']));
+            $groups[] = ['gid' => (int) $g['ID'], 'days' => $days, 'dayList' => $dayList, 'points' => $pts];
+        }
+        // aktuelle Aktion "jetzt" aus dem Plan selbst berechnen (Event ist keine Variable)
+        $dow = (int) date('N') - 1; $nowMin = (int) date('G') * 60 + (int) date('i'); $nowAct = null;
+        foreach ($e['ScheduleGroups'] ?? [] as $g) {
+            if (!((int) $g['Days'] & (1 << $dow))) continue; $best = null;
+            foreach ($g['Points'] ?? [] as $p) { $pm = $p['Start']['Hour'] * 60 + $p['Start']['Minute']; if ($pm <= $nowMin && ($best === null || $pm > $best)) { $best = $pm; $nowAct = (int) $p['ActionID']; } }
+        }
+        echo json_encode(['ok' => true, 'id' => $id, 'name' => IPS_GetName($id), 'active' => (bool) $e['EventActive'], 'actions' => $actions, 'groups' => $groups, 'now' => $nowAct]);
+        return;
+    }
+
+    if ($op === 'set') {
+        if (!hash_equals($TOKEN, (string) ($_GET['key'] ?? ''))) { http_response_code(403); echo json_encode(['ok' => false, 'err' => 'forbidden']); return; }
+        $id = (int) ($_GET['id'] ?? 0); $gid = (int) ($_GET['group'] ?? 0); $dry = ((string) ($_GET['dryrun'] ?? '') === '1');
+        if ($id <= 0 || !IPS_EventExists($id)) { echo json_encode(['ok' => false, 'err' => 'event']); return; }
+        $e = IPS_GetEvent($id);
+        if ((int) ($e['EventType'] ?? -1) !== 2) { echo json_encode(['ok' => false, 'err' => 'notweekplan']); return; }
+        $body = (string) ($_POST['data'] ?? ''); if ($body === '') $body = (string) file_get_contents('php://input');
+        $pts = json_decode($body, true);
+        if (!is_array($pts) || !count($pts)) { echo json_encode(['ok' => false, 'err' => 'data']); return; }
+        $validActs = array_map(fn($a) => (int) $a['ID'], $e['ScheduleActions'] ?? []);
+        $norm = [];
+        foreach ($pts as $p) {
+            $h = (int) ($p['h'] ?? -1); $m = (int) ($p['m'] ?? -1); $a = (int) ($p['actionId'] ?? -1);
+            if ($h < 0 || $h > 23 || $m < 0 || $m > 59) { echo json_encode(['ok' => false, 'err' => 'time']); return; }
+            if (!in_array($a, $validActs, true)) { echo json_encode(['ok' => false, 'err' => 'action', 'a' => $a]); return; }
+            $norm[] = ['min' => $h * 60 + $m, 'h' => $h, 'm' => $m, 'a' => $a];
+        }
+        usort($norm, fn($x, $y) => $x['min'] - $y['min']);
+        for ($i = 0; $i < count($norm); $i++) {
+            if ($i === 0 && $norm[0]['min'] !== 0) { echo json_encode(['ok' => false, 'err' => 'first0']); return; }   // erster Punkt muss 00:00 sein
+            if ($i > 0 && $norm[$i]['min'] <= $norm[$i - 1]['min']) { echo json_encode(['ok' => false, 'err' => 'order']); return; }
+        }
+        $curCount = 0; $groupExists = false;
+        foreach ($e['ScheduleGroups'] ?? [] as $g) if ((int) $g['ID'] === $gid) { $curCount = count($g['Points'] ?? []); $groupExists = true; }
+        if (!$groupExists) { echo json_encode(['ok' => false, 'err' => 'group']); return; }
+        if (!$dry) {
+            $n = count($norm);
+            for ($i = 0; $i < $n; $i++) IPS_SetEventScheduleGroupPoint($id, $gid, $i, $norm[$i]['h'], $norm[$i]['m'], 0, $norm[$i]['a']);
+            for ($i = $n; $i < $curCount; $i++) IPS_SetEventScheduleGroupPoint($id, $gid, $i, -1, 0, 0, 0);   // Überzahl löschen (ungültige Zeit)
+        }
+        echo json_encode(['ok' => true, 'dry' => $dry, 'group' => $gid, 'points' => count($norm), 'removed' => max(0, $curCount - count($norm))]);
+        return;
+    }
+
+    echo json_encode(['ok' => false, 'err' => 'op']);
+    return;
+}
+
 // ---- Veröffentlichen: einmaliger Reload-Push an alle Run-Clients (bewusst, NICHT an Autosave gekoppelt) ----
 if ($api === 'publish') {
     header('Content-Type: application/json; charset=utf-8');
