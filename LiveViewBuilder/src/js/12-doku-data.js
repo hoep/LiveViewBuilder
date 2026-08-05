@@ -1322,6 +1322,21 @@
       groesse: [960,600],
       demo: {"label":"Heizplan","rooms":[{"idx":12,"group":"EG"},{"idx":3,"group":"EG"},{"idx":14,"group":"EG"},{"idx":16,"group":"EG"},{"idx":1,"group":"OG"},{"idx":5,"group":"OG"},{"idx":20,"group":"DG"},{"idx":24,"group":"DG"}]}
     },
+    "shading": {
+      titel: "Beschattung / Rollo",
+      zweck: "Steuert ein IPSShadowing-Rollo als kompakte Karte: aktuelle Position (Jalousie-Visual + Slider und Auf/Halb/Zu), Automatik-Schalter, die Programm-/Profil-Auswahlen (Tag/Nacht/Sonne …) und der Live-Status. Ersetzt die unuebersichtliche Einstell-Matrix durch eine Karte je Rollo.",
+      funktionen: [
+        {name: "Geraet", beschreibung: "Im Panel wird das Rollo aus der Liste aller IPSShadowing-Geraete gewaehlt (mit Etage EG/OG/Markise). Label leer = Geraete-Name."},
+        {name: "Position", beschreibung: "Jalousie-Visual + Prozentwert (geschlossen). Slider und die Presets Auf/Halb/Zu schreiben die Position direkt (RequestAction) - manuelle Uebersteuerung."},
+        {name: "Automatik", beschreibung: "Schaltet die IPSShadowing-Automatik des Geraets an/aus."},
+        {name: "Programme", beschreibung: "Auswaehlbar, welche Programm-/Profil-Selektoren die Karte zeigt (Tag, Nacht, Temperatur, Praesenz, Tagesbeginn, Tagesende, Sonne). Die Optionen kommen aus den Variablenprofilen; eine Auswahl schreibt sofort."},
+        {name: "Status", beschreibung: "Zeigt die IPSShadowing-Statuszeile (ProfileInfo), z. B. aktives Programm, Tagesfenster, Innen-/Aussentemperatur."},
+        {name: "Live", beschreibung: "Position und Status werden automatisch (alle 7 s) aktualisiert; waehrend der Bedienung wird nicht dazwischen neu gezeichnet."},
+      ],
+      hinweis: "Lesen ueber ?api=shading (Backend LVB_ShadingAPI, IPSShadowing-Geraete), Schreiben ueber ?api=setvar (RequestAction). Diese Doku-Vorschau ist rein lokal (Beispielrollo, kein Zugriff auf echte Geraete).",
+      groesse: [260,230],
+      demo: {"label":"Büro","deviceId":900701}
+    },
     "weekedit": {
       titel: "Wochenplan-Editor",
       zweck: "Bearbeitet einen beliebigen Symcon-Wochenplan (Ereignis) direkt im Dashboard: Pool-Filterzeiten, Maehroboter, Zirkulationspumpe usw. Die Werte sind die im Plan definierten Aktionen (mit Name und Farbe); Darstellung als Farbbaender je Wochentag plus Slot-Editor.",
