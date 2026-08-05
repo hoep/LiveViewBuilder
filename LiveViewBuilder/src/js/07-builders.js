@@ -38,6 +38,7 @@
       +'<label class="skrow2"><span>Mobil-Schwelle (px Breite)</span><input id="stMobW" type="number" min="320" value="'+(c.mobileW||640)+'"></label>'
       +'<label class="skrow2"><span>Mobil-Startseite</span><select id="stMobHome"><option value="">(automatisch)</option>'+Object.keys(store.views||{}).map(function(n){return '<option'+(store.homeMobile===n?' selected':'')+'>'+esc(n)+'</option>';}).join('')+'</select></label>'
       +'<label class="skrow2"><span>Mobil-Ansicht für „'+esc(store.current||'')+'"</span><select id="stMobView"><option value="">(keine)</option>'+Object.keys(store.views||{}).map(function(n){return '<option'+((state.page&&state.page.mobileView)===n?' selected':'')+'>'+esc(n)+'</option>';}).join('')+'</select></label>'
+      +'<label class="skrow2" style="flex-direction:row;align-items:center;gap:8px"><input type="checkbox" id="stFitLock"'+((state.page&&state.page.fitLock)?' checked':'')+'><span>Fit sperren für „'+esc(store.current||'')+'" (immer Querformat, kein Mobil-Reflow)</span></label>'
       +'<div class="pgh">Live-Modus</div>'
       +'<label class="skrow2" style="flex-direction:row;align-items:center;gap:8px"><input type="checkbox" id="stHideNav"'+(c.hideRunNav?' checked':'')+'><span>Seitenumschalter (Hamburger) ausblenden</span></label>'
       +'<label class="skrow2" style="flex-direction:row;align-items:center;gap:8px"><input type="checkbox" id="stGlow"'+(c.wglow?' checked':'')+'><span>Widget-Glow (leichte Akzentfarbe)</span></label>'
@@ -65,6 +66,7 @@
     if($('#stMobW'))$('#stMobW').oninput=function(){bcfg().mobileW=Math.max(320,parseInt(this.value)||640);commit();};
     if($('#stMobHome'))$('#stMobHome').onchange=function(){store.homeMobile=this.value||undefined;commit();};
     if($('#stMobView'))$('#stMobView').onchange=function(){if(!state.page)return;if(this.value)state.page.mobileView=this.value;else delete state.page.mobileView;commit();};
+    if($('#stFitLock'))$('#stFitLock').onchange=function(){if(!state.page)return;if(this.checked)state.page.fitLock=true;else delete state.page.fitLock;commit();if(typeof fitCanvas==='function')fitCanvas();};
     $('#stSkin').onchange=function(){store.skin=this.value;applySkin();buildSkins();commit();};
   }
   // Icon-Bibliothek

@@ -11,8 +11,9 @@
   //  wird ausschliesslich mit eingebetteten Demodaten gearbeitet (nie Netz, nie speichern).
 
   var _hpState = {};                         // w.id -> Editor-Zustand
-  var _hpRooms = null;                       // Raumliste (einmal via ?api=heat&op=list)
-  var _hpRoomsWait = [];                     // wartende Repaints bis Liste da
+  var _hpRooms = null;                       // Raumliste (via ?api=heat&op=list)
+  var _hpRoomsRoot = null;                   // Root-ID, für die _hpRooms geladen wurde
+  function hpRootParam(w){return (w&&w.rootId)?('&root='+encodeURIComponent(w.rootId)):'';}
   var HP_PRES = ['Normal','Erweitert','Abgesenkt'];
   var HP_DAYS = ['Mo','Di','Mi','Do','Fr','Sa','So'];
   var HP_DAYL = ['Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag','Sonntag'];
@@ -23,17 +24,17 @@
 
   // Temperatur -> Farbe (kühl grün .. warm orange, blau darunter, rot darüber) — deckt sich
   // mit der bestehenden Heizungs-Anzeige und enthält die Skin-Akzentfarbe (#00cdab).
+  // Farbskala über 5 Stützstellen; im Panel je Farbe anpassbar (w.tcolors).
+  var HP_TSTOPS=[14,16,19,21,23];
+  var HP_TDEF=['#1f8efa','#00cdab','#ffc107','#ff9632','#ee423d'];
+  var _hpStops=HP_TSTOPS.map(function(t,i){return {t:t,c:HP_TDEF[i]};});
   function hpMix(a,b,t){t=Math.max(0,Math.min(1,t));function h(x){return [parseInt(x.substr(1,2),16),parseInt(x.substr(3,2),16),parseInt(x.substr(5,2),16)];}
     var A=h(a),B=h(b),r=Math.round(A[0]+(B[0]-A[0])*t),g=Math.round(A[1]+(B[1]-A[1])*t),bl=Math.round(A[2]+(B[2]-A[2])*t);
     return '#'+((1<<24)+(r<<16)+(g<<8)+bl).toString(16).slice(1);}
-  function hpTempColor(t){
-    if(t<=14) return '#1f8efa';
-    if(t<=16) return hpMix('#1f8efa','#00cdab',(t-14)/2);   // 14..16 blau->grün
-    if(t<=19) return hpMix('#00cdab','#ffc107',(t-16)/3);   // 16..19 grün->gelb
-    if(t<=21) return hpMix('#ffc107','#ff9632',(t-19)/2);   // 19..21 gelb->orange
-    if(t<=23) return hpMix('#ff9632','#ee423d',(t-21)/2);   // 21..23 orange->rot
-    return '#ee423d';
-  }
+  function hpColors(w){var c=(w&&w.tcolors&&w.tcolors.length===5)?w.tcolors:HP_TDEF;return HP_TSTOPS.map(function(t,i){return {t:t,c:(/^#[0-9a-fA-F]{6}$/.test(c[i])?c[i]:HP_TDEF[i])};});}
+  function hpTempColor(t){var s=_hpStops;if(t<=s[0].t)return s[0].c;
+    for(var i=1;i<s.length;i++){if(t<=s[i].t)return hpMix(s[i-1].c,s[i].c,(t-s[i-1].t)/(s[i].t-s[i-1].t));}
+    return s[s.length-1].c;}
   function hpBucket(t){return t<=15?'kalt':t<=17?'Absenkung':t<=19?'normal':t<=21?'Komfort':'heiß';}
 
   function hpSt(w){return _hpState[w.id]||(_hpState[w.id]={loaded:false,roomIdx:0,presence:0,day:0,slot:1,prof:null,active:-1,type:'',name:'',dirty:false,err:''});}
@@ -76,13 +77,16 @@
   // ============================ RENDER ============================
   function hpRender(w){
     var st=hpSt(w);
+    _hpStops=hpColors(w);                                   // Temperatur-Farbskala (evtl. angepasst)
+    var acc=w.accent?_skinColor(w.accent):'';               // Akzent-Override (setzt --accent lokal)
+    var accStyle=acc?(' style="--accent:'+acc+'"'):'';
     if(!st.loaded){
-      return '<div class="hplan hp-loading"><div class="hp-spin">Heizplan lädt …</div></div>';
+      return '<div class="hplan hp-loading"'+accStyle+'><div class="hp-spin">Heizplan lädt …</div></div>';
     }
-    if(st.err){ return '<div class="hplan hp-loading"><div class="hp-spin">'+esc(st.err)+'</div></div>'; }
+    if(st.err){ return '<div class="hplan hp-loading"'+accStyle+'><div class="hp-spin">'+esc(st.err)+'</div></div>'; }
     var day=hpDayObj(st), n=(day.end||[]).length;
     if(st.slot>n)st.slot=n; if(st.slot<1)st.slot=1;
-    var h='<div class="hplan">';
+    var h='<div class="hplan"'+accStyle+'>';
 
     // ---- Kopf: Räume + Titel ----
     h+='<div class="hp-head">';
@@ -298,24 +302,26 @@
   }
   function hpTakeOver(w,el,idx,pres,cb){
     if(typeof DOKU!=='undefined'&&DOKU){ hpApplyWeek(hpSt(w),hpDemo(),pres); cb&&cb(); return; }
-    fetch('?api=heat&op=get&room='+idx,{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
+    fetch('?api=heat&op=get&room='+idx+hpRootParam(w),{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
       if(j&&j.ok){ if(!hpApplyWeek(hpSt(w),j.profiles,pres))toast('Quelle leer'); } else toast('Quelle nicht lesbar');
       cb&&cb();
     }).catch(function(){toast('Übernehmen: Verbindungsfehler');cb&&cb();});
   }
 
   // ============================ NETZ ============================
-  function hpLoadRooms(cb){
-    if(_hpRooms){cb&&cb();return;}
-    if(typeof DOKU!=='undefined'&&DOKU){_hpRooms=hpDemoRooms();cb&&cb();return;}
-    fetch('?api=heat&op=list',{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
-      _hpRooms=(j&&j.rooms)||[]; cb&&cb();
-    }).catch(function(){_hpRooms=[];cb&&cb();});
+  function hpLoadRooms(w,cb){
+    var root=(w&&w.rootId)||0;
+    if(_hpRooms&&_hpRoomsRoot===root){cb&&cb();return;}
+    if(typeof DOKU!=='undefined'&&DOKU){_hpRooms=hpDemoRooms();_hpRoomsRoot=root;cb&&cb();return;}
+    fetch('?api=heat&op=list'+hpRootParam(w),{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
+      _hpRooms=(j&&j.rooms)||[]; _hpRoomsRoot=root; cb&&cb();
+    }).catch(function(){_hpRooms=[];_hpRoomsRoot=root;cb&&cb();});
   }
   function hpLoadRoom(w,el,idx,cb){
     var st=hpSt(w);
+    st.root=(w.rootId||0);
     if(typeof DOKU!=='undefined'&&DOKU){ st.prof=hpDemo(); st.roomIdx=idx||12; st.name=hpRoomName(st.roomIdx); st.type=hpRoomType(st.roomIdx); st.active=1; st.ist=21.4; st.sollDev=20; st.hum=48; st.loaded=true; st.dirty=false; cb&&cb(); return; }
-    fetch('?api=heat&op=get&room='+idx,{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
+    fetch('?api=heat&op=get&room='+idx+hpRootParam(w),{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
       if(!j||!j.ok){st.err='Raum nicht lesbar';st.loaded=true;cb&&cb();return;}
       st.prof=j.profiles; st.roomIdx=j.room; st.name=j.name; st.type=j.type; st.active=(j.activePresence==null?-1:j.activePresence);
       st.ist=(j.ist==null?null:+j.ist); st.sollDev=(j.sollDev==null?null:+j.sollDev); st.hum=(j.hum==null?null:+j.hum);
@@ -329,7 +335,7 @@
   function hpLiveTick(){
     Object.keys(_hpState).forEach(function(id){ var st=_hpState[id]; if(!st.loaded||st.dragging||!st.roomIdx)return;
       var el=document.querySelector('.w[data-id="'+id+'"]'); if(!el)return;
-      fetch('?api=heat&op=live&room='+st.roomIdx,{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
+      fetch('?api=heat&op=live&room='+st.roomIdx+(st.root?('&root='+encodeURIComponent(st.root)):''),{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
         if(!j||!j.ok)return; st.ist=(j.ist==null?null:+j.ist); st.sollDev=(j.sollDev==null?null:+j.sollDev); st.hum=(j.hum==null?null:+j.hum);
         var cl=el.querySelector('.hp-cl-r'); if(cl)cl.innerHTML=hpNowText(st);
       }).catch(function(){});
@@ -341,7 +347,7 @@
     var week=hpWeek(st).map(function(d){return {end:d.end.slice(),val:d.val.map(Number)};});
     if(typeof DOKU!=='undefined'&&DOKU){ st.dirty=false; hpRepaint(w,el); toast('Demo: gespeichert (nur Anzeige)'); return; }
     var btn=$('[data-hpsave]',el); if(btn){btn.disabled=true;btn.textContent='speichert …';}
-    fetch('?api=heat&op=save&room='+st.roomIdx+'&presence='+st.presence+'&key='+encodeURIComponent(TOKEN),
+    fetch('?api=heat&op=save&room='+st.roomIdx+'&presence='+st.presence+hpRootParam(w)+'&key='+encodeURIComponent(TOKEN),
       {method:'POST',cache:'no-store',headers:{'Content-Type':'text/plain'},body:JSON.stringify(week)})
       .then(function(r){return r.json();}).then(function(j){
         if(j&&j.ok){ st.dirty=false; toast(j.wroteDevice?'Gespeichert & ans Thermostat übertragen':'Gespeichert'); hpRepaint(w,el); }
@@ -427,7 +433,7 @@
     render:function(w){return hpRender(w);},
     mount:function(w){var el=hpElOf(w); if(!el)el=hpElOf(w,$('#ovcanvas')); if(!el)return;
       var st=hpSt(w); hpStartLiveTimer();
-      if(!st.loaded){ hpLoadRooms(function(){ var rooms=hpCfgRooms(w); var first=rooms.length?rooms[0].idx:((_hpRooms&&_hpRooms[0])?_hpRooms[0].idx:0);
+      if(!st.loaded){ hpLoadRooms(w,function(){ var rooms=hpCfgRooms(w); var first=rooms.length?rooms[0].idx:((_hpRooms&&_hpRooms[0])?_hpRooms[0].idx:0);
         if(!st.roomIdx)st.roomIdx=first; hpLoadRoom(w,el,st.roomIdx,function(){hpRepaint(w,el);}); }); }
       else { hpBind(w,el); }
     },
@@ -435,36 +441,50 @@
     wire:function(w){ hpPropsWire(w); }
   });
 
-  // ---------- Props: Raum-Auswahl + Gruppen ----------
+  // ---------- Props: Datenquelle · Räume (Root-Liste) · Farben ----------
+  var HP_FIRMA=['Bad Firma','Buero','Gang Firma','Hauseingang','Kueche Firma','Verpackung','WC Firma','Werkstatt'];
   function hpProps(w){
-    var h='<div class="pgh">Räume &amp; Gruppen (EG/OG/DG)</div>';
-    h+='<div style="font-size:11px;color:var(--muted);margin:-2px 2px 6px">Räume für die Tab-Leiste wählen und einer Etage zuordnen. EG = Firma.</div>';
-    if(!_hpRooms){ hpLoadRooms(function(){ if(typeof renderProps==='function')renderProps(); }); return h+'<div style="color:var(--muted);font-size:12px;padding:4px 2px">Raumliste lädt …</div>'; }
-    var cfg={}; (w.rooms||[]).forEach(function(r){cfg[r.idx]=r.group||'';});
+    var h='<div class="pgh">Datenquelle</div>';
+    h+=row('Steuerung (Root-ID)','<input id="hpRoot" type="number" value="'+(w.rootId||'')+'" placeholder="53700" style="width:110px">');
+    h+='<div style="font-size:11px;color:var(--muted);margin:-2px 2px 6px">Wurzel-Objekt der Heizungssteuerung. Leer = Standard (#53700).</div>';
+    h+='<div class="pgh">Räume (Root-Variablen) &amp; Etage</div>';
+    h+='<div style="font-size:11px;color:var(--muted);margin:-2px 2px 6px">Zeile = darzustellender Raum + Etage EG/OG/DG (EG = Firma). Reihenfolge = Anzeige.</div>';
+    if(!_hpRooms||_hpRoomsRoot!==(w.rootId||0)){ hpLoadRooms(w,function(){ if(typeof renderProps==='function')renderProps(); });
+      return h+'<div style="color:var(--muted);font-size:12px;padding:4px 2px">Raumliste lädt …</div>'; }
+    var rooms=(w.rooms||[]);
     h+='<div class="hp-cfglist">';
-    (_hpRooms||[]).forEach(function(r){var on=(cfg[r.idx]!==undefined),grp=cfg[r.idx]||'';
-      h+='<div class="hp-cfgrow"><label class="hp-cfgname"><input type="checkbox" data-hpc="'+r.idx+'"'+(on?' checked':'')+'> '+esc(r.name)+'</label>'
-        +'<span class="hp-cfggrp">'+HP_GROUPS.map(function(g){return '<button type="button" class="hp-cfgg'+(grp==g?' on':'')+'" data-hpg="'+r.idx+'" data-g="'+g+'"'+(on?'':' disabled')+'>'+g+'</button>';}).join('')+'</span></div>';
+    rooms.forEach(function(r,i){
+      h+='<div class="hp-cfgrow2">'
+        +'<select class="hp-rsel" data-hprsel="'+i+'">'+(_hpRooms||[]).map(function(o){return '<option value="'+o.idx+'"'+(o.idx==r.idx?' selected':'')+'>'+esc(o.name)+'</option>';}).join('')+'</select>'
+        +'<span class="hp-cfggrp">'+HP_GROUPS.map(function(g){return '<button type="button" class="hp-cfgg'+((r.group||'')==g?' on':'')+'" data-hprgrp="'+i+'" data-g="'+g+'">'+g+'</button>';}).join('')+'</span>'
+        +'<button type="button" class="hp-rdel" data-hprdel="'+i+'" title="entfernen">×</button></div>';
     });
+    if(!rooms.length)h+='<div style="color:var(--faint);font-size:12px;padding:4px 2px">Noch keine Räume – „+ Raum" oder eine Vorlage wählen.</div>';
     h+='</div>';
-    h+='<div style="margin-top:8px"><button type="button" class="hp-cfgquick" data-hpquick="firma">Firma → EG vorbelegen</button></div>';
+    h+='<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">'
+      +'<button type="button" class="hp-cfgquick" data-hpradd="1">+ Raum</button>'
+      +'<button type="button" class="hp-cfgquick" data-hpquick="firma">Firma → EG</button>'
+      +'<button type="button" class="hp-cfgquick" data-hpquick="all">Alle Räume</button></div>';
+    // Farben
+    h+='<div class="pgh">Farben</div>';
+    h+=row('Akzentfarbe',skinSel(w.accent||'','id="hpAcc"'));
+    var cols=hpColors(w);
+    h+='<div style="font-size:11px;color:var(--muted);margin:5px 2px 3px">Temperatur-Skala (kühl → warm)</div>';
+    h+='<div class="hp-tcols">'+cols.map(function(s,i){return '<label class="hp-tcol"><input type="color" data-hptc="'+i+'" value="'+s.c+'"><span>'+s.t+'°</span></label>';}).join('')+'</div>';
+    h+='<div style="margin-top:6px"><button type="button" class="hp-cfgquick" data-hptcreset="1">Farben zurücksetzen</button></div>';
     return h;
   }
-  function hpCfgSet(w){ // schreibt w.rooms aus DOM
-    var arr=[]; $$('#props [data-hpc]').forEach(function(c){ if(c.checked){var idx=+c.getAttribute('data-hpc');
-      var g=''; var gb=$('#props [data-hpg="'+idx+'"].on'); if(gb)g=gb.getAttribute('data-g');
-      arr.push({idx:idx,group:g});}});
-    w.rooms=arr;
-  }
   function hpPropsWire(w){
-    $$('#props [data-hpc]').forEach(function(c){c.onchange=function(){hpCfgSet(w);renderProps();commit();
-      var el=hpElOf(w); if(el){var st=hpSt(w);st.loaded=false;hpRepaint(w,el);var d=WIDGETS.heatplan;d.mount(w);} };});
-    $$('#props [data-hpg]').forEach(function(b){b.onclick=function(){var idx=b.getAttribute('data-hpg');
-      $$('#props [data-hpg="'+idx+'"]').forEach(function(x){x.classList.remove('on');}); b.classList.add('on');
-      hpCfgSet(w);renderProps();commit(); var el=hpElOf(w); if(el)hpRepaint(w,el);};});
-    var q=$('#props [data-hpquick]'); if(q)q.onclick=function(){
-      var firma=['Bad Firma','Buero','Gang Firma','Hauseingang','Kueche Firma','Verpackung','WC Firma','Werkstatt'];
-      var arr=[]; (_hpRooms||[]).forEach(function(r){ if(firma.indexOf(r.name)>=0)arr.push({idx:r.idx,group:'EG'}); });
-      w.rooms=arr; renderProps(); commit(); var el=hpElOf(w); if(el){var st=hpSt(w);st.loaded=false;st.roomIdx=0;hpRepaint(w,el);WIDGETS.heatplan.mount(w);}
-    };
+    function reload(){var el=hpElOf(w); if(el){var st=hpSt(w);st.loaded=false;st.roomIdx=0;hpRepaint(w,el);WIDGETS.heatplan.mount(w);}}
+    function repaintOnly(){var el=hpElOf(w); if(el)hpRepaint(w,el);}
+    if($('#hpRoot'))$('#hpRoot').onchange=function(){var v=parseInt(this.value)||0;w.rootId=v||undefined;_hpRooms=null;_hpRoomsRoot=null;renderProps();commit();reload();};
+    $$('#props [data-hprsel]').forEach(function(s){s.onchange=function(){var i=+s.getAttribute('data-hprsel');if(!w.rooms||!w.rooms[i])return;w.rooms[i].idx=+s.value;renderProps();commit();reload();};});
+    $$('#props [data-hprgrp]').forEach(function(b){b.onclick=function(){var i=+b.getAttribute('data-hprgrp');if(!w.rooms||!w.rooms[i])return;w.rooms[i].group=b.getAttribute('data-g');renderProps();commit();repaintOnly();};});
+    $$('#props [data-hprdel]').forEach(function(b){b.onclick=function(){var i=+b.getAttribute('data-hprdel');if(!w.rooms)return;w.rooms.splice(i,1);renderProps();commit();reload();};});
+    var add=$('#props [data-hpradd]');if(add)add.onclick=function(){if(!w.rooms)w.rooms=[];var used={};w.rooms.forEach(function(r){used[r.idx]=1;});var cand=(_hpRooms||[]).filter(function(o){return !used[o.idx];})[0]||(_hpRooms||[])[0];if(cand)w.rooms.push({idx:cand.idx,group:'EG'});renderProps();commit();reload();};
+    var qf=$('#props [data-hpquick="firma"]');if(qf)qf.onclick=function(){w.rooms=(_hpRooms||[]).filter(function(o){return HP_FIRMA.indexOf(o.name)>=0;}).map(function(o){return {idx:o.idx,group:'EG'};});renderProps();commit();reload();};
+    var qa=$('#props [data-hpquick="all"]');if(qa)qa.onclick=function(){var prev={};(w.rooms||[]).forEach(function(r){prev[r.idx]=r.group||'';});w.rooms=(_hpRooms||[]).map(function(o){return {idx:o.idx,group:prev[o.idx]||''};});renderProps();commit();reload();};
+    if($('#hpAcc'))$('#hpAcc').onchange=function(){w.accent=this.value||undefined;commit();repaintOnly();};
+    $$('#props [data-hptc]').forEach(function(c){c.oninput=function(){var i=+c.getAttribute('data-hptc');if(!w.tcolors)w.tcolors=HP_TDEF.slice();w.tcolors[i]=c.value;commit();repaintOnly();};});
+    var tr=$('#props [data-hptcreset]');if(tr)tr.onclick=function(){w.tcolors=undefined;renderProps();commit();repaintOnly();};
   }
