@@ -962,6 +962,16 @@
       _cmpData[w.id]={cur:(j&&j.cur!=null)?parseFloat(j.cur):null,past:(j&&j.past!=null)?parseFloat(j.past):null,type:(j&&j.type)||0,stage:stage,kind:kind,mode:mode,fetched:now};cb(_cmpData[w.id]);
     }).catch(function(){cb(null);});
   }
+  // KPI-Hauptwert im Vergleich/Zählermodus: universelle Formatierung (Faktor/Nachkommastellen/
+  // Tausender/Kürzung) anwenden, wenn gesetzt — sonst exakt wie bisher (fmtDelta).
+  function _cmpFmtMain(w,cur){
+    if(w.thousand||w.numAbbrev||(w.scale!=null&&w.scale!==''&&+w.scale!==1)||w.dec!=null){
+      var v=(w.scale!=null&&w.scale!==''&&+w.scale!==1)?cur*(+w.scale):cur;
+      var dd=(w.dec!=null)?w.dec:(Math.abs(v)>=100?0:1);
+      return _fmtNum(v,{dec:dd,thousand:w.thousand,numAbbrev:w.numAbbrev});
+    }
+    return fmtDelta(cur,false);
+  }
   function computeCompare(w){
     ensureCmp(w,function(p){
       var el=$('.w[data-id="'+w.id+'"]',canvas);if(!el)return;
@@ -982,7 +992,7 @@
       var showAbs=(w.cmpMode==='abs')||(pct===null); // Basis ~0 mit echter Aenderung -> Absolutwert statt %
       var val=!ok?'–':(showAbs?fmtDelta(diff,true)+(w.unit?' '+w.unit:''):fmtDelta(pct,true)+' %');
       var cap='ggü. '+(STAGELBL[cmpStage(w)]||'gestern');
-      if(counter&&cur!=null&&w.type==='kpi'){var mv=el.querySelector('[data-role=val]');if(mv)mv.textContent=fmtDelta(cur,false);} // Zähler: Hauptwert = Verbrauch aktuelle Periode
+      if(counter&&cur!=null&&w.type==='kpi'){var mv=el.querySelector('[data-role=val]');if(mv)mv.textContent=_cmpFmtMain(w,cur);} // Zähler: Hauptwert = Verbrauch aktuelle Periode (universelle Formatierung)
       if(w.type==='kpi'){var s=el.querySelector('[data-role=cmp]');if(s){s.className='hks '+(tone==='ok'?'up':(tone==='crit'?'dn':''));s.textContent=arrow+' '+val+' '+cap;}}
       else if(w.type==='delta'){var root=el.querySelector('[data-role=delroot]');if(root)root.className='hdelta t-'+tone;var ar=el.querySelector('[data-role=arrow]');if(ar)ar.textContent=arrow;var vv=el.querySelector('[data-role=val]');if(vv)vv.textContent=val;var cc=el.querySelector('[data-role=cap]');if(cc)cc.textContent=(w.label?w.label+' · ':'')+cap;}
     });
