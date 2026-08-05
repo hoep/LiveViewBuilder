@@ -151,18 +151,23 @@
       icoEl.innerHTML=rows.map(function(r){return '<span class="mgico">'+iconSVG((r&&r.icon)||'cloudsun')+'</span>';}).join('');
     }
     // ---- Zusammenbauen ----
-    var _cloudCol='rgba(150,160,168,0.85)'; // Wolken-Streifenfarbe fuer den Tooltip-Punkt
-    function _dot(c){return c?('<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:'+c+';margin-right:5px"></span>'):'';}
-    function ln(l,v,u,dec,col){if(v==null)return '';return '<br>'+_dot(col)+l+': '+_mgFmt(v,dec)+(u||'');} // farbiger Punkt in der Graphenfarbe
+    var _cloudCol='rgba(150,160,168,0.85)'; // Wolken-Streifenfarbe fuer den Tooltip-Marker
+    // Marker in der Graphenfarbe UND -form: 'line' (durchgezogen), 'dash' (gestrichelt), 'bar' (Balken), 'dot' (Punkt/Scatter)
+    function _mk(c,kind){if(!c)return '';var b='display:inline-block;margin-right:5px;vertical-align:middle';
+      if(kind==='bar')return '<span style="'+b+';width:8px;height:10px;background:'+c+';border-radius:1px"></span>';
+      if(kind==='dot')return '<span style="'+b+';width:8px;height:8px;border-radius:50%;background:'+c+'"></span>';
+      if(kind==='dash')return '<span style="'+b+';width:13px;height:0;border-top:2px dashed '+c+'"></span>';
+      return '<span style="'+b+';width:13px;height:0;border-top:2px solid '+c+'"></span>';} // line
+    function ln(l,v,u,dec,col,kind){if(v==null)return '';return '<br>'+_mk(col,kind)+l+': '+_mgFmt(v,dec)+(u||'');} // Marker in Graphenfarbe + -form
     ec.setOption({backgroundColor:'transparent',animation:!!bcfg().chartAnim,
       tooltip:{trigger:'axis',axisPointer:{type:'cross',label:{show:false}},backgroundColor:surf,borderColor:line,borderWidth:1,textStyle:_tst({color:text,fontSize:_ecF(w,'label',10)}),
         formatter:function(ps){if(!ps||!ps.length)return '';var idx=ps[0].dataIndex,r=rows[idx],head=labels[idx];
           if(r&&r.ts){var dt=new Date(r.ts*1000);head=hourly?(WD[dt.getDay()]+' '+_p2(dt.getHours())+':'+_p2(dt.getMinutes())):(WD[dt.getDay()]+' '+dt.getDate()+'.'+(dt.getMonth()+1)+'.');}
-          var s='<b>'+head+'</b>'+ln('Temp',temp[idx],unit,null,crit);if(some(feels))s+=ln('Gefühlt',feels[idx],unit,null,muted);
-          if(!hourly&&some(tlo))s+=ln('Min',tlo[idx],unit,null,info); // im Tagesmodus Min/Max-Band -> auch das Tief zeigen
-          if(gIdx.precip!=null){s+=ln('Regen',pop[idx],' %',0,accent);if(precip[idx]>0)s+=ln(_mgSnow(r,temp[idx])?'Schnee':'Menge',precip[idx],' mm',1,(_mgSnow(r,temp[idx])?'rgba(150,190,230,0.9)':info));if(some(hum))s+=ln('Feuchte',hum[idx],' %',0,info);}
-          if(gIdx.cloud!=null)s+=ln('Wolken',clouds[idx],' %',0,_cloudCol);
-          if(gIdx.wind!=null){s+=ln('Wind',wind[idx],' km/h',null,accent);if(some(gust))s+=ln('Böen',gust[idx],' km/h',null,ok);if(wdir[idx]!=null)s+='<br>'+_dot(muted)+'Richtung: '+_mgDir(wdir[idx]);}
+          var s='<b>'+head+'</b>'+ln('Temp',temp[idx],unit,null,crit,'line');if(some(feels))s+=ln('Gefühlt',feels[idx],unit,null,muted,'dash');
+          if(!hourly&&some(tlo))s+=ln('Min',tlo[idx],unit,null,info,'line'); // im Tagesmodus Min/Max-Band -> auch das Tief zeigen
+          if(gIdx.precip!=null){s+=ln('Regen',pop[idx],' %',0,accent,'line');if(precip[idx]>0)s+=ln(_mgSnow(r,temp[idx])?'Schnee':'Menge',precip[idx],' mm',1,(_mgSnow(r,temp[idx])?'rgba(150,190,230,0.9)':info),'bar');if(some(hum))s+=ln('Feuchte',hum[idx],' %',0,info,'dash');}
+          if(gIdx.cloud!=null)s+=ln('Wolken',clouds[idx],' %',0,_cloudCol,'bar');
+          if(gIdx.wind!=null){s+=ln('Wind',wind[idx],' km/h',null,accent,'line');if(some(gust))s+=ln('Böen',gust[idx],' km/h',null,ok,'line');if(wdir[idx]!=null)s+='<br>'+_mk(muted,'dot')+'Richtung: '+_mgDir(wdir[idx]);}
           return s;}},
       axisPointer:{link:[{xAxisIndex:'all'}]},
       grid:grid,xAxis:xAxis,yAxis:yAxis,series:series},true);
