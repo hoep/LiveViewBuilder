@@ -1322,6 +1322,20 @@
       groesse: [960,600],
       demo: {"label":"Heizplan","rooms":[{"idx":12,"group":"EG"},{"idx":3,"group":"EG"},{"idx":14,"group":"EG"},{"idx":16,"group":"EG"},{"idx":1,"group":"OG"},{"idx":5,"group":"OG"},{"idx":20,"group":"DG"},{"idx":24,"group":"DG"}]}
     },
+    "shadingpanel": {
+      titel: "Beschattungs-Panel",
+      zweck: "Alle IPSShadowing-Rollos in EINEM zusammenhaengenden Panel (im Stil des Heizplans): Raum-Tabs gruppiert nach Etage (EG/OG/Markise), grosser Detailbereich fuer das gewaehlte Rollo (Jalousie-Visual, Position-Slider und Presets, Automatik, Programme, Status) und eine Uebersicht aller Rollos als Positionsbalken.",
+      funktionen: [
+        {name: "Raum-Tabs", beschreibung: "Oben die Rollos, gruppiert nach Etage (EG=Firma / OG / Markise). Ein Tab waehlt das Rollo fuer den Detailbereich."},
+        {name: "Detail-Steuerung", beschreibung: "Grosses Jalousie-Visual + Position in %, Slider und Presets Auf/25/Halb/75/Zu (schreiben direkt), Automatik-Schalter und die Statuszeile des Geraets."},
+        {name: "Programme", beschreibung: "Rechts die Programm-/Profil-Auswahlen des gewaehlten Rollos (Tag/Nacht/Sonne/Temp/Praesenz/Beginn/Ende); eine Auswahl schreibt sofort."},
+        {name: "Uebersicht", beschreibung: "Alle Rollos als Positionsbalken, nach Etage gruppiert; ein M markiert manuellen (nicht automatischen) Betrieb. Anklicken waehlt das Rollo."},
+        {name: "Ein Sammel-Abruf", beschreibung: "Alle Daten kommen aus einem einzigen ?api=getall-Request (7s-Refresh) - unabhaengig von der Anzahl Rollos."},
+      ],
+      hinweis: "Lesen ueber ?api=shading&op=getall (IPSShadowing), Schreiben ueber ?api=setvar. Doku-Vorschau rein lokal (Beispielrollos).",
+      groesse: [980,600],
+      demo: {"label":"Beschattung"}
+    },
     "shading": {
       titel: "Beschattung / Rollo",
       zweck: "Steuert ein IPSShadowing-Rollo als kompakte Karte: aktuelle Position (Jalousie-Visual + Slider und Auf/Halb/Zu), Automatik-Schalter, die Programm-/Profil-Auswahlen (Tag/Nacht/Sonne …) und der Live-Status. Ersetzt die unuebersichtliche Einstell-Matrix durch eine Karte je Rollo.",

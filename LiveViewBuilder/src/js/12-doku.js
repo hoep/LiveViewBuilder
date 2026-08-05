@@ -27,7 +27,7 @@
   // dadurch faellt ein neu angelegtes Widget auf, statt lautlos zu verschwinden.
   var DOKU_GROUPS = [
     ['Werte & Zahlen',          ['value','valuecard','cval','sval','kpi','delta','calc','chip','icon','bar','meterlist','infolist']],
-    ['Schalten & Bedienen',     ['switch','light','button','tile','checkbox','select','slider','colorpick','textbox','cover','shading','shadeprofile','thermostat','heatplan','weekedit','alarm','bot','timer','eventctl']],
+    ['Schalten & Bedienen',     ['switch','light','button','tile','checkbox','select','slider','colorpick','textbox','cover','shadingpanel','shading','shadeprofile','thermostat','heatplan','weekedit','alarm','bot','timer','eventctl']],
     ['Zustand & Listen',        ['assoc','statusgrid','statuslist','devlist','statusimage','table','objinfo','msglog','statelog','statetl']],
     ['Diagramme',               ['chart','heatmap','gauge','gaugepro','multiring','doubledonut','sankey','flow','flowline','windrose','tempbar']],
     ['Chart-Typen (Beispiele)', ['chartbar','chartbarstack','chartscatter','chartspark','chartpie','chartdonut','chartrose','chartwf']],
