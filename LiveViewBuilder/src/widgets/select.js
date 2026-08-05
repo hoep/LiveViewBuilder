@@ -22,23 +22,27 @@
     return _selAssoc[w.varId]||null;                   // null = noch nicht geladen
   }
   function _selSld(w){var o=_selOpts(w);if(o===null)return null;return o.map(function(x){return {v:x.value,text:x.text,color:x.color,icon:x.icon};});} // -> generischer Schieber
+  // Optionen mit gesetztem group-Feld in Cluster gruppieren (Reihenfolge = erstes Auftreten)
+  function _selGroups(opts){var has=false;for(var i=0;i<opts.length;i++){if(opts[i].group){has=true;break;}}if(!has)return null;
+    var g={},order=[];opts.forEach(function(o){var k=o.group||'';if(!(k in g)){g[k]=[];order.push(k);}g[k].push(o);});return {g:g,order:order};}
+  function _selOptTag(o){return '<option value="'+esc(String(o.value!=null?o.value:''))+'">'+esc(o.text||String(o.value))+'</option>';}
+  function _selBtn(o){var ic=o.icon?'<span class="hseli">'+iconSVG(o.icon)+'</span>':'';       // Knopf mit Icon (Profil oder manuell)
+    var hasT=(o.text!=null&&o.text!==''), tx=hasT?('<span class="hselt">'+esc(o.text)+'</span>'):(o.icon?'':esc(String(o.value)));
+    return '<button class="hselb'+(o.icon&&!hasT?' icon-only':'')+'" data-selval="'+esc(String(o.value!=null?o.value:''))+'"'
+      +(o.color?' style="--sc:'+esc(o.color)+'"':'')+(hasT?(' title="'+esc(o.text)+'"'):'')+'>'+ic+tx+'</button>';}
   function _selBody(w){
     var opts=_selOpts(w);
     if(_selMode(w)==='slider')return _sldBody(_selSld(w),w.swmShape);   // Mehrpositions-Schieber (Toggle-Stil), s. switch.js
     if(_selMode(w)==='list'){
       if(opts===null)return '<select class="hsell" data-role="selist"><option>…</option></select>';
-      return '<select class="hsell" data-role="selist">'
-        +opts.map(function(o){return '<option value="'+esc(String(o.value!=null?o.value:''))+'">'
-          +esc(o.text||String(o.value))+'</option>';}).join('')+'</select>';
+      var gl=_selGroups(opts);
+      if(gl)return '<select class="hsell" data-role="selist">'+gl.order.map(function(k){var inner=gl.g[k].map(_selOptTag).join('');return k?('<optgroup label="'+esc(k)+'">'+inner+'</optgroup>'):inner;}).join('')+'</select>';
+      return '<select class="hsell" data-role="selist">'+opts.map(_selOptTag).join('')+'</select>';
     }
     if(opts===null)return '<div class="hsel"><button class="hselb">…</button></div>';
-    return '<div class="hsel">'+opts.map(function(o){
-      var ic=o.icon?'<span class="hseli">'+iconSVG(o.icon)+'</span>':'';                     // Knopfreihe mit Icon (Profil oder manuell)
-      var hasT=(o.text!=null&&o.text!=='');
-      var tx=hasT?('<span class="hselt">'+esc(o.text)+'</span>'):(o.icon?'':esc(String(o.value)));
-      return '<button class="hselb'+(o.icon&&!hasT?' icon-only':'')+'" data-selval="'+esc(String(o.value!=null?o.value:''))+'"'
-        +(o.color?' style="--sc:'+esc(o.color)+'"':'')+(hasT?(' title="'+esc(o.text)+'"'):'')+'>'+ic+tx+'</button>';
-    }).join('')+'</div>';
+    var gb=_selGroups(opts);   // Knopfreihe mit Gruppen-Clustern (jede Gruppe mit kleiner Überschrift)
+    if(gb)return '<div class="hsel hsel-grp">'+gb.order.map(function(k){return '<div class="hselgrp">'+(k?'<span class="hselglab">'+esc(k)+'</span>':'')+gb.g[k].map(_selBtn).join('')+'</div>';}).join('')+'</div>';
+    return '<div class="hsel">'+opts.map(_selBtn).join('')+'</div>';
   }
   // Nach dem Nachladen der Profil-Optionen nur den Innenraum tauschen - ein volles render()
   // wuerde bei 100 Auswahlfeldern 100 Neuaufbauten der ganzen Seite ausloesen.
@@ -88,7 +92,7 @@
         +row('Optionen aus','<select id="pSelSrc"><option value=""'+(w.optSrc!=='profile'?' selected':'')+'>eigener Liste</option><option value="profile"'+(w.optSrc==='profile'?' selected':'')+'>Variablenprofil</option></select>')
         +(w.optSrc==='profile'
           ? '<div style="font-size:11px;color:var(--muted);margin:2px 2px 5px">Die Optionen (inkl. Farbe &amp; Icon) kommen aus den Zuordnungen des Profils und folgen ihm automatisch.</div>'
-          : listEditor(w,'options','Optionen: Wert · Text · Icon · Farbe',[{k:'value',ph:'Wert'},{k:'text',ph:'Text'},{k:'icon',type:'icon',ph:'Icon'},{k:'color',type:'skincolor'}]));
+          : listEditor(w,'options','Optionen: Wert · Text · Gruppe · Icon · Farbe',[{k:'value',ph:'Wert'},{k:'text',ph:'Text'},{k:'group',ph:'Gruppe (optional)'},{k:'icon',type:'icon',ph:'Icon'},{k:'color',type:'skincolor'}]));
     },
     wire:function(w){
       if($('#pSelMode'))$('#pSelMode').onchange=function(){var v=this.value;w.smode=(v==='list'||v==='slider')?v:undefined;render();renderProps();commit();};

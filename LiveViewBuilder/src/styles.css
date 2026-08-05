@@ -1380,3 +1380,32 @@
   .span-prog{display:grid;grid-template-columns:82px 1fr;align-items:center;gap:6px}
   .span-prog span{font-size:11px;color:var(--muted)}
   .span-prog select{border:1px solid var(--line-soft);background:var(--tile);color:var(--text);font:inherit;font-size:12px;padding:4px;border-radius:6px;width:100%}
+
+  /* ===== Stepper (stepper) ===== */
+  .stpr{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;gap:5px;padding:8px 10px;box-sizing:border-box}
+  .stpr-lbl{font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .stpr-row{display:flex;align-items:center;gap:6px}
+  .stpr-b{flex:0 0 auto;min-width:38px;border:1px solid var(--line-soft);background:var(--tile);color:var(--text);font:inherit;font-size:13px;padding:6px 8px;border-radius:8px;cursor:pointer}
+  .stpr-b:hover{border-color:var(--accent);color:var(--accent)}
+  .stpr-b.stpr-fine{min-width:32px;font-size:11px;padding:5px 6px;color:var(--muted)}
+  .stpr-val{flex:1 1 auto;text-align:center;font-size:20px;font-weight:700;font-variant-numeric:tabular-nums}
+  /* ===== Select: Options-Gruppen (Knopfreihe) ===== */
+  .hsel.hsel-grp{flex-wrap:wrap;gap:8px}
+  .hselgrp{display:flex;align-items:center;gap:4px;background:var(--surface-2);border:1px solid var(--line-soft);border-radius:9px;padding:3px 5px}
+  .hselglab{font-size:10px;font-weight:700;letter-spacing:.05em;color:var(--muted);padding:0 4px}
+  /* ===== Wochen-Streifen (weekstrip) ===== */
+  .wst{position:absolute;inset:0;display:flex;flex-direction:column;gap:6px;padding:10px;box-sizing:border-box;background:var(--surface);border-radius:12px;color:var(--text);font-size:12px;overflow:hidden}
+  .wst-msg{align-items:center;justify-content:center;color:var(--muted)}
+  .wst-head{display:flex;align-items:baseline;justify-content:space-between;gap:8px;flex:0 0 auto}
+  .wst-title{font-size:14px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .wst-now{font-size:11px;color:var(--muted);flex:0 0 auto}
+  .wst-rows{display:flex;flex-direction:column;gap:3px;flex:1 1 auto;min-height:0;justify-content:center}
+  .wst-row{display:flex;align-items:center;gap:7px}
+  .wst-row.today .wst-lab{color:var(--accent);font-weight:700}
+  .wst-lab{flex:0 0 22px;font-size:11px;color:var(--muted)}
+  .wst-bar{position:relative;flex:1 1 auto;height:16px;border-radius:4px;overflow:hidden;background:var(--tile)}
+  .wst-bar i{position:absolute;top:0;bottom:0;display:block}
+  .wst-bar i.wst-nowmk{width:0;left:0;border-left:2px solid var(--warn);background:none;opacity:.9}
+  .wst-legend{display:flex;flex-wrap:wrap;gap:8px;font-size:10px;color:var(--muted);flex:0 0 auto}
+  .wst-lchip{display:inline-flex;align-items:center;gap:4px}
+  .wst-lchip i{width:11px;height:11px;border-radius:3px;display:inline-block}
