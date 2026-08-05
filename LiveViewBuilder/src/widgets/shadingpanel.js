@@ -69,15 +69,20 @@
     return h+'</div>';
   }
   function spanOverview(st){
-    var h='<div class="span-ovh">Alle Rollos <span class="span-hint">· anklicken zum Wählen</span></div><div class="span-ov">';
-    SPAN_GORDER.forEach(function(g){var list=st.order.filter(function(r){return r.group==g;});if(!list.length)return;
-      h+='<div class="span-ovg"><span class="span-ovglab">'+esc(SPAN_GLABEL[g]||g)+'</span>';
-      list.forEach(function(r){var d=spanDev(st,r.id),pos=(d&&d.position&&d.position.value)|0,auto=!!(d&&d.automatic&&d.automatic.value);
-        h+='<div class="span-ovr'+(r.id==st.sel?' on':'')+'" data-spanroom="'+r.id+'"><span class="span-ovn">'+esc(r.name)+'</span>'
-          +'<span class="span-ovbar"><i style="width:'+pos+'%"></i></span><span class="span-ovp">'+pos+'%'+(auto?'':' <b>M</b>')+'</span></div>';});
-      h+='</div>';
+    // „Ledger"-Liste: Raum · Positions-Regler (Anzeige) · % · Auto/Hand-Umschalter
+    var floors=[['OG','Obergeschoss'],['EG','Erdgeschoss'],['Markise','Markise']];
+    var h='<div class="span-ovh">Alle Rollos <span class="span-hint">· Zeile wählt · Auto/Hand schaltet</span></div><div class="span-ov"><div class="rlg">';
+    floors.forEach(function(f){var g=f[0],list=st.order.filter(function(r){return r.group==g;});if(!list.length)return;
+      h+='<div class="rlg-h"><b>'+esc(f[1])+'</b><hr><span>'+list.length+'</span></div>';
+      list.forEach(function(r){var d=spanDev(st,r.id),pos=(d&&d.position&&d.position.value)|0,auto=!!(d&&d.automatic&&d.automatic.value),av=(d&&d.automatic&&d.automatic.vid)||0,pv=(d&&d.position&&d.position.vid)||0;
+        h+='<div class="rlg-row'+(r.id==st.sel?' is-sel':'')+'" data-spanroom="'+r.id+'" style="--pos:'+pos+'" title="'+esc(r.name)+' · '+pos+' % geschlossen">'
+          +'<span class="rlg-name">'+esc(r.name)+'</span>'
+          +'<span class="rlg-rail" data-posvid="'+pv+'"><span class="rlg-track"></span><span class="rlg-thumb"></span></span>'
+          +'<span class="rlg-pct">'+pos+'<u>%</u></span>'
+          +'<span class="rlg-tog'+(auto?'':' man')+'" data-spantog="'+av+'" data-cur="'+(auto?1:0)+'" title="Automatik '+(auto?'an':'aus')+'"><b class="auto">Auto</b><b class="hand">Hand</b></span>'
+          +'</div>';});
     });
-    return h+'</div>';
+    return h+'</div></div>';
   }
 
   // ============================ NETZ (Sammel-Abruf) ============================
@@ -111,6 +116,17 @@
   function spanRepaint(w,el){if(!el)el=spanElOf(w);if(!el)return;var host=el.querySelector('.winner')||el;host.innerHTML=spanRender(w);spanBind(w,el);}
   function spanBind(w,el){var st=spanSt(w);function rp(){spanRepaint(w,el);}
     $$('[data-spanroom]',el).forEach(function(b){b.onclick=function(){st.sel=+b.getAttribute('data-spanroom');rp();};});
+    // Ledger-Liste: Auto/Hand-Umschalter je Zeile
+    $$('[data-spantog]',el).forEach(function(t){t.onclick=function(e){e.stopPropagation();var vid=+t.getAttribute('data-spantog');if(!vid)return;var cur=t.getAttribute('data-cur')==='1';spanWrite(w,el,vid,cur?0:1);};});
+    // Ledger-Liste: ziehbarer Positions-Regler (schreibt beim Loslassen)
+    $$('[data-posvid]',el).forEach(function(rail){var vid=+rail.getAttribute('data-posvid');if(!vid)return;
+      rail.onclick=function(e){e.stopPropagation();};                                 // Regler wählt nicht die Zeile
+      function px(cx){var b=rail.getBoundingClientRect();return Math.max(0,Math.min(100,Math.round((cx-b.left)/b.width*100)));}
+      rail.addEventListener('pointerdown',function(ev){ev.preventDefault();ev.stopPropagation();var row=rail.closest('.rlg-row');
+        function draw(p){if(row)row.style.setProperty('--pos',p);var pc=row&&row.querySelector('.rlg-pct');if(pc)pc.firstChild.nodeValue=p;}
+        function mv(e){draw(px(e.clientX));}
+        function up(e){document.removeEventListener('pointermove',mv);document.removeEventListener('pointerup',up);spanWrite(w,el,vid,px(e.clientX));}
+        draw(px(ev.clientX));document.addEventListener('pointermove',mv);document.addEventListener('pointerup',up);});});
     var d=spanSel(st);
     var ab=$('[data-spanauto]',el);if(ab&&d&&d.automatic)ab.onclick=function(){spanWrite(w,el,d.automatic.vid,d.automatic.value?0:1);};
     var sl=$('[data-spanpos]',el);if(sl&&d&&d.position){sl.onchange=function(){spanWrite(w,el,d.position.vid,parseInt(sl.value)||0);};
