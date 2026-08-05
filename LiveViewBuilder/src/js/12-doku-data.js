@@ -1525,7 +1525,7 @@
         {name: "Nachkommastellen", beschreibung: "Anzahl der Nachkommastellen der Temperatur-Werte (Min/Max-Marken, Achse, Tooltip), 0 bis 3. Dezimaltrennzeichen ist das Komma; Prozent bleibt ganzzahlig, Regenmenge einstellig."},
         {name: "Schriftart/-groesse", beschreibung: "Kommt aus der zentralen Typografie oben (Schrift, Gewicht, Stil, Groesse) und wirkt jetzt auch auf den Diagramm-Canvas: Achsen, Min/Max-Marken und Tooltip."},
         {name: "Verhalten: Live", beschreibung: "Jede Aenderung der beteiligten Variablen baut das Meteogramm neu auf. Fehlen Daten, steht 'keine Wetterdaten'."},
-        {name: "Verhalten: Bedienung", beschreibung: "Der Mauszeiger zeigt eine synchronisierte Fadenkreuz-Linie ueber alle Panels; der Tooltip fasst alle Werte des Zeitpunkts zusammen. Farben folgen dem Skin."},
+        {name: "Verhalten: Bedienung", beschreibung: "Der Mauszeiger zeigt eine synchronisierte Fadenkreuz-Linie ueber alle Panels; der Tooltip fasst alle Werte des Zeitpunkts zusammen — jede Zeile mit einem farbigen Punkt in der Farbe ihres Graphen (Temp, Min, Regen %, Menge/Schnee, Feuchte, Wolken, Wind, Böen, Richtung). Farben folgen dem Skin."},
       ],
       hinweis: "Nutzt dieselbe JSON-Quelle wie das Wetter-Widget. Je nach Anbieter und Modus sind nicht alle Panels befuellbar - fehlende werden automatisch weggelassen, statt leer zu bleiben.",
       groesse: [420,300],

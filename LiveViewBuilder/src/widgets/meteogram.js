@@ -151,15 +151,18 @@
       icoEl.innerHTML=rows.map(function(r){return '<span class="mgico">'+iconSVG((r&&r.icon)||'cloudsun')+'</span>';}).join('');
     }
     // ---- Zusammenbauen ----
-    function ln(l,v,u,dec){if(v==null)return '';return '<br>'+l+': '+_mgFmt(v,dec)+(u||'');}
+    var _cloudCol='rgba(150,160,168,0.85)'; // Wolken-Streifenfarbe fuer den Tooltip-Punkt
+    function _dot(c){return c?('<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:'+c+';margin-right:5px"></span>'):'';}
+    function ln(l,v,u,dec,col){if(v==null)return '';return '<br>'+_dot(col)+l+': '+_mgFmt(v,dec)+(u||'');} // farbiger Punkt in der Graphenfarbe
     ec.setOption({backgroundColor:'transparent',animation:!!bcfg().chartAnim,
       tooltip:{trigger:'axis',axisPointer:{type:'cross',label:{show:false}},backgroundColor:surf,borderColor:line,borderWidth:1,textStyle:_tst({color:text,fontSize:_ecF(w,'label',10)}),
         formatter:function(ps){if(!ps||!ps.length)return '';var idx=ps[0].dataIndex,r=rows[idx],head=labels[idx];
           if(r&&r.ts){var dt=new Date(r.ts*1000);head=hourly?(WD[dt.getDay()]+' '+_p2(dt.getHours())+':'+_p2(dt.getMinutes())):(WD[dt.getDay()]+' '+dt.getDate()+'.'+(dt.getMonth()+1)+'.');}
-          var s='<b>'+head+'</b>'+ln('Temp',temp[idx],unit);if(some(feels))s+=ln('Gefühlt',feels[idx],unit);
-          if(gIdx.precip!=null){s+=ln('Regen',pop[idx],' %',0);if(precip[idx]>0)s+=ln(_mgSnow(r,temp[idx])?'Schnee':'Menge',precip[idx],' mm',1);if(some(hum))s+=ln('Feuchte',hum[idx],' %',0);}
-          if(gIdx.cloud!=null)s+=ln('Wolken',clouds[idx],' %',0);
-          if(gIdx.wind!=null){s+=ln('Wind',wind[idx],' km/h');if(some(gust))s+=ln('Böen',gust[idx],' km/h');if(wdir[idx]!=null)s+='<br>Richtung: '+_mgDir(wdir[idx]);}
+          var s='<b>'+head+'</b>'+ln('Temp',temp[idx],unit,null,crit);if(some(feels))s+=ln('Gefühlt',feels[idx],unit,null,muted);
+          if(!hourly&&some(tlo))s+=ln('Min',tlo[idx],unit,null,info); // im Tagesmodus Min/Max-Band -> auch das Tief zeigen
+          if(gIdx.precip!=null){s+=ln('Regen',pop[idx],' %',0,accent);if(precip[idx]>0)s+=ln(_mgSnow(r,temp[idx])?'Schnee':'Menge',precip[idx],' mm',1,(_mgSnow(r,temp[idx])?'rgba(150,190,230,0.9)':info));if(some(hum))s+=ln('Feuchte',hum[idx],' %',0,info);}
+          if(gIdx.cloud!=null)s+=ln('Wolken',clouds[idx],' %',0,_cloudCol);
+          if(gIdx.wind!=null){s+=ln('Wind',wind[idx],' km/h',null,accent);if(some(gust))s+=ln('Böen',gust[idx],' km/h',null,ok);if(wdir[idx]!=null)s+='<br>'+_dot(muted)+'Richtung: '+_mgDir(wdir[idx]);}
           return s;}},
       axisPointer:{link:[{xAxisIndex:'all'}]},
       grid:grid,xAxis:xAxis,yAxis:yAxis,series:series},true);
