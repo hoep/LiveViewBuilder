@@ -643,12 +643,29 @@
   function _hbCat(opt){var x=opt.xAxis,y=opt.yAxis;opt.xAxis=y;opt.yAxis=x;if(opt.yAxis){opt.yAxis.inverse=true;_hbShowEnds(opt.yAxis);}
     (opt.series||[]).forEach(function(s){if(s.label&&s.label.position==='top')s.label.position='right';});}
   // _hbLine: Zeitreihen-Balken — Datenpaare [t,v] -> [v,t], Achsen + Achsindex tauschen; Wertachsen links/rechts -> unten/oben.
+  // Beschriftung eines Zeit-Buckets fuer die Kategorie-Achse liegender Balken (Tag/Monat/Jahr/Stunde)
+  function _hbCatLabel(ts,w){
+    var ms=(typeof ts==='number'&&ts<1e12)?ts*1000:ts,d=new Date(ms);if(isNaN(d.getTime()))return String(ts);
+    var u=(w.range&&w.range.unit)||'day';
+    var WD=['So','Mo','Di','Mi','Do','Fr','Sa'],ML=['Jän','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'];
+    if(u==='month')return ML[d.getMonth()];
+    if(u==='year')return String(d.getFullYear());
+    if(u==='hour'||u==='min'||u==='raw')return ('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2);
+    return WD[d.getDay()]+' '+d.getDate()+'.';
+  }
+  // _hbLine: liegende Balken -> KATEGORIE-Achse aus den Zeit-Buckets. Feste, gleichmaessige Baender
+  // (gruppierte Balken je Bucket) statt vieler Zeitpositionen -> passt IMMER in die Widget-Hoehe,
+  // Tages-Labels erscheinen nur einmal. Wertachse(n) wandern nach unten/oben.
   function _hbLine(opt,w){
-    var vax=opt.yAxis, tax=opt.xAxis;                       // vax = Wertachse(n), tax = Zeitachse
+    var vax=opt.yAxis;
     var vArr=Array.isArray(vax)?vax:[vax], nB=0,nT=0;
     vArr.forEach(function(a){if(a&&a.position==='right')nT++;else nB++;});
-    if(tax){tax.inverse=true;_hbShowEnds(tax);}
-    opt.xAxis=vax; opt.yAxis=tax;
+    var cats=null;
+    (opt.series||[]).some(function(s){if(s.data&&s.data.length&&Array.isArray(s.data[0])){cats=s.data.map(function(p){return _hbCatLabel(p[0],w);});return true;}return false;});
+    opt.xAxis=vax;
+    opt.yAxis={type:'category',data:cats||[],inverse:true,
+      axisLine:{show:false,lineStyle:{color:cssv('--line')}},axisTick:{show:false},
+      axisLabel:{color:cssv('--muted'),fontSize:_ecF(w,'axis',9),hideOverlap:true},splitLine:{show:false}};
     var iB=0,iT=0;
     vArr.forEach(function(a){if(!a)return;if(a.position==='right'){a.position='top';a.offset=(iT++)*34;}else{a.position='bottom';a.offset=(iB++)*34;}});
     var lp=w.legend?(w.legPos||'top'):'';
@@ -656,15 +673,9 @@
       top:6+_titleSpace(w)+(lp==='top'?20:0)+Math.max(0,nT-1)*34,
       bottom:(w.zoom?34:16)+(lp==='bottom'?18:0)+Math.max(0,nB-1)*34,containLabel:true};
     (opt.series||[]).forEach(function(s){
-      if(s.data&&s.data.length&&Array.isArray(s.data[0]))s.data=s.data.map(function(p){return [p[1],p[0]];});
+      if(s.data&&s.data.length&&Array.isArray(s.data[0]))s.data=s.data.map(function(p){return p[1];}); // Kategorie = Index -> nur Wert
       if(s.yAxisIndex!=null){s.xAxisIndex=s.yAxisIndex;delete s.yAxisIndex;}
       if(s.label&&s.label.position==='top')s.label.position='right';});
-    // Balkendicke deckeln, damit ALLE liegenden Balken in die Widget-Hoehe passen (sonst laufen sie
-    // auf der Zeitachse oben/unten aus dem Widget). Dick = verfuegbare Hoehe / Balkenzahl.
-    var _nbars=0;(opt.series||[]).forEach(function(s){if(s.type==='bar'&&s.data)_nbars+=s.data.length;});
-    if(_nbars>0){var _avail=Math.max(60,(w.h||300)-(opt.grid.top||24)-(opt.grid.bottom||24)-14);
-      var _bw=Math.max(3,Math.floor(_avail/_nbars*0.82));
-      (opt.series||[]).forEach(function(s){if(s.type==='bar')s.barMaxWidth=_bw;});}
     if(opt.dataZoom)opt.dataZoom.forEach(function(z){if(z.type==='inside'){z.yAxisIndex=0;delete z.xAxisIndex;}else{z.orient='vertical';z.yAxisIndex=0;z.width=13;z.right=4;delete z.height;delete z.bottom;z.top=6+_titleSpace(w);}});}
   function setLine(w){
     var ec=_ec[w.id];if(!ec)return;var ct=w.ctype||'area',hs=chartSeries(w),defs=_chSeries(w);
