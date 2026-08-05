@@ -317,7 +317,7 @@
       var ml=Math.max(0,(vw-p.w*dsc)/2/dsc); // zoom skaliert margin mit -> vor-teilen; zentriert bei breitem Viewport
       canvas.style.margin='0';canvas.style.marginLeft=ml+'px';
       canvas.style.width=p.w+'px';canvas.style.height=p.h+'px';canvas.style.zoom=dsc;return;}
-    if(bcfg().mobileOpt!==false&&isMobile()&&mode!=='reflow')mode='auto'; // Mobil: automatisch — Hochformat->Reflow (stapeln), Querformat->SmartFit (skaliert)
+    if(bcfg().mobileOpt!==false&&isMobile()&&mode!=='reflow'&&!(p&&p.fitLock))mode='auto'; // Mobil: automatisch — Hochformat->Reflow (stapeln), Querformat->SmartFit (skaliert). page.fitLock=true haelt eine Seite immer im gewaehlten Fit (z. B. Heizplan: immer Querformat/Letterbox, kein Reflow).
     if(mode==='letterbox'||!p||p.w<=0||p.h<=0||vw<8||vh<8||!state.widgets.length){document.body.classList.remove('reflow');if(typeof chromeFitReset==='function')chromeFitReset();return letterboxFit();}
     var m=(mode==='auto')?sfPick(vw,vh,p):mode;
     canvas.style.transform='none';canvas.style.transformOrigin='top left';canvas.style.left='0';canvas.style.top='0';canvas.style.width=vw+'px';
