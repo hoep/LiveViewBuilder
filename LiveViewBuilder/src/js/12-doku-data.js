@@ -1300,6 +1300,26 @@
       groesse: [270,215],
       demo: {"varId": 26109, "varId2": 41522, "min": 14, "max": 35, "step": 0.5, "label": "Wohnzimmer", "showState": true, "showBar": true, "showModes": false, "showSet": true}
     },
+    "heatplan": {
+      titel: "Heizplan",
+      zweck: "Voll interaktiver Wochen-Temperaturplan der HomeMatic-Heizungssteuerung: Raum waehlen, Praesenz-Profil (Normal/Erweitert/Abgesenkt) umschalten, Tages-Sollkurve mit ziehbaren Griffen bearbeiten, Wochenuebersicht anspringen, Slots per Stepper feinjustieren, auf andere Tage uebertragen und mit einem Klick ans Thermostat speichern.",
+      funktionen: [
+        {name: "Raeume & Gruppen", beschreibung: "Im Panel waehlbar, welche Raeume die Tab-Leiste zeigt und welcher Etage (EG/OG/DG, EG = Firma) sie zugeordnet sind. \"Firma -> EG vorbelegen\" setzt die Firmenraeume in einem Schritt. Die Raumliste kommt live aus der Steuerung (#53700)."},
+        {name: "Praesenz-Profil", beschreibung: "Normal / Erweitert / Abgesenkt. Jedes Profil zeigt seinen Wochen-Durchschnitt; das an der Heizung aktive Profil ist mit \"aktiv\" markiert. Umschalten laedt das jeweilige Wochenprofil des Raums."},
+        {name: "Sollkurve (ziehbar)", beschreibung: "Der gewaehlte Tag als Stufenkurve ueber 24 h. Plateau senkrecht ziehen aendert die Solltemperatur (Raster 0,5 C, 5-30 C), den runden Grenzgriff waagrecht ziehen verschiebt die Slotgrenze (Raster 10 min, durch die Nachbarslots begrenzt). Die \"jetzt\"-Linie zeigt die aktuelle Uhrzeit."},
+        {name: "Ist/Soll live", beschreibung: "Rechts in der Kurvenlegende: aktuelle Uhrzeit, geplanter Soll-Wert und die vom Thermostat gemessene Ist-Temperatur (ACTUAL_TEMPERATURE), alle 60 s aktualisiert. Reine Ventilantriebe ohne Fuehler (HM-CC-TC) liefern kein Ist - dann entfaellt die Anzeige."},
+        {name: "Slot-Pillen", beschreibung: "Alle Slots des Tages mit Temperatur und Zeitspanne, nach Solltemperatur eingefaerbt. Anklicken waehlt den Slot fuer den Editor rechts."},
+        {name: "Wochenuebersicht", beschreibung: "Sieben Streifen Mo-So, je Tag die Slots als Farbband (kuehl gruen bis warm orange) samt Tages-Durchschnitt. Ein Tag anklicken oeffnet ihn zum Bearbeiten."},
+        {name: "Slot-Editor", beschreibung: "Sollwert (-1 / -0,1 / +0,1 / +1 C), Start und Ende (-1h / -10m / +10m / +1h). Der erste Slot beginnt fix 00:00, der letzte endet fix 24:00. \"+ Einfuegen\" haengt einen Slot an, \"- Loeschen\" entfernt den gewaehlten (mind. 1, max. 24)."},
+        {name: "Uebertragen", beschreibung: "Den aktuellen Tag auf beliebige andere Wochentage kopieren."},
+        {name: "Profil speichern", beschreibung: "Prueft die Integritaet und schreibt das Wochenprofil zurueck in die Steuerung; passt es zum aktiven Praesenz-Profil (bzw. bei Geraeten mit drei Speicherprofilen immer), wird es zusaetzlich direkt ans Thermostat uebertragen. Der Knopf leuchtet, sobald ungespeicherte Aenderungen vorliegen."},
+        {name: "Farben / Rahmen / Hintergrund / Typografie", beschreibung: "Gemeinsame Gestaltung. Die Temperatur-Farbskala nutzt die Skin-Akzentfarbe und deckt sich mit den bestehenden Heizungs-Anzeigen."},
+        {name: "Interaktion / Sichtbarkeit / Geometrie", beschreibung: "Gemeinsame Sektionen. Hinweis: gesetzte Klick-Aktionen (Seite/Popup/Skript) koennen mit der Bedienung des Editors kollidieren."},
+      ],
+      hinweis: "Daten und Speichern laufen ueber ?api=heat (Proxy auf das IPS-Skript HM_Heizung_LVB, das die serialisierten HomeMatic-Wochenprofile liest, prueft und schreibt). Diese Doku-Vorschau ist rein lokal: Sie zeigt Beispieldaten, greift NIE auf die echte Steuerung zu und speichert nichts.",
+      groesse: [960,600],
+      demo: {"label":"Heizplan","rooms":[{"idx":12,"group":"EG"},{"idx":3,"group":"EG"},{"idx":14,"group":"EG"},{"idx":16,"group":"EG"},{"idx":1,"group":"OG"},{"idx":5,"group":"OG"},{"idx":20,"group":"DG"},{"idx":24,"group":"DG"}]}
+    },
     "ticker": {
       titel: "Laufzeile",
       zweck: "Endlos laufendes Meldungsband mit farbigem Titelblock und Zaehler fuer kritische Eintraege. Eine Zeile kann statischer Text mit Variablenwert sein, ein inline angelegtes Widget oder die Referenz auf ein bereits vorhandenes, benanntes Widget.",
