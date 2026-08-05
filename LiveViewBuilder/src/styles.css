@@ -1329,3 +1329,54 @@
   .sp-sw.on{border-color:var(--accent);color:var(--accent)}
   .sp-sw.on .sp-dot{background:var(--accent)}
   .spf-info{font-size:10px;color:var(--faint);line-height:1.35;flex:0 0 auto}
+
+  /* ===== Beschattungs-Panel (shadingpanel) — Heizplan-Stil ===== */
+  .spanel{position:absolute;inset:0;display:flex;flex-direction:column;gap:9px;padding:12px;box-sizing:border-box;background:var(--surface);border-radius:12px;color:var(--text);font-size:13px;overflow:hidden}
+  .spanel-msg{align-items:center;justify-content:center;color:var(--muted)}
+  .span-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex:0 0 auto}
+  .span-title{font-size:16px;font-weight:700}
+  .span-sub{color:var(--muted);font-weight:500;font-size:14px}
+  .span-auto{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line-soft);background:var(--surface-2);color:var(--muted);font:inherit;font-size:12px;padding:4px 11px;border-radius:20px;cursor:pointer}
+  .span-auto .span-dot{width:9px;height:9px;border-radius:50%;background:var(--muted)}
+  .span-auto.on{border-color:var(--accent);color:var(--accent)}
+  .span-auto.on .span-dot{background:var(--accent)}
+  .span-rooms{display:flex;flex-wrap:wrap;gap:10px;flex:0 0 auto}
+  .span-rgrp{display:flex;align-items:center;gap:4px;background:var(--surface-2);border:1px solid var(--line-soft);border-radius:9px;padding:3px 5px}
+  .span-glab{font-size:10px;font-weight:700;letter-spacing:.06em;color:var(--muted);padding:0 4px}
+  .span-room{border:1px solid transparent;background:transparent;color:var(--muted);font:inherit;font-size:12px;padding:4px 9px;border-radius:7px;cursor:pointer;white-space:nowrap}
+  .span-room:hover{color:var(--text);background:var(--tile)}
+  .span-room.on{background:var(--accent);color:#04211b;font-weight:600}
+  .span-body{display:flex;gap:14px;flex:1 1 auto;min-height:0}
+  .span-main{flex:1 1 auto;display:flex;flex-direction:column;gap:10px;min-width:0}
+  .span-side{flex:0 0 236px;display:flex;flex-direction:column;gap:6px;overflow:auto}
+  /* grosse Steuerung */
+  .span-ctl{display:flex;gap:16px;flex:0 0 auto;align-items:stretch;background:var(--surface-2);border:1px solid var(--line-soft);border-radius:10px;padding:12px}
+  .span-blind{position:relative;flex:0 0 84px;height:150px;border:1px solid var(--line);border-radius:6px;background:linear-gradient(var(--tile),color-mix(in oklab,var(--tile) 80%,var(--bg)));overflow:hidden}
+  .span-blind i{position:absolute;top:0;left:0;right:0;display:block;background:repeating-linear-gradient(var(--muted),var(--muted) 5px,color-mix(in oklab,var(--muted) 65%,transparent) 6px,color-mix(in oklab,var(--muted) 65%,transparent) 8px);opacity:.9;transition:height .12s}
+  .span-blindpct{position:absolute;left:0;right:0;bottom:4px;text-align:center;font-size:11px;color:var(--text);text-shadow:0 1px 2px var(--surface-2)}
+  .span-ctlr{flex:1 1 auto;display:flex;flex-direction:column;justify-content:center;gap:9px;min-width:0}
+  .span-posbig{font-size:30px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1}
+  .span-posbig small{font-size:12px;font-weight:400;color:var(--muted)}
+  .span-slider{width:100%;accent-color:var(--accent);cursor:pointer}
+  .span-preset{display:flex;gap:6px}
+  .span-preset button{flex:1;border:1px solid var(--line-soft);background:var(--tile);color:var(--text);font:inherit;font-size:12px;padding:6px 0;border-radius:7px;cursor:pointer}
+  .span-preset button:hover{border-color:var(--accent);color:var(--accent)}
+  .span-info{font-size:11px;color:var(--faint);line-height:1.3}
+  /* Übersicht */
+  .span-ovh{font-size:11px;font-weight:700;letter-spacing:.04em;color:var(--muted);text-transform:uppercase;flex:0 0 auto}
+  .span-hint{font-weight:400;text-transform:none;letter-spacing:0;color:var(--faint);font-size:10px}
+  .span-ov{display:flex;flex-direction:column;gap:8px;flex:1 1 auto;overflow:auto;min-height:0}
+  .span-ovg{display:flex;flex-direction:column;gap:2px}
+  .span-ovglab{font-size:9px;font-weight:700;letter-spacing:.06em;color:var(--faint);margin-bottom:1px}
+  .span-ovr{display:flex;align-items:center;gap:8px;cursor:pointer;padding:2px 4px;border-radius:6px;border:1px solid transparent}
+  .span-ovr:hover{background:var(--surface-2)}
+  .span-ovr.on{border-color:var(--accent);background:var(--surface-2)}
+  .span-ovn{flex:0 0 130px;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .span-ovbar{position:relative;flex:1 1 auto;height:12px;border-radius:3px;overflow:hidden;background:var(--tile)}
+  .span-ovbar i{position:absolute;top:0;bottom:0;left:0;display:block;background:var(--accent);opacity:.7}
+  .span-ovp{flex:0 0 46px;text-align:right;font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
+  .span-ovp b{color:var(--warn)}
+  .span-boxh{font-size:11px;font-weight:700;letter-spacing:.03em;color:var(--muted);text-transform:uppercase;margin-bottom:2px}
+  .span-prog{display:grid;grid-template-columns:82px 1fr;align-items:center;gap:6px}
+  .span-prog span{font-size:11px;color:var(--muted)}
+  .span-prog select{border:1px solid var(--line-soft);background:var(--tile);color:var(--text);font:inherit;font-size:12px;padding:4px;border-radius:6px;width:100%}
