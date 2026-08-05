@@ -454,11 +454,14 @@
   function goFullscreen(){var el=document.documentElement,r=el.requestFullscreen||el.webkitRequestFullscreen||el.mozRequestFullScreen;if(r){try{var p=r.call(el);if(p&&p.catch)p.catch(function(){});}catch(e){}}} // Promise-Rejection abfangen (sonst rote PROMISE-FEHLER-Box)
   function initKiosk(){
     if(_kioskDone)return;_kioskDone=true;
-    var vp=document.querySelector('meta[name=viewport]');if(vp)vp.setAttribute('content','width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover');
+    var zoomOK=!!bcfg().allowZoom;   // opt-in: Pinch-/Doppeltipp-Zoom am Gerät erlauben (Default: Kiosk = kein Zoom)
+    var vp=document.querySelector('meta[name=viewport]');if(vp)vp.setAttribute('content','width=device-width,initial-scale=1,viewport-fit=cover'+(zoomOK?'':',maximum-scale=1,user-scalable=no'));
     document.body.classList.add('kiosk');
     document.addEventListener('contextmenu',function(e){e.preventDefault();}); // kein Rechtsklick/Long-Press-Menü
-    ['gesturestart','gesturechange','gestureend'].forEach(function(ev){document.addEventListener(ev,function(e){e.preventDefault();});}); // kein Pinch-Zoom (Safari)
-    var _lt=0;document.addEventListener('touchend',function(e){var n=Date.now();if(n-_lt<=350)e.preventDefault();_lt=n;},{passive:false}); // kein Doppeltipp-Zoom
+    if(!zoomOK){
+      ['gesturestart','gesturechange','gestureend'].forEach(function(ev){document.addEventListener(ev,function(e){e.preventDefault();});}); // kein Pinch-Zoom (Safari)
+      var _lt=0;document.addEventListener('touchend',function(e){var n=Date.now();if(n-_lt<=350)e.preventDefault();_lt=n;},{passive:false}); // kein Doppeltipp-Zoom
+    }
     if(!bcfg().noAutoFS){var fs=function(){if(!document.fullscreenElement)goFullscreen();document.removeEventListener('click',fs);document.removeEventListener('touchend',fs);}; // Vollbild bei erster Geste — nur wenn noch nicht im Vollbild (Kiosk-Starter sind es schon)
       document.addEventListener('click',fs);document.addEventListener('touchend',fs);}
     _wakeReq();document.addEventListener('visibilitychange',function(){if(!document.hidden)_wakeReq();});
