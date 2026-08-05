@@ -455,6 +455,38 @@ if ($api === 'runscript') {
     return;
 }
 
+// ---- Heizung (heatplan-Widget): op=list|get frei lesen, op=save token-geschützt ----
+//      Dünner Proxy auf das Backend-Skript "HM_Heizung_LVB" (Ident LVB_HeatAPI unter #23491),
+//      das die serialisierten HomeMatic-Wochenprofile liest/prüft/schreibt und JSON zurückgibt.
+if ($api === 'heat') {
+    header('Content-Type: application/json; charset=utf-8');
+    $op  = (string) ($_GET['op'] ?? 'list');
+    $sid = (int) (@IPS_GetObjectIDByIdent('LVB_HeatAPI', 23491) ?: 0);
+    if ($sid <= 0 || !IPS_ScriptExists($sid)) {
+        echo json_encode(['ok' => false, 'err' => 'backend']);
+        return;
+    }
+    if ($op === 'save') {
+        if (!hash_equals($TOKEN, (string) ($_GET['key'] ?? ''))) {
+            http_response_code(403);
+            echo json_encode(['ok' => false, 'err' => 'forbidden']);
+            return;
+        }
+        $data = (string) ($_POST['data'] ?? '');
+        if ($data === '') $data = (string) file_get_contents('php://input');
+        echo IPS_RunScriptWaitEx($sid, [
+            'op'       => 'save',
+            'room'     => (string) ($_GET['room'] ?? ''),
+            'presence' => (string) ($_GET['presence'] ?? ''),
+            'dryrun'   => (string) ($_GET['dryrun'] ?? ''),
+            'data'     => $data,
+        ]);
+        return;
+    }
+    echo IPS_RunScriptWaitEx($sid, ['op' => $op, 'room' => (string) ($_GET['room'] ?? '')]);
+    return;
+}
+
 // ---- Veröffentlichen: einmaliger Reload-Push an alle Run-Clients (bewusst, NICHT an Autosave gekoppelt) ----
 if ($api === 'publish') {
     header('Content-Type: application/json; charset=utf-8');
