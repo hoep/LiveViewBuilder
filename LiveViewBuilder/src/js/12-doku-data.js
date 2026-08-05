@@ -1322,8 +1322,8 @@
       groesse: [960,600],
       demo: {"label":"Heizplan","rooms":[{"idx":12,"group":"EG"},{"idx":3,"group":"EG"},{"idx":14,"group":"EG"},{"idx":16,"group":"EG"},{"idx":1,"group":"OG"},{"idx":5,"group":"OG"},{"idx":20,"group":"DG"},{"idx":24,"group":"DG"}]}
     },
-    "heatrooms": {
-      titel: "Heizung · Räume",
+    "rooms": {
+      titel: "Räume",
       zweck: "Baustein der zerlegten Heizungssteuerung: die Raum-Tab-Leiste (gruppiert EG/OG/DG) plus Titel/Status. Steuert als „Controller\" die geteilte Editiersitzung - alle Heizung-Bausteine mit gleicher Session-ID arbeiten am selben Raum/Profil/Tag.",
       funktionen: [
         {name: "Session-ID", beschreibung: "Gleiche ID (Vorgabe „heat\") verbindet diese Kachel mit heatcurve/heatweek/heatslots/heateditor zu einer gemeinsamen Bedienung."},
@@ -1333,26 +1333,26 @@
       hinweis: "Reine Zerlegung des Widgets „Heizplan\" in einzeln platzierbare Teile - das Alles-in-einem-Widget bleibt weiter verfuegbar. Doku-Vorschau lokal.",
       groesse: [720,120], demo: {"session":"heat","rooms":[{"idx":12,"group":"EG"},{"idx":3,"group":"EG"},{"idx":1,"group":"OG"},{"idx":20,"group":"DG"}]}
     },
-    "heatcurve": {
-      titel: "Heizung · Sollkurve",
+    "curve": {
+      titel: "Sollkurve",
       zweck: "Baustein: die ziehbare Tages-Sollkurve der Heizung (Plateau senkrecht = Temperatur, Grenzgriff waagrecht = Zeit) samt jetzt/Soll/Ist-Legende. Teilt die Session mit den anderen Heizung-Bausteinen.",
       funktionen: [{name: "Session-ID", beschreibung: "Verbindet mit den uebrigen Heizung-Bausteinen (gleiche ID)."},{name: "Ziehen", beschreibung: "Plateau ziehen aendert die Solltemperatur, der runde Griff die Slotgrenze - wirkt sofort in der geteilten Sitzung."}],
       hinweis: "Einzeln platzierbarer Teil des Heizplans. Doku-Vorschau lokal.", groesse: [560,320], demo: {"session":"heat"}
     },
-    "heatweek": {
-      titel: "Heizung · Woche",
+    "week": {
+      titel: "Woche",
       zweck: "Baustein: die Wochenuebersicht der Heizung (sieben Farbband-Zeilen nach Solltemperatur) - ein Tag anklicken waehlt ihn in der geteilten Sitzung.",
       funktionen: [{name: "Session-ID", beschreibung: "Verbindet mit den uebrigen Heizung-Bausteinen."},{name: "Tag waehlen", beschreibung: "Klick auf eine Zeile setzt den Bearbeitungstag."}],
       hinweis: "Einzeln platzierbarer Teil des Heizplans. Doku-Vorschau lokal.", groesse: [420,240], demo: {"session":"heat"}
     },
-    "heatslots": {
-      titel: "Heizung · Slots",
+    "slots": {
+      titel: "Slots",
       zweck: "Baustein: Wochentag-Wahl + Slot-Pillen (Temperatur/Zeitspanne) der Heizung; ein Slot anklicken waehlt ihn fuer den Editor der geteilten Sitzung.",
       funktionen: [{name: "Session-ID", beschreibung: "Verbindet mit den uebrigen Heizung-Bausteinen."},{name: "Slot waehlen", beschreibung: "Tag- und Slot-Auswahl fuer den Editor."}],
       hinweis: "Einzeln platzierbarer Teil des Heizplans. Doku-Vorschau lokal.", groesse: [560,150], demo: {"session":"heat"}
     },
-    "heateditor": {
-      titel: "Heizung · Editor",
+    "editor": {
+      titel: "Editor",
       zweck: "Baustein: Praesenz-Profil, Slot-Editor (Sollwert/Start/Ende-Stepper, Slot einfuegen/loeschen), Tag uebertragen und Profil speichern - alles auf der geteilten Sitzung.",
       funktionen: [{name: "Session-ID", beschreibung: "Verbindet mit den uebrigen Heizung-Bausteinen."},{name: "Bearbeiten & Speichern", beschreibung: "Stepper aendern den gewaehlten Slot; Speichern schreibt das Profil (wie beim Alles-in-einem-Heizplan)."}],
       hinweis: "Einzeln platzierbarer Teil des Heizplans. Doku-Vorschau lokal (speichert nichts).", groesse: [260,470], demo: {"session":"heat"}
