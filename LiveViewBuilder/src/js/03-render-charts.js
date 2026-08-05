@@ -1423,7 +1423,7 @@
     state.widgets.forEach(function(c){if(c.type!=='container'||exclude[c.id])return;if(px>=c.x&&px<=c.x+c.w&&py>=c.y&&py<=c.y+c.h)hit=c;});return hit;}
   // Wert-Format pro Widget
   var FMTS={auto:'Original',kw:'kW',kwh:'kWh',w:'W',r0:'0 Dez.',r1:'1 Dez.',pct:'Prozent',time:'Uhrzeit',date:'Datum',rel:'Relativzeit'};
-  var FMT_TYPES=['value','bar','chip','tile','room','sun','thermostat','weather','light','cover','slider','valuecard'];
+  var FMT_TYPES=['value','bar','chip','tile','room','sun','thermostat','weather','light','cover','slider','valuecard','stepper'];
   function fmtOpts(cur){cur=cur||'auto';return Object.keys(FMTS).map(function(k){return '<option value="'+k+'"'+(k===cur?' selected':'')+'>'+FMTS[k]+'</option>';}).join('');}
   function selOf(id,cur,opts){cur=cur||opts[0];return '<select id="'+id+'">'+opts.map(function(s){return '<option value="'+s+'"'+(s===cur?' selected':'')+'>'+s+'</option>';}).join('')+'</select>';}
   function dirSel(id,cur){cur=cur||'up';return '<select id="'+id+'"><option value="up"'+(cur==='up'?' selected':'')+'>▲ auf</option><option value="dn"'+(cur==='dn'?' selected':'')+'>▼ ab</option><option value="flat"'+(cur==='flat'?' selected':'')+'>→ neutral</option></select>';}

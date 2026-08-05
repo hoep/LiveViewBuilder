@@ -1322,6 +1322,31 @@
       groesse: [960,600],
       demo: {"label":"Heizplan","rooms":[{"idx":12,"group":"EG"},{"idx":3,"group":"EG"},{"idx":14,"group":"EG"},{"idx":16,"group":"EG"},{"idx":1,"group":"OG"},{"idx":5,"group":"OG"},{"idx":20,"group":"DG"},{"idx":24,"group":"DG"}]}
     },
+    "stepper": {
+      titel: "Stepper",
+      zweck: "Universelles +/--Feld: schreibt eine Variable in Schritten (grob und optional fein) mit Min/Max. Zeigt den formatierten Wert (Nachkommastellen/Einheit/Tausender aus den gemeinsamen Format-Einstellungen).",
+      funktionen: [
+        {name: "Variable", beschreibung: "Die zu stellende Variable. Ein Klick liest den aktuellen Wert, addiert/subtrahiert den Schritt und schreibt (RequestAction, sonst SetValue)."},
+        {name: "Min / Max", beschreibung: "Begrenzen den Wert. Leer = keine Grenze."},
+        {name: "Schritt grob / fein", beschreibung: "Grober Schritt fuer die aeusseren Knoepfe; ein optionaler feiner Schritt blendet zusaetzliche innere Knoepfe ein (leer = aus)."},
+        {name: "Wert & Format", beschreibung: "Gemeinsame Format-Einstellungen wirken: Nachkommastellen, Praefix/Suffix (Einheit), Faktor/Skalierung, Tausendertrennung."},
+      ],
+      hinweis: "In der Doku-Vorschau haengt der Stepper an einer Beispiel-Variablen; Klicks veraendern nur den Demowert.",
+      groesse: [220,72],
+      demo: {"label":"Sollwert","varId":900001,"min":15,"max":30,"step":1,"stepFine":0.5,"suffix":" °C","dec":1}
+    },
+    "weekstrip": {
+      titel: "Wochen-Streifen",
+      zweck: "Kompakte Nur-Anzeige eines Symcon-Wochenplans: sieben Tageszeilen als Farbband aus den Aktionen (Name+Farbe) plus jetzt-Marke. Der Anzeige-Begleiter zum Wochenplan-Editor (weekedit).",
+      funktionen: [
+        {name: "Plan waehlen", beschreibung: "Im Panel wird der Wochenplan (Ereignis) gewaehlt; Farben und Aktionen kommen aus dem Plan."},
+        {name: "Farbbaender", beschreibung: "Je Tag die Schaltpunkte als farbige Segmente; die aktuelle Uhrzeit als senkrechte Marke am heutigen Tag."},
+        {name: "Titel / Legende", beschreibung: "Beide abschaltbar. Die Legende zeigt die Aktionen mit Farbe."},
+      ],
+      hinweis: "Nur-Anzeige (Bearbeiten mit dem Wochenplan-Editor). Lesen ueber ?api=week. Doku-Vorschau lokal.",
+      groesse: [340,190],
+      demo: {"label":"Filterzeiten","eventId":900801}
+    },
     "shadingpanel": {
       titel: "Beschattungs-Panel",
       zweck: "Alle IPSShadowing-Rollos in EINEM zusammenhaengenden Panel (im Stil des Heizplans): Raum-Tabs gruppiert nach Etage (EG/OG/Markise), grosser Detailbereich fuer das gewaehlte Rollo (Jalousie-Visual, Position-Slider und Presets, Automatik, Programme, Status) und eine Uebersicht aller Rollos als Positionsbalken.",
