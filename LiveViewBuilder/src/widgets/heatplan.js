@@ -110,6 +110,14 @@
     rooms.forEach(function(r){ bucket(r.group||'').push(r); });
     bucket(''); // Sammelbucket fuer ungruppierte immer zuletzt
     order.sort(function(a,b){ return (a===''?1:0)-(b===''?1:0); }); // '' ans Ende
+    // Geschoss-Tabs (eine Seite, 3 Tabs): Etagen als Reiter, darunter nur die Zonen der gewaehlten Etage.
+    var groups=order.filter(function(g){return byG[g]&&byG[g].length;});
+    if(w&&w.floorTabs&&groups.length>1){
+      var sel=st.floorSel; if(groups.indexOf(sel)<0){sel=st.floorSel=groups[0];}
+      var ht='<div class="hp-rooms hp-hastabs"><div class="hp-ftabs">'+groups.map(function(g){return '<button class="hp-ftab'+(g===sel?' on':'')+'" data-hpfloor="'+esc(g)+'">'+esc(g||'Sonstige')+'</button>';}).join('')+'</div>';
+      ht+='<div class="hp-rgrp">'+(byG[sel]||[]).map(function(r){var on=(r.idx==st.roomIdx);return '<button class="hp-room'+(on?' on':'')+'" data-hproom="'+r.idx+'">'+esc(hpRoomName(r.idx))+'</button>';}).join('')+'</div></div>';
+      return ht;
+    }
     var h='<div class="hp-rooms">';
     order.forEach(function(g){ var list=byG[g]; if(!list||!list.length)return;
       h+='<div class="hp-rgrp">'+(g?'<span class="hp-glab">'+esc(g)+'</span>':'')
