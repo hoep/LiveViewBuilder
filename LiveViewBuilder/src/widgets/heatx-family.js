@@ -97,7 +97,11 @@
     mount:function(w){var el=$('.w[data-id="'+w.id+'"]',canvas)||$('.w[data-id="'+w.id+'"]',$('#ovcanvas'));if(!el)return;hfSub(w);hfEnsure(w,el);},
     _bind:function(w,el){var s=hfSess(w);
       $$('[data-hproom]',el).forEach(function(b){b.onclick=function(){var idx=+b.getAttribute('data-hproom');if(idx==s.roomIdx)return;
-        if(s.dirty&&!confirm('Ungespeicherte Änderungen verwerfen?'))return;s.slot=1;hfLoadRoom(w,idx,function(){hfEmit(w);});};});},
+        if(s.dirty&&!confirm('Ungespeicherte Änderungen verwerfen?'))return;s.slot=1;hfLoadRoom(w,idx,function(){hfEmit(w);});};});
+      $$('[data-hpfloor]',el).forEach(function(b){b.onclick=function(){var g=b.getAttribute('data-hpfloor');if(g===s.floorSel)return;
+        if(s.dirty&&!confirm('Ungespeicherte Änderungen verwerfen?'))return;s.floorSel=g;
+        var first=(_hpRooms||[]).filter(function(r){return (r.group||'')===g;})[0];
+        if(first){s.slot=1;hfLoadRoom(w,first.idx,function(){hfEmit(w);});}else{hfEmit(w);}};});},
     props:function(w){var h=hfSessRow(w);
       h+=row('Domäne','<select id="hfDom"><option value="heating"'+((w.domain||'heating')==='heating'?' selected':'')+'>Heizung</option><option value="shading"'+(w.domain==='shading'?' selected':'')+'>Beschattung</option></select>');
       h+=row('Quelle','<label style="display:inline-flex;align-items:center;gap:6px;font-size:12px"><input type="checkbox" id="hfHs"'+(w.hsMode?' checked':'')+(w.domain==='shading'?' disabled':'')+'> HomeSuite-Zonen</label>');
@@ -105,7 +109,8 @@
       h+='<div class="pgh">'+(w.hsMode?'Zonen (HeatingZone)':'Räume &amp; Etage')+'</div>';
       if(!_hpRooms){hpLoadRooms(w,function(){if(typeof renderProps==='function')renderProps();});return h+'<div style="color:var(--muted);font-size:12px;padding:4px 2px">'+(w.hsMode?'Zonen laden …':'Raumliste lädt …')+'</div>';}
       if(w.hsMode){ var floors=(_hpGroupOrder&&_hpGroupOrder.length)?_hpGroupOrder:['EG','OG','DG'];
-        h+=row('Geschoss (Filter)','<select id="hfFloor"><option value="">Alle Geschosse</option>'+floors.map(function(g){return '<option value="'+esc(g)+'"'+(w.floor===g?' selected':'')+'>'+esc(g)+'</option>';}).join('')+'</select>'); }
+        h+=row('Geschoss (Filter)','<select id="hfFloor"'+(w.floorTabs?' disabled':'')+'><option value="">Alle Geschosse</option>'+floors.map(function(g){return '<option value="'+esc(g)+'"'+(w.floor===g?' selected':'')+'>'+esc(g)+'</option>';}).join('')+'</select>');
+        h+=row('Geschoss-Tabs','<label style="display:inline-flex;align-items:center;gap:6px;font-size:12px"><input type="checkbox" id="hfFtabs"'+(w.floorTabs?' checked':'')+'> eine Seite, Etagen als Tabs</label>'); }
       h+=listEditor(w,'rooms',w.hsMode?'Zone · Etage':'Raum · Gruppe',[{k:'idx',type:'select',options:(_hpRooms||[]).map(function(r){return [String(r.idx),r.name];})},{k:'group',type:'select',options:[['','–'],['EG','EG'],['OG','OG'],['DG','DG']]}]);
       if(w.hsMode)h+='<div style="font-size:11px;color:var(--muted);margin:4px 2px">Geschoss-Filter = nur dieses Geschoss. Leer bei Zonen = alle. Reihenfolge = Tab-Reihenfolge.</div>';
       return h;},
@@ -113,6 +118,7 @@
       if($('#hfDom'))$('#hfDom').onchange=function(){w.domain=this.value;if(w.domain==='shading')w.hsMode=true;w.rooms=[];_hpRooms=null;_hpRoomsRoot=null;var s=hfSess(w);s.domain=w.domain;s.hsMode=!!w.hsMode;s.loaded=false;s.loading=false;s.roomIdx=0;s.variant=0;s.variants=null;commit();renderProps();var el=$('.w[data-id="'+w.id+'"]',canvas);if(el)hfEnsure(w,el);hfEmit(w);};
       if($('#hfHs'))$('#hfHs').onchange=function(){w.hsMode=this.checked||undefined;w.rooms=[];_hpRooms=null;_hpRoomsRoot=null;var s=hfSess(w);s.hsMode=!!w.hsMode;s.loaded=false;s.loading=false;s.roomIdx=0;commit();renderProps();var el=$('.w[data-id="'+w.id+'"]',canvas);if(el)hfEnsure(w,el);hfEmit(w);};
       if($('#hfFloor'))$('#hfFloor').onchange=function(){w.floor=this.value||undefined;var s=hfSess(w);s.loaded=false;s.loading=false;s.roomIdx=0;commit();renderProps();var el=$('.w[data-id="'+w.id+'"]',canvas);if(el)hfEnsure(w,el);hfEmit(w);};
+      if($('#hfFtabs'))$('#hfFtabs').onchange=function(){w.floorTabs=this.checked||undefined;if(w.floorTabs)w.floor=undefined;var s=hfSess(w);s.floorSel=null;s.loaded=false;s.loading=false;s.roomIdx=0;commit();renderProps();var el=$('.w[data-id="'+w.id+'"]',canvas);if(el)hfEnsure(w,el);hfEmit(w);};
       if($('#hfRoot'))$('#hfRoot').onchange=function(){w.rootId=parseInt(this.value)||undefined;var s=hfSess(w);s.root=w.rootId||0;s.loaded=false;s.loading=false;commit();var el=$('.w[data-id="'+w.id+'"]',canvas);if(el)hfEnsure(w,el);};}
   });
 

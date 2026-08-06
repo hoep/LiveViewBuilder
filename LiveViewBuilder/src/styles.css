@@ -1555,3 +1555,8 @@
 .ssun-mark.hit{background:#f0a94a}
 .ssun-tick{position:absolute;top:1px;font-size:9px;color:var(--muted);transform:translateX(-50%)}
 .ssun-hint{font-size:10.5px;color:var(--muted);margin:-3px 0 1px 50px}
+
+/* Geschoss-Tabs der Zonen-Leiste (rooms floorTabs) */
+.hp-ftabs{display:flex;gap:6px;margin-bottom:7px;flex-wrap:wrap}
+.hp-ftab{font-size:12px;font-weight:600;padding:4px 16px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--muted);cursor:pointer}
+.hp-ftab.on{background:color-mix(in srgb,var(--accent) 16%,transparent);border-color:var(--accent);color:var(--text);font-weight:700}
