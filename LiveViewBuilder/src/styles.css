@@ -1443,6 +1443,25 @@
   .hs-name{font-size:13px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .hs-dom{font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);justify-self:end}
   .hs-mode{grid-column:2/4;font-size:10.5px;color:var(--muted)}
+  /* Raum-Navigation (roomnav) — lesbar + skinbar */
+  .rnav{display:flex;gap:4px;align-items:stretch;flex-wrap:wrap;width:100%;height:100%;padding:4px;box-sizing:border-box}
+  .rnav.vert{flex-direction:column;flex-wrap:nowrap;overflow:auto}
+  .rnav-tab{display:inline-flex;align-items:center;gap:8px;padding:9px 14px;border-radius:var(--r-s);color:var(--muted);background:transparent;border:1px solid transparent;font:inherit;font-weight:600;font-size:14px;line-height:1;cursor:pointer;white-space:nowrap;transition:background .15s,color .15s,box-shadow .15s}
+  .rnav-tab .rnav-ic{display:inline-flex;width:18px;height:18px;opacity:.85}
+  .rnav-tab .rnav-ic svg{width:100%;height:100%}
+  .rnav-tab:hover{color:var(--text);background:color-mix(in oklab,var(--accent) 10%,transparent)}
+  .rnav-tab.rnav-dead{opacity:.5;cursor:default}
+  /* Indikator (Default): Text bleibt --text (perfekt lesbar), Accent nur als Leiste */
+  .rnav.ind .rnav-tab.on{color:var(--text);background:transparent;box-shadow:inset 0 -3px 0 0 var(--accent)}
+  .rnav.ind.vert .rnav-tab.on{box-shadow:inset 3px 0 0 0 var(--accent)}
+  /* Gefuellt: Accent-Flaeche, Textfarbe kontrastsicher (kein Schwarz-auf-Gruen per Zufall) */
+  .rnav.fill .rnav-tab.on{color:var(--rnav-onaccent,#fff);background:var(--accent);border-color:transparent;font-weight:680}
+  .rnav-empty{color:var(--faint);font-size:12px;padding:8px}
+  .rn-picklist{display:flex;flex-direction:column;gap:3px;max-height:220px;overflow:auto;padding:2px}
+  .rn-pick{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text)}
+  .rn-pick .rn-ab{color:var(--muted);font-size:10px}
+  .rn-pick .rn-view{margin-left:auto;max-width:130px}
+  .rn-q{font-size:11px;padding:4px 9px;border-radius:7px;border:1px solid var(--line);background:var(--bg);color:var(--text);cursor:pointer}
   .span-axis{position:relative;height:13px;font-size:9.5px;color:var(--faint);font-variant-numeric:tabular-nums;margin-top:3px}
   .span-axis span{position:absolute;top:0;transform:translateX(-50%);white-space:nowrap}
   .span-axis span:first-child{transform:none}
