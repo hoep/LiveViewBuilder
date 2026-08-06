@@ -169,18 +169,21 @@
       labels.push({x:(start+en)/2/1440*100, y:y/H*100, t:hpFmt(v)+'°', sel:sel, col:col});
       start=en;
     });
-    // senkrechte Riser + Grenz-Griffe
-    start=0;
+    // senkrechte Riser + Grenz-Griffe (Griffe kommen als HTML-Overlay -> immer runde
+    // Kreise, unverzerrt durch preserveAspectRatio="none"; die SVG-Linie bleibt nur Fuehrung)
+    start=0; var knobs=[];
     end.forEach(function(e,i){var en=hpH2M(e),v=+val[i],y=Y(v);
       if(i>0){var vp=+val[i-1],yp=Y(vp);g+='<line class="hp-riser" x1="'+X(start)+'" y1="'+yp+'" x2="'+X(start)+'" y2="'+y+'"/>';}
-      if(i<end.length-1){ g+='<line class="hp-bhline" x1="'+X(en)+'" y1="0" x2="'+X(en)+'" y2="'+H+'" data-hpb="'+i+'"/>'
-        +'<circle class="hp-bh" cx="'+X(en)+'" cy="'+(y)+'" r="9" data-hpb="'+i+'"/>'; }
+      if(i<end.length-1){ g+='<line class="hp-bhline" x1="'+X(en)+'" y1="0" x2="'+X(en)+'" y2="'+H+'"/>';
+        knobs.push({x:X(en)/W*100, y:y/H*100, i:i, sel:(i+1==st.slot)}); }
       start=en;
     });
     var nm=hpNowMin(); g+='<line class="hp-now" x1="'+X(nm)+'" y1="0" x2="'+X(nm)+'" y2="'+H+'"/>';
     g+='</svg>';
     // Temperatur-Labels als HTML-Overlay (keine SVG-Verzerrung durch preserveAspectRatio none)
     g+='<div class="hp-lbls">'+labels.map(function(l){return '<span class="hp-tval'+(l.sel?' sel':'')+'" style="left:'+l.x+'%;top:'+l.y+'%">'+l.t+'</span>';}).join('')+'</div>';
+    // Grenz-Griffe als HTML-Kreise (echte Kreise, Drag-Ziel)
+    g+='<div class="hp-knobs">'+knobs.map(function(k){return '<i class="hp-bh'+(k.sel?' sel':'')+'" data-hpb="'+k.i+'" style="left:'+k.x+'%;top:'+k.y+'%"></i>';}).join('')+'</div>';
     g+='</div></div>';
     // x-Achse
     g+='<div class="hp-xax">'+[0,3,6,9,12,15,18,21,24].map(function(hh){return '<span>'+hh+'</span>';}).join('')+'</div>';
@@ -470,7 +473,7 @@
         startDrag(box,function(e){var f=(e.clientY-box.top)/box.height, t=hi-f*(hi-lo);
           t=Math.max(5,Math.min(30,Math.round(t*2)/2)); day.val[i]=t; hpMarkDirty(st);});
       });});
-      $$('[data-hpb]',svg).forEach(function(bh){bh.addEventListener('pointerdown',function(ev){ev.preventDefault();
+      $$('[data-hpb]',el).forEach(function(bh){bh.addEventListener('pointerdown',function(ev){ev.preventDefault();
         var i=+bh.getAttribute('data-hpb'); var day=hpDayObj(st),end=day.end; var box=svg.getBoundingClientRect();
         startDrag(box,function(e){var f=(e.clientX-box.left)/box.width, m=Math.round(f*1440/10)*10;
           var loB=(i==0?0:hpH2M(end[i-1]))+10, hiB=hpH2M(end[i+1])-10; m=Math.max(loB,Math.min(hiB,m)); end[i]=hpM2H(m); hpMarkDirty(st);});
