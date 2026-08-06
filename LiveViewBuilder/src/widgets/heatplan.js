@@ -302,6 +302,10 @@
   }
   function hpTakeOver(w,el,idx,pres,cb){
     if(typeof DOKU!=='undefined'&&DOKU){ hpApplyWeek(hpSt(w),hpDemo(),pres); cb&&cb(); return; }
+    if(hpHS(w)){ hpHSManage(idx,{op:'getSchedule',args:{variant:HP_PRES[pres]}}).then(function(j){
+      if(j&&j.week){ var prof={}; prof[HP_PRES[pres]]=hsWeekToProf(j.week); if(!hpApplyWeek(hpSt(w),prof,pres))toast('Quelle leer'); }
+      else toast('Quelle nicht lesbar'); cb&&cb();
+    }).catch(function(){toast('Übernehmen: Verbindungsfehler');cb&&cb();}); return; }
     fetch('?api=heat&op=get&room='+idx+hpRootParam(w),{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
       if(j&&j.ok){ if(!hpApplyWeek(hpSt(w),j.profiles,pres))toast('Quelle leer'); } else toast('Quelle nicht lesbar');
       cb&&cb();
@@ -309,10 +313,60 @@
   }
 
   // ============================ NETZ ============================
+
+  // ---- HomeSuite-Datenquelle (?api=mod) — Format/Design identisch zur Legacy ----
+  // Bindet HeatingZone-Entitaeten (Domaene 'heating') statt der Root-Variablen der
+  // Altsteuerung. Interne Datenstruktur bleibt {Normal/Erweitert/Abgesenkt:[7×{end,val}]}.
+  function hpHS(w){ return !!(w&&w.hsMode); }
+  function hpHSManage(idx,body){
+    return fetch('?api=mod&op=manage&id='+idx+'&key='+encodeURIComponent(TOKEN),
+      {method:'POST',cache:'no-store',headers:{'Content-Type':'text/plain'},body:JSON.stringify(body)})
+      .then(function(r){return r.json();});
+  }
+  function hpEmptyWeek(){ var wk=[]; for(var d=0;d<7;d++)wk.push({end:['24:00'],val:[17]}); return wk; }
+  function hsWeekToProf(week){ // 7×[{end:Min,val}] -> 7×{end:[HH:MM],val:[t]}
+    var out=[]; for(var d=0;d<7;d++){ var day=week[d]||[],end=[],val=[];
+      day.forEach(function(s){ end.push(hpM2H(s.end)); val.push(Number(s.val)); });
+      if(!end.length){ end=['24:00']; val=[17]; } out.push({end:end,val:val}); }
+    return out;
+  }
+  function hpHSGet(w,idx,cb){
+    var st=hpSt(w); st.root=0; st.hsMode=true;
+    var jobs=HP_PRES.map(function(v){ return hpHSManage(idx,{op:'getSchedule',args:{variant:v}})
+      .then(function(j){return (j&&j.week)?j.week:null;}).catch(function(){return null;}); });
+    jobs.push(fetch('?api=mod&op=state&id='+idx,{cache:'no-store'}).then(function(r){return r.json();}).catch(function(){return {};}));
+    Promise.all(jobs).then(function(res){
+      var prof={}; HP_PRES.forEach(function(v,i){ prof[v]=res[i]?hsWeekToProf(res[i]):hpEmptyWeek(); });
+      var s=res[HP_PRES.length]||{};
+      st.prof=prof; st.roomIdx=idx; st.name=hpRoomName(idx); st.type='';
+      st.ist=(s.ActualTemp==null?null:+s.ActualTemp);
+      st.sollDev=(s.Setpoint==null?null:+s.Setpoint);
+      st.hum=(s.Humidity==null?null:+s.Humidity);
+      st.active=(s.Presence==null?-1:+s.Presence);
+      st.loaded=true; st.dirty=false; st.err=''; cb&&cb();
+    }).catch(function(){st.err='Verbindungsfehler';st.loaded=true;cb&&cb();});
+  }
+  function hpHSSave(w,el){
+    var st=hpSt(w); if(!st.loaded)return;
+    var idx=st.roomIdx, variant=HP_PRES[st.presence], week=hpWeek(st), calls=[];
+    for(var d=0;d<7;d++){ var day=week[d]||{end:['24:00'],val:[17]};
+      var slots=day.end.map(function(e,i){return {end:hpH2M(e),val:Number(day.val[i])};});
+      calls.push(hpHSManage(idx,{op:'updateProfile',args:{variant:variant,day:d,slots:slots}})); }
+    var btn=$('[data-hpsave]',el); if(btn){btn.disabled=true;btn.textContent='speichert …';}
+    Promise.all(calls).then(function(rs){
+      var ok=rs.every(function(j){return j&&j.ok;});
+      st.dirty=!ok; toast(ok?'Gespeichert':'Speichern fehlgeschlagen'); hpRepaint(w,el);
+    }).catch(function(){toast('Speichern: Verbindungsfehler');hpRepaint(w,el);});
+  }
+
   function hpLoadRooms(w,cb){
     var root=(w&&w.rootId)||0;
     if(_hpRooms&&_hpRoomsRoot===root){cb&&cb();return;}
     if(typeof DOKU!=='undefined'&&DOKU){_hpRooms=hpDemoRooms();_hpRoomsRoot=root;cb&&cb();return;}
+    if(hpHS(w)){ fetch('?api=mod&op=entities',{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
+      var ents=(j&&j.entities)||[]; _hpRooms=ents.filter(function(e){return (e.domain||'')==='heating';})
+        .map(function(e){return {idx:e.instanceID,name:e.name||('#'+e.instanceID),type:''};}); _hpRoomsRoot=root; cb&&cb();
+    }).catch(function(){_hpRooms=[];_hpRoomsRoot=root;cb&&cb();}); return; }
     fetch('?api=heat&op=list'+hpRootParam(w),{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
       _hpRooms=(j&&j.rooms)||[]; _hpRoomsRoot=root; cb&&cb();
     }).catch(function(){_hpRooms=[];_hpRoomsRoot=root;cb&&cb();});
@@ -320,7 +374,9 @@
   function hpLoadRoom(w,el,idx,cb){
     var st=hpSt(w);
     st.root=(w.rootId||0);
+    st.hsMode=hpHS(w);
     if(typeof DOKU!=='undefined'&&DOKU){ st.prof=hpDemo(); st.roomIdx=idx||12; st.name=hpRoomName(st.roomIdx); st.type=hpRoomType(st.roomIdx); st.active=1; st.ist=21.4; st.sollDev=20; st.hum=48; st.loaded=true; st.dirty=false; cb&&cb(); return; }
+    if(hpHS(w)){ hpHSGet(w,idx,cb); return; }
     fetch('?api=heat&op=get&room='+idx+hpRootParam(w),{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
       if(!j||!j.ok){st.err='Raum nicht lesbar';st.loaded=true;cb&&cb();return;}
       st.prof=j.profiles; st.roomIdx=j.room; st.name=j.name; st.type=j.type; st.active=(j.activePresence==null?-1:j.activePresence);
@@ -335,8 +391,12 @@
   function hpLiveTick(){
     Object.keys(_hpState).forEach(function(id){ var st=_hpState[id]; if(!st.loaded||st.dragging||!st.roomIdx)return;
       var el=document.querySelector('.w[data-id="'+id+'"]'); if(!el)return;
-      fetch('?api=heat&op=live&room='+st.roomIdx+(st.root?('&root='+encodeURIComponent(st.root)):''),{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
-        if(!j||!j.ok)return; st.ist=(j.ist==null?null:+j.ist); st.sollDev=(j.sollDev==null?null:+j.sollDev); st.hum=(j.hum==null?null:+j.hum);
+      var url=st.hsMode ? ('?api=mod&op=state&id='+st.roomIdx)
+                        : ('?api=heat&op=live&room='+st.roomIdx+(st.root?('&root='+encodeURIComponent(st.root)):''));
+      fetch(url,{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
+        if(!j)return;
+        if(st.hsMode){ st.ist=(j.ActualTemp==null?null:+j.ActualTemp); st.sollDev=(j.Setpoint==null?null:+j.Setpoint); st.hum=(j.Humidity==null?null:+j.Humidity); }
+        else { if(!j.ok)return; st.ist=(j.ist==null?null:+j.ist); st.sollDev=(j.sollDev==null?null:+j.sollDev); st.hum=(j.hum==null?null:+j.hum); }
         var cl=el.querySelector('.hp-cl-r'); if(cl)cl.innerHTML=hpNowText(st);
       }).catch(function(){});
     });
@@ -346,6 +406,7 @@
     var st=hpSt(w); if(!st.loaded)return;
     var week=hpWeek(st).map(function(d){return {end:d.end.slice(),val:d.val.map(Number)};});
     if(typeof DOKU!=='undefined'&&DOKU){ st.dirty=false; hpRepaint(w,el); toast('Demo: gespeichert (nur Anzeige)'); return; }
+    if(hpHS(w)){ hpHSSave(w,el); return; }
     var btn=$('[data-hpsave]',el); if(btn){btn.disabled=true;btn.textContent='speichert …';}
     fetch('?api=heat&op=save&room='+st.roomIdx+'&presence='+st.presence+hpRootParam(w)+'&key='+encodeURIComponent(TOKEN),
       {method:'POST',cache:'no-store',headers:{'Content-Type':'text/plain'},body:JSON.stringify(week)})
@@ -445,8 +506,13 @@
   var HP_FIRMA=['Bad Firma','Buero','Gang Firma','Hauseingang','Kueche Firma','Verpackung','WC Firma','Werkstatt'];
   function hpProps(w){
     var h='<div class="pgh">Datenquelle</div>';
-    h+=row('Steuerung (Root-ID)','<input id="hpRoot" type="number" value="'+(w.rootId||'')+'" placeholder="53700" style="width:110px">');
-    h+='<div style="font-size:11px;color:var(--muted);margin:-2px 2px 6px">Wurzel-Objekt der Heizungssteuerung. Leer = Standard (#53700).</div>';
+    h+=row('Quelle','<label style="display:inline-flex;align-items:center;gap:6px;font-size:12px"><input type="checkbox" id="hpHsMode"'+(w.hsMode?' checked':'')+'> HomeSuite-Module</label>');
+    if(!w.hsMode){
+      h+=row('Steuerung (Root-ID)','<input id="hpRoot" type="number" value="'+(w.rootId||'')+'" placeholder="53700" style="width:110px">');
+      h+='<div style="font-size:11px;color:var(--muted);margin:-2px 2px 6px">Wurzel-Objekt der Heizungssteuerung. Leer = Standard (#53700).</div>';
+    } else {
+      h+='<div style="font-size:11px;color:var(--muted);margin:-2px 2px 6px">Räume = HeatingZone-Entitäten der HomeSuite (Domäne Heizung).</div>';
+    }
     h+='<div class="pgh">Räume (Root-Variablen) &amp; Etage</div>';
     h+='<div style="font-size:11px;color:var(--muted);margin:-2px 2px 6px">Zeile = darzustellender Raum + Etage EG/OG/DG (EG = Firma). Reihenfolge = Anzeige.</div>';
     if(!_hpRooms||_hpRoomsRoot!==(w.rootId||0)){ hpLoadRooms(w,function(){ if(typeof renderProps==='function')renderProps(); });
@@ -477,6 +543,7 @@
   function hpPropsWire(w){
     function reload(){var el=hpElOf(w); if(el){var st=hpSt(w);st.loaded=false;st.roomIdx=0;hpRepaint(w,el);WIDGETS.heatplan.mount(w);}}
     function repaintOnly(){var el=hpElOf(w); if(el)hpRepaint(w,el);}
+    if($('#hpHsMode'))$('#hpHsMode').onchange=function(){w.hsMode=this.checked||undefined;w.rooms=[];_hpRooms=null;_hpRoomsRoot=null;renderProps();commit();reload();};
     if($('#hpRoot'))$('#hpRoot').onchange=function(){var v=parseInt(this.value)||0;w.rootId=v||undefined;_hpRooms=null;_hpRoomsRoot=null;renderProps();commit();reload();};
     $$('#props [data-hprsel]').forEach(function(s){s.onchange=function(){var i=+s.getAttribute('data-hprsel');if(!w.rooms||!w.rooms[i])return;w.rooms[i].idx=+s.value;renderProps();commit();reload();};});
     $$('#props [data-hprgrp]').forEach(function(b){b.onclick=function(){var i=+b.getAttribute('data-hprgrp');if(!w.rooms||!w.rooms[i])return;w.rooms[i].group=b.getAttribute('data-g');renderProps();commit();repaintOnly();};});
