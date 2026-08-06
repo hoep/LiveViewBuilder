@@ -509,7 +509,11 @@
 
   // ============================ WIDGET ============================
   defWidget('heatplan',{
-    label:'Heizplan', paletteIcon:'thermostat', size:[980,620],
+    // MONOLITH (alt): durch die komponierbare HomeSuite-Familie ersetzt. Bleibt
+    // registriert, damit die geparkten „Heizplan …"-Vergleichsseiten weiter
+    // rendern; aus der Palette genommen, damit keine neuen mehr platziert werden.
+    noPalette:true,
+    label:'Heizplan (alt/Monolith)', paletteIcon:'thermostat', size:[980,620],
     defaults:function(w){w.label='Heizplan';w.rooms=[];},
     render:function(w){return hpRender(w);},
     mount:function(w){var el=hpElOf(w); if(!el)el=hpElOf(w,$('#ovcanvas')); if(!el)return;
