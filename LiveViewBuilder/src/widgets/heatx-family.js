@@ -38,6 +38,16 @@
     for(var d=0;d<7;d++){var day=week[d]||{end:['24:00'],val:[17]};var slots=day.end.map(function(e,i){return {end:hpH2M(e),val:Number(day.val[i])};});calls.push(hpHSManage(idx,{op:'updateProfile',args:{variant:variant,day:d,slots:slots}}));}
     Promise.all(calls).then(function(rs){var ok=rs.every(function(j){return j&&j.ok;});sess.dirty=!ok;toast(ok?'Gespeichert':'Speichern fehlgeschlagen');hfLoadRoomHS(w,idx,function(){hfEmit(w);});}).catch(function(){toast('Speichern: Verbindungsfehler');hfEmit(w);});
   }
+  // Ganze Woche eines anderen Raums/Praesenz in die aktuelle Sitzung uebernehmen (Session-basiert).
+  function hfTakeOver(w,idx,pres,cb){var sess=hfSess(w);
+    if(typeof DOKU!=='undefined'&&DOKU){hpApplyWeek(sess,hpDemo(),pres);cb&&cb();return;}
+    if(hfHS(w)){ hpHSManage(idx,{op:'getSchedule',args:{variant:HP_PRES[pres]}}).then(function(j){
+      if(j&&j.week){var prof={};prof[HP_PRES[pres]]=hsWeekToProf(j.week);if(!hpApplyWeek(sess,prof,pres))toast('Quelle leer');}else toast('Quelle nicht lesbar');cb&&cb();
+    }).catch(function(){toast('Übernehmen: Verbindungsfehler');cb&&cb();}); return; }
+    fetch('?api=heat&op=get&room='+idx+hfRootP(w),{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
+      if(j&&j.ok){if(!hpApplyWeek(sess,j.profiles,pres))toast('Quelle leer');}else toast('Quelle nicht lesbar');cb&&cb();
+    }).catch(function(){toast('Übernehmen: Verbindungsfehler');cb&&cb();});
+  }
 
   function hfEnsure(w,el){var sess=hfSess(w);var def=WIDGETS[w.type];
     if(w.hsMode)sess.hsMode=true;                       // Controller flippt die Session auf HomeSuite
@@ -134,16 +144,13 @@
 
   // ---------- heateditor: Präsenz + Slot-Editor + Übertragen + Speichern ----------
   defWidget('editor',{
-    label:'Editor', paletteIcon:'wtile', size:[260,470],
+    label:'Editor', paletteIcon:'wtile', size:[300,780],
     defaults:function(w){w.session='heat';},
     render:function(w){var r=hfReady(w);if(r.err)return hfMsg(r.err);if(r.loading)return hfMsg('Editor lädt …');var s=r.s,day=hpDayObj(s);
-      var h='<div class="hplan hfbox"><div class="hp-side">'+hpSlotEditor(s,day)+hpPresenceBox(s);
-      // Tag übertragen (nur Kopie auf andere Tage – dekoppelt vom Monolith)
-      h+='<div class="hp-box hp-transfer"><div class="hp-boxh">Übertragen</div><div class="hp-tlab">'+HP_DAYL[s.day]+' kopieren auf:</div><div class="hp-tdays">';
-      for(var i=0;i<7;i++){if(i==s.day)continue;h+='<label class="hp-tcbx"><input type="checkbox" data-hftday="'+i+'"> '+HP_DAYS[i]+'</label>';}
-      h+='</div><button class="hp-tbtn" data-hfcopy="1">Auf gewählte Tage übertragen</button></div>';
-      h+='<button class="hp-save'+(s.dirty?' dirty':'')+'" data-hpsave="1"><svg class="hp-ic"><use href="#ic-check"/></svg> Profil speichern</button>';
-      h+='</div></div>';return h;},
+      // Voller Editor wie der Monolith: Slot · Präsenz-Profil · Übertragen (inkl. „Woche übernehmen von") · Speichern.
+      return '<div class="hplan hfbox"><div class="hp-side hfside">'+hpSlotEditor(s,day)+hpPresenceBox(s)+hpTransferBox(w,s)
+        +'<button class="hp-save'+(s.dirty?' dirty':'')+'" data-hpsave="1"><svg class="hp-ic"><use href="#ic-check"/></svg> Profil speichern</button>'
+        +'</div></div>';},
     mount:function(w){var el=$('.w[data-id="'+w.id+'"]',canvas)||$('.w[data-id="'+w.id+'"]',$('#ovcanvas'));if(!el)return;hfSub(w);hfEnsure(w,el);},
     _bind:function(w,el){var s=hfSess(w);function em(){hfEmit(w);}
       $$('[data-hptemp]',el).forEach(function(b){b.onclick=function(){hpTempStep(w,s,+b.getAttribute('data-hptemp'));em();};});
@@ -152,7 +159,8 @@
       var ab=$('[data-hpadd]',el);if(ab)ab.onclick=function(){hpAddSlot(w,s);em();};
       var db=$('[data-hpdel]',el);if(db)db.onclick=function(){hpDelSlot(w,s);em();};
       $$('[data-hppres]',el).forEach(function(b){b.onclick=function(){var p=+b.getAttribute('data-hppres');if(p==s.presence)return;if(s.dirty&&!confirm('Ungespeicherte Änderungen verwerfen?'))return;s.presence=p;s.slot=1;em();};});
-      var cp=$('[data-hfcopy]',el);if(cp)cp.onclick=function(){var t=[];$$('[data-hftday]:checked',el).forEach(function(c){t.push(+c.getAttribute('data-hftday'));});if(!t.length){toast('Keine Zieltage gewählt');return;}hpCopyDay(w,s,t);em();};
+      var cp=$('[data-hpcopy]',el);if(cp)cp.onclick=function(){var t=[];$$('[data-hptday]:checked',el).forEach(function(c){t.push(+c.getAttribute('data-hptday'));});if(!t.length){toast('Keine Zieltage gewählt');return;}hpCopyDay(w,s,t);em();};
+      var tk=$('[data-hptake]',el);if(tk)tk.onclick=function(){var rm=$('[data-hpfromroom]',el),pr=$('[data-hpfrompres]',el);if(!rm||!pr)return;if(s.dirty&&!confirm('Ungespeicherte Änderungen verwerfen?'))return;hfTakeOver(w,+rm.value,+pr.value,em);};
       var sv=$('[data-hpsave]',el);if(sv)sv.onclick=function(){hfSave(w);};},
     props:function(w){return hfSessRow(w);}, wire:function(w){hfSessWire(w);}
   });

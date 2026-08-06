@@ -13,6 +13,7 @@
   var _hpState = {};                         // w.id -> Editor-Zustand
   var _hpRooms = null;                       // Raumliste (via ?api=heat&op=list)
   var _hpRoomsRoot = null;                   // Root-ID, für die _hpRooms geladen wurde
+  var _hpGroupOrder = null;                  // Gruppen-Reihenfolge (Geschosse aus der Topologie, hsMode)
   function hpRootParam(w){return (w&&w.rootId)?('&root='+encodeURIComponent(w.rootId)):'';}
   var HP_PRES = ['Normal','Erweitert','Abgesenkt'];
   var HP_DAYS = ['Mo','Di','Mi','Do','Fr','Sa','So'];
@@ -42,7 +43,7 @@
   // ---- konfigurierte Räume (aus w.rooms) bzw. Fallback: alle ----
   function hpCfgRooms(w){
     var cfg=(w.rooms&&w.rooms.length)?w.rooms:null;
-    if(!cfg){ return (_hpRooms||[]).map(function(r){return {idx:r.idx,group:''};}); }
+    if(!cfg){ return (_hpRooms||[]).map(function(r){return {idx:r.idx,group:r.group||''};}); }
     return cfg.filter(function(r){return r&&r.idx!=null;});
   }
   function hpRoomName(idx){var r=(_hpRooms||[]).filter(function(x){return x.idx==idx;})[0];return r?r.name:('#'+idx);}
@@ -131,13 +132,16 @@
 
   function hpRoomsBar(w,st){
     var rooms=hpCfgRooms(w);
-    // nach Gruppe ordnen
-    var byG={}; HP_GROUPS.forEach(function(g){byG[g]=[];}); byG['']=[];
-    rooms.forEach(function(r){ (byG[r.group]||byG['']).push(r); });
+    // Gruppen-Reihenfolge: Topologie-Geschosse (hsMode) bzw. EG/OG/DG; unbekannte hinten, '' zuletzt.
+    var byG={}, order=[];
+    function bucket(g){ if(!(g in byG)){byG[g]=[];order.push(g);} return byG[g]; }
+    ((_hpGroupOrder&&_hpGroupOrder.length)?_hpGroupOrder:HP_GROUPS).forEach(bucket);
+    rooms.forEach(function(r){ bucket(r.group||'').push(r); });
+    bucket(''); // Sammelbucket fuer ungruppierte immer zuletzt
+    order.sort(function(a,b){ return (a===''?1:0)-(b===''?1:0); }); // '' ans Ende
     var h='<div class="hp-rooms">';
-    var order=HP_GROUPS.concat(['']);
     order.forEach(function(g){ var list=byG[g]; if(!list||!list.length)return;
-      h+='<div class="hp-rgrp">'+(g?'<span class="hp-glab">'+g+'</span>':'')
+      h+='<div class="hp-rgrp">'+(g?'<span class="hp-glab">'+esc(g)+'</span>':'')
         +list.map(function(r){var on=(r.idx==st.roomIdx);
           return '<button class="hp-room'+(on?' on':'')+'" data-hproom="'+r.idx+'">'+esc(hpRoomName(r.idx))+'</button>';}).join('')
         +'</div>';
@@ -366,10 +370,21 @@
     var root=(w&&w.rootId)||0;
     if(_hpRooms&&_hpRoomsRoot===root){cb&&cb();return;}
     if(typeof DOKU!=='undefined'&&DOKU){_hpRooms=hpDemoRooms();_hpRoomsRoot=root;cb&&cb();return;}
-    if(hpHS(w)){ fetch('?api=mod&op=entities',{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
-      var ents=(j&&j.entities)||[]; _hpRooms=ents.filter(function(e){return (e.domain||'')==='heating';})
-        .map(function(e){return {idx:e.instanceID,name:e.name||('#'+e.instanceID),type:''};}); _hpRoomsRoot=root; cb&&cb();
-    }).catch(function(){_hpRooms=[];_hpRoomsRoot=root;cb&&cb();}); return; }
+    if(hpHS(w)){ fetch('?api=mod&op=topology',{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
+      var rooms=[], order=[], seen={};
+      function grp(g){ if(g&&!seen[g]){seen[g]=1;order.push(g);} }
+      (j&&j.tree||[]).forEach(function(haus){ (haus.children||[]).forEach(function(area){
+        if(area.kind!=='Bereich')return; var g=area.abbr||area.name||''; grp(g);
+        (area.children||[]).forEach(function(rm){ if(rm.kind!=='Raum')return;
+          (rm.entities||[]).forEach(function(e){ if((e.domain||'')==='heating') rooms.push({idx:e.iid,name:e.name||('#'+e.iid),type:'',group:g}); }); });
+      });
+        // Raeume direkt unter dem Haus (ohne Bereich)
+        (haus.children||[]).forEach(function(rm){ if(rm.kind!=='Raum')return;
+          (rm.entities||[]).forEach(function(e){ if((e.domain||'')==='heating') rooms.push({idx:e.iid,name:e.name||('#'+e.iid),type:'',group:''}); }); });
+      });
+      (j&&j.unassigned||[]).forEach(function(e){ if((e.domain||'')==='heating') rooms.push({idx:e.iid,name:e.name||('#'+e.iid),type:'',group:''}); });
+      _hpRooms=rooms; _hpGroupOrder=order; _hpRoomsRoot=root; cb&&cb();
+    }).catch(function(){_hpRooms=[];_hpGroupOrder=null;_hpRoomsRoot=root;cb&&cb();}); return; }
     fetch('?api=heat&op=list'+hpRootParam(w),{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
       _hpRooms=(j&&j.rooms)||[]; _hpRoomsRoot=root; cb&&cb();
     }).catch(function(){_hpRooms=[];_hpRoomsRoot=root;cb&&cb();});
