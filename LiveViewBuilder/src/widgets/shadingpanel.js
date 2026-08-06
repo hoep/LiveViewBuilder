@@ -400,7 +400,11 @@
 
   // ============================ WIDGET ============================
   defWidget('shadingpanel',{
-    label:'Beschattungs-Panel', paletteIcon:'cover', size:[980,600],
+    // MONOLITH (alt): ersetzt durch die domaenen-generische heatx-Familie (domain:'shading').
+    // Bleibt registriert, damit die noch nicht migrierte Rollos-Seite rendert; aus der Palette
+    // genommen, damit keine neuen mehr platziert werden.
+    noPalette:true,
+    label:'Beschattungs-Panel (alt/Monolith)', paletteIcon:'cover', size:[980,600],
     defaults:function(w){w.label='Beschattung';},
     render:function(w){return spanRender(w);},
     mount:function(w){var el=spanElOf(w);if(!el)el=spanElOf(w,$('#ovcanvas'));if(!el)return;spanStartTimer();spanFetch(w,el);},
