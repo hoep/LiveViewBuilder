@@ -43,8 +43,10 @@
   // ---- konfigurierte Räume (aus w.rooms) bzw. Fallback: alle ----
   function hpCfgRooms(w){
     var cfg=(w.rooms&&w.rooms.length)?w.rooms:null;
-    if(!cfg){ return (_hpRooms||[]).map(function(r){return {idx:r.idx,group:r.group||''};}); }
-    return cfg.filter(function(r){return r&&r.idx!=null;});
+    var all=cfg ? cfg.filter(function(r){return r&&r.idx!=null;})
+                : (_hpRooms||[]).map(function(r){return {idx:r.idx,group:r.group||''};});
+    if(w&&w.floor){ all=all.filter(function(r){return (r.group||'')===w.floor;}); }  // Geschoss-Filter (Seite pro Geschoss)
+    return all;
   }
   function hpRoomName(idx){var r=(_hpRooms||[]).filter(function(x){return x.idx==idx;})[0];return r?r.name:('#'+idx);}
   function hpRoomType(idx){var r=(_hpRooms||[]).filter(function(x){return x.idx==idx;})[0];return r?r.type:'';}
