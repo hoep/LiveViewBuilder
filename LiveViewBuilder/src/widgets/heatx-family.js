@@ -15,20 +15,42 @@
 
   function hfLoadRoom(w,idx,cb){var sess=hfSess(w);
     if(typeof DOKU!=='undefined'&&DOKU){sess.prof=hpDemo();sess.roomIdx=idx||12;sess.name=hpRoomName(sess.roomIdx);sess.active=1;sess.ist=21.4;sess.sollDev=20;sess.hum=48;sess.err='';cb&&cb();return;}
+    if(hfHS(w)){hfLoadRoomHS(w,idx,cb);return;}
     fetch('?api=heat&op=get&room='+idx+hfRootP(w),{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
       if(!j||!j.ok){sess.err='Raum nicht lesbar';cb&&cb();return;}
       sess.prof=j.profiles;sess.roomIdx=j.room;sess.name=j.name;sess.type=j.type;sess.active=(j.activePresence==null?-1:j.activePresence);
       sess.ist=(j.ist==null?null:+j.ist);sess.sollDev=(j.sollDev==null?null:+j.sollDev);sess.hum=(j.hum==null?null:+j.hum);sess.err='';cb&&cb();
     }).catch(function(){sess.err='Verbindungsfehler';cb&&cb();});
   }
+  // ---- HomeSuite-Quelle (?api=mod): HeatingZone-Entitaeten statt Legacy #53700.
+  //      Reuse der hpHS*-Helfer aus heatplan (gleiches Bundle). Session-weit via sess.hsMode.
+  function hfHS(w){return !!(w.hsMode||hfSess(w).hsMode);}
+  function hfLoadRoomHS(w,idx,cb){var sess=hfSess(w);var vs=['Normal','Erweitert','Abgesenkt'];
+    var jobs=vs.map(function(v){return hpHSManage(idx,{op:'getSchedule',args:{variant:v}}).then(function(j){return (j&&j.week)?j.week:null;}).catch(function(){return null;});});
+    jobs.push(fetch('?api=mod&op=state&id='+idx,{cache:'no-store'}).then(function(r){return r.json();}).catch(function(){return {};}));
+    Promise.all(jobs).then(function(res){var prof={};vs.forEach(function(v,i){prof[v]=res[i]?hsWeekToProf(res[i]):hpEmptyWeek();});var st=res[vs.length]||{};
+      sess.prof=prof;sess.roomIdx=idx;sess.name=hpRoomName(idx);sess.type='';
+      sess.ist=(st.ActualTemp==null?null:+st.ActualTemp);sess.sollDev=(st.Setpoint==null?null:+st.Setpoint);sess.hum=(st.Humidity==null?null:+st.Humidity);sess.active=(st.Presence==null?-1:+st.Presence);
+      sess.err='';cb&&cb();
+    }).catch(function(){sess.err='Verbindungsfehler';cb&&cb();});
+  }
+  function hfSaveHS(w){var sess=hfSess(w);var idx=sess.roomIdx,variant=['Normal','Erweitert','Abgesenkt'][sess.presence],week=hpWeek(sess),calls=[];
+    for(var d=0;d<7;d++){var day=week[d]||{end:['24:00'],val:[17]};var slots=day.end.map(function(e,i){return {end:hpH2M(e),val:Number(day.val[i])};});calls.push(hpHSManage(idx,{op:'updateProfile',args:{variant:variant,day:d,slots:slots}}));}
+    Promise.all(calls).then(function(rs){var ok=rs.every(function(j){return j&&j.ok;});sess.dirty=!ok;toast(ok?'Gespeichert':'Speichern fehlgeschlagen');hfLoadRoomHS(w,idx,function(){hfEmit(w);});}).catch(function(){toast('Speichern: Verbindungsfehler');hfEmit(w);});
+  }
+
   function hfEnsure(w,el){var sess=hfSess(w);var def=WIDGETS[w.type];
+    if(w.hsMode)sess.hsMode=true;                       // Controller flippt die Session auf HomeSuite
     if(sess.loaded){if(def._bind)def._bind(w,el);return;}
     if(sess.loading)return; sess.loading=true; if(w.rootId)sess.root=w.rootId;
-    hpLoadRooms(w,function(){ var rooms=hpCfgRooms(w); var first=rooms.length?rooms[0].idx:((_hpRooms&&_hpRooms[0])?_hpRooms[0].idx:0);
+    // Im HomeSuite-Modus die Raumliste aus den Entitaeten holen (synthetisches hsMode-w).
+    var hw=sess.hsMode?{hsMode:true,rooms:w.rooms,rootId:w.rootId,id:w.id,type:w.type}:w;
+    hpLoadRooms(hw,function(){ var rooms=hpCfgRooms(hw); var first=rooms.length?rooms[0].idx:((_hpRooms&&_hpRooms[0])?_hpRooms[0].idx:0);
       if(!sess.roomIdx)sess.roomIdx=first; hfLoadRoom(w,sess.roomIdx,function(){sess.loaded=true;sess.loading=false;hfEmit(w);}); });
   }
   function hfSave(w){var sess=hfSess(w);var week=hpWeek(sess).map(function(d){return {end:d.end.slice(),val:d.val.map(Number)};});
     if(typeof DOKU!=='undefined'&&DOKU){sess.dirty=false;hfEmit(w);toast('Demo: gespeichert (nur Anzeige)');return;}
+    if(hfHS(w)){hfSaveHS(w);return;}
     fetch('?api=heat&op=save&room='+sess.roomIdx+'&presence='+sess.presence+hfRootP(w)+'&key='+encodeURIComponent(TOKEN),
       {method:'POST',cache:'no-store',headers:{'Content-Type':'text/plain'},body:JSON.stringify(week)})
       .then(function(r){return r.json();}).then(function(j){
@@ -54,12 +76,17 @@
     _bind:function(w,el){var s=hfSess(w);
       $$('[data-hproom]',el).forEach(function(b){b.onclick=function(){var idx=+b.getAttribute('data-hproom');if(idx==s.roomIdx)return;
         if(s.dirty&&!confirm('Ungespeicherte Änderungen verwerfen?'))return;s.slot=1;hfLoadRoom(w,idx,function(){hfEmit(w);});};});},
-    props:function(w){var h=hfSessRow(w);h+=row('Steuerung (Root-ID)','<input id="hfRoot" type="number" value="'+(w.rootId||'')+'" placeholder="53700" style="width:110px">');
-      h+='<div class="pgh">Räume &amp; Etage</div>';
-      if(!_hpRooms){hpLoadRooms(w,function(){if(typeof renderProps==='function')renderProps();});return h+'<div style="color:var(--muted);font-size:12px;padding:4px 2px">Raumliste lädt …</div>';}
-      h+=listEditor(w,'rooms','Raum · Gruppe',[{k:'idx',type:'select',options:(_hpRooms||[]).map(function(r){return [String(r.idx),r.name];})},{k:'group',type:'select',options:[['','–'],['EG','EG'],['OG','OG'],['DG','DG']]}]);
+    props:function(w){var h=hfSessRow(w);
+      h+=row('Quelle','<label style="display:inline-flex;align-items:center;gap:6px;font-size:12px"><input type="checkbox" id="hfHs"'+(w.hsMode?' checked':'')+'> HomeSuite-Zonen</label>');
+      if(!w.hsMode) h+=row('Steuerung (Root-ID)','<input id="hfRoot" type="number" value="'+(w.rootId||'')+'" placeholder="53700" style="width:110px">');
+      h+='<div class="pgh">'+(w.hsMode?'Zonen (HeatingZone)':'Räume &amp; Etage')+'</div>';
+      if(!_hpRooms){hpLoadRooms(w,function(){if(typeof renderProps==='function')renderProps();});return h+'<div style="color:var(--muted);font-size:12px;padding:4px 2px">'+(w.hsMode?'Zonen laden …':'Raumliste lädt …')+'</div>';}
+      h+=listEditor(w,'rooms',w.hsMode?'Zone · Etage':'Raum · Gruppe',[{k:'idx',type:'select',options:(_hpRooms||[]).map(function(r){return [String(r.idx),r.name];})},{k:'group',type:'select',options:[['','–'],['EG','EG'],['OG','OG'],['DG','DG']]}]);
+      if(w.hsMode)h+='<div style="font-size:11px;color:var(--muted);margin:4px 2px">Leer = alle Zonen. Reihenfolge = Tab-Reihenfolge.</div>';
       return h;},
-    wire:function(w){hfSessWire(w);if($('#hfRoot'))$('#hfRoot').onchange=function(){w.rootId=parseInt(this.value)||undefined;var s=hfSess(w);s.root=w.rootId||0;s.loaded=false;s.loading=false;commit();var el=$('.w[data-id="'+w.id+'"]',canvas);if(el)hfEnsure(w,el);};}
+    wire:function(w){hfSessWire(w);
+      if($('#hfHs'))$('#hfHs').onchange=function(){w.hsMode=this.checked||undefined;w.rooms=[];_hpRooms=null;_hpRoomsRoot=null;var s=hfSess(w);s.hsMode=!!w.hsMode;s.loaded=false;s.loading=false;s.roomIdx=0;commit();renderProps();var el=$('.w[data-id="'+w.id+'"]',canvas);if(el)hfEnsure(w,el);hfEmit(w);};
+      if($('#hfRoot'))$('#hfRoot').onchange=function(){w.rootId=parseInt(this.value)||undefined;var s=hfSess(w);s.root=w.rootId||0;s.loaded=false;s.loading=false;commit();var el=$('.w[data-id="'+w.id+'"]',canvas);if(el)hfEnsure(w,el);};}
   });
 
   // ---------- heatcurve (=Step-Kurve): ziehbare Sollkurve ----------
@@ -75,7 +102,7 @@
       function startDrag(box,onMove){s.dragging=true;function mv(e){onMove(e);raf();}function up(){s.dragging=false;document.removeEventListener('pointermove',mv);document.removeEventListener('pointerup',up);hfEmit(w);}var busy=false;function raf(){if(busy)return;busy=true;requestAnimationFrame(function(){light();busy=false;});}document.addEventListener('pointermove',mv);document.addEventListener('pointerup',up);raf();}
       $$('[data-hpplat]',svg).forEach(function(pl){pl.addEventListener('pointerdown',function(ev){ev.preventDefault();var i=+pl.getAttribute('data-hpplat');s.slot=i+1;var day=hpDayObj(s),box=svg.getBoundingClientRect();
         startDrag(box,function(e){var f=(e.clientY-box.top)/box.height,t=hi-f*(hi-lo);t=Math.max(5,Math.min(30,Math.round(t*2)/2));day.val[i]=t;hpMarkDirty(s);});});});
-      $$('[data-hpb]',svg).forEach(function(bh){bh.addEventListener('pointerdown',function(ev){ev.preventDefault();var i=+bh.getAttribute('data-hpb');var day=hpDayObj(s),end=day.end,box=svg.getBoundingClientRect();
+      $$('[data-hpb]',el).forEach(function(bh){bh.addEventListener('pointerdown',function(ev){ev.preventDefault();var i=+bh.getAttribute('data-hpb');var day=hpDayObj(s),end=day.end,box=svg.getBoundingClientRect();
         startDrag(box,function(e){var f=(e.clientX-box.left)/box.width,m=Math.round(f*1440/10)*10;var loB=(i==0?0:hpH2M(end[i-1]))+10,hiB=hpH2M(end[i+1])-10;m=Math.max(loB,Math.min(hiB,m));end[i]=hpM2H(m);hpMarkDirty(s);});});});},
     props:function(w){return hfSessRow(w);}, wire:function(w){hfSessWire(w);}
   });
