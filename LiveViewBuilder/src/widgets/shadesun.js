@@ -85,7 +85,10 @@
       label:'Sonnenstand', paletteIcon:'sun', size:[360,232],
       defaults:function(w){w.bind='session';w.session='shade';},
       render:function(w){return ssRender(w);},
-      mount:function(w){var el=ssEl(w);if(!el)return;ssLoad(w);LVB.panel.startPoll('shadesun:'+w.id,30000,function(){ssLoad(w);});},
+      mount:function(w){var el=ssEl(w);if(!el)return;
+        if(w.bind!=='fixed' && typeof hfSub==='function')hfSub(w); // an die shadex-Session koppeln
+        ssLoad(w);LVB.panel.startPoll('shadesun:'+w.id,30000,function(){ssLoad(w);});},
+      _bind:function(w,el){ssLoad(w);}, // von hfEmit gerufen, wenn die Familie die Zone wechselt
       props:function(w){
         var h='<div class="pgh">Bindung</div>';
         h+=row('Modus','<select id="ssBind"><option value="session"'+(w.bind!=='fixed'?' selected':'')+'>Session (folgt Auswahl)</option><option value="fixed"'+(w.bind==='fixed'?' selected':'')+'>Feste Zone</option></select>');
