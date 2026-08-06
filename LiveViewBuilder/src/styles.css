@@ -1526,3 +1526,10 @@
   .wst-legend{display:flex;flex-wrap:wrap;gap:8px;font-size:10px;color:var(--muted);flex:0 0 auto}
   .wst-lchip{display:inline-flex;align-items:center;gap:4px}
   .wst-lchip i{width:11px;height:11px;border-radius:3px;display:inline-block}
+
+/* Beschattung: sonnen-verankerte Slot-Grenze (heatx-Familie, domänen-generisch) */
+.hp-bh-sun{background:#f0a94a !important;border-color:#f0a94a !important;box-shadow:0 0 0 3px #f0a94a33}
+.hp-endtog{display:inline-flex;gap:4px}
+.hp-etog{font-size:12px;padding:3px 10px;border:1px solid var(--line);border-radius:7px;background:var(--panel);color:var(--muted);cursor:pointer}
+.hp-etog.on{background:var(--accent);color:#04231d;border-color:var(--accent);font-weight:700}
+.hp-asel{width:100%;font-size:12px}
