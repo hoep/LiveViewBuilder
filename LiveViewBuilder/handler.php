@@ -1316,10 +1316,10 @@ if ($api === 'mod') {
         if (!$mod || (($mod['LibraryID'] ?? '') !== $HS_LIB)) return null;
         return $mod['Prefix'] ?? null;
     };
-    if ($op === 'suite' || $op === 'entities') {
+    if ($op === 'suite' || $op === 'entities' || $op === 'topology') {
         $hub = @IPS_GetInstanceListByModuleID($HSH)[0] ?? 0;
         if (!$hub) { echo json_encode(['ok' => false, 'err' => 'no-hub']); return; }
-        $fn = ($op === 'suite') ? 'HSH_GetSuiteManifest' : 'HSH_ListEntities';
+        $fn = ($op === 'suite') ? 'HSH_GetSuiteManifest' : (($op === 'topology') ? 'HSH_GetTopology' : 'HSH_ListEntities');
         echo function_exists($fn) ? (string) $fn($hub) : json_encode(['ok' => false, 'err' => 'fn']);
         return;
     }
