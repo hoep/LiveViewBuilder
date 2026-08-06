@@ -131,8 +131,9 @@
     else { lo=_hpVC.min; hi=_hpVC.max; tick=Math.max(1,Math.round((hi-lo)/5)); } // Position 0..100 voll zeigen, ~5 Ticks
     var uy=(_hpVC.dom==='heating')?'°':''; // y-Achsen-Suffix
     var W=960,H=300;
+    var pad=(hi-lo)*0.07; // Headroom oben, damit der Max-Wert (z.B. 100 %) nicht am Rand klebt
     function X(m){return m/1440*W;}
-    function Y(t){return H-(t-lo)/(hi-lo)*H;}
+    function Y(t){return H-(t-lo)/((hi+pad)-lo)*H;}
     var g='<div class="hp-curvewrap"><div class="hp-yax">';
     for(var t=hi;t>=lo;t-=tick){ g+='<div style="top:'+(Y(t)/H*100)+'%">'+t+uy+'</div>'; }
     g+='</div><div class="hp-plot"><svg class="hp-svg" viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="none" data-hpsvg="1" data-lo="'+lo+'" data-hi="'+hi+'">';
