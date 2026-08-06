@@ -1533,3 +1533,25 @@
 .hp-etog{font-size:12px;padding:3px 10px;border:1px solid var(--line);border-radius:7px;background:var(--panel);color:var(--muted);cursor:pointer}
 .hp-etog.on{background:var(--accent);color:#04231d;border-color:var(--accent);font-weight:700}
 .hp-asel{width:100%;font-size:12px}
+
+/* Sonnenstand-Widget (shadesun): Sonnenstand vs. Fassaden-Profil */
+.ssun{padding:12px 14px;display:flex;flex-direction:column;gap:7px;font-size:12px;color:var(--text);height:100%;box-sizing:border-box}
+.ssun-msg{margin:auto;color:var(--muted);text-align:center}
+.ssun-sub{font-size:11px}
+.ssun-head{display:flex;align-items:center;gap:8px;margin-bottom:2px}
+.ssun-chip{font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;white-space:nowrap}
+.ssun-on{background:color-mix(in srgb,#f0a94a 22%,transparent);color:#f0a94a}
+.ssun-off{background:var(--faint);color:var(--muted)}
+.ssun-verdict{color:var(--muted);font-size:11.5px}
+.ssun-row{display:flex;align-items:center;gap:8px}
+.ssun-row>label{width:42px;color:var(--muted);flex:none}
+.ssun-val{width:40px;text-align:right;flex:none;font-variant-numeric:tabular-nums}
+.ssun-track{position:relative;flex:1;height:16px;background:var(--panel2);border:1px solid var(--line);border-radius:5px;overflow:hidden}
+.ssun-win{position:absolute;top:0;bottom:0;background:color-mix(in srgb,#f0a94a 26%,transparent)}
+.ssun-fill{position:absolute;left:0;top:0;bottom:0;background:color-mix(in srgb,var(--accent) 30%,transparent)}
+.ssun-fill.hit{background:color-mix(in srgb,#f0a94a 34%,transparent)}
+.ssun-thr{position:absolute;top:-2px;bottom:-2px;width:2px;background:var(--warn)}
+.ssun-mark{position:absolute;top:-3px;bottom:-3px;width:3px;background:var(--text);border-radius:2px;box-shadow:0 0 0 1px var(--panel)}
+.ssun-mark.hit{background:#f0a94a}
+.ssun-tick{position:absolute;top:1px;font-size:9px;color:var(--muted);transform:translateX(-50%)}
+.ssun-hint{font-size:10.5px;color:var(--muted);margin:-3px 0 1px 50px}

@@ -40,7 +40,7 @@
   //  fuer die Heizung aendert sich NICHTS. shading = Position 0..100 % + Sonnen-Anker.
   function hpPosColor(p){ p=Math.max(0,Math.min(100,p)); return hpMix('#e6eef4','#274b66',p/100); } // 0 offen(hell)..100 zu(dunkel)
   var HP_VC={
-    heating:{dom:'heating',min:5,max:30,step:0.5,dec:1,unit:'°C',def:17,label:'Sollwert',anchors:false,
+    heating:{dom:'heating',min:5,max:30,step:0.5,dec:1,unit:'°C',def:17,label:'Sollwert',anchors:true,
       color:function(v){return hpTempColor(v);}, bucket:function(v){return hpBucket(v);},
       steps:[[-1,'−1'],[-0.1,'−0,1'],[0.1,'+0,1'],[1,'+1']], scaleLo:15,scaleHi:22,scaleLbl:'Solltemperatur 15–22 °C', profTitle:'Präsenz-Profil'},
     shading:{dom:'shading',min:0,max:100,step:5,dec:0,unit:'%',def:0,label:'Position',anchors:true,
