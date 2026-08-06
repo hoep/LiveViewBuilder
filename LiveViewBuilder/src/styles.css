@@ -1142,9 +1142,11 @@
   .hp-plat{stroke-width:3;stroke-linecap:round;cursor:ns-resize}
   .hp-plat.sel{stroke-width:5}
   .hp-riser{stroke:var(--muted);stroke-width:2;opacity:.7}
-  .hp-bhline{stroke:var(--text);stroke-width:1;opacity:.25;stroke-dasharray:3 3}
-  .hp-bh{fill:var(--surface);stroke:var(--accent);stroke-width:2.5;cursor:ew-resize}
-  .hp-bh:hover{fill:var(--accent)}
+  .hp-bhline{stroke:var(--text);stroke-width:1;opacity:.25;stroke-dasharray:3 3;pointer-events:none}
+  .hp-knobs{position:absolute;inset:0;pointer-events:none}
+  .hp-bh{position:absolute;width:16px;height:16px;border-radius:50%;background:var(--surface);border:2.5px solid var(--accent);transform:translate(-50%,-50%);cursor:ew-resize;pointer-events:auto;box-sizing:border-box;transition:background .1s,box-shadow .1s}
+  .hp-bh:hover{background:var(--accent)}
+  .hp-bh.sel{box-shadow:0 0 0 3px color-mix(in oklab,var(--accent) 30%,transparent)}
   .hp-now{stroke:var(--warn);stroke-width:1.5;stroke-dasharray:4 3;opacity:.85}
   .hp-lbls{position:absolute;inset:0;pointer-events:none}
   .hp-tval{position:absolute;transform:translate(-50%,-135%);font-size:11px;font-weight:600;color:var(--text);text-shadow:0 1px 3px var(--surface-2),0 0 3px var(--surface-2);white-space:nowrap}
