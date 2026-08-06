@@ -1382,6 +1382,83 @@
       groesse: [340,190],
       demo: {"label":"Filterzeiten","eventId":900801}
     },
+    "rooms": {
+      titel: "Zonen-Leiste (HomeSuite)",
+      zweck: "Waehlt die aktive Zone (Raum/Rollo) fuer die komponierbare HomeSuite-Zeitplan-Familie. Domaenen-generisch: Heizung ODER Beschattung. Tabs nach Geschoss gruppiert (aus der Raumstruktur). Teilt eine Session mit curve/week/slots/editor.",
+      funktionen: [
+        {name: "Domaene", beschreibung: "In den Eigenschaften Heizung oder Beschattung - bestimmt Werteinheit (°C bzw. %), Farben und Varianten-Achse."},
+        {name: "Session", beschreibung: "Gleiche Session-ID wie die anderen Familien-Widgets -> geteilte Bedienung (eine Auswahl steuert alle)."},
+        {name: "Geschoss-Filter", beschreibung: "Optional nur ein Geschoss zeigen (eine Seite je Geschoss)."},
+      ],
+      hinweis: "HomeSuite-Entitaeten ueber ?api=mod (Topologie). Doku-Vorschau rein lokal (Beispieldaten Heizung).",
+      groesse: [720,120], demo: {"session":"dokuheat"}
+    },
+    "curve": {
+      titel: "Sollkurve (HomeSuite)",
+      zweck: "24-Stunden-Kurve der Sollwerte des gewaehlten Tages mit ziehbaren Griffen (Grenze waagrecht, Wert senkrecht). Heizung: Temperatur; Beschattung: Position 0-100 %.",
+      funktionen: [
+        {name: "Griffe ziehen", beschreibung: "Plateau senkrecht = Wert, Grenze waagrecht = Uhrzeit. Rasterung je Domaene (0,5 °C bzw. 5 %)."},
+        {name: "Jetzt-Linie", beschreibung: "Zeigt die aktuelle Uhrzeit und den Soll/Ist-Wert."},
+      ],
+      hinweis: "Teilt die Session mit rooms/week/slots/editor. Doku-Vorschau rein lokal.",
+      groesse: [560,320], demo: {"session":"dokuheat"}
+    },
+    "week": {
+      titel: "Wochenuebersicht (HomeSuite)",
+      zweck: "Alle 7 Tage der gewaehlten Variante als eingefaerbte Streifen (nach Wert). Tag anklicken = zum Bearbeiten waehlen.",
+      funktionen: [{name: "Tag waehlen", beschreibung: "Klick auf einen Streifen setzt den aktiven Tag fuer curve/slots/editor."}],
+      hinweis: "Teilt die Session der Familie. Doku-Vorschau rein lokal.",
+      groesse: [420,240], demo: {"session":"dokuheat"}
+    },
+    "slots": {
+      titel: "Slot-Leiste (HomeSuite)",
+      zweck: "Wochentag-Wahl + die Schaltpunkte des gewaehlten Tages als Pillen (Wert + Zeitspanne). Bei Beschattung markiert ein ☀ sonnen-verankerte Grenzen.",
+      funktionen: [{name: "Slot waehlen", beschreibung: "Klick waehlt den Slot fuer den Editor."}],
+      hinweis: "Teilt die Session der Familie. Doku-Vorschau rein lokal.",
+      groesse: [560,150], demo: {"session":"dokuheat"}
+    },
+    "editor": {
+      titel: "Plan-Editor (HomeSuite)",
+      zweck: "Bearbeitet den gewaehlten Slot: Wert (Temperatur/Position), Start/Ende der Grenze, Slot einfuegen/loeschen, Varianten-Wahl, Tag/Woche kopieren, Speichern. Grenze wahlweise feste Uhrzeit ODER Sonnen-Anker (Auf-/Untergang + Daemmerung + Offset).",
+      funktionen: [
+        {name: "Wert & Zeit", beschreibung: "Stepper fuer Wert und Grenze; je Domaene passende Schrittweiten/Einheiten."},
+        {name: "Sonnen-Anker", beschreibung: "Ende-Grenze auf Uhrzeit oder Sonne umschalten: Sonnenauf-/-untergang, buergerl./naut./astron. Daemmerung + Offset, mit aufgeloester ≈-Zeit."},
+        {name: "Uebertragen", beschreibung: "Tag auf andere Tage kopieren; ganze Woche aus einer anderen Zone/Variante uebernehmen."},
+      ],
+      hinweis: "Schreibt ueber ?api=mod (updateProfile). Doku-Vorschau rein lokal (nichts wird gespeichert).",
+      groesse: [300,780], demo: {"session":"dokuheat"}
+    },
+    "roomnav": {
+      titel: "Raum-Navigation (HomeSuite)",
+      zweck: "Universelle Tab-/Listen-Navigation aus der Raumstruktur: Geschoss waehlen, Raeume selektieren, Klick oeffnet die zugehoerige Ansicht. Voll skinbar, kontrastsicher (nie Schwarz auf Accent).",
+      funktionen: [
+        {name: "Struktur", beschreibung: "Baut sich aus der HomeSuite-Topologie (Haus/Bereich/Raum)."},
+        {name: "Skin", beschreibung: "Akzentfarbe waehlbar; aktiver Tab als lesbarer Indikator."},
+      ],
+      hinweis: "Struktur ueber ?api=mod (Topologie). Doku-Vorschau rein lokal.",
+      groesse: [720,56], demo: {}
+    },
+    "zonesync": {
+      titel: "Zonen-Sync (HomeSuite)",
+      zweck: "Zeigt den Sync-Status einer Zone (Modul-Plan ⟷ Geraeteprogramm) und bietet Vom Geraet laden / Ans Geraet schreiben. Bei controller-Zonen (kein Geraeteprogramm): Modul steuert laufend.",
+      funktionen: [
+        {name: "Status", beschreibung: "synchron / abweichend / Modul steuert laufend."},
+        {name: "Aktionen", beschreibung: "Vom Geraet laden bzw. Ans Geraet schreiben (Backup/Verify)."},
+      ],
+      hinweis: "Ueber ?api=mod (syncStatus/loadFromDevice/syncToDevice). Doku-Vorschau rein lokal.",
+      groesse: [320,44], demo: {}
+    },
+    "shadesun": {
+      titel: "Sonnenstand (HomeSuite)",
+      zweck: "Zeigt den Live-Sonnenstand (Azimut/Elevation) gegen das Fassaden-Sonnenprofil einer Zone als Balken - damit man falsche Configs SOFORT sieht: liegt die Sonne im Azimut-Fenster? kommt sie ueber die Elevations-/Helligkeitsschwelle?",
+      funktionen: [
+        {name: "Azimut-Balken", beschreibung: "0-360° mit N/O/S/W, markiertem Fassaden-Fenster und Sonnen-Marker."},
+        {name: "Hoehe-Balken", beschreibung: "Aktuelle Elevation gegen die Schwelle; Warnung bei 0° (keine Schwelle)."},
+        {name: "Verdikt", beschreibung: "Klartext: Sonne im Fenster -> schliesst / ausserhalb / zu tief."},
+      ],
+      hinweis: "Sonnenstand aus Location #13098; Profil je Zone. Ueber ?api=mod (reconcileProbe, read-only). Doku-Vorschau rein lokal.",
+      groesse: [360,232], demo: {}
+    },
     "shadingpanel": {
       titel: "Beschattungs-Panel",
       zweck: "Alle IPSShadowing-Rollos in EINEM zusammenhaengenden Panel (im Stil des Heizplans): Raum-Tabs gruppiert nach Etage (EG/OG/Markise), grosser Detailbereich fuer das gewaehlte Rollo (Jalousie-Visual, Position-Slider und Presets, Automatik, Programme, Status) und eine Uebersicht aller Rollos als Positionsbalken.",

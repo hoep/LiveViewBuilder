@@ -29,7 +29,8 @@
       if(d.ok===false||st.err) return '<div class="zsync"><span class="zsync-chip zsync-diff">nicht erreichbar</span></div>';
       if(d.applicable===false) return '<div class="zsync"><span class="zsync-chip zsync-na">Modul steuert laufend</span></div>';
       var ok=!!d.synced;
-      var h='<div class="zsync">'
+      var acc=(w.accent?(_skinColor(w.accent)||w.accent):'');
+      var h='<div class="zsync"'+(acc?' style="--accent:'+esc(acc)+'"':'')+'>'
         +'<span class="zsync-chip '+(ok?'zsync-ok':'zsync-diff')+'">'+(ok?'&#10003; synchron':'&#8891; abweichend')+(d.variant?' &middot; '+escL(d.variant):'')+'</span>'
         +'<button type="button" class="zsync-btn" data-zsload title="Aktuelles Geräteprogramm in den Editor laden">&#8595; Vom Gerät</button>'
         +'<button type="button" class="zsync-btn'+(ok?'':' zsync-hot')+'" data-zswrite title="Modul-Plan ans Gerät schreiben (Backup/Verify)">&#8593; Ans Gerät</button>'
@@ -62,12 +63,15 @@
         h+=row('Modus','<select id="zsBind"><option value="session"'+(w.bind!=='fixed'?' selected':'')+'>Session (folgt Auswahl)</option><option value="fixed"'+(w.bind==='fixed'?' selected':'')+'>Feste Zone</option></select>');
         if(w.bind!=='fixed'){ h+=row('Session-ID','<input id="zsSess" value="'+esc(w.session||'heat')+'" placeholder="heat">'); }
         else { h+=row('Zone (Instanz-ID)','<input id="zsEnt" type="number" value="'+(w.entityId||'')+'" placeholder="z. B. 15674" style="width:130px">'); }
+        h+='<div class="pgh">Darstellung</div>';
+        h+=row('Akzentfarbe',skinSel(w.accent||'','id="zsAcc"'));
         return h;
       },
       wire:function(w){
         if($('#zsBind'))$('#zsBind').onchange=function(){w.bind=this.value;commit();renderProps();var el=zsEl(w);if(el)zsLoad(w);};
         if($('#zsSess'))$('#zsSess').onchange=function(){w.session=this.value||undefined;commit();var el=zsEl(w);if(el)zsLoad(w);};
         if($('#zsEnt'))$('#zsEnt').onchange=function(){w.entityId=parseInt(this.value)||undefined;commit();var el=zsEl(w);if(el)zsLoad(w);};
+        if($('#zsAcc'))$('#zsAcc').onchange=function(){w.accent=this.value||undefined;commit();var el=zsEl(w);if(el)zsPaint(w);};
       }
     });
   })();

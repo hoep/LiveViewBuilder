@@ -33,9 +33,9 @@
       var aBgn=gp.azimuthBgn, aEnd=gp.azimuthEnd, elMin=(gp.elevation==null?0:+gp.elevation), brMin=(gp.brightnessMin==null?0:+gp.brightnessMin);
       var isAz=(az!=null)&&inAz(az,aBgn,aEnd), isEl=(el!=null)&&el>=elMin, isBr=(br==null)||br>=brMin;
       var active=isAz&&isEl&&isBr; // Beschattung wuerde greifen
-      var elMax=70; // Anzeige-Bereich Elevation
-
-      var h='<div class="ssun">';
+      var elMax=(w.elMax>0?+w.elMax:70); // Anzeige-Bereich Elevation (einstellbar)
+      var acc=(w.accent?(_skinColor(w.accent)||w.accent):'');
+      var h='<div class="ssun"'+(acc?' style="--accent:'+esc(acc)+'"':'')+'>';
       // Status-Kopf
       var stTxt = active ? ('Sonne im Fenster → schließt '+(d.rawSun!=null?d.rawSun:100)+' %')
         : (!isAz ? 'Sonne außerhalb des Fensters' : (!isEl ? 'Sonne zu tief (unter Schwelle)' : 'zu dunkel'));
@@ -94,12 +94,17 @@
         h+=row('Modus','<select id="ssBind"><option value="session"'+(w.bind!=='fixed'?' selected':'')+'>Session (folgt Auswahl)</option><option value="fixed"'+(w.bind==='fixed'?' selected':'')+'>Feste Zone</option></select>');
         if(w.bind!=='fixed'){ h+=row('Session-ID','<input id="ssSess" value="'+esc(w.session||'shade')+'" placeholder="shade">'); }
         else { h+=row('Zone (Instanz-ID)','<input id="ssEnt" type="number" value="'+(w.entityId||'')+'" placeholder="z. B. 25258">'); }
+        h+='<div class="pgh">Darstellung</div>';
+        h+=row('Akzentfarbe',skinSel(w.accent||'','id="ssAcc"'));
+        h+=row('Höhe-Achse max','<input id="ssElMax" type="number" value="'+(w.elMax||70)+'" style="width:70px"> °');
         return h;
       },
       wire:function(w){
         if($('#ssBind'))$('#ssBind').onchange=function(){w.bind=this.value;commit();renderProps();var el=ssEl(w);if(el)ssLoad(w);};
         if($('#ssSess'))$('#ssSess').onchange=function(){w.session=this.value||undefined;commit();var el=ssEl(w);if(el)ssLoad(w);};
         if($('#ssEnt'))$('#ssEnt').onchange=function(){w.entityId=parseInt(this.value)||undefined;commit();var el=ssEl(w);if(el)ssLoad(w);};
+        if($('#ssAcc'))$('#ssAcc').onchange=function(){w.accent=this.value||undefined;commit();var el=ssEl(w);if(el)ssPaint(w);};
+        if($('#ssElMax'))$('#ssElMax').onchange=function(){w.elMax=parseInt(this.value)||undefined;commit();var el=ssEl(w);if(el)ssPaint(w);};
       }
     });
   })();
