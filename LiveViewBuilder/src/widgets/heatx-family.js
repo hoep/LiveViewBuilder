@@ -3,7 +3,8 @@
   //  Zerlegt den Heizplan in einzeln platzierbare Widgets (Raum-Tabs, Sollkurve, Wochen-
   //  übersicht, Slot-Pillen, Editor), die sich EINE Editiersitzung teilen (w.session, Vorgabe
   //  "heat"). Wiederverwendung der PUREN Render-/Edit-Funktionen aus heatplan.js (gleiches
-  //  Bundle) — der Monolith „heatplan" bleibt unberührt. Backend: ?api=heat (wie Monolith).
+  //  Bundle, siehe heatplan.js). Der frühere Monolith „heatplan" wurde entfernt; heatplan.js
+  //  liefert nur noch diese geteilten Helfer. Backend: ?api=heat (Legacy) bzw. ?api=mod (HomeSuite).
 
   var _hf = {};        // sessionId -> geteilter Zustand
   var _hfSubs = {};    // sessionId -> [widgetId,…]
