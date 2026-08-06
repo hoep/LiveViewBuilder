@@ -44,7 +44,7 @@
         +'</div>';
       if(cyc)return h;
       var np=path.concat([name]);
-      _viewLinks(name).forEach(function(k){h+=node(k,depth+1,np);});
+      _viewLinks(name).forEach(function(k){if(reached[k])return;h+=node(k,depth+1,np);}); // jede View nur 1x (Spanning-Tree; Mehrfach-Links nicht erneut expandieren)
       return h;
     }
     var html=node(home,0,[]);

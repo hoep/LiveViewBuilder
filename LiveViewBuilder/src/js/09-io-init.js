@@ -462,8 +462,16 @@
       ['gesturestart','gesturechange','gestureend'].forEach(function(ev){document.addEventListener(ev,function(e){e.preventDefault();});}); // kein Pinch-Zoom (Safari)
       var _lt=0;document.addEventListener('touchend',function(e){var n=Date.now();if(n-_lt<=350)e.preventDefault();_lt=n;},{passive:false}); // kein Doppeltipp-Zoom
     }
-    if(!bcfg().noAutoFS){var fs=function(){if(!document.fullscreenElement)goFullscreen();document.removeEventListener('click',fs);document.removeEventListener('touchend',fs);}; // Vollbild bei erster Geste — nur wenn noch nicht im Vollbild (Kiosk-Starter sind es schon)
-      document.addEventListener('click',fs);document.addEventListener('touchend',fs);}
+    if(!bcfg().noAutoFS){
+      var _fsArmed=false;
+      var armFS=function(){ if(document.fullscreenElement||_fsArmed)return; _fsArmed=true; // eine Geste holt Vollbild
+        var fs=function(){_fsArmed=false;document.removeEventListener('click',fs);document.removeEventListener('touchend',fs);if(!document.fullscreenElement)goFullscreen();};
+        document.addEventListener('click',fs);document.addEventListener('touchend',fs); };
+      armFS();
+      // nach Rückkehr aus dem Hintergrund (Browser beendet dort Vollbild): erneut scharf schalten,
+      // damit die nächste Berührung Vollbild automatisch zurückholt.
+      document.addEventListener('visibilitychange',function(){if(!document.hidden)armFS();});
+    }
     _wakeReq();document.addEventListener('visibilitychange',function(){if(!document.hidden)_wakeReq();});
   }
   function buildRunNav(){

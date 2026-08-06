@@ -178,17 +178,28 @@
     if(ss.state==='none')
       return '<div class="span-sun span-sun-none">☀ Keine Ausrichtung gesetzt — im Editor Himmelsrichtung des Fensters wählen.</div>';
     var track=spanDayTrack(w,d.id,st.geo);
+    var markM=(st.simMin!=null)?st.simMin:(track?track.nowM:0);
     var head;
     if(ss.state==='hit')head='<b>☀ Sonne trifft</b> · Einfall '+Math.round(Math.abs(ss.d))+'° · '+ss.phase;
     else if(ss.state==='night')head='Sonne unter dem Horizont';
     else head='Sonne trifft nicht · '+Math.round(Math.abs(ss.d))+'° seitlich ('+ss.phase+')';
-    return '<div class="span-sun'+(ss.state==='hit'?' is-hit':'')+'">'
-      +'<div class="span-sun-h"><span>'+head+'</span>'
+    var fz=Math.round(ss.fz);
+    var sunTxt=(eff&&eff.elev>0)?(Math.round(eff.az)+'° / '+Math.round(eff.elev)+'° hoch'):'unter Horizont';
+    // Panel 1 — Tagesverlauf · Profilvergleich (zeitlich)
+    var p1='<div class="span-sun">'
+      +'<div class="span-sun-h"><span><b>Tagesverlauf · Profilvergleich</b></span>'
       +'<span class="span-sun-legend"><span class="lg gold">Sonne trifft</span><span class="lg teal">Profil aktiv</span></span></div>'
+      +spanSunBar(track,markM)+spanProfBar(track,d.sunprof,markM)
+      +spanTimeAxis(track)
+      +'</div>';
+    // Panel 2 — Sonnenstand (räumlich, Kompass)
+    var p2='<div class="span-sun'+(ss.state==='hit'?' is-hit':'')+'">'
+      +'<div class="span-sun-h"><span><b>Sonnenstand</b> · '+head+'</span>'
+      +'<span class="span-sun-az">Fassade '+fz+'° · Sonne '+sunTxt+'</span></div>'
       +spanCompass(w,st,d,eff,track)
       +spanSunBadges(ss,d.sunprof,eff)
-      +spanSunTimes(track,d.sunprof)
       +'</div>';
+    return p1+p2;
   }
   // Sonnenkompass (Polar): Winkel=Azimut (N oben), Radius=Elevation (Rand=Horizont, Mitte=Zenit)
   function spanCompass(w,st,d,eff,track){
@@ -264,6 +275,7 @@
     var s=(eff&&eff.elev>0)?(Math.round(eff.az)+'° / '+Math.round(eff.elev)+'° hoch'):(eff?'unter Horizont':'—');
     var lbl=$('[data-simlbl]',el); if(lbl)lbl.textContent=spanHHMM(m)+' · Sonne '+s;
     var nb=$('[data-simnow]',el); if(nb)nb.classList.toggle('on',live);
+    spanDrawAxis(el);
   }
   // Profilbalken: wann das zugewiesene Shadowing-Sun-Profil nach Azimut/Elevation auslöst
   function spanProfBar(track,sp,markM){
@@ -282,6 +294,23 @@
     h+='<div class="span-sun-when">Profil „'+esc(sp.name||'?')+'“ ('+sp.bgn+'–'+sp.end+'°, Elev '+el+'°): '
       +(segs.length?segs.map(function(s){return spanHHMM(s.a)+'–'+spanHHMM(s.b);}).join(' · '):'löst heute nicht aus')+'</div>';
     return h;
+  }
+  // Stundenachse (JS füllt breitenabhängig 1/2/3/4/6 h) + Auf-/Höchststand-/Untergangszeiten
+  function spanTimeAxis(track){
+    var h='<div class="span-axis"></div>';
+    if(track&&track.pts){var up=track.pts.filter(function(p){return p.elev>0;});
+      if(up.length){var rise=up[0].m,set=up[up.length-1].m,noon=track.pts.reduce(function(a,p){return p.elev>a.elev?p:a;},{elev:-99,m:0}).m;
+        h+='<div class="span-events"><span>↑ Aufgang '+spanHHMM(rise)+'</span><span>☀ Höchststand '+spanHHMM(noon)+'</span><span>↓ Untergang '+spanHHMM(set)+'</span></div>';}}
+    return h;
+  }
+  // misst die Achsenbreite und setzt Stundenlabels im passenden Schritt (jede Stunde wenn breit genug)
+  function spanDrawAxis(el){
+    var ax=el&&el.querySelector('.span-axis'); if(!ax)return;
+    var w=ax.clientWidth||0; if(!w)return;
+    var step = w>=1000?1 : w>=640?2 : w>=460?3 : w>=340?4 : 6;
+    var s='';
+    for(var t=0;t<=24;t+=step){ s+='<span style="left:'+(t/24*100).toFixed(3)+'%">'+(t<10?'0'+t:t)+'</span>'; }
+    ax.innerHTML=s;
   }
   function spanSunBar(track,markM){
     if(!track||track.fz==null)return '';
@@ -335,6 +364,7 @@
   function spanElOf(w,root){return $('.w[data-id="'+w.id+'"]',root||canvas);}
   function spanRepaint(w,el){if(!el)el=spanElOf(w);if(!el)return;var host=el.querySelector('.winner')||el;host.innerHTML=spanRender(w);spanBind(w,el);}
   function spanBind(w,el){var st=spanSt(w);function rp(){spanRepaint(w,el);}
+    spanDrawAxis(el);
     $$('[data-spanroom]',el).forEach(function(b){b.onclick=function(){st.sel=+b.getAttribute('data-spanroom');rp();};});
     // Ledger-Liste: Auto/Hand-Umschalter je Zeile
     $$('[data-spantog]',el).forEach(function(t){t.onclick=function(e){e.stopPropagation();var vid=+t.getAttribute('data-spantog');if(!vid)return;var cur=t.getAttribute('data-cur')==='1';spanWrite(w,el,vid,cur?0:1);};});
