@@ -578,7 +578,7 @@ if ($api === 'shading') {
     header('Content-Type: application/json; charset=utf-8');
     $sid = (int) (@IPS_GetObjectIDByIdent('LVB_ShadingAPI', 23491) ?: 0);
     if ($sid <= 0 || !IPS_ScriptExists($sid)) { echo json_encode(['ok' => false, 'err' => 'backend']); return; }
-    echo IPS_RunScriptWaitEx($sid, ['op' => (string) ($_GET['op'] ?? 'list'), 'device' => (string) ($_GET['device'] ?? '')]);
+    echo IPS_RunScriptWaitEx($sid, ['op' => (string) ($_GET['op'] ?? 'list'), 'device' => (string) ($_GET['device'] ?? ''), 'profile' => (string) ($_GET['profile'] ?? '')]);
     return;
 }
 
@@ -1296,6 +1296,49 @@ if ($api === 'import') {
         $views[$key] = ['page' => ['w' => (int) ceil($ext['x']) + 16, 'h' => (int) ceil($ext['y']) + 16], 'widgets' => $widgets];
     }
     echo json_encode(['views' => $views, 'current' => array_key_first($views) ?? null]);
+    return;
+}
+
+// ---- HomeSuite Modul-Transport (generisch):  ?api=mod&op=suite|entities|state|manifest|manage ----
+//      Bindet den LVB an die HomeSuite-Modul-Suite. Sicherheit: nur Instanzen aus der HomeSuite-
+//      Library (LibraryID-Whitelist) werden angesprochen; op=manage (POST) ist token-gesichert.
+//      Voellig inert & fehlerfrei, solange keine HomeSuite-Instanz existiert (Phase-0-additiv).
+if ($api === 'mod') {
+    header('Content-Type: application/json; charset=utf-8');
+    $HS_LIB = '{0F66F23F-ED50-4CD5-AB44-5FC961C7733A}'; // HomeSuite Library-GUID (GUIDS.md, immutabel)
+    $HSH    = '{A0C082B4-9E74-430E-BD97-F9CEBB364257}'; // Hub (HSH)
+    $op     = (string) ($_GET['op'] ?? 'suite');
+    // Prefix eines HomeSuite-Moduls sicher aufloesen (fremde Instanzen -> null).
+    $hsPrefix = function (int $iid) use ($HS_LIB): ?string {
+        if ($iid <= 0 || !@IPS_InstanceExists($iid)) return null;
+        $guid = IPS_GetInstance($iid)['ModuleInfo']['ModuleID'] ?? '';
+        $mod  = @IPS_GetModule($guid);
+        if (!$mod || (($mod['LibraryID'] ?? '') !== $HS_LIB)) return null;
+        return $mod['Prefix'] ?? null;
+    };
+    if ($op === 'suite' || $op === 'entities') {
+        $hub = @IPS_GetInstanceListByModuleID($HSH)[0] ?? 0;
+        if (!$hub) { echo json_encode(['ok' => false, 'err' => 'no-hub']); return; }
+        $fn = ($op === 'suite') ? 'HSH_GetSuiteManifest' : 'HSH_ListEntities';
+        echo function_exists($fn) ? (string) $fn($hub) : json_encode(['ok' => false, 'err' => 'fn']);
+        return;
+    }
+    $iid = (int) ($_GET['id'] ?? 0);
+    $pfx = $hsPrefix($iid);
+    if ($pfx === null) { http_response_code(404); echo json_encode(['ok' => false, 'err' => 'no-homesuite-instance']); return; }
+    if ($op === 'state' || $op === 'manifest') {
+        $fn = $pfx . ($op === 'state' ? '_GetState' : '_GetManifest');
+        echo function_exists($fn) ? (string) $fn($iid) : json_encode(['ok' => false, 'err' => 'fn']);
+        return;
+    }
+    if ($op === 'manage') {
+        if (!hash_equals($TOKEN, (string) ($_GET['key'] ?? ''))) { http_response_code(403); echo json_encode(['ok' => false, 'err' => 'forbidden']); return; }
+        $fn = $pfx . '_Manage';
+        if (!function_exists($fn)) { echo json_encode(['ok' => false, 'err' => 'fn']); return; }
+        echo (string) $fn($iid, (string) file_get_contents('php://input'));
+        return;
+    }
+    echo json_encode(['ok' => false, 'err' => 'op']);
     return;
 }
 

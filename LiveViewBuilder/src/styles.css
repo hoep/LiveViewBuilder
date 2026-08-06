@@ -1425,6 +1425,29 @@
   .span-sun-when .sw{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:5px;vertical-align:middle}
   .span-sun-when .sw.gold{background:#f5a623}
   .span-sun-when .sw.teal{background:var(--accent)}
+  .span-sub-h{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);margin:12px 0 2px}
+  /* LVB.panel — einheitliche Loading/Error/leer-Zustaende (HomeSuite M0.5) */
+  .lvbp-state{padding:10px 12px;font-size:12px;border-radius:8px;background:var(--tile);border:1px solid var(--line-soft);color:var(--muted)}
+  .lvbp-loading{color:var(--muted)}
+  .lvbp-empty{color:var(--faint)}
+  .lvbp-error{color:var(--crit,#e05260);border-color:color-mix(in oklab,var(--crit,#e05260) 40%,var(--line))}
+  /* HomeSuite Suite-Übersicht (homesuite) */
+  .hs{padding:2px}
+  .hs-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:8px}
+  .hs-head b{font-size:14px}
+  .hs-sub{font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
+  .hs-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+  .hs-card{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:5px 8px;padding:9px 11px;border:1px solid var(--line-soft);border-radius:10px;background:var(--tile)}
+  .hs-dot{width:8px;height:8px;border-radius:50%;background:var(--ok,#3ac17a);grid-row:span 2}
+  .hs-dot.off{background:var(--faint)}
+  .hs-name{font-size:13px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .hs-dom{font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);justify-self:end}
+  .hs-mode{grid-column:2/4;font-size:10.5px;color:var(--muted)}
+  .span-axis{position:relative;height:13px;font-size:9.5px;color:var(--faint);font-variant-numeric:tabular-nums;margin-top:3px}
+  .span-axis span{position:absolute;top:0;transform:translateX(-50%);white-space:nowrap}
+  .span-axis span:first-child{transform:none}
+  .span-axis span:last-child{transform:translateX(-100%)}
+  .span-events{display:flex;justify-content:space-between;font-size:10.5px;color:var(--muted);font-variant-numeric:tabular-nums;margin-top:6px}
   /* Sonnenkompass */
   .cmp{width:100%;max-width:360px;display:block;margin:8px auto 4px}
   .cmp-hit{fill:#f5a623;opacity:.15}
