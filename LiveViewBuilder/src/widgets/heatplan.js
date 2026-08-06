@@ -1,16 +1,13 @@
-  // ===== Widget: Heizplan (heatplan) — interaktiver Wochen-Temperaturplan =====
+  // ===== Heizplan — geteilte Bausteine (Helfer für die heatx-Familie) =====
   //
-  //  Voll interaktiver Editor der HomeMatic-Heizungssteuerung (#53700):
-  //   - Räume (frei wählbar, geclustert EG/OG/DG) als Tab-Reihe
-  //   - Präsenz-Profile Normal / Erweitert / Abgesenkt
-  //   - Tages-Sollkurve mit ziehbaren Griffen (Grenze waagrecht, Temperatur senkrecht)
-  //   - Wochenübersicht (7 Streifen, nach Solltemperatur eingefärbt) zum Anspringen
-  //   - Slot-Editor mit Steppern, Slot einfügen/löschen, Tag übertragen, Speichern
+  //  Früher der Heizplan-MONOLITH (Widget „heatplan"). Der Monolith wurde durch die
+  //  komponierbare heatx-Familie (rooms/curve/week/slots/editor) ersetzt und hier
+  //  ENTFERNT; übrig bleiben die puren Render-/Rechen-/Edit-Funktionen (hp*), die die
+  //  Familie im selben Bundle weiterverwendet. KEIN defWidget mehr in dieser Datei.
   //
-  //  Daten kommen über ?api=heat (Proxy auf IPS-Skript HM_Heizung_LVB). Im Doku-Modus
-  //  wird ausschliesslich mit eingebetteten Demodaten gearbeitet (nie Netz, nie speichern).
+  //  Datenquellen: ?api=heat (Legacy #53700) bzw. ?api=mod (HomeSuite HeatingZone).
+  //  Im Doku-Modus nur eingebettete Demodaten (nie Netz, nie speichern).
 
-  var _hpState = {};                         // w.id -> Editor-Zustand
   var _hpRooms = null;                       // Raumliste (via ?api=heat&op=list)
   var _hpRoomsRoot = null;                   // Root-ID, für die _hpRooms geladen wurde
   var _hpGroupOrder = null;                  // Gruppen-Reihenfolge (Geschosse aus der Topologie, hsMode)
@@ -38,7 +35,6 @@
     return s[s.length-1].c;}
   function hpBucket(t){return t<=15?'kalt':t<=17?'Absenkung':t<=19?'normal':t<=21?'Komfort':'heiß';}
 
-  function hpSt(w){return _hpState[w.id]||(_hpState[w.id]={loaded:false,roomIdx:0,presence:0,day:0,slot:1,prof:null,active:-1,type:'',name:'',dirty:false,err:''});}
 
   // ---- konfigurierte Räume (aus w.rooms) bzw. Fallback: alle ----
   function hpCfgRooms(w){
@@ -49,7 +45,6 @@
     return all;
   }
   function hpRoomName(idx){var r=(_hpRooms||[]).filter(function(x){return x.idx==idx;})[0];return r?r.name:('#'+idx);}
-  function hpRoomType(idx){var r=(_hpRooms||[]).filter(function(x){return x.idx==idx;})[0];return r?r.type:'';}
 
   // ---------- Demodaten (nur Doku) ----------
   function hpDemo(){
@@ -76,61 +71,6 @@
   // aktuelle Woche des gewählten Präsenz-Profils
   function hpWeek(st){return (st.prof&&st.prof[HP_PRES[st.presence]])||[];}
   function hpDayObj(st){var wk=hpWeek(st);return wk[st.day]||{end:['24:00'],val:[17]};}
-
-  // ============================ RENDER ============================
-  function hpRender(w){
-    var st=hpSt(w);
-    _hpStops=hpColors(w);                                   // Temperatur-Farbskala (evtl. angepasst)
-    var acc=w.accent?_skinColor(w.accent):'';               // Akzent-Override (setzt --accent lokal)
-    var accStyle=acc?(' style="--accent:'+acc+'"'):'';
-    if(!st.loaded){
-      return '<div class="hplan hp-loading"'+accStyle+'><div class="hp-spin">Heizplan lädt …</div></div>';
-    }
-    if(st.err){ return '<div class="hplan hp-loading"'+accStyle+'><div class="hp-spin">'+esc(st.err)+'</div></div>'; }
-    var day=hpDayObj(st), n=(day.end||[]).length;
-    if(st.slot>n)st.slot=n; if(st.slot<1)st.slot=1;
-    var h='<div class="hplan"'+accStyle+'>';
-
-    // ---- Kopf: Räume + Titel ----
-    h+='<div class="hp-head">';
-    h+= hpRoomsBar(w,st);
-    h+='<div class="hp-titlerow"><div class="hp-title">'+esc(st.name||hpRoomName(st.roomIdx))+' <span class="hp-titsub">· '+esc(HP_PRES[st.presence])+'</span></div>';
-    h+='<div class="hp-sub">'+HP_DAYL[st.day]+' · '+n+' Slot'+(n!=1?'s':'')+' · Ø '+hpFmt(hpDayAvg(day))+' °C'
-       +(st.dirty?' · <b class="hp-unsaved">ungespeichert</b>':'')+'</div></div>';
-    h+='</div>';
-
-    // ---- Körper ----
-    h+='<div class="hp-body"><div class="hp-main">';
-
-    // Wochentag-Wahl
-    h+='<div class="hp-days">'+HP_DAYS.map(function(d,i){return '<button class="hp-day'+(i==st.day?' on':'')+'" data-hpday="'+i+'">'+d+'</button>';}).join('')+'</div>';
-
-    // Kurve
-    h+= hpCurve(w,st);
-
-    // Slot-Pillen
-    h+='<div class="hp-pills">'+hpPills(st)+'</div>';
-
-    // Legende Kurve
-    h+='<div class="hp-clegend"><span class="hp-cl-l">Sollkurve – Griffe ziehen ändert Grenze &amp; Temperatur</span>'
-      +'<span class="hp-cl-r">'+hpNowText(st)+'</span></div>';
-
-    // Wochenübersicht
-    h+= hpWeekView(w,st);
-
-    h+='</div>';   // /hp-main
-
-    // ---- Seitenspalte ----
-    h+='<div class="hp-side">';
-    h+= hpSlotEditor(st,day);
-    h+= hpPresenceBox(st);
-    h+= hpTransferBox(w,st);
-    h+='<button class="hp-save'+(st.dirty?' dirty':'')+'" data-hpsave="1"><svg class="hp-ic"><use href="#ic-check"/></svg> Profil speichern</button>';
-    h+='</div>';   // /hp-side
-
-    h+='</div></div>';  // /hp-body /hplan
-    return h;
-  }
 
   function hpRoomsBar(w,st){
     var rooms=hpCfgRooms(w);
@@ -266,7 +206,6 @@
 
   // ---------- jetzt / Soll ----------
   function hpNowMin(){var d=new Date();return d.getHours()*60+d.getMinutes();}
-  function hpNowDay(){return (new Date().getDay()+6)%7;}
   function hpSollAt(day,m){var end=day.end||[],val=day.val||[],start=0;for(var i=0;i<end.length;i++){var en=hpH2M(end[i]);if(m<en||i==end.length-1)return +val[i];start=en;}return +val[val.length-1]||0;}
   function hpNowText(st){var day=hpDayObj(st),nowM=hpNowMin(),soll=hpSollAt(day,nowM);
     var s='jetzt '+hpM2H(nowM)+' · Soll '+hpFmt(soll)+' °C';
@@ -309,18 +248,6 @@
     var dst=hpWeek(st); for(var d=0;d<7;d++){var s=src[d]||{end:['24:00'],val:[17]}; dst[d]={end:s.end.slice(),val:s.val.map(Number)};}
     hpMarkDirty(st); return true;
   }
-  function hpTakeOver(w,el,idx,pres,cb){
-    if(typeof DOKU!=='undefined'&&DOKU){ hpApplyWeek(hpSt(w),hpDemo(),pres); cb&&cb(); return; }
-    if(hpHS(w)){ hpHSManage(idx,{op:'getSchedule',args:{variant:HP_PRES[pres]}}).then(function(j){
-      if(j&&j.week){ var prof={}; prof[HP_PRES[pres]]=hsWeekToProf(j.week); if(!hpApplyWeek(hpSt(w),prof,pres))toast('Quelle leer'); }
-      else toast('Quelle nicht lesbar'); cb&&cb();
-    }).catch(function(){toast('Übernehmen: Verbindungsfehler');cb&&cb();}); return; }
-    fetch('?api=heat&op=get&room='+idx+hpRootParam(w),{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
-      if(j&&j.ok){ if(!hpApplyWeek(hpSt(w),j.profiles,pres))toast('Quelle leer'); } else toast('Quelle nicht lesbar');
-      cb&&cb();
-    }).catch(function(){toast('Übernehmen: Verbindungsfehler');cb&&cb();});
-  }
-
   // ============================ NETZ ============================
 
   // ---- HomeSuite-Datenquelle (?api=mod) — Format/Design identisch zur Legacy ----
@@ -339,35 +266,6 @@
       if(!end.length){ end=['24:00']; val=[17]; } out.push({end:end,val:val}); }
     return out;
   }
-  function hpHSGet(w,idx,cb){
-    var st=hpSt(w); st.root=0; st.hsMode=true;
-    var jobs=HP_PRES.map(function(v){ return hpHSManage(idx,{op:'getSchedule',args:{variant:v}})
-      .then(function(j){return (j&&j.week)?j.week:null;}).catch(function(){return null;}); });
-    jobs.push(fetch('?api=mod&op=state&id='+idx,{cache:'no-store'}).then(function(r){return r.json();}).catch(function(){return {};}));
-    Promise.all(jobs).then(function(res){
-      var prof={}; HP_PRES.forEach(function(v,i){ prof[v]=res[i]?hsWeekToProf(res[i]):hpEmptyWeek(); });
-      var s=res[HP_PRES.length]||{};
-      st.prof=prof; st.roomIdx=idx; st.name=hpRoomName(idx); st.type='';
-      st.ist=(s.ActualTemp==null?null:+s.ActualTemp);
-      st.sollDev=(s.Setpoint==null?null:+s.Setpoint);
-      st.hum=(s.Humidity==null?null:+s.Humidity);
-      st.active=(s.Presence==null?-1:+s.Presence);
-      st.loaded=true; st.dirty=false; st.err=''; cb&&cb();
-    }).catch(function(){st.err='Verbindungsfehler';st.loaded=true;cb&&cb();});
-  }
-  function hpHSSave(w,el){
-    var st=hpSt(w); if(!st.loaded)return;
-    var idx=st.roomIdx, variant=HP_PRES[st.presence], week=hpWeek(st), calls=[];
-    for(var d=0;d<7;d++){ var day=week[d]||{end:['24:00'],val:[17]};
-      var slots=day.end.map(function(e,i){return {end:hpH2M(e),val:Number(day.val[i])};});
-      calls.push(hpHSManage(idx,{op:'updateProfile',args:{variant:variant,day:d,slots:slots}})); }
-    var btn=$('[data-hpsave]',el); if(btn){btn.disabled=true;btn.textContent='speichert …';}
-    Promise.all(calls).then(function(rs){
-      var ok=rs.every(function(j){return j&&j.ok;});
-      st.dirty=!ok; toast(ok?'Gespeichert':'Speichern fehlgeschlagen'); hpRepaint(w,el);
-    }).catch(function(){toast('Speichern: Verbindungsfehler');hpRepaint(w,el);});
-  }
-
   function hpLoadRooms(w,cb){
     var root=(w&&w.rootId)||0;
     if(_hpRooms&&_hpRoomsRoot===root){cb&&cb();return;}
@@ -390,192 +288,4 @@
     fetch('?api=heat&op=list'+hpRootParam(w),{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
       _hpRooms=(j&&j.rooms)||[]; _hpRoomsRoot=root; cb&&cb();
     }).catch(function(){_hpRooms=[];_hpRoomsRoot=root;cb&&cb();});
-  }
-  function hpLoadRoom(w,el,idx,cb){
-    var st=hpSt(w);
-    st.root=(w.rootId||0);
-    st.hsMode=hpHS(w);
-    if(typeof DOKU!=='undefined'&&DOKU){ st.prof=hpDemo(); st.roomIdx=idx||12; st.name=hpRoomName(st.roomIdx); st.type=hpRoomType(st.roomIdx); st.active=1; st.ist=21.4; st.sollDev=20; st.hum=48; st.loaded=true; st.dirty=false; cb&&cb(); return; }
-    if(hpHS(w)){ hpHSGet(w,idx,cb); return; }
-    fetch('?api=heat&op=get&room='+idx+hpRootParam(w),{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
-      if(!j||!j.ok){st.err='Raum nicht lesbar';st.loaded=true;cb&&cb();return;}
-      st.prof=j.profiles; st.roomIdx=j.room; st.name=j.name; st.type=j.type; st.active=(j.activePresence==null?-1:j.activePresence);
-      st.ist=(j.ist==null?null:+j.ist); st.sollDev=(j.sollDev==null?null:+j.sollDev); st.hum=(j.hum==null?null:+j.hum);
-      st.loaded=true; st.dirty=false; st.err=''; cb&&cb();
-    }).catch(function(){st.err='Verbindungsfehler';st.loaded=true;cb&&cb();});
-  }
-
-  // schlanke Ist/Soll-Aktualisierung aller sichtbaren Heizplan-Widgets (überschreibt keinen Plan)
-  var _hpLiveTimer=null;
-  function hpStartLiveTimer(){ if(_hpLiveTimer||(typeof DOKU!=='undefined'&&DOKU))return; _hpLiveTimer=setInterval(hpLiveTick,60000); }
-  function hpLiveTick(){
-    Object.keys(_hpState).forEach(function(id){ var st=_hpState[id]; if(!st.loaded||st.dragging||!st.roomIdx)return;
-      var el=document.querySelector('.w[data-id="'+id+'"]'); if(!el)return;
-      var url=st.hsMode ? ('?api=mod&op=state&id='+st.roomIdx)
-                        : ('?api=heat&op=live&room='+st.roomIdx+(st.root?('&root='+encodeURIComponent(st.root)):''));
-      fetch(url,{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
-        if(!j)return;
-        if(st.hsMode){ st.ist=(j.ActualTemp==null?null:+j.ActualTemp); st.sollDev=(j.Setpoint==null?null:+j.Setpoint); st.hum=(j.Humidity==null?null:+j.Humidity); }
-        else { if(!j.ok)return; st.ist=(j.ist==null?null:+j.ist); st.sollDev=(j.sollDev==null?null:+j.sollDev); st.hum=(j.hum==null?null:+j.hum); }
-        var cl=el.querySelector('.hp-cl-r'); if(cl)cl.innerHTML=hpNowText(st);
-      }).catch(function(){});
-    });
-  }
-
-  function hpSave(w,el){
-    var st=hpSt(w); if(!st.loaded)return;
-    var week=hpWeek(st).map(function(d){return {end:d.end.slice(),val:d.val.map(Number)};});
-    if(typeof DOKU!=='undefined'&&DOKU){ st.dirty=false; hpRepaint(w,el); toast('Demo: gespeichert (nur Anzeige)'); return; }
-    if(hpHS(w)){ hpHSSave(w,el); return; }
-    var btn=$('[data-hpsave]',el); if(btn){btn.disabled=true;btn.textContent='speichert …';}
-    fetch('?api=heat&op=save&room='+st.roomIdx+'&presence='+st.presence+hpRootParam(w)+'&key='+encodeURIComponent(TOKEN),
-      {method:'POST',cache:'no-store',headers:{'Content-Type':'text/plain'},body:JSON.stringify(week)})
-      .then(function(r){return r.json();}).then(function(j){
-        if(j&&j.ok){ st.dirty=false; toast(j.wroteDevice?'Gespeichert & ans Thermostat übertragen':'Gespeichert'); hpRepaint(w,el); }
-        else { toast('Speichern fehlgeschlagen'+(j&&j.err?(': '+j.err+(j.day!=null?(' Tag '+HP_DAYS[j.day]):'')):'')); hpRepaint(w,el); }
-      }).catch(function(){toast('Speichern: Verbindungsfehler');hpRepaint(w,el);});
-  }
-
-  // ============================ PAINT/BIND ============================
-  function hpElOf(w,root){return $('.w[data-id="'+w.id+'"]',root||canvas);}
-  function hpRepaint(w,el){ if(!el)el=hpElOf(w); if(!el)return; var host=el.querySelector('.winner')||el; host.innerHTML=hpRender(w); hpBind(w,el); }
-
-  function hpBind(w,el){
-    var st=hpSt(w);
-    function rp(){hpRepaint(w,el);}
-    function guardSwitch(fn){ if(st.dirty){ if(!confirm('Ungespeicherte Änderungen verwerfen?'))return; } fn(); }
-
-    // Räume
-    $$('[data-hproom]',el).forEach(function(b){b.onclick=function(){var idx=+b.getAttribute('data-hproom');if(idx==st.roomIdx)return;
-      guardSwitch(function(){ st.slot=1; hpLoadRoom(w,el,idx,rp); });};});
-    // Präsenz
-    $$('[data-hppres]',el).forEach(function(b){b.onclick=function(){var p=+b.getAttribute('data-hppres');if(p==st.presence)return;
-      guardSwitch(function(){ st.presence=p; st.slot=1; rp(); });};});
-    // Wochentage
-    $$('[data-hpday]',el).forEach(function(b){b.onclick=function(){st.day=+b.getAttribute('data-hpday');st.slot=1;rp();};});
-    $$('[data-hpwday]',el).forEach(function(b){b.onclick=function(){st.day=+b.getAttribute('data-hpwday');st.slot=1;rp();};});
-    // Slot-Pillen
-    $$('[data-hpslot]',el).forEach(function(b){b.onclick=function(){st.slot=+b.getAttribute('data-hpslot');rp();};});
-    // Stepper
-    $$('[data-hptemp]',el).forEach(function(b){b.onclick=function(){hpTempStep(w,st,+b.getAttribute('data-hptemp'));rp();};});
-    $$('[data-hpstart]',el).forEach(function(b){b.onclick=function(){hpTimeStep(w,st,'start',+b.getAttribute('data-hpstart'));rp();};});
-    $$('[data-hpend]',el).forEach(function(b){b.onclick=function(){hpTimeStep(w,st,'end',+b.getAttribute('data-hpend'));rp();};});
-    // add/del
-    var ab=$('[data-hpadd]',el); if(ab)ab.onclick=function(){hpAddSlot(w,st);rp();};
-    var db=$('[data-hpdel]',el); if(db)db.onclick=function(){hpDelSlot(w,st);rp();};
-    // Übertragen
-    var cp=$('[data-hpcopy]',el); if(cp)cp.onclick=function(){var t=[];$$('[data-hptday]:checked',el).forEach(function(c){t.push(+c.getAttribute('data-hptday'));});if(!t.length){toast('Keine Zieltage gewählt');return;}hpCopyDay(w,st,t);rp();};
-    var tk=$('[data-hptake]',el); if(tk)tk.onclick=function(){var rs=$('[data-hpfromroom]',el),ps=$('[data-hpfrompres]',el);if(!rs||!ps)return;var idx=+rs.value,pres=+ps.value;
-      if(idx==st.roomIdx&&pres==st.presence){toast('Quelle = Ziel');return;}
-      if(!confirm('Ganze Woche aus '+hpRoomName(idx)+' · '+HP_PRES[pres]+' übernehmen? Überschreibt den aktuellen Plan.'))return;
-      hpTakeOver(w,el,idx,pres,rp);};
-    // Speichern
-    var sv=$('[data-hpsave]',el); if(sv)sv.onclick=function(){hpSave(w,el);};
-
-    // ---- Drag: Plateau (Y) + Grenze (X) ----
-    // Wichtig: Bildschirm-Geometrie des Plots EINMAL beim pointerdown einfangen. Während des
-    // Ziehens rebaut hpPaintCurveOnly zwar die SVG-Node, aber der Plot bleibt an derselben
-    // Bildschirmposition — mit der gemerkten Box rechnen wir unabhängig von der (dann veralteten)
-    // Element-Referenz korrekt weiter. (Kein rp() im pointerdown — das würde die Node zerstören.)
-    var svg=$('[data-hpsvg]',el);
-    if(svg){ var lo=+svg.getAttribute('data-lo'),hi=+svg.getAttribute('data-hi');
-      function startDrag(box,onMove){ st.dragging=true;
-        function mv(e){onMove(e);raf();}
-        function up(){st.dragging=false;document.removeEventListener('pointermove',mv);document.removeEventListener('pointerup',up);rp();}
-        var busy=false; function raf(){if(busy)return;busy=true;requestAnimationFrame(function(){hpPaintCurveOnly(w,el);busy=false;});}
-        document.addEventListener('pointermove',mv);document.addEventListener('pointerup',up); raf();
-      }
-      $$('[data-hpplat]',svg).forEach(function(pl){pl.addEventListener('pointerdown',function(ev){ev.preventDefault();
-        var i=+pl.getAttribute('data-hpplat'); st.slot=i+1; var day=hpDayObj(st); var box=svg.getBoundingClientRect();
-        startDrag(box,function(e){var f=(e.clientY-box.top)/box.height, t=hi-f*(hi-lo);
-          t=Math.max(5,Math.min(30,Math.round(t*2)/2)); day.val[i]=t; hpMarkDirty(st);});
-      });});
-      $$('[data-hpb]',el).forEach(function(bh){bh.addEventListener('pointerdown',function(ev){ev.preventDefault();
-        var i=+bh.getAttribute('data-hpb'); var day=hpDayObj(st),end=day.end; var box=svg.getBoundingClientRect();
-        startDrag(box,function(e){var f=(e.clientX-box.left)/box.width, m=Math.round(f*1440/10)*10;
-          var loB=(i==0?0:hpH2M(end[i-1]))+10, hiB=hpH2M(end[i+1])-10; m=Math.max(loB,Math.min(hiB,m)); end[i]=hpM2H(m); hpMarkDirty(st);});
-      });});
-    }
-  }
-
-  // Nur Kurve + Pillen + Woche + Editorwerte neu zeichnen (ohne Rebind) — für flüssiges Ziehen.
-  function hpPaintCurveOnly(w,el){var st=hpSt(w);
-    var cw=el.querySelector('.hp-main'); if(!cw)return;
-    var oldCurve=cw.querySelector('.hp-curvewrap'); if(oldCurve){var tmp=document.createElement('div');tmp.innerHTML=hpCurve(w,st);var nc=tmp.querySelector('.hp-curvewrap');if(nc)oldCurve.replaceWith(nc);}
-    // aber Drag läuft über document-Listener -> Rebind der neuen Plateaus/Griffe nötig, sonst nur optisch
-    // (wir binden die SVG-Handles neu, Buttons bleiben)
-    var pills=cw.querySelector('.hp-pills'); if(pills)pills.innerHTML=hpPills(st);
-  }
-
-  // ============================ WIDGET ============================
-  defWidget('heatplan',{
-    // MONOLITH (alt): durch die komponierbare HomeSuite-Familie ersetzt. Bleibt
-    // registriert, damit die geparkten „Heizplan …"-Vergleichsseiten weiter
-    // rendern; aus der Palette genommen, damit keine neuen mehr platziert werden.
-    noPalette:true,
-    label:'Heizplan (alt/Monolith)', paletteIcon:'thermostat', size:[980,620],
-    defaults:function(w){w.label='Heizplan';w.rooms=[];},
-    render:function(w){return hpRender(w);},
-    mount:function(w){var el=hpElOf(w); if(!el)el=hpElOf(w,$('#ovcanvas')); if(!el)return;
-      var st=hpSt(w); hpStartLiveTimer();
-      if(!st.loaded){ hpLoadRooms(w,function(){ var rooms=hpCfgRooms(w); var first=rooms.length?rooms[0].idx:((_hpRooms&&_hpRooms[0])?_hpRooms[0].idx:0);
-        if(!st.roomIdx)st.roomIdx=first; hpLoadRoom(w,el,st.roomIdx,function(){hpRepaint(w,el);}); }); }
-      else { hpBind(w,el); }
-    },
-    props:function(w){ return hpProps(w); },
-    wire:function(w){ hpPropsWire(w); }
-  });
-
-  // ---------- Props: Datenquelle · Räume (Root-Liste) · Farben ----------
-  var HP_FIRMA=['Bad Firma','Buero','Gang Firma','Hauseingang','Kueche Firma','Verpackung','WC Firma','Werkstatt'];
-  function hpProps(w){
-    var h='<div class="pgh">Datenquelle</div>';
-    h+=row('Quelle','<label style="display:inline-flex;align-items:center;gap:6px;font-size:12px"><input type="checkbox" id="hpHsMode"'+(w.hsMode?' checked':'')+'> HomeSuite-Module</label>');
-    if(!w.hsMode){
-      h+=row('Steuerung (Root-ID)','<input id="hpRoot" type="number" value="'+(w.rootId||'')+'" placeholder="53700" style="width:110px">');
-      h+='<div style="font-size:11px;color:var(--muted);margin:-2px 2px 6px">Wurzel-Objekt der Heizungssteuerung. Leer = Standard (#53700).</div>';
-    } else {
-      h+='<div style="font-size:11px;color:var(--muted);margin:-2px 2px 6px">Räume = HeatingZone-Entitäten der HomeSuite (Domäne Heizung).</div>';
-    }
-    h+='<div class="pgh">Räume (Root-Variablen) &amp; Etage</div>';
-    h+='<div style="font-size:11px;color:var(--muted);margin:-2px 2px 6px">Zeile = darzustellender Raum + Etage EG/OG/DG (EG = Firma). Reihenfolge = Anzeige.</div>';
-    if(!_hpRooms||_hpRoomsRoot!==(w.rootId||0)){ hpLoadRooms(w,function(){ if(typeof renderProps==='function')renderProps(); });
-      return h+'<div style="color:var(--muted);font-size:12px;padding:4px 2px">Raumliste lädt …</div>'; }
-    var rooms=(w.rooms||[]);
-    h+='<div class="hp-cfglist">';
-    rooms.forEach(function(r,i){
-      h+='<div class="hp-cfgrow2">'
-        +'<select class="hp-rsel" data-hprsel="'+i+'">'+(_hpRooms||[]).map(function(o){return '<option value="'+o.idx+'"'+(o.idx==r.idx?' selected':'')+'>'+esc(o.name)+'</option>';}).join('')+'</select>'
-        +'<span class="hp-cfggrp">'+HP_GROUPS.map(function(g){return '<button type="button" class="hp-cfgg'+((r.group||'')==g?' on':'')+'" data-hprgrp="'+i+'" data-g="'+g+'">'+g+'</button>';}).join('')+'</span>'
-        +'<button type="button" class="hp-rdel" data-hprdel="'+i+'" title="entfernen">×</button></div>';
-    });
-    if(!rooms.length)h+='<div style="color:var(--faint);font-size:12px;padding:4px 2px">Noch keine Räume – „+ Raum" oder eine Vorlage wählen.</div>';
-    h+='</div>';
-    h+='<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">'
-      +'<button type="button" class="hp-cfgquick" data-hpradd="1">+ Raum</button>'
-      +'<button type="button" class="hp-cfgquick" data-hpquick="firma">Firma → EG</button>'
-      +'<button type="button" class="hp-cfgquick" data-hpquick="all">Alle Räume</button></div>';
-    // Farben
-    h+='<div class="pgh">Farben</div>';
-    h+=row('Akzentfarbe',skinSel(w.accent||'','id="hpAcc"'));
-    var cols=hpColors(w);
-    h+='<div style="font-size:11px;color:var(--muted);margin:5px 2px 3px">Temperatur-Skala (kühl → warm)</div>';
-    h+='<div class="hp-tcols">'+cols.map(function(s,i){return '<label class="hp-tcol"><input type="color" data-hptc="'+i+'" value="'+s.c+'"><span>'+s.t+'°</span></label>';}).join('')+'</div>';
-    h+='<div style="margin-top:6px"><button type="button" class="hp-cfgquick" data-hptcreset="1">Farben zurücksetzen</button></div>';
-    return h;
-  }
-  function hpPropsWire(w){
-    function reload(){var el=hpElOf(w); if(el){var st=hpSt(w);st.loaded=false;st.roomIdx=0;hpRepaint(w,el);WIDGETS.heatplan.mount(w);}}
-    function repaintOnly(){var el=hpElOf(w); if(el)hpRepaint(w,el);}
-    if($('#hpHsMode'))$('#hpHsMode').onchange=function(){w.hsMode=this.checked||undefined;w.rooms=[];_hpRooms=null;_hpRoomsRoot=null;renderProps();commit();reload();};
-    if($('#hpRoot'))$('#hpRoot').onchange=function(){var v=parseInt(this.value)||0;w.rootId=v||undefined;_hpRooms=null;_hpRoomsRoot=null;renderProps();commit();reload();};
-    $$('#props [data-hprsel]').forEach(function(s){s.onchange=function(){var i=+s.getAttribute('data-hprsel');if(!w.rooms||!w.rooms[i])return;w.rooms[i].idx=+s.value;renderProps();commit();reload();};});
-    $$('#props [data-hprgrp]').forEach(function(b){b.onclick=function(){var i=+b.getAttribute('data-hprgrp');if(!w.rooms||!w.rooms[i])return;w.rooms[i].group=b.getAttribute('data-g');renderProps();commit();repaintOnly();};});
-    $$('#props [data-hprdel]').forEach(function(b){b.onclick=function(){var i=+b.getAttribute('data-hprdel');if(!w.rooms)return;w.rooms.splice(i,1);renderProps();commit();reload();};});
-    var add=$('#props [data-hpradd]');if(add)add.onclick=function(){if(!w.rooms)w.rooms=[];var used={};w.rooms.forEach(function(r){used[r.idx]=1;});var cand=(_hpRooms||[]).filter(function(o){return !used[o.idx];})[0]||(_hpRooms||[])[0];if(cand)w.rooms.push({idx:cand.idx,group:'EG'});renderProps();commit();reload();};
-    var qf=$('#props [data-hpquick="firma"]');if(qf)qf.onclick=function(){w.rooms=(_hpRooms||[]).filter(function(o){return HP_FIRMA.indexOf(o.name)>=0;}).map(function(o){return {idx:o.idx,group:'EG'};});renderProps();commit();reload();};
-    var qa=$('#props [data-hpquick="all"]');if(qa)qa.onclick=function(){var prev={};(w.rooms||[]).forEach(function(r){prev[r.idx]=r.group||'';});w.rooms=(_hpRooms||[]).map(function(o){return {idx:o.idx,group:prev[o.idx]||''};});renderProps();commit();reload();};
-    if($('#hpAcc'))$('#hpAcc').onchange=function(){w.accent=this.value||undefined;commit();repaintOnly();};
-    $$('#props [data-hptc]').forEach(function(c){c.oninput=function(){var i=+c.getAttribute('data-hptc');if(!w.tcolors)w.tcolors=HP_TDEF.slice();w.tcolors[i]=c.value;commit();repaintOnly();};});
-    var tr=$('#props [data-hptcreset]');if(tr)tr.onclick=function(){w.tcolors=undefined;renderProps();commit();repaintOnly();};
   }
