@@ -35,6 +35,33 @@
     return s[s.length-1].c;}
   function hpBucket(t){return t<=15?'kalt':t<=17?'Absenkung':t<=19?'normal':t<=21?'Komfort':'heiß';}
 
+  // ===== Wert-Domaenen: macht die Familie „sowohl als auch" (Heizung/Beschattung) =====
+  //  _hpVC wird vor jedem Render je Session gesetzt (hpSetVC). Default = heating ->
+  //  fuer die Heizung aendert sich NICHTS. shading = Position 0..100 % + Sonnen-Anker.
+  function hpPosColor(p){ p=Math.max(0,Math.min(100,p)); return hpMix('#e6eef4','#274b66',p/100); } // 0 offen(hell)..100 zu(dunkel)
+  var HP_VC={
+    heating:{dom:'heating',min:5,max:30,step:0.5,dec:1,unit:'°C',def:17,label:'Sollwert',anchors:false,
+      color:function(v){return hpTempColor(v);}, bucket:function(v){return hpBucket(v);},
+      steps:[[-1,'−1'],[-0.1,'−0,1'],[0.1,'+0,1'],[1,'+1']], scaleLo:15,scaleHi:22,scaleLbl:'Solltemperatur 15–22 °C', profTitle:'Präsenz-Profil'},
+    shading:{dom:'shading',min:0,max:100,step:5,dec:0,unit:'%',def:0,label:'Position',anchors:true,
+      color:function(v){return hpPosColor(v);}, bucket:function(v){return v<=10?'offen':v<=50?'halb':v<=90?'meist zu':'zu';},
+      steps:[[-10,'−10'],[-5,'−5'],[5,'+5'],[10,'+10']], scaleLo:0,scaleHi:100,scaleLbl:'0 % offen … 100 % zu', profTitle:'Plan'}
+  };
+  var _hpVC=HP_VC.heating;
+  function hpSetVC(dom){ _hpVC=HP_VC[dom]||HP_VC.heating; return _hpVC; }
+  function hpVal(v){ return _hpVC.dec>0 ? (Math.round(v*10)/10).toFixed(1).replace('.',',') : String(Math.round(v)); } // wert nach VC formatieren
+  function hpClampV(v){ v=Math.max(_hpVC.min,Math.min(_hpVC.max,v)); return _hpVC.step>=1?Math.round(v/_hpVC.step)*_hpVC.step:Math.round(v/_hpVC.step)*_hpVC.step; }
+  // Varianten-Achse: st.variants (aus getSchedule) bzw. Praesenz-Fallback. st.variant = Index.
+  function hpVars(st){ return (st&&st.variants&&st.variants.length)?st.variants:HP_PRES; }
+  function hpVarIdx(st){ var i=(st&&st.variant!=null)?st.variant:((st&&st.presence)||0); var n=hpVars(st).length; return (i>=0&&i<n)?i:0; }
+  function hpVarName(st){ return hpVars(st)[hpVarIdx(st)]; }
+  // Sonnen-Anker (Beschattung): key -> Label. Reihenfolge = Auswahlliste.
+  var HP_ANCHORS=[['sunrise','Sonnenaufgang'],['sunset','Sonnenuntergang'],
+    ['dawnCivil','Bürgerl. Dämmerung Beginn'],['duskCivil','Bürgerl. Dämmerung Ende'],
+    ['dawnNautical','Nautische Dämm. Beginn'],['duskNautical','Nautische Dämm. Ende'],
+    ['dawnAstro','Astron. Dämm. Beginn'],['duskAstro','Astron. Dämm. Ende']];
+  function hpAnchLabel(k){for(var i=0;i<HP_ANCHORS.length;i++)if(HP_ANCHORS[i][0]===k)return HP_ANCHORS[i][1];return k;}
+
 
   // ---- konfigurierte Räume (aus w.rooms) bzw. Fallback: alle ----
   function hpCfgRooms(w){
@@ -68,9 +95,11 @@
   function hpDayAvg(d){var sum=0,st=0;(d.end||[]).forEach(function(e,i){var en=hpH2M(e),len=en-st;sum+=(+d.val[i]||0)*len;st=en;});return sum/1440;}
   function hpFmt(n){return (Math.round(n*10)/10).toFixed(1).replace('.',',');}
 
-  // aktuelle Woche des gewählten Präsenz-Profils
-  function hpWeek(st){return (st.prof&&st.prof[HP_PRES[st.presence]])||[];}
-  function hpDayObj(st){var wk=hpWeek(st);return wk[st.day]||{end:['24:00'],val:[17]};}
+  // aktuelle Woche der gewählten Variante (Präsenz bzw. generische Variante)
+  function hpWeek(st){return (st.prof&&st.prof[hpVarName(st)])||[];}
+  function hpDayObj(st){var wk=hpWeek(st);return wk[st.day]||{end:['24:00'],val:[_hpVC.def]};}
+  // Anker-Liste eines Tages (parallel zu end[]/val[]): {anchor,offset}|null je Slot. Nur Beschattung.
+  function hpAnch(day){return (day&&day.anch)||[];}
 
   function hpRoomsBar(w,st){
     var rooms=hpCfgRooms(w);
@@ -96,23 +125,26 @@
   function hpCurve(w,st){
     var day=hpDayObj(st), end=day.end||[], val=day.val||[];
     var lo=99,hi=-99; val.forEach(function(v){lo=Math.min(lo,+v);hi=Math.max(hi,+v);});
-    if(lo>hi){lo=16;hi=22;}
-    lo=Math.max(5,Math.floor(lo-1)); hi=Math.min(30,Math.ceil(hi+1)); if(hi-lo<6){hi=lo+6;} if(hi>30){hi=30;lo=24;}
+    if(lo>hi){lo=_hpVC.min;hi=_hpVC.max;}
+    var tick=2;
+    if(_hpVC.dom==='heating'){ lo=Math.max(5,Math.floor(lo-1)); hi=Math.min(30,Math.ceil(hi+1)); if(hi-lo<6){hi=lo+6;} if(hi>30){hi=30;lo=24;} }
+    else { lo=_hpVC.min; hi=_hpVC.max; tick=Math.max(1,Math.round((hi-lo)/5)); } // Position 0..100 voll zeigen, ~5 Ticks
+    var uy=(_hpVC.dom==='heating')?'°':''; // y-Achsen-Suffix
     var W=960,H=300;
     function X(m){return m/1440*W;}
     function Y(t){return H-(t-lo)/(hi-lo)*H;}
     var g='<div class="hp-curvewrap"><div class="hp-yax">';
-    for(var t=hi;t>=lo;t-=2){ g+='<div style="top:'+(Y(t)/H*100)+'%">'+t+'°</div>'; }
+    for(var t=hi;t>=lo;t-=tick){ g+='<div style="top:'+(Y(t)/H*100)+'%">'+t+uy+'</div>'; }
     g+='</div><div class="hp-plot"><svg class="hp-svg" viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="none" data-hpsvg="1" data-lo="'+lo+'" data-hi="'+hi+'">';
     // Rasterlinien
-    for(var tg=lo;tg<=hi;tg+=2){ g+='<line class="hp-grid" x1="0" y1="'+Y(tg)+'" x2="'+W+'" y2="'+Y(tg)+'"/>'; }
+    for(var tg=lo;tg<=hi;tg+=tick){ g+='<line class="hp-grid" x1="0" y1="'+Y(tg)+'" x2="'+W+'" y2="'+Y(tg)+'"/>'; }
     for(var hh=0;hh<=24;hh+=3){ g+='<line class="hp-grid hp-gridv" x1="'+X(hh*60)+'" y1="0" x2="'+X(hh*60)+'" y2="'+H+'"/>'; }
     // gefüllte Fläche + Stufen
     var start=0, labels=[];
-    end.forEach(function(e,i){var en=hpH2M(e),v=+val[i],y=Y(v),col=hpTempColor(v),sel=(i+1==st.slot);
+    end.forEach(function(e,i){var en=hpH2M(e),v=+val[i],y=Y(v),col=_hpVC.color(v),sel=(i+1==st.slot);
       g+='<rect class="hp-band" x="'+X(start)+'" y="'+y+'" width="'+(X(en)-X(start))+'" height="'+(H-y)+'" fill="'+col+'" opacity="'+(sel?0.34:0.20)+'"/>';
       g+='<line class="hp-plat'+(sel?' sel':'')+'" x1="'+X(start)+'" y1="'+y+'" x2="'+X(en)+'" y2="'+y+'" stroke="'+col+'" data-hpplat="'+i+'"/>';
-      labels.push({x:(start+en)/2/1440*100, y:y/H*100, t:hpFmt(v)+'°', sel:sel, col:col});
+      labels.push({x:(start+en)/2/1440*100, y:y/H*100, t:hpVal(v)+uy, sel:sel, col:col});
       start=en;
     });
     // senkrechte Riser + Grenz-Griffe (Griffe kommen als HTML-Overlay -> immer runde
@@ -121,7 +153,7 @@
     end.forEach(function(e,i){var en=hpH2M(e),v=+val[i],y=Y(v);
       if(i>0){var vp=+val[i-1],yp=Y(vp);g+='<line class="hp-riser" x1="'+X(start)+'" y1="'+yp+'" x2="'+X(start)+'" y2="'+y+'"/>';}
       if(i<end.length-1){ g+='<line class="hp-bhline" x1="'+X(en)+'" y1="0" x2="'+X(en)+'" y2="'+H+'"/>';
-        knobs.push({x:X(en)/W*100, y:y/H*100, i:i, sel:(i+1==st.slot)}); }
+        knobs.push({x:X(en)/W*100, y:y/H*100, i:i, sel:(i+1==st.slot), anch:!!(hpAnch(day)[i])}); }
       start=en;
     });
     var nm=hpNowMin(); g+='<line class="hp-now" x1="'+X(nm)+'" y1="0" x2="'+X(nm)+'" y2="'+H+'"/>';
@@ -129,7 +161,7 @@
     // Temperatur-Labels als HTML-Overlay (keine SVG-Verzerrung durch preserveAspectRatio none)
     g+='<div class="hp-lbls">'+labels.map(function(l){return '<span class="hp-tval'+(l.sel?' sel':'')+'" style="left:'+l.x+'%;top:'+l.y+'%">'+l.t+'</span>';}).join('')+'</div>';
     // Grenz-Griffe als HTML-Kreise (echte Kreise, Drag-Ziel)
-    g+='<div class="hp-knobs">'+knobs.map(function(k){return '<i class="hp-bh'+(k.sel?' sel':'')+'" data-hpb="'+k.i+'" style="left:'+k.x+'%;top:'+k.y+'%"></i>';}).join('')+'</div>';
+    g+='<div class="hp-knobs">'+knobs.map(function(k){return '<i class="hp-bh'+(k.sel?' sel':'')+(k.anch?' hp-bh-sun':'')+'" data-hpb="'+k.i+'" style="left:'+k.x+'%;top:'+k.y+'%"></i>';}).join('')+'</div>';
     g+='</div></div>';
     // x-Achse
     g+='<div class="hp-xax">'+[0,3,6,9,12,15,18,21,24].map(function(hh){return '<span>'+hh+'</span>';}).join('')+'</div>';
@@ -137,43 +169,57 @@
   }
 
   function hpPills(st){
-    var day=hpDayObj(st),end=day.end||[],val=day.val||[],start=0;
-    return end.map(function(e,i){var v=+val[i],col=hpTempColor(v),sel=(i+1==st.slot),s=hpM2H(start),en=e;start=hpH2M(e);
+    var day=hpDayObj(st),end=day.end||[],val=day.val||[],anch=hpAnch(day),start=0;
+    return end.map(function(e,i){var v=+val[i],col=_hpVC.color(v),sel=(i+1==st.slot),s=hpM2H(start),en=e;start=hpH2M(e);
       return '<button class="hp-pill'+(sel?' on':'')+'" data-hpslot="'+(i+1)+'" style="--pc:'+col+'">'
-        +'<b>'+hpFmt(v)+'°C</b><span>'+s+'–'+en+'</span></button>';}).join('');
+        +'<b>'+hpVal(v)+esc(_hpVC.unit)+'</b><span>'+(anch[i]?'☀ ':'')+s+'–'+en+'</span></button>';}).join('');
   }
 
   function hpWeekView(w,st){
     var wk=hpWeek(st);
-    var h='<div class="hp-weektitle">Woche · '+esc(HP_PRES[st.presence])+' <span class="hp-hint">Tag anklicken zum Bearbeiten</span></div><div class="hp-week">';
-    for(var i=0;i<7;i++){ var d=wk[i]||{end:['24:00'],val:[17]},start=0;
-      var segs=(d.end||[]).map(function(e,k){var v=+d.val[k],en=hpH2M(e),seg='<i style="left:'+(start/1440*100)+'%;width:'+((en-start)/1440*100)+'%;background:'+hpTempColor(v)+'"></i>';start=en;return seg;}).join('');
+    var h='<div class="hp-weektitle">Woche · '+esc(hpVarName(st))+' <span class="hp-hint">Tag anklicken zum Bearbeiten</span></div><div class="hp-week">';
+    for(var i=0;i<7;i++){ var d=wk[i]||{end:['24:00'],val:[_hpVC.def]},start=0;
+      var segs=(d.end||[]).map(function(e,k){var v=+d.val[k],en=hpH2M(e),seg='<i style="left:'+(start/1440*100)+'%;width:'+((en-start)/1440*100)+'%;background:'+_hpVC.color(v)+'"></i>';start=en;return seg;}).join('');
       h+='<div class="hp-wrow'+(i==st.day?' on':'')+'" data-hpwday="'+i+'"><span class="hp-wlab">'+HP_DAYS[i]+'</span>'
-        +'<div class="hp-wbar">'+segs+'</div><span class="hp-wavg">Ø '+hpFmt(hpDayAvg(d))+'°</span></div>';
+        +'<div class="hp-wbar">'+segs+'</div><span class="hp-wavg">Ø '+hpVal(hpDayAvg(d))+esc(_hpVC.unit)+'</span></div>';
     }
     h+='</div>';
-    // Farbskala-Legende
-    h+='<div class="hp-scale"><span>kühl</span>';
-    for(var t=15;t<=22;t++){ h+='<i style="background:'+hpTempColor(t)+'" title="'+t+'°C"></i>'; }
-    h+='<span>warm</span><span class="hp-hint">Solltemperatur 15–22 °C</span></div>';
+    // Farbskala-Legende (heating: kühl..warm | shading: offen..zu)
+    var loL=_hpVC.dom==='heating'?'kühl':'offen', hiL=_hpVC.dom==='heating'?'warm':'zu', N=8;
+    h+='<div class="hp-scale"><span>'+loL+'</span>';
+    for(var k=0;k<=N;k++){ var tv=_hpVC.scaleLo+(_hpVC.scaleHi-_hpVC.scaleLo)*k/N; h+='<i style="background:'+_hpVC.color(tv)+'" title="'+hpVal(tv)+esc(_hpVC.unit)+'"></i>'; }
+    h+='<span>'+hiL+'</span><span class="hp-hint">'+esc(_hpVC.scaleLbl)+'</span></div>';
     return h;
   }
 
   function hpSlotEditor(st,day){
-    var i=st.slot-1,end=day.end||[],val=day.val||[],n=end.length;
-    var v=+val[i], start=(i==0?'00:00':end[i-1]), ende=end[i];
+    var i=st.slot-1,end=day.end||[],val=day.val||[],anch=hpAnch(day),n=end.length;
+    var v=+val[i], start=(i==0?'00:00':end[i-1]), ende=end[i], a=anch[i]||null;
     var lastEnd=(i==n-1); // letzter Slot: Ende fix 24:00
     var firstStart=(i==0); // erster Slot: Start fix 00:00
-    var h='<div class="hp-box hp-slotedit"><div class="hp-boxh">Slot '+st.slot+' · '+start+'–'+ende+' <span class="hp-bkt" style="color:'+hpTempColor(v)+'">'+hpBucket(v)+'</span></div>';
-    // Sollwert
-    h+='<div class="hp-field"><label>Sollwert</label><div class="hp-val">'+hpFmt(v)+' °C</div>'
-      +'<div class="hp-steps"><button data-hptemp="-1">−1</button><button data-hptemp="-0.1">−0,1</button><button data-hptemp="0.1">+0,1</button><button data-hptemp="1">+1</button></div></div>';
-    // Start
+    var h='<div class="hp-box hp-slotedit"><div class="hp-boxh">Slot '+st.slot+' · '+start+'–'+ende+' <span class="hp-bkt" style="color:'+_hpVC.color(v)+'">'+esc(_hpVC.bucket(v))+'</span></div>';
+    // Wert (VC-parametrisiert: Solltemperatur/Position)
+    h+='<div class="hp-field"><label>'+esc(_hpVC.label)+'</label><div class="hp-val">'+hpVal(v)+' '+esc(_hpVC.unit)+'</div>'
+      +'<div class="hp-steps">'+_hpVC.steps.map(function(s){return '<button data-hptemp="'+s[0]+'">'+esc(s[1])+'</button>';}).join('')+'</div></div>';
+    // Start (= Ende des Vorgänger-Slots)
     h+='<div class="hp-field"><label>Start</label><div class="hp-val">'+start+'</div>'
       +'<div class="hp-steps'+(firstStart?' dis':'')+'"><button data-hpstart="-60"'+(firstStart?' disabled':'')+'>−1h</button><button data-hpstart="-10"'+(firstStart?' disabled':'')+'>−10m</button><button data-hpstart="10"'+(firstStart?' disabled':'')+'>+10m</button><button data-hpstart="60"'+(firstStart?' disabled':'')+'>+1h</button></div></div>';
-    // Ende
-    h+='<div class="hp-field"><label>Ende</label><div class="hp-val">'+ende+'</div>'
-      +'<div class="hp-steps'+(lastEnd?' dis':'')+'"><button data-hpend="-60"'+(lastEnd?' disabled':'')+'>−1h</button><button data-hpend="-10"'+(lastEnd?' disabled':'')+'>−10m</button><button data-hpend="10"'+(lastEnd?' disabled':'')+'>+10m</button><button data-hpend="60"'+(lastEnd?' disabled':'')+'>+1h</button></div></div>';
+    // Ende: bei Beschattung Zeit ODER Sonnen-Anker; sonst reine Uhrzeit.
+    if(_hpVC.anchors && !lastEnd){
+      h+='<div class="hp-field"><label>Ende</label><div class="hp-endtog"><button type="button" class="hp-etog'+(a?'':' on')+'" data-hpetype="time">Uhrzeit</button><button type="button" class="hp-etog'+(a?' on':'')+'" data-hpetype="sun">Sonne</button></div></div>';
+      if(a){
+        var mins=(st.sun&&st.sun[a.anchor]!=null)?(st.sun[a.anchor]+(a.offset||0)):null;
+        h+='<div class="hp-field"><label>Ereignis</label><select class="hp-asel" data-hpanchor>'+HP_ANCHORS.map(function(x){return '<option value="'+x[0]+'"'+(x[0]==a.anchor?' selected':'')+'>'+esc(x[1])+'</option>';}).join('')+'</select></div>';
+        h+='<div class="hp-field"><label>Offset</label><div class="hp-val">'+((a.offset||0)>0?'+':'')+(a.offset||0)+' min'+(mins!=null?(' ≈ '+hpM2H(mins)):'')+'</div>'
+          +'<div class="hp-steps"><button data-hpoff="-30">−30</button><button data-hpoff="-10">−10</button><button data-hpoff="10">+10</button><button data-hpoff="30">+30</button></div></div>';
+      } else {
+        h+='<div class="hp-field"><label>Uhrzeit</label><div class="hp-val">'+ende+'</div>'
+          +'<div class="hp-steps"><button data-hpend="-60">−1h</button><button data-hpend="-10">−10m</button><button data-hpend="10">+10m</button><button data-hpend="60">+1h</button></div></div>';
+      }
+    } else {
+      h+='<div class="hp-field"><label>Ende</label><div class="hp-val">'+ende+'</div>'
+        +'<div class="hp-steps'+(lastEnd?' dis':'')+'"><button data-hpend="-60"'+(lastEnd?' disabled':'')+'>−1h</button><button data-hpend="-10"'+(lastEnd?' disabled':'')+'>−10m</button><button data-hpend="10"'+(lastEnd?' disabled':'')+'>+10m</button><button data-hpend="60"'+(lastEnd?' disabled':'')+'>+1h</button></div></div>';
+    }
     // add/del
     h+='<div class="hp-slotbtns"><button class="hp-addb" data-hpadd="1"'+(n>=24?' disabled':'')+'>+ Einfügen</button>'
       +'<button class="hp-delb" data-hpdel="1"'+(n<=1?' disabled':'')+'>− Löschen</button></div>';
@@ -182,10 +228,11 @@
   }
 
   function hpPresenceBox(st){
-    var h='<div class="hp-box hp-presbox"><div class="hp-boxh">Präsenz-Profil</div>';
-    h+=HP_PRES.map(function(p,i){var avg=st.prof?hpWeekAvg(st.prof[p]):0,on=(i==st.presence),act=(i==st.active);
+    var vars=hpVars(st), cur=hpVarIdx(st);
+    var h='<div class="hp-box hp-presbox"><div class="hp-boxh">'+esc(_hpVC.profTitle)+'</div>';
+    h+=vars.map(function(p,i){var avg=(st.prof&&st.prof[p])?hpWeekAvg(st.prof[p]):0,on=(i==cur),act=(i==st.active);
       return '<button class="hp-pres'+(on?' on':'')+'" data-hppres="'+i+'"><span class="hp-pdot'+(on?' on':'')+'"></span>'
-        +'<b>'+esc(p)+'</b><span class="hp-pavg">Ø '+hpFmt(avg)+'°</span>'+(act?'<span class="hp-pactive">aktiv</span>':'')+'</button>';}).join('');
+        +'<b>'+esc(p)+'</b><span class="hp-pavg">Ø '+hpVal(avg)+esc(_hpVC.unit)+'</span>'+(act?'<span class="hp-pactive">aktiv</span>':'')+'</button>';}).join('');
     h+='</div>';
     return h;
   }
@@ -199,7 +246,7 @@
     var rooms=hpCfgRooms(w);
     h+='<div class="hp-tlab" style="margin-top:9px">Woche übernehmen von:</div><div class="hp-tfrom">'
       +'<select class="hp-tsel" data-hpfromroom>'+rooms.map(function(r){return '<option value="'+r.idx+'"'+(r.idx==st.roomIdx?' selected':'')+'>'+esc(hpRoomName(r.idx))+'</option>';}).join('')+'</select>'
-      +'<select class="hp-tsel" data-hpfrompres>'+HP_PRES.map(function(p,i){return '<option value="'+i+'"'+(i==st.presence?' selected':'')+'>'+esc(p)+'</option>';}).join('')+'</select></div>'
+      +'<select class="hp-tsel" data-hpfrompres>'+hpVars(st).map(function(p,i){return '<option value="'+i+'"'+(i==hpVarIdx(st)?' selected':'')+'>'+esc(p)+'</option>';}).join('')+'</select></div>'
       +'<button class="hp-tbtn" data-hptake="1">Übernehmen</button></div>';
     return h;
   }
@@ -208,15 +255,23 @@
   function hpNowMin(){var d=new Date();return d.getHours()*60+d.getMinutes();}
   function hpSollAt(day,m){var end=day.end||[],val=day.val||[],start=0;for(var i=0;i<end.length;i++){var en=hpH2M(end[i]);if(m<en||i==end.length-1)return +val[i];start=en;}return +val[val.length-1]||0;}
   function hpNowText(st){var day=hpDayObj(st),nowM=hpNowMin(),soll=hpSollAt(day,nowM);
-    var s='jetzt '+hpM2H(nowM)+' · Soll '+hpFmt(soll)+' °C';
-    if(st.ist!=null)s+=' · <b class="hp-ist">Ist '+hpFmt(st.ist)+' °C</b>';
+    var s='jetzt '+hpM2H(nowM)+' · Soll '+hpVal(soll)+' '+esc(_hpVC.unit);
+    if(st.ist!=null)s+=' · <b class="hp-ist">Ist '+hpVal(st.ist)+' '+esc(_hpVC.unit)+'</b>';
     if(st.hum!=null)s+=' <span class="hp-hum">· '+Math.round(st.hum)+' % rF</span>';
     return s;}
 
   // ============================ EDIT-OPS ============================
   function hpMarkDirty(st){st.dirty=true;}
 
-  function hpTempStep(w,st,delta){var day=hpDayObj(st),i=st.slot-1;var v=+day.val[i]+delta;v=Math.max(5,Math.min(30,Math.round(v*10)/10));day.val[i]=v;hpMarkDirty(st);}
+  function hpTempStep(w,st,delta){var day=hpDayObj(st),i=st.slot-1;var v=+day.val[i]+delta;v=Math.max(_hpVC.min,Math.min(_hpVC.max,v));v=_hpVC.dec>0?Math.round(v*10)/10:Math.round(v);day.val[i]=v;hpMarkDirty(st);}
+
+  // ---- Sonnen-Anker der Slot-Grenze (nur Beschattung) ----
+  function hpEnsureAnch(day){ if(!day.anch)day.anch=day.end.map(function(){return null;}); return day.anch; }
+  function hpResolveAnchEnd(st,i){var day=hpDayObj(st),a=day.anch&&day.anch[i]; if(!a)return; var m=(st.sun&&st.sun[a.anchor]!=null)?(st.sun[a.anchor]+(a.offset||0)):hpH2M(day.end[i]); day.end[i]=hpM2H(Math.max(0,Math.min(1439,m)));}
+  function hpSetEndType(st,type){var day=hpDayObj(st),i=st.slot-1,n=day.end.length; if(i>=n-1)return; hpEnsureAnch(day);
+    if(type==='sun'){ if(!day.anch[i]){ day.anch[i]={anchor:'sunset',offset:0}; hpResolveAnchEnd(st,i); } } else { day.anch[i]=null; } hpMarkDirty(st); }
+  function hpSetAnchor(st,anchor){var day=hpDayObj(st),i=st.slot-1; if(!day.anch||!day.anch[i])return; day.anch[i].anchor=anchor; hpResolveAnchEnd(st,i); hpMarkDirty(st); }
+  function hpOffStep(st,delta){var day=hpDayObj(st),i=st.slot-1; if(!day.anch||!day.anch[i])return; day.anch[i].offset=(day.anch[i].offset||0)+delta; hpResolveAnchEnd(st,i); hpMarkDirty(st); }
 
   function hpTimeStep(w,st,which,delta){
     var day=hpDayObj(st),end=day.end,i=st.slot-1,n=end.length;
@@ -231,21 +286,21 @@
   }
 
   function hpAddSlot(w,st){var day=hpDayObj(st),n=day.end.length;if(n>=24)return;
-    // neuen Slot vor 24:00 einfügen: bei 1h vor Ende, Temp 17
+    // neuen Slot vor 24:00 einfügen: bei 1h vor Ende, Default-Wert der Domäne
     var prevEnd=(n>=2?hpH2M(day.end[n-2]):0), newB=Math.min(1430,Math.max(prevEnd+10,1440-60));
-    day.end.splice(n-1,0,hpM2H(newB)); day.val.splice(n-1,0,17); day.end[day.end.length-1]='24:00';
+    day.end.splice(n-1,0,hpM2H(newB)); day.val.splice(n-1,0,_hpVC.def); if(day.anch)day.anch.splice(n-1,0,null); day.end[day.end.length-1]='24:00';
     st.slot=n; hpMarkDirty(st);
   }
   function hpDelSlot(w,st){var day=hpDayObj(st),n=day.end.length,i=st.slot-1;if(n<=1)return;
-    day.end.splice(i,1); day.val.splice(i,1); day.end[day.end.length-1]='24:00';
+    day.end.splice(i,1); day.val.splice(i,1); if(day.anch)day.anch.splice(i,1); day.end[day.end.length-1]='24:00';
     if(st.slot>day.end.length)st.slot=day.end.length; hpMarkDirty(st);
   }
   function hpCopyDay(w,st,targets){var wk=hpWeek(st),src=wk[st.day];if(!src)return;
-    targets.forEach(function(t){wk[t]={end:src.end.slice(),val:src.val.slice()};}); hpMarkDirty(st);
+    targets.forEach(function(t){wk[t]={end:src.end.slice(),val:src.val.slice(),anch:(src.anch||[]).map(function(a){return a?{anchor:a.anchor,offset:a.offset}:null;})};}); hpMarkDirty(st);
   }
-  // ganze Woche eines Präsenz-Profils aus einem (evtl. anderen) Raum in das aktuelle Profil übernehmen
-  function hpApplyWeek(st,srcProf,srcPres){var src=srcProf&&srcProf[HP_PRES[srcPres]];if(!src)return false;
-    var dst=hpWeek(st); for(var d=0;d<7;d++){var s=src[d]||{end:['24:00'],val:[17]}; dst[d]={end:s.end.slice(),val:s.val.map(Number)};}
+  // ganze Woche einer Variante aus einem (evtl. anderen) Raum in das aktuelle Profil übernehmen
+  function hpApplyWeek(st,srcProf,srcPres){var src=srcProf&&srcProf[hpVars(st)[srcPres]];if(!src)return false;
+    var dst=hpWeek(st); for(var d=0;d<7;d++){var s=src[d]||{end:['24:00'],val:[_hpVC.def],anch:[null]}; dst[d]={end:s.end.slice(),val:s.val.map(Number),anch:(s.anch||[]).slice()};}
     hpMarkDirty(st); return true;
   }
   // ============================ NETZ ============================
@@ -259,30 +314,30 @@
       {method:'POST',cache:'no-store',headers:{'Content-Type':'text/plain'},body:JSON.stringify(body)})
       .then(function(r){return r.json();});
   }
-  function hpEmptyWeek(){ var wk=[]; for(var d=0;d<7;d++)wk.push({end:['24:00'],val:[17]}); return wk; }
-  function hsWeekToProf(week){ // 7×[{end:Min,val}] -> 7×{end:[HH:MM],val:[t]}
-    var out=[]; for(var d=0;d<7;d++){ var day=week[d]||[],end=[],val=[];
-      day.forEach(function(s){ end.push(hpM2H(s.end)); val.push(Number(s.val)); });
-      if(!end.length){ end=['24:00']; val=[17]; } out.push({end:end,val:val}); }
+  function hpEmptyWeek(){ var wk=[]; for(var d=0;d<7;d++)wk.push({end:['24:00'],val:[_hpVC.def],anch:[null]}); return wk; }
+  function hsWeekToProf(week){ // 7×[{end:Min,val,anchor?,offset?}] -> 7×{end:[HH:MM],val:[],anch:[]}
+    var out=[]; for(var d=0;d<7;d++){ var day=week[d]||[],end=[],val=[],anch=[];
+      day.forEach(function(s){ end.push(hpM2H(s.end)); val.push(Number(s.val)); anch.push(s.anchor?{anchor:s.anchor,offset:(s.offset||0)}:null); });
+      if(!end.length){ end=['24:00']; val=[_hpVC.def]; anch=[null]; } out.push({end:end,val:val,anch:anch}); }
     return out;
   }
   function hpLoadRooms(w,cb){
     var root=(w&&w.rootId)||0;
     if(_hpRooms&&_hpRoomsRoot===root){cb&&cb();return;}
     if(typeof DOKU!=='undefined'&&DOKU){_hpRooms=hpDemoRooms();_hpRoomsRoot=root;cb&&cb();return;}
-    if(hpHS(w)){ fetch('?api=mod&op=topology',{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
+    if(hpHS(w)){ var dom=(w&&w.domain)||'heating'; fetch('?api=mod&op=topology',{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
       var rooms=[], order=[], seen={};
       function grp(g){ if(g&&!seen[g]){seen[g]=1;order.push(g);} }
       (j&&j.tree||[]).forEach(function(haus){ (haus.children||[]).forEach(function(area){
         if(area.kind!=='Bereich')return; var g=area.abbr||area.name||''; grp(g);
         (area.children||[]).forEach(function(rm){ if(rm.kind!=='Raum')return;
-          (rm.entities||[]).forEach(function(e){ if((e.domain||'')==='heating') rooms.push({idx:e.iid,name:e.name||('#'+e.iid),type:'',group:g}); }); });
+          (rm.entities||[]).forEach(function(e){ if((e.domain||'')===dom) rooms.push({idx:e.iid,name:e.name||('#'+e.iid),type:'',group:g}); }); });
       });
         // Raeume direkt unter dem Haus (ohne Bereich)
         (haus.children||[]).forEach(function(rm){ if(rm.kind!=='Raum')return;
-          (rm.entities||[]).forEach(function(e){ if((e.domain||'')==='heating') rooms.push({idx:e.iid,name:e.name||('#'+e.iid),type:'',group:''}); }); });
+          (rm.entities||[]).forEach(function(e){ if((e.domain||'')===dom) rooms.push({idx:e.iid,name:e.name||('#'+e.iid),type:'',group:''}); }); });
       });
-      (j&&j.unassigned||[]).forEach(function(e){ if((e.domain||'')==='heating') rooms.push({idx:e.iid,name:e.name||('#'+e.iid),type:'',group:''}); });
+      (j&&j.unassigned||[]).forEach(function(e){ if((e.domain||'')===dom) rooms.push({idx:e.iid,name:e.name||('#'+e.iid),type:'',group:''}); });
       _hpRooms=rooms; _hpGroupOrder=order; _hpRoomsRoot=root; cb&&cb();
     }).catch(function(){_hpRooms=[];_hpGroupOrder=null;_hpRoomsRoot=root;cb&&cb();}); return; }
     fetch('?api=heat&op=list'+hpRootParam(w),{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
