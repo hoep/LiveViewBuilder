@@ -28,7 +28,8 @@
   var DOKU_GROUPS = [
     ['Werte & Zahlen',          ['value','valuecard','cval','sval','kpi','delta','calc','chip','icon','bar','meterlist','infolist']],
     ['Schalten & Bedienen',     ['switch','light','button','tile','checkbox','select','slider','stepper','colorpick','textbox','cover','shadingpanel','shading','shadeprofile','thermostat','heatplan','weekedit','alarm','bot','timer','eventctl']],
-    ['Heizung – Bausteine',     ['rooms','curve','week','slots','editor']],
+    ['HomeSuite – Zeitplan (Heizung/Beschattung)', ['rooms','curve','week','slots','editor']],
+    ['HomeSuite – Navigation & Sonne', ['roomnav','zonesync','shadesun']],
     ['Zustand & Listen',        ['assoc','statusgrid','statuslist','devlist','statusimage','table','objinfo','msglog','statelog','statetl']],
     ['Diagramme',               ['chart','heatmap','gauge','gaugepro','multiring','doubledonut','sankey','flow','flowline','windrose','tempbar']],
     ['Chart-Typen (Beispiele)', ['chartbar','chartbarstack','chartscatter','chartspark','chartpie','chartdonut','chartrose','chartwf']],
