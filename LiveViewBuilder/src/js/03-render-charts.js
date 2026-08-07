@@ -459,8 +459,43 @@
   }
   function _raceClock(txt){return {elements:[{type:'text',right:12,bottom:8,z:100,silent:true,
     style:{text:txt,fontSize:24,fontWeight:700,fill:cssv('--muted'),opacity:.5}}]};}
+  // Live-Modus: Balken = AKTUELLE Live-Werte der Serien (verschiedene Kategorien),
+  // Umsortierung in Echtzeit bei jedem Update (kein Zeit-Replay). Datenquelle _lastVals
+  // (Serien-IDs werden ohnehin fuer Live gesammelt, s. _collectIds 'series').
+  function _raceLiveData(w){
+    var cols=[cssv('--accent'),cssv('--info'),cssv('--warm')];
+    return _chSeries(w).filter(function(s){return s&&s.vid;}).map(function(s,i){
+      var lv=_lastVals[s.vid],v=lv?parseFloat(String(lv.v).replace(',','.')):NaN;
+      return {name:s.name||('Serie '+(i+1)),color:_skinColor(s.color||cols[i%cols.length]),val:isNaN(v)?0:v};
+    });
+  }
+  function _raceBars(R){return R.map(function(r){return {value:Math.round(r.val*100)/100,itemStyle:{color:r.color}};});}
+  function setBarRaceLive(w){
+    var ec=_ec[w.id];if(!ec)return; stopRace(w);
+    var R=_raceLiveData(w);
+    if(R.length<1){ec.setOption({backgroundColor:'transparent',title:{text:'Bar Race (Live): Serien wählen',left:'center',top:'middle',textStyle:{color:cssv('--muted'),fontSize:12}},xAxis:{show:false},yAxis:{show:false},series:[]},true);return;}
+    var topN=(w.brTop!=null&&w.brTop!==''?Math.max(3,Math.min(30,+w.brTop)):10);
+    var upd=(w.brSpeed!=null&&w.brSpeed!==''?Math.max(150,Math.min(4000,+w.brSpeed)):600);
+    var rad=(w.barRadius!=null?+w.barRadius:4);
+    ec.setOption({backgroundColor:'transparent',
+      animationDuration:300,animationDurationUpdate:upd,animationEasing:'cubicOut',animationEasingUpdate:'cubicOut',
+      grid:{left:8,right:70,top:12,bottom:8,containLabel:true},
+      tooltip:{trigger:'axis',axisPointer:{type:'none'},confine:true,valueFormatter:function(v){return _chNum(w,v,true);}},
+      xAxis:{type:'value',max:'dataMax',axisLabel:{color:cssv('--muted'),formatter:function(v){return _chNum(w,v);}},
+        splitLine:{lineStyle:{color:cssv('--line'),opacity:.35}}},
+      yAxis:{type:'category',data:R.map(function(r){return r.name;}),inverse:true,max:topN-1,animationDuration:300,animationDurationUpdate:upd,
+        axisLabel:{color:cssv('--text')},axisTick:{show:false},axisLine:{show:false}},
+      series:[{type:'bar',realtimeSort:true,data:_raceBars(R),itemStyle:{borderRadius:rad},
+        label:{show:true,position:'right',valueAnimation:true,color:cssv('--text'),formatter:function(p){return _chNum(w,p.value,true);}}}],
+      graphic:{elements:[{type:'text',right:12,bottom:8,z:100,silent:true,style:{text:'live',fontSize:13,fontWeight:700,fill:(cssv('--ok')||cssv('--accent')),opacity:.6}}]}
+    },true);
+  }
+  // Live-Update (Merge): nur die Balkenwerte neu setzen -> realtimeSort animiert die Umsortierung.
+  function _raceLiveTick(w){var ec=_ec[w.id];if(!ec)return;ec.setOption({series:[{data:_raceBars(_raceLiveData(w))}]});}
+
   function setBarRace(w){
     var ec=_ec[w.id];if(!ec)return; stopRace(w);
+    if(w.brLive){setBarRaceLive(w);return;}     // Live-Werte statt Zeit-Replay
     var cols=[cssv('--accent'),cssv('--info'),cssv('--warm')];
     var hs=chartSeries(w).filter(function(s){return s&&s.data&&s.data.length;});
     var tset={}; hs.forEach(function(s){s.data.forEach(function(p){tset[p[0]]=1;});});
@@ -1011,6 +1046,7 @@
     if(w.ctype==='heatmap'){fetchHeatmap(w);return;} // Wochentag x Stunde (eigener Aggregat-Weg)
     if(w.ctype==='daylight')  {fetchDaylight(w);return;} // eigener Datenweg (Jahresberechnung, keine Historie)
     if(w.ctype==='waterfall'||w.type==='waterfall')return; // Wasserfall liest ausschliesslich Live-Werte (_lastVals)
+    if(w.ctype==='barrace'&&w.brLive){if(_ec[w.id])setBarRaceLive(w);return;} // Live-Bar-Race: keine Historie, nur _lastVals
     var W=_chWindow(w);
     if(w.type==='chart'&&_chCalMode(w)){fetchCalYear(w);return;}
     var S=_chSeries(w).filter(function(s){return s&&s.vid;});if(!S.length)return;
