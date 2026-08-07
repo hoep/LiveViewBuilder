@@ -27,10 +27,24 @@
     var tv=_ddNum(w.varId),bv=_ddNum(w.varId2);
     var tmn=(w.topMin!=null&&w.topMin!==''?+w.topMin:0),tmx=(w.topMax!=null&&w.topMax!==''?+w.topMax:100);
     var bmn=(w.botMin!=null&&w.botMin!==''?+w.botMin:0),bmx=(w.botMax!=null&&w.botMax!==''?+w.botMax:100);
-    [['ddtf',frac(tv,tmn,tmx)],['ddbf',frac(bv,bmn,bmx)]].forEach(function(x){
+    var ft=frac(tv,tmn,tmx), fb=frac(bv,bmn,bmx);
+    [['ddtf',ft],['ddbf',fb]].forEach(function(x){
       var p=$('[data-role='+x[0]+']',el);if(!p)return;
       var L=p.getTotalLength();p.style.strokeDasharray=L;p.style.strokeDashoffset=(L*(1-x[1])).toFixed(1);
     });
+    // Runde MAX-Spitze als aufgesetzter Punkt an der wachsenden Kante. Entfaellt bei
+    // geraden Enden (ddCap='butt') und wenn BEIDE auf Max stehen: dann treffen sich die
+    // buendigen Enden bei 3 Uhr zu einem sauberen, zweifarbigen Vollkreis.
+    var round=(w.ddCap!=='butt'), C=_DD_C, R=_DD_R;
+    var SW=(w.ddW!=null&&w.ddW!==''?Math.max(4,Math.min(48,+w.ddW)):22);
+    var bothMax=(ft>=0.999&&fb>=0.999);
+    function dot(role,f,ang){var c=$('[data-role='+role+']',el);if(!c)return;
+      if(round&&f>0.001&&!bothMax){var a=ang*Math.PI/180;
+        c.setAttribute('cx',(C+R*Math.cos(a)).toFixed(1));c.setAttribute('cy',(C+R*Math.sin(a)).toFixed(1));
+        c.setAttribute('r',(SW/2).toFixed(1));c.style.display='';}
+      else c.style.display='none';}
+    dot('ddtdot',ft,180+ft*180);   // oben: Basis 9 Uhr -> Spitze Richtung 3 Uhr (ueber oben)
+    dot('ddbdot',fb,180-fb*180);   // unten: Basis 9 Uhr -> Spitze Richtung 3 Uhr (ueber unten)
     var t1=$('[data-role=ddtl]',el);if(t1)t1.textContent=(w.varId?_ddTxt(w.varId):'');
     var t2=$('[data-role=ddbl]',el);if(t2)t2.textContent=(w.varId2?_ddTxt(w.varId2):'');
     var c1=$('[data-role=ddcv]',el);if(c1)c1.textContent=(w.varId3?_ddTxt(w.varId3):'');
@@ -53,18 +67,18 @@
       var bY=(w.lblBotY!=null&&w.lblBotY!==''?+w.lblBotY:186);
       var cY=(w.valCY!=null&&w.valCY!==''?+w.valCY:(w.sub?114:124));
       var gsty=(w.ddFont?('font-family:'+esc(w.ddFont)+';'):'')+(w.ddWeight?('font-weight:'+esc(w.ddWeight)+';'):'');
-      // Luecke an den Seiten: bei GERADEN Enden null, damit sich beide Haelften bei Max
-      // links (9 Uhr) und rechts (3 Uhr) exakt beruehren. Bei RUNDEN Enden ein kleiner
-      // Abstand, sonst wuerden sich die runden Kappen ueberlappen.
-      var g=(cap==='butt')?0:5;
-      var top=_ddArc(C,C,R,180+g,360-g,1), bot=_ddArc(C,C,R,180-g,0+g,0);
+      // KEINE Seitenluecke: beide Haelften starten bei 9 Uhr an ihrer MIN-Basis und
+      // beruehren sich dort buendig. Die farbige Fuellung bekommt gerade Enden (Basis
+      // buendig); die runde MAX-Spitze wird als aufgesetzter Punkt an der wachsenden
+      // Kante gezeichnet (siehe _ddPaint) - so ist ein Ende buendig, das andere rund.
+      var top=_ddArc(C,C,R,180,360,1), bot=_ddArc(C,C,R,180,0,0);
       var trk='var(--surface-2)';
       function p(d,role,col,lc){return '<path d="'+d+'"'+(role?' data-role="'+role+'"':'')+' fill="none" stroke="'+col+'" stroke-width="'+SW+'" stroke-linecap="'+(lc||cap)+'"/>';}
-      // Der Track bekommt IMMER gerade Enden. Mit runden Kappen entstuenden an den Bogenenden
-      // (v. a. oben bei 3 Uhr) dunkle, wertunabhaengige Halbkreise, die wie ein schwarzer
-      // Punkt neben dem Donut wirken. Die farbige Fuellung behaelt ihre eingestellte Rundung.
+      // Track + Fuellung IMMER mit geraden Enden (Basis buendig, Spitze via Punkt).
       return '<div class="hdd"><svg viewBox="0 0 240 240" preserveAspectRatio="xMidYMid meet"'+(gsty?(' style="'+gsty+'"'):'')+'>'
-        +p(top,'',trk,'butt')+p(bot,'',trk,'butt')+p(top,'ddtf',tc)+p(bot,'ddbf',bc)
+        +p(top,'',trk,'butt')+p(bot,'',trk,'butt')+p(top,'ddtf',tc,'butt')+p(bot,'ddbf',bc,'butt')
+        +'<circle data-role="ddtdot" r="'+(SW/2).toFixed(1)+'" fill="'+tc+'" style="display:none"/>'
+        +'<circle data-role="ddbdot" r="'+(SW/2).toFixed(1)+'" fill="'+bc+'" style="display:none"/>'
         +'<text class="ddc" data-role="ddcv" x="120" y="'+cY+'" style="font-size:'+fsC+'px"></text>'
         +(w.sub?'<text class="ddcs" x="120" y="'+(cY+fsS+9)+'" style="font-size:'+fsS+'px">'+escL(w.sub)+'</text>':'')
         +'<text class="ddtl" data-role="ddtl" x="120" y="'+tY+'" style="fill:'+tc+';font-size:'+fsV+'px"></text>'
@@ -80,7 +94,7 @@
         +row('Farbe unten',skinSel(w.ddBot||'info','id="pDdBc"'))
         +row('Untertitel (Mitte)','<input id="pDdSub" value="'+esc(w.sub||'')+'" placeholder="z. B. Auslastung">')
         +row('Ringdicke (px)','<input id="pDdW" type="number" min="4" max="48" style="width:70px" value="'+(w.ddW!=null?w.ddW:22)+'">')
-        +row('Rundung','<select id="pDdCap"><option value="round"'+(w.ddCap!=='butt'?' selected':'')+'>runde Enden</option><option value="butt"'+(w.ddCap==='butt'?' selected':'')+'>gerade Enden (berühren bei Max)</option></select>')
+        +row('Rundung','<select id="pDdCap"><option value="round"'+(w.ddCap!=='butt'?' selected':'')+'>runde Max-Spitze (Basis berührt bei Min)</option><option value="butt"'+(w.ddCap==='butt'?' selected':'')+'>gerade Enden (bündig)</option></select>')
         +'<div class="pgh">Schrift &amp; Beschriftung</div>'
         +row('Schriftart','<input id="pDdFont" value="'+esc(w.ddFont||'')+'" placeholder="Standard (z. B. Roboto)">')
         +row('Gewicht','<select id="pDdWt"><option value=""'+(!w.ddWeight?' selected':'')+'>Standard</option><option value="400"'+(w.ddWeight=='400'?' selected':'')+'>normal</option><option value="600"'+(w.ddWeight=='600'?' selected':'')+'>halbfett</option><option value="700"'+(w.ddWeight=='700'?' selected':'')+'>fett</option></select>')
