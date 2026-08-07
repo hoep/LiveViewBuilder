@@ -273,6 +273,74 @@
       views['Doku · Bedienung & Layout'] = {page:{w:DOKU_W, h:y + DOKU_PAD, fit:'letterbox'}, widgets:ws};
     })();
 
+    // Sonderansicht: HomeSuite – Datenmodell (Objektbaum + Configurator, gebauter Ist-Stand).
+    (function(){
+      var ws=[], n=0, y=DOKU_PAD, W=DOKU_W-2*DOKU_PAD;
+      var MUT='#7d9099', ACC='#39d08a', BLU='#4aa3df';
+      function H(t,s){add({type:'text',x:DOKU_PAD,y:y,w:W,h:s?26:40,bgT:true,fsz:s?15:21,label:t}); y+=s?32:48;}
+      function P(t,fg,h){add({type:'text',x:DOKU_PAD,y:y,w:W,h:h,bgT:true,fsz:13,fg:(fg||MUT),label:t}); y+=h+10;}
+      function add(o){n++;o.id='hs'+n;ws.push(o);}
+      H('HomeSuite — Datenmodell im Symcon-Baum & Configurator');
+      P('HomeSuite bildet das Zuhause als OBJEKTBAUM ab: die Hierarchie IST die Elternschaft — kein Link, '
+       +'keine Zuordnungstabelle. Vier Modultypen, ein Hub als Wurzel, die Gewerke (Heizung/Beschattung) als Blätter.',MUT,64);
+      H('Vier Modultypen',1);
+      P('HomeSuite Hub      HSH    Wurzel + geteilte Dienste (Profile, Topologie, Suite-Aggregat)\n'
+       +'HomeSuite Bereich  HSSP   Struktur-Knoten — Kind: Haus | Bereich | Raum\n'
+       +'HeatingZone        HSHT   Entität „Heizung"\n'
+       +'ShadingDevice      HSSH   Entität „Beschattung"',BLU,86);
+      H('Der Baum (konkret)',1);
+      P('HomeSuite Hub  (HSH)\n'
+       +'└─ Wohnhaus                 HSSP  Kind=Haus\n'
+       +'   ├─ Erdgeschoss  (EG)     HSSP  Kind=Bereich\n'
+       +'   │  └─ Büro               HSSP  Kind=Raum\n'
+       +'   │     ├─ Heizung         HSHT   ← Entität\n'
+       +'   │     └─ Beschattung     HSSH   ← Entität\n'
+       +'   └─ Obergeschoss (OG)\n'
+       +'      └─ Esszimmer\n'
+       +'         ├─ Heizung\n'
+       +'         ├─ Beschattung Süd    (mehrere pro Raum → Ausrichtung im Namen)\n'
+       +'         └─ Beschattung Nord',ACC,220);
+      P('Zuordnung = wo die Instanz hängt (Elternschaft). Verschiebst du „Heizung" unter einen anderen Raum, '
+       +'ist sie dort zugeordnet. „Bereich" ist weit gefasst: EG/OG/DG, aber auch Keller, Garten, Außen. '
+       +'Die Nav-Tabs im Frontend zeigen den RAUMNAMEN (bei mehreren Beschattungen je Raum mit Ausrichtung).',MUT,74);
+      H('Entität — Datenmodell (Basisklasse EntityModule)',1);
+      P('Jede Heizung/Beschattung beschreibt sich DEKLARATIV per manifest(). Daraus entstehen die Variablen.',MUT,26);
+      P('Control-Typen → Variablen:  T_SETPOINT (Sollwert, schaltbar) · T_REFLECT (Ist/Rückmeldung, Anzeige) · '
+       +'T_SELECT (Modus/Präsenz/Plan) · T_LEVEL (Position) · T_COMMAND (Fahrbefehl).\n'
+       +'Heizung: Setpoint, ActualTemp, Humidity, Mode, Presence, Online.\n'
+       +'Beschattung: Position, Movement, ActualPosition, Mode, Plan, Season, Online.',BLU,74);
+      P('Speicher = ATTRIBUTE, nicht Properties (darum ist im Baum keine „Konfig" sichtbar):\n'
+       +'• FabricStore (JSON) — die eigentliche Konfiguration: Treiber-Bindung (driver, positionId/targetId, '
+       +'sensorId, automaticId), Profilfelder (geoProfile, windStormKmh …), Zeitpläne, armed.\n'
+       +'• HoldState — flüchtiger manueller Eingriff (manualHold hält bis zur nächsten Slot-Grenze).\n'
+       +'• RtState — flüchtiger Laufzeitstatus (last-commanded etc.).',MUT,110);
+      P('driver() = HAL-Bindung ans echte Gerät: Heizung → HomeMatic-CCU, Beschattung → IPSShadowing-Position-'
+       +'Variable. Die Bindung steht im FabricStore, nicht als Symcon-Link.\n'
+       +'Zeitplan-Varianten: Heizung = Präsenz (Normal/Erweitert/Abgesenkt); Beschattung = Plan × Saison '
+       +'(Anwesend/Abwesend/Urlaub × Sommer/Winter).',MUT,92);
+      H('Hub — geteilte Dienste',1);
+      P('• Benannte Profile (ProfileEngine auf dem Hub-Store): Keys profiles.<typ>.<name> und '
+       +'assign.<entityId>.<typ>. Ein Profil ändern → Push in alle zugewiesenen Zonen (configureAutomation).\n'
+       +'• GetSuiteManifest = Aggregat aller Entitäts-Manifeste.\n'
+       +'• Topologie (Haus→Bereich→Raum→Entitäten) für Navigation & Widgets; discoverEntities durchläuft den Baum.',MUT,92);
+      H('Configurator — zwei Ebenen',1);
+      P('1) Symcon-Konsole (bewusst minimal): HomeSuite Bereich → nur Kind (Haus/Bereich/Raum) + Abbr. '
+       +'Heizung/Beschattung → natives Bindungs-Formular (Variablen-Auswahl → configureDriver → FabricStore). '
+       +'Sonst nur Notfall/Diagnose.',MUT,66);
+      P('2) LiveViewBuilder = die eigentliche Verwaltung + Bedienung. Generisch über ?api=mod → Prefix-'
+       +'Funktionen: HSH_Manage (Hub), HSHT_Manage (Heizung), HSSH_Manage (Beschattung). Ops u. a. manage, '
+       +'topology, suite, hubmanage sowie configureDriver/configureAutomation/updateProfile/getSchedule/setArmed. '
+       +'Die Widgets (rooms/curve/slots/slotedit/variantbox/transfer/save, shadeprofiles, zonesync, roomnav, '
+       +'shadesun) sind reine Frontends dazu.',MUT,110);
+      P('Datenfluss:  Widget → ?api=mod → Prefix_Manage → store()->patch / schedules() → Push in die Zonen.',ACC,26);
+      H('Prefixe & weiterführend',1);
+      P('Prefixe: HSH (Hub) · HSSP (Bereich) · HSHT (Heizung) · HSSH (Beschattung).\n'
+       +'Repo hoep/HomeSuite: docs/SPEC.md (Bau-Spezifikation), GUIDS.md (echte GUIDs), README.md. '
+       +'Diese Seite spiegelt den GEBAUTEN Ist-Stand (Raum-/Baum-Modell + Bindungs-Formular), den SPEC.md '
+       +'als Bau-Plan noch nicht vollständig enthält.',MUT,74);
+      views['Doku · HomeSuite – Datenmodell'] = {page:{w:DOKU_W, h:y + DOKU_PAD, fit:'letterbox'}, widgets:ws};
+    })();
+
     return {
       views: views, current: first, home: first, skin:'Standard',
       // Startskin ueber die Adresse waehlbar: ?theme=light bzw. ?theme=dark.
