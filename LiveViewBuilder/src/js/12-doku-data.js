@@ -1824,10 +1824,11 @@
     },
     "chartrace": {
       titel: "Chart: Bar Race",
-      zweck: "Animierter Balken-Wettlauf: jede Serie ist ein Laeufer, die Frames laufen ueber den eingestellten Zeitraum (Einheit = Bucket, z. B. 12 x Monate). Die Balken sortieren sich je Frame neu (ECharts realtimeSort) und zeigen unten rechts die aktuelle Zeit.",
+      zweck: "Animierter Balken-Wettlauf: jede Serie ist ein Laeufer. Zwei Modi: VERLAUF (Frames ueber den eingestellten Zeitraum, Einheit = Bucket, z. B. 12 x Monate, mit Zeit-Uhr) oder LIVE (aktuelle Live-Werte verschiedener Kategorien, Umsortierung in Echtzeit bei jedem Update). Die Balken sortieren sich per ECharts realtimeSort neu.",
       funktionen: [
+        {name:"Datenquelle",beschreibung:"Verlauf (Zeit-Animation) ODER Live-Werte (Echtzeit, kein Archiv noetig)."},
         {name:"Serien = Laeufer",beschreibung:"Jede Serie unten ein Balken; Farbe je Serie."},
-        {name:"Zeitraum = Frames",beschreibung:"Anzahl x Einheit oben; die Einheit ist der Bucket-Takt der Animation."},
+        {name:"Zeitraum = Frames",beschreibung:"Nur im Verlaufs-Modus: Anzahl x Einheit oben ist der Bucket-Takt der Animation."},
         {name:"Top N / Tempo",beschreibung:"Sichtbare Raenge und Frame-Dauer (ms) einstellbar."},
         {name:"Kumuliert",beschreibung:"Running Total fuer den Wachstums-Effekt; sonst der Bucket-Wert je Frame."},
         {name:"Endlos-Schleife",beschreibung:"Laeuft automatisch, optional in Schleife."}
