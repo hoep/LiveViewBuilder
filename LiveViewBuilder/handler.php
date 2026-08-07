@@ -1323,6 +1323,13 @@ if ($api === 'mod') {
         echo function_exists($fn) ? (string) $fn($hub) : json_encode(['ok' => false, 'err' => 'fn']);
         return;
     }
+    if ($op === 'hubmanage') { // geteilte Verwaltung ueber den Hub (Profile etc.) — Hub wird aufgeloest
+        if (!hash_equals($TOKEN, (string) ($_GET['key'] ?? ''))) { http_response_code(403); echo json_encode(['ok' => false, 'err' => 'forbidden']); return; }
+        $hub = @IPS_GetInstanceListByModuleID($HSH)[0] ?? 0;
+        if (!$hub || !function_exists('HSH_Manage')) { echo json_encode(['ok' => false, 'err' => 'no-hub']); return; }
+        echo (string) HSH_Manage($hub, (string) file_get_contents('php://input'));
+        return;
+    }
     $iid = (int) ($_GET['id'] ?? 0);
     $pfx = $hsPrefix($iid);
     if ($pfx === null) { http_response_code(404); echo json_encode(['ok' => false, 'err' => 'no-homesuite-instance']); return; }
