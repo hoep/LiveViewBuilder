@@ -155,7 +155,7 @@
   }
 
   // ---------- ECharts / Kamera ----------
-  var _ec={},_hist={},_lastVals={};
+  var _ec={},_hist={},_lastVals={},_chAnim={};   // _chAnim: Bar-Race-Timer je Widget
   function cssv(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim();}
   function _rgb(h){h=(h||'').trim();if(h.charAt(0)==='#')h=h.slice(1);if(h.length===3)h=h.charAt(0)+h.charAt(0)+h.charAt(1)+h.charAt(1)+h.charAt(2)+h.charAt(2);var n=parseInt(h||'0',16);return [(n>>16)&255,(n>>8)&255,n&255];}
   function accA(a,hex){var c=_rgb(hex||cssv('--accent'));return 'rgba('+c[0]+','+c[1]+','+c[2]+','+a+')';}
@@ -236,7 +236,7 @@
     // Positionen sitzen -> Übergänge wieder zulassen (ab jetzt animiert nur noch die echte Bewegung)
     if(_fresh&&_hsc){void _hsc.offsetWidth;_hsc.classList.remove('notrans');_hsc.dataset.sunReady='1';}
   }
-  function disposeCharts(){for(var k in _ec){try{_ec[k].dispose();}catch(e){}}_ec={};}
+  function disposeCharts(){for(var a in _chAnim){try{clearInterval(_chAnim[a]);}catch(e){}}_chAnim={};for(var k in _ec){try{_ec[k].dispose();}catch(e){}}_ec={};}
   // Responsive ECharts-Schrift: Basisgröße x Skalierung nach Kachelgröße (Referenz 300x180, geklemmt 0.8..1.7)
   // ECharts zeichnet auf ein Canvas - die zentrale Typografie (CSS-Variablen --w-fsz) erreicht es
   // NICHT. Deshalb wird w.fsz hier ausgewertet: sie skaliert alle Diagrammschriften gemeinsam
@@ -442,7 +442,69 @@
   // "7 Tage", zeigte die Achse weiter Monate und es kam nichts an. Jetzt entscheidet beides
   // ueber dieselbe Funktion.
   function _chCalMode(w){var r=_chRange(w);return !!r.cal && r.unit==='month';}
-  function renderChartData(w){if(w.ctype==='daylight')setDaylight(w);else if(w.ctype==='heatmap')setHeatmap(w);else if(w.ctype==='spark'||w.type==='spark')setSpark(w);else if(w.ctype==='waterfall'||w.type==='waterfall')setWaterfall(w);else if(w.ctype==='pie'||w.ctype==='donut'||w.ctype==='rose')setPie(w);else if(w.type==='chart'&&_chCalMode(w))setCalBar(w);else setLine(w);}
+  function renderChartData(w){if(w.ctype==='daylight')setDaylight(w);else if(w.ctype==='heatmap')setHeatmap(w);else if(w.ctype==='barrace')setBarRace(w);else if(w.ctype==='spark'||w.type==='spark')setSpark(w);else if(w.ctype==='waterfall'||w.type==='waterfall')setWaterfall(w);else if(w.ctype==='pie'||w.ctype==='donut'||w.ctype==='rose')setPie(w);else if(w.type==='chart'&&_chCalMode(w))setCalBar(w);else setLine(w);}
+  // ---- Bar Race (ctype 'barrace') — animierter Balken-Wettlauf ueber die Zeit ----------
+  // Jede konfigurierte Serie ist ein "Laeufer". Frames = Zeit-Buckets der aggregierten
+  // Historie (aus fetchHist). ECharts realtimeSort ordnet die Balken je Frame neu und
+  // animiert die Umsortierung. Ein eigener Timer schaltet die Frames weiter (Cleanup in
+  // disposeCharts + stopRace). Optional kumuliert (Running Total) fuer den "Wachstums"-Effekt.
+  function stopRace(w){if(_chAnim[w.id]){clearInterval(_chAnim[w.id]);delete _chAnim[w.id];}}
+  function _raceTimeFmt(times){
+    var span=times[times.length-1]-times[0], D=864e5;
+    return function(t){var d=new Date(t);
+      if(span>300*D)return d.toLocaleDateString('de-DE',{month:'short',year:'2-digit'});
+      if(span>2*D)  return d.toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit'});
+      return d.toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'});
+    };
+  }
+  function _raceClock(txt){return {elements:[{type:'text',right:12,bottom:8,z:100,silent:true,
+    style:{text:txt,fontSize:24,fontWeight:700,fill:cssv('--muted'),opacity:.5}}]};}
+  function setBarRace(w){
+    var ec=_ec[w.id];if(!ec)return; stopRace(w);
+    var cols=[cssv('--accent'),cssv('--info'),cssv('--warm')];
+    var hs=chartSeries(w).filter(function(s){return s&&s.data&&s.data.length;});
+    var tset={}; hs.forEach(function(s){s.data.forEach(function(p){tset[p[0]]=1;});});
+    var times=Object.keys(tset).map(Number).sort(function(a,b){return a-b;});
+    if(hs.length<2||times.length<2){
+      ec.setOption({backgroundColor:'transparent',
+        title:{text:'Bar Race: ≥2 Serien mit Verlauf nötig',left:'center',top:'middle',textStyle:{color:cssv('--muted'),fontSize:12}},
+        xAxis:{show:false},yAxis:{show:false},series:[]},true);
+      return;
+    }
+    // Frames deckeln (bei Rohdaten koennten es tausende sein) -> gleichmaessig auf max 80.
+    var MAXF=80;
+    if(times.length>MAXF){var st=times.length/MAXF,t2=[];for(var k=0;k<MAXF;k++)t2.push(times[Math.floor(k*st)]);t2.push(times[times.length-1]);times=t2;}
+    var cum=(w.brCumul===true);
+    var runners=hs.map(function(s,i){
+      var di=0,acc=0,last=0,d=s.data;
+      var vals=times.map(function(t){ while(di<d.length&&d[di][0]<=t){var v=+d[di][1]||0;if(cum)acc+=v;else last=v;di++;} return cum?acc:last; });
+      return {name:s.name||('Serie '+(i+1)),color:_skinColor(s.color||cols[i%cols.length]),vals:vals};
+    });
+    var topN=(w.brTop!=null&&w.brTop!==''?Math.max(3,Math.min(30,+w.brTop)):10);
+    var frameMs=(w.brSpeed!=null&&w.brSpeed!==''?Math.max(150,Math.min(4000,+w.brSpeed)):700);
+    var loop=(w.brLoop!==false), rad=(w.barRadius!=null?+w.barRadius:4);
+    var names=runners.map(function(r){return r.name;}), fmtT=_raceTimeFmt(times);
+    function frame(fi){return runners.map(function(r){return {value:Math.round((r.vals[fi]||0)*100)/100,itemStyle:{color:r.color}};});}
+    ec.setOption({
+      backgroundColor:'transparent',
+      animationDuration:0,animationDurationUpdate:frameMs,animationEasing:'linear',animationEasingUpdate:'linear',
+      grid:{left:8,right:70,top:12,bottom:8,containLabel:true},
+      tooltip:{trigger:'axis',axisPointer:{type:'none'},confine:true,valueFormatter:function(v){return _chNum(w,v,true);}},
+      xAxis:{type:'value',max:'dataMax',axisLabel:{color:cssv('--muted'),formatter:function(v){return _chNum(w,v);}},
+        splitLine:{lineStyle:{color:cssv('--line'),opacity:.35}}},
+      yAxis:{type:'category',data:names,inverse:true,max:topN-1,animationDuration:300,animationDurationUpdate:frameMs,
+        axisLabel:{color:cssv('--text')},axisTick:{show:false},axisLine:{show:false}},
+      series:[{type:'bar',realtimeSort:true,data:frame(0),itemStyle:{borderRadius:rad},
+        label:{show:true,position:'right',valueAnimation:true,color:cssv('--text'),formatter:function(p){return _chNum(w,p.value,true);}}}],
+      graphic:_raceClock(fmtT(times[0]))
+    },true);
+    var fi=0;
+    _chAnim[w.id]=setInterval(function(){
+      if(!_ec[w.id]){stopRace(w);return;}
+      fi++; if(fi>=times.length){ if(!loop){stopRace(w);return;} fi=0; }
+      _ec[w.id].setOption({series:[{data:frame(fi)}],graphic:_raceClock(fmtT(times[fi]))});
+    },frameMs);
+  }
   function setPie(w){var ec=_ec[w.id];if(!ec)return;var ids=[w.varId,w.varId2,w.varId3].filter(function(x){return x;});
     var data=ids.map(function(id,i){var o=(w.sopt&&w.sopt[i])||{};var lv=_lastVals[id],v=lv?parseFloat(String(lv.v).replace(',','.')):0;if(isNaN(v))v=0;return {name:o.name||(i===0?(w.label||'Serie 1'):'Serie '+(i+1)),value:Math.max(0,v),itemStyle:{color:o.color||autoColorHex(i)}};});
     var donut=(w.ctype==='donut'),rose=(w.ctype==='rose');
@@ -1246,7 +1308,7 @@
       var z=(w.htmlZoom||100)/100;if(z!==1)wrap.style.transform='scale('+z+')';
     }
   }
-  setInterval(function(){allWidgets().forEach(function(w){if((w.type==='chart'||w.type==='spark')&&w.ctype!=='waterfall'&&!(_wsOK&&bcfg().noSafetyPoll))fetchHist(w);if(w.type==='html'&&w.htmlSrc!=='custom')fetchHtml(w);if(w.type==='weekplan')fetchWeekplan(w);if(w.type==='calendar')fetchCalEvents(w);if(w.type==='eventctl')fetchEvent(w);if(w.type==='objinfo')fetchObjInfo(w);if(w.type==='statetl')_stlFetch(w);if(w.type==='statelog')_slogFetch(w);if(w.type==='table')_tblLoad(w);});},60000);
+  setInterval(function(){allWidgets().forEach(function(w){if((w.type==='chart'||w.type==='spark')&&w.ctype!=='waterfall'&&w.ctype!=='barrace'&&!(_wsOK&&bcfg().noSafetyPoll))fetchHist(w);if(w.type==='html'&&w.htmlSrc!=='custom')fetchHtml(w);if(w.type==='weekplan')fetchWeekplan(w);if(w.type==='calendar')fetchCalEvents(w);if(w.type==='eventctl')fetchEvent(w);if(w.type==='objinfo')fetchObjInfo(w);if(w.type==='statetl')_stlFetch(w);if(w.type==='statelog')_slogFetch(w);if(w.type==='table')_tblLoad(w);});},60000);
   setInterval(function(){var now=Date.now();allWidgets().forEach(function(w){if(w.type==='camera'||w.type==='campro'){var iv=((w.refresh>0)?w.refresh:15)*1000;if(!w._lastCam||now-w._lastCam>=iv){w._lastCam=now;refreshCam(w);}}});},1000);
 
   // ---------- Auswahl & Eigenschaften ----------

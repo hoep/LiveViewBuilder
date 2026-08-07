@@ -32,7 +32,7 @@
     ['HomeSuite – Navigation & Sonne', ['roomnav','zonesync','shadesun','shadeprofiles']],
     ['Zustand & Listen',        ['assoc','statusgrid','statuslist','devlist','statusimage','table','objinfo','msglog','statelog','statetl']],
     ['Diagramme',               ['chart','heatmap','gauge','gaugepro','multiring','doubledonut','sankey','flow','flowline','windrose','tempbar']],
-    ['Chart-Typen (Beispiele)', ['chartbar','chartbarstack','chartscatter','chartspark','chartpie','chartdonut','chartrose','chartwf']],
+    ['Chart-Typen (Beispiele)', ['chartbar','chartbarstack','chartrace','chartscatter','chartspark','chartpie','chartdonut','chartrose','chartwf']],
     ['Wetter, Sonne & Termine', ['weather','weatherpro','meteogram','sun','suncard','raincard','calendar','weekplan','weekstrip','clock']],
     ['Medien & Inhalte',        ['camera','campro','media','image','html','webview','marquee','ticker']],
     ['Struktur & Layout',       ['text','shape','line','blank','component','container','room','chromebar','chromesidebar','skinswitch']],

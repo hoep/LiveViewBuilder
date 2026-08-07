@@ -4,7 +4,7 @@
   //   Ohne Zeit : pie | donut | rose | waterfall   (waterfall frueher eigenes Widget 'waterfall')
   // Vorbelegte Größe je Chart-Typ (Standard = 'area'); beim Umschalten nur übernehmen, solange
   // die Größe noch der vorherigen Standardgröße entspricht (analog colorpick.js/slider.js).
-  var CT_SIZE={spark:[150,50],waterfall:[360,220],daylight:[420,190],pie:[260,220],donut:[260,220],rose:[260,220],heatmap:[380,240]};
+  var CT_SIZE={spark:[150,50],waterfall:[360,220],daylight:[420,190],pie:[260,220],donut:[260,220],rose:[260,220],heatmap:[380,240],barrace:[380,280]};
   function _ctSize(ct){return CT_SIZE[ct]||[340,190];}
   // Eigene Einheit fuer den Wasserfall (w.wfUnit) - NICHT w.yunit, das gehoert dem Achsensystem
   // (Kalenderjahr-Balken + Mehrfachachsen). Fallback liest einmalig alte Widgets, die vor dieser
@@ -14,21 +14,21 @@
   function _chartVis(ct){
     // ACHTUNG: 'dl' ist unten die Datenlabel-Sichtbarkeit — der Tageslaengen-Typ heisst deshalb 'dayl'.
     var part=['pie','donut','rose'].indexOf(ct)>=0, wf=(ct==='waterfall'), sp=(ct==='spark'), dayl=(ct==='daylight'), hm=(ct==='heatmap');
-    var bar=(ct==='bar'||ct==='barstack'), scat=(ct==='scatter');
-    var line=!part&&!bar&&!scat&&!wf&&!sp&&!dayl&&!hm;
+    var bar=(ct==='bar'||ct==='barstack'), scat=(ct==='scatter'), race=(ct==='barrace');
+    var line=!part&&!bar&&!scat&&!wf&&!sp&&!dayl&&!hm&&!race;
     return {
-      part:part, wf:wf, spark:sp, bar:bar, scat:scat, line:line, dayl:dayl, hm:hm,
+      part:part, wf:wf, spark:sp, bar:bar, scat:scat, line:line, dayl:dayl, hm:hm, race:race,
       lineOpt:line,                    // Glaetten / Punkte / Linienbreite / Flaechen-Verlauf
       symOpt:scat,                     // Punkte-Groesse
-      br:(bar||wf),                    // Balken-Rundung (w.barRadius)
-      leg:(!wf&&!sp&&!hm),             // Legende + Position
-      dl:(!wf&&!sp&&!dayl&&!hm),       // Datenlabels generisch (Wasserfall/Tageslaenge/Heatmap bringen eigene mit)
-      title:!sp,                       // Titelblock (Label als Titel + Position)
-      ax:(!part&&!sp&&!hm),            // Achsen & Raster (Heatmap-Achsen sind fix: Stunde x Wochentag)
-      axPlus:(!part&&!sp&&!wf&&!dayl&&!hm), // Raster-Teilung, Stapeln, Zoom, Extrema, Perioden-Navigation
-      cmp:(!part&&!sp&&!wf&&!dayl&&!hm),    // Vergleich (Zeitversatz)
+      br:(bar||wf||race),              // Balken-Rundung (w.barRadius)
+      leg:(!wf&&!sp&&!hm&&!race),      // Legende + Position (Bar-Race sortiert selbst, keine Legende)
+      dl:(!wf&&!sp&&!dayl&&!hm&&!race), // Datenlabels generisch (Bar-Race hat eigene Wertlabels)
+      title:(!sp&&!race),              // Titelblock (Bar-Race zeigt die Zeit-Uhr statt Titel)
+      ax:(!part&&!sp&&!hm&&!race),     // Achsen & Raster (Bar-Race: feste Kategorie/Wert-Achsen)
+      axPlus:(!part&&!sp&&!wf&&!dayl&&!hm&&!race), // Raster-Teilung, Stapeln, Zoom, Extrema, Perioden-Navigation
+      cmp:(!part&&!sp&&!wf&&!dayl&&!hm&&!race),    // Vergleich (Zeitversatz)
       ser:(!wf&&!dayl),                // Serien-Editor (Wasserfall + Tageslaenge haben eigene Datenquelle); Heatmap nutzt 1 Serie
-      yax:(!part&&!sp&&!wf&&!dayl&&!hm)     // Y-Achsen-Editor (Tageslaenge/Heatmap haben feste Achsen)
+      yax:(!part&&!sp&&!wf&&!dayl&&!hm&&!race)     // Y-Achsen-Editor (Tageslaenge/Heatmap/Bar-Race haben feste Achsen)
     };
   }
   defWidget('chart',{
@@ -38,14 +38,14 @@
     noHover:true, // interner Perioden-Klick (‹ ›) soll KEINEN Ganz-Widget-Hover erzeugen; Hover nur bei Seite/Popup-Verknuepfung
 
     // Perioden-Knoepfe nur bei Zeitreihen — Sparkline hat keinen Platz, Wasserfall keine Zeitachse
-    render:function(w){var ct=w.ctype||'area',nav=(w.pnav&&ct!=='spark'&&ct!=='waterfall');
+    render:function(w){var ct=w.ctype||'area',nav=(w.pnav&&ct!=='spark'&&ct!=='waterfall'&&ct!=='barrace');
       return '<div data-role="chart" style="position:absolute;inset:0"></div>'+(nav?'<div style="position:absolute;left:6px;bottom:4px;display:flex;gap:4px;align-items:center;z-index:2"><button data-role="pprev" style="width:22px;height:20px;border:1px solid var(--line);background:var(--surface-2);color:var(--text);border-radius:5px;cursor:pointer;font-size:12px;line-height:1">‹</button><span data-role="plabel" style="font-size:10px;color:var(--muted);min-width:30px;text-align:center">jetzt</span><button data-role="pnext" style="width:22px;height:20px;border:1px solid var(--line);background:var(--surface-2);color:var(--text);border-radius:5px;cursor:pointer;font-size:12px;line-height:1">›</button></div>':'');},
-    click:function(w,el,e){var ct=w.ctype||'area';if(ct==='spark'||ct==='waterfall')return false; // keine Perioden-Navigation (falsche Datenquelle)
+    click:function(w,el,e){var ct=w.ctype||'area';if(ct==='spark'||ct==='waterfall'||ct==='barrace')return false; // keine Perioden-Navigation (falsche Datenquelle)
       var pp=e.target.closest('[data-role=pprev]'),pn=e.target.closest('[data-role=pnext]');if(!pp&&!pn)return false;w._pOff=Math.max(0,(w._pOff||0)+(pp?1:-1));fetchHist(w);return true;},
     props:function(w){
       if(w.type!=='chart')return '';
       var ct=w.ctype||'area',V=_chartVis(ct);
-      var h=row('Chart-Typ','<select id="pCType"><optgroup label="Zeitreihe"><option value="area"'+(ct==='area'?' selected':'')+'>Fläche</option><option value="areaspline"'+(ct==='areaspline'?' selected':'')+'>Fläche glatt (Spline)</option><option value="line"'+(ct==='line'?' selected':'')+'>Linie</option><option value="spline"'+(ct==='spline'?' selected':'')+'>Linie glatt (Spline)</option><option value="step"'+(ct==='step'?' selected':'')+'>Stufen</option><option value="steparea"'+(ct==='steparea'?' selected':'')+'>Stufenfläche</option><option value="bar"'+(ct==='bar'?' selected':'')+'>Balken</option><option value="barstack"'+(ct==='barstack'?' selected':'')+'>Balken gestapelt</option><option value="scatter"'+(ct==='scatter'?' selected':'')+'>Punkte</option></optgroup><optgroup label="Kompakt"><option value="spark"'+(ct==='spark'?' selected':'')+'>Sparkline (kompakt)</option></optgroup><optgroup label="Anteile (ohne Zeit)"><option value="pie"'+(ct==='pie'?' selected':'')+'>Kreis (Pie)</option><option value="donut"'+(ct==='donut'?' selected':'')+'>Donut</option><option value="rose"'+(ct==='rose'?' selected':'')+'>Rose (Nightingale)</option></optgroup><optgroup label="Ohne Zeit"><option value="waterfall"'+(ct==='waterfall'?' selected':'')+'>Wasserfall</option></optgroup><optgroup label="Matrix"><option value="heatmap"'+(ct==='heatmap'?' selected':'')+'>Heatmap (Wochentag × Stunde)</option></optgroup><optgroup label="Astronomie"><option value="daylight"'+(ct==='daylight'?' selected':'')+'>Tageslänge (ganzes Jahr)</option></optgroup></select>');
+      var h=row('Chart-Typ','<select id="pCType"><optgroup label="Zeitreihe"><option value="area"'+(ct==='area'?' selected':'')+'>Fläche</option><option value="areaspline"'+(ct==='areaspline'?' selected':'')+'>Fläche glatt (Spline)</option><option value="line"'+(ct==='line'?' selected':'')+'>Linie</option><option value="spline"'+(ct==='spline'?' selected':'')+'>Linie glatt (Spline)</option><option value="step"'+(ct==='step'?' selected':'')+'>Stufen</option><option value="steparea"'+(ct==='steparea'?' selected':'')+'>Stufenfläche</option><option value="bar"'+(ct==='bar'?' selected':'')+'>Balken</option><option value="barstack"'+(ct==='barstack'?' selected':'')+'>Balken gestapelt</option><option value="scatter"'+(ct==='scatter'?' selected':'')+'>Punkte</option></optgroup><optgroup label="Animiert"><option value="barrace"'+(ct==='barrace'?' selected':'')+'>Bar Race (Balken-Wettlauf)</option></optgroup><optgroup label="Kompakt"><option value="spark"'+(ct==='spark'?' selected':'')+'>Sparkline (kompakt)</option></optgroup><optgroup label="Anteile (ohne Zeit)"><option value="pie"'+(ct==='pie'?' selected':'')+'>Kreis (Pie)</option><option value="donut"'+(ct==='donut'?' selected':'')+'>Donut</option><option value="rose"'+(ct==='rose'?' selected':'')+'>Rose (Nightingale)</option></optgroup><optgroup label="Ohne Zeit"><option value="waterfall"'+(ct==='waterfall'?' selected':'')+'>Wasserfall</option></optgroup><optgroup label="Matrix"><option value="heatmap"'+(ct==='heatmap'?' selected':'')+'>Heatmap (Wochentag × Stunde)</option></optgroup><optgroup label="Astronomie"><option value="daylight"'+(ct==='daylight'?' selected':'')+'>Tageslänge (ganzes Jahr)</option></optgroup></select>');
       // ---- Tageslänge: Datenquelle ist der Standort (date_sun_info serverseitig), keine Variablen ----
       if(V.dayl){
         h+='<div style="font-size:11px;color:var(--muted);margin:2px 2px 6px">Auf- und Untergang für jeden Tag des Jahres, Fläche dazwischen = Tageslänge. Der Standort wird automatisch aus der Location-Instanz gelesen.</div>'
@@ -72,8 +72,14 @@
         +row('Aggregation','<select id="pHmAgg"><option value="avg"'+((w.aggField!=='sum')?' selected':'')+'>Mittelwert</option><option value="sum"'+(w.aggField==='sum'?' selected':'')+'>Summe</option></select>')
         +row('Farbschema','<select id="pHmSch"><option value="heat"'+((w.hmScheme||'heat')==='heat'?' selected':'')+'>Heat (blau→rot)</option><option value="cool"'+(w.hmScheme==='cool'?' selected':'')+'>Kühl→Warm</option><option value="accent"'+(w.hmScheme==='accent'?' selected':'')+'>Akzent</option></select>')
         +row('Werte einblenden','<input type="checkbox" id="pHmLbl"'+(w.labels?' checked':'')+'>');
+      // ---- Bar Race ----
+      if(V.race)h+='<div style="font-size:11px;color:var(--muted);margin:2px 2px 6px">Balken-Wettlauf: jede <b>Serie</b> unten ist ein Läufer. Die Frames kommen aus dem <b>Zeitraum</b> oben (Einheit = Bucket, z. B. 12 × Monate). Läuft automatisch.</div>'
+        +row('Sichtbare Ränge (Top N)','<input id="pBrTop" type="number" min="3" max="30" style="width:64px" value="'+(w.brTop!=null?w.brTop:10)+'">')
+        +row('Tempo je Frame (ms)','<input id="pBrSpeed" type="number" min="150" max="4000" step="50" style="width:74px" value="'+(w.brSpeed!=null?w.brSpeed:700)+'">')
+        +row('Kumuliert','<input type="checkbox" id="pBrCumul"'+(w.brCumul===true?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">Running Total (Wachstum)</span>')
+        +row('Endlos-Schleife','<input type="checkbox" id="pBrLoop"'+(w.brLoop!==false?' checked':'')+'>');
       // ---- Diagramm-Optionen ----
-      h+='<div class="pgh">'+(V.wf?'Optionen':(V.hm?'Datenreihe':'Diagramm-Optionen'))+'</div>';
+      h+='<div class="pgh">'+(V.wf?'Optionen':(V.hm?'Datenreihe':(V.race?'Balken':'Diagramm-Optionen')))+'</div>';
       if(V.spark)h+=row('Linienfarbe',selOf('pSpLine',w.lineColor,['accent','ok','warn','crit','info']))
         +row('Füllung','<input type="checkbox" id="pSpFill"'+((w.fill!==false)?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">Fläche unter der Linie</span>');
       if(V.lineOpt)h+=row('Glätten (Spline)','<input type="checkbox" id="pSmooth"'+(w.smooth!==false?' checked':'')+'>')+row('Punkte','<input type="checkbox" id="pSym"'+(w.symbols?' checked':'')+'> <input id="pSymS" type="number" style="width:52px" value="'+(w.symSize||5)+'" title="Größe">')+row('Linienbreite','<input id="pLw" type="number" step="0.5" value="'+(w.lw||2)+'">')+row('Flächen-Verlauf','<input type="checkbox" id="pGrad"'+(w.grad?' checked':'')+'>');
@@ -82,7 +88,7 @@
         +row('Datenlabels','<input type="checkbox" id="pDl"'+(w.labels?' checked':'')+'>')
         +row('Verbindungslinien','<input type="checkbox" id="pWfConn"'+(w.wfConnect!==false?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">gestrichelt, zwischen den Balken</span>');
       if(V.br)h+=row('Balken-Rundung','<input id="pBr" type="number" value="'+(w.barRadius!=null?w.barRadius:3)+'">');
-      if(V.br)h+=row('Balken horizontal','<input type="checkbox" id="pBarHoriz"'+(w.barHoriz?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">liegende Balken statt Säulen</span>');
+      if(V.br&&!V.race)h+=row('Balken horizontal','<input type="checkbox" id="pBarHoriz"'+(w.barHoriz?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">liegende Balken statt Säulen</span>');
       if(V.wf)h+=row('Fallback Auf',skinSel(w.wfUp||'ok','id="pWfUp"'))+row('Fallback Ab',skinSel(w.wfDown||'crit','id="pWfDn"'));
       if(V.leg)h+=row('Legende','<input type="checkbox" id="pLeg"'+(w.legend?' checked':'')+'>')+(w.legend?row('Legende-Pos','<select id="pLegPos"><option value="top"'+((w.legPos||'top')==='top'?' selected':'')+'>oben</option><option value="bottom"'+(w.legPos==='bottom'?' selected':'')+'>unten</option><option value="left"'+(w.legPos==='left'?' selected':'')+'>links</option><option value="right"'+(w.legPos==='right'?' selected':'')+'>rechts</option></select>'):'');
       if(V.dl)h+=row('Datenlabels','<input type="checkbox" id="pDl"'+(w.labels?' checked':'')+'>');
@@ -152,6 +158,11 @@
       if($('#pHmDays'))$('#pHmDays').oninput=function(){w.hmDays=Math.max(1,Math.min(120,parseInt(this.value)||14));delete _hist[w.id];fetchHist(w);commit();};
       if($('#pHmRes'))$('#pHmRes').onchange=function(){w.hmRes=parseInt(this.value)||60;delete _hist[w.id];fetchHist(w);commit();};
       if($('#pHmAgg'))$('#pHmAgg').onchange=function(){w.aggField=(this.value==='sum')?'sum':undefined;delete _hist[w.id];fetchHist(w);commit();};
+      // --- Bar Race ---
+      if($('#pBrTop'))$('#pBrTop').oninput=function(){w.brTop=this.value===''?undefined:Math.max(3,Math.min(30,parseInt(this.value)||10));reChart();};
+      if($('#pBrSpeed'))$('#pBrSpeed').oninput=function(){w.brSpeed=this.value===''?undefined:Math.max(150,Math.min(4000,parseInt(this.value)||700));reChart();};
+      if($('#pBrCumul'))$('#pBrCumul').onchange=function(){w.brCumul=this.checked?true:undefined;reChart();};
+      if($('#pBrLoop'))$('#pBrLoop').onchange=function(){w.brLoop=this.checked?undefined:false;reChart();};
       if($('#pHmSch'))$('#pHmSch').onchange=function(){w.hmScheme=this.value;reChart();};
       if($('#pHmLbl'))$('#pHmLbl').onchange=function(){w.labels=this.checked;reChart();};
       // --- gemeinsam ---
@@ -198,7 +209,7 @@
     },
     // Anteile -> setPie, Wasserfall -> setWaterfall (Live-Werte, KEIN Historien-Nachzug), sonst (inkl. spark) entprellte Historie
     live:function(w,el,id,d,base,txt,on){var ct=w.ctype||'area';
-      if(ct==='heatmap')return; // historische Aggregation, kein Live-Nachzug
+      if(ct==='heatmap'||ct==='barrace')return; // historische Aggregation/Animation, kein Live-Nachzug
       if(ct==='pie'||ct==='donut'||ct==='rose'){if(_ec[w.id])setPie(w);}
       else if(ct==='waterfall'){if((w.steps||[]).some(function(s){return s.vid===id;}))setWaterfall(w);}
       else if(_ec[w.id])chartPushRefresh(w);}

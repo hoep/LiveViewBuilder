@@ -1822,6 +1822,20 @@
       groesse: [340, 180],
       demo: {"type": "chart", "ctype": "bar", "label": "Balken", "varId": 26109, "series": [{"vid": 26109, "color": "accent"}], "range": {"n": 12, "unit": "hour", "aggF": "avg", "rawUnit": "hour"}, "showTitle": true, "barRadius": 3}
     },
+    "chartrace": {
+      titel: "Chart: Bar Race",
+      zweck: "Animierter Balken-Wettlauf: jede Serie ist ein Laeufer, die Frames laufen ueber den eingestellten Zeitraum (Einheit = Bucket, z. B. 12 x Monate). Die Balken sortieren sich je Frame neu (ECharts realtimeSort) und zeigen unten rechts die aktuelle Zeit.",
+      funktionen: [
+        {name:"Serien = Laeufer",beschreibung:"Jede Serie unten ein Balken; Farbe je Serie."},
+        {name:"Zeitraum = Frames",beschreibung:"Anzahl x Einheit oben; die Einheit ist der Bucket-Takt der Animation."},
+        {name:"Top N / Tempo",beschreibung:"Sichtbare Raenge und Frame-Dauer (ms) einstellbar."},
+        {name:"Kumuliert",beschreibung:"Running Total fuer den Wachstums-Effekt; sonst der Bucket-Wert je Frame."},
+        {name:"Endlos-Schleife",beschreibung:"Laeuft automatisch, optional in Schleife."}
+      ],
+      hinweis: "Variante des Chart-Widgets — Chart anlegen, Typ 'Bar Race' waehlen. Braucht >=2 Serien mit geloggtem Verlauf.",
+      groesse: [380, 280],
+      demo: {"type": "chart", "ctype": "barrace", "label": "Verbrauch", "series": [{"vid": 48744, "name": "EG/OG", "color": "accent"}, {"vid": 41293, "name": "Dachgeschoss", "color": "info"}, {"vid": 45552, "name": "PV", "color": "warm"}], "range": {"n": 12, "unit": "month", "aggF": "sum"}, "brCumul": true, "brTop": 10, "brSpeed": 700}
+    },
     "chartbarstack": {
       titel: "Chart: Balken gestapelt",
       zweck: "Chart-Typ Balken gestapelt — mehrere Serien aufeinander.",
