@@ -885,6 +885,34 @@
       groesse: [230,150],
       demo: {"varId": 53423, "varId2": 53424, "rmax": 30, "dec": 1, "label": "Regen heute"}
     },
+    "rainintensity": {
+      titel: "Regen-Intensität 48 h",
+      zweck: "Binarisierte Regen-Leiste über ein Zeitfenster (Vorgabe 48 h): je Slot 0 oder 1 (Regen ja/nein nach mm/h-Schwelle), zusammenhängende 1er = eine Phase. Kopf: Titel + Zusammenfassung „<Intensität> gegen HH:00 · N Phasen“. Zeitachse mit 6h-Ticks. Datenquelle: die RadarMeta-JSON-Variable (forecast) aus PHPRainRadar — dieselbe wie beim Niederschlagsradar.",
+      funktionen: [
+        {name: "Radar-Meta-Variable", beschreibung: "String-Variable mit dem RadarMeta-JSON (Feld forecast:[{t,v}]). „Var“ bindet sie per Klick im Baum."},
+        {name: "Fenster (h) / Slot (h)", beschreibung: "Fensterlänge (6–96 h) und Slot-Dauer (1–6 h). 48 h bei 2 h ergibt 24 Zellen."},
+        {name: "Regen-Schwelle (mm/h)", beschreibung: "Ab dieser Rate gilt ein Slot als Regen (1). Vorgabe 0,1 mm/h."},
+        {name: "Farbe (Regen)", beschreibung: "Skin-Farbe der 1-Zellen (Vorgabe Info/Blau); 0-Zellen bleiben gedämpft."},
+        {name: "Phasen / Onset", beschreibung: "Phasenzahl = Anzahl der 1er-Läufe; Onset = Startzeit des ersten Laufs; Intensitätstext aus der Maximalrate."}
+      ],
+      hinweis: "Braucht die RadarMeta-Variable (57952 schreibt sie). Ohne Daten erscheint „Keine Vorhersagedaten“. Die Zellen zeigen 0/1, nicht die Rohmenge.",
+      groesse: [560,96],
+      demo: {"title": "Regen 48 h", "riSlot": 2, "riColor": "info"}
+    },
+    "rainradar": {
+      titel: "Niederschlagsradar",
+      zweck: "Zeigt das Radar-GIF (PHPRainRadar) mit STANDORT-ZENTRIERTEM Cover-Clipping: der Standort (aus RadarMeta img.lx/ly in Prozent) sitzt immer in der Mitte, das Bild füllt die Kachel verzerrungsfrei (uniforme Skalierung) und wird am Rand beschnitten — kein Stretch, Standort immer sichtbar.",
+      funktionen: [
+        {name: "Radar-Meta-Variable", beschreibung: "String-Variable mit dem RadarMeta-JSON (img.url, img.w/h, img.lx/ly, img.ts). „Var“ bindet sie per Klick im Baum."},
+        {name: "Zoom", beschreibung: "1 = Standort zentriert und Kachel gefüllt; höher zoomt enger an den Standort."},
+        {name: "Standort-Marker", beschreibung: "Fadenkreuz/Punkt in der Mitte (weil der Standort immer zentriert ist)."},
+        {name: "Zeitstempel", beschreibung: "Zeigt img.ts (jüngster Frame) rechts im Kopf."},
+        {name: "Titel", beschreibung: "Kopfzeile links (Vorgabe „Niederschlagsradar“)."}
+      ],
+      hinweis: "Das GIF wird direkt aus /tile/kremsmuenster/ geladen (kein Media-Objekt nötig). Cover schneidet Kartenränder weg — der Standort bleibt garantiert sichtbar. Braucht die RadarMeta-Variable (57952).",
+      groesse: [420,300],
+      demo: {"title": "Niederschlagsradar"}
+    },
     "room": {
       titel: "Raum",
       zweck: "Kompakte Raumkachel mit Icon, Raumname und bis zu drei Messwerten nebeneinander — etwa Temperatur, Luftfeuchte und Leistung eines Zimmers.",
