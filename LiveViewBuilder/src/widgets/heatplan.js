@@ -337,16 +337,20 @@
     if(hpHS(w)){ var dom=(w&&w.domain)||'heating'; fetch('?api=mod&op=topology',{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
       var rooms=[], order=[], seen={};
       function grp(g){ if(g&&!seen[g]){seen[g]=1;order.push(g);} }
+      // Tab-Label = RAUMNAME; nur wenn ein Raum mehrere Entitaeten derselben Domaene hat,
+      // wird die Ausrichtung angehaengt (aus dem Entitaetsnamen, Praefix Heizung/Beschattung + Raumname entfernt).
+      function pushRoom(rm,g){ var dents=(rm.entities||[]).filter(function(e){return (e.domain||'')===dom;});
+        dents.forEach(function(e){ var lbl=rm.name||('#'+e.iid);
+          if(dents.length>1){ var suf=String(e.name||'').replace(/^\s*(Heizung|Beschattung)\s*/i,'').replace(rm.name||'','').replace(/\s+/g,' ').trim(); if(suf)lbl+=' '+suf; }
+          rooms.push({idx:e.iid,name:lbl,ent:e.name||'',room:rm.name||'',type:'',group:g}); }); }
       (j&&j.tree||[]).forEach(function(haus){ (haus.children||[]).forEach(function(area){
         if(area.kind!=='Bereich')return; var g=area.abbr||area.name||''; grp(g);
-        (area.children||[]).forEach(function(rm){ if(rm.kind!=='Raum')return;
-          (rm.entities||[]).forEach(function(e){ if((e.domain||'')===dom) rooms.push({idx:e.iid,name:e.name||('#'+e.iid),type:'',group:g}); }); });
+        (area.children||[]).forEach(function(rm){ if(rm.kind==='Raum')pushRoom(rm,g); });
       });
         // Raeume direkt unter dem Haus (ohne Bereich)
-        (haus.children||[]).forEach(function(rm){ if(rm.kind!=='Raum')return;
-          (rm.entities||[]).forEach(function(e){ if((e.domain||'')===dom) rooms.push({idx:e.iid,name:e.name||('#'+e.iid),type:'',group:''}); }); });
+        (haus.children||[]).forEach(function(rm){ if(rm.kind==='Raum')pushRoom(rm,''); });
       });
-      (j&&j.unassigned||[]).forEach(function(e){ if((e.domain||'')===dom) rooms.push({idx:e.iid,name:e.name||('#'+e.iid),type:'',group:''}); });
+      (j&&j.unassigned||[]).forEach(function(e){ if((e.domain||'')===dom) rooms.push({idx:e.iid,name:e.name||('#'+e.iid),ent:e.name||'',room:'',type:'',group:''}); });
       _hpRooms=rooms; _hpGroupOrder=order; _hpRoomsRoot=root; cb&&cb();
     }).catch(function(){_hpRooms=[];_hpGroupOrder=null;_hpRoomsRoot=root;cb&&cb();}); return; }
     fetch('?api=heat&op=list'+hpRootParam(w),{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
