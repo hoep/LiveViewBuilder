@@ -541,33 +541,55 @@
   }
   // Gleichmaessig verteilen. resize=false: Groessen bleiben, Luecken werden gleich (fuellen die Box).
   // resize=true: Luecken = Skin-Abstand, Groessen angeglichen (alle gleich gross, Box gefuellt).
-  // Beide Achsen UNABHAENGIG, aber nur wo echte Streuung ist (Reihe -> nur X, Spalte -> nur Y).
-  // Aeussere Raender bleiben fix (linkestes/oberstes/rechtestes/unterstes Element markiert den Rand).
+  // BEIDE Achsen: in Spalten (x-Ueberlappung) und Reihen (y-Ueberlappung) clustern und
+  // JE Achse verteilen. Reihe -> 1 Reihe (Y unveraendert) + Spalten in X; Spalte -> analog;
+  // Raster -> Spalten in X UND Reihen in Y; Diagonale -> beide. Aeussere Raender bleiben fix.
   function distributeEven(resize){
     var us=selUnits(); if(us.length<2){toast('Mind. 2 Elemente/Gruppen wählen');return;}
     var boxL=Math.min.apply(null,us.map(function(u){return u.x;}));
     var boxR=Math.max.apply(null,us.map(function(u){return u.x+u.w;}));
     var boxT=Math.min.apply(null,us.map(function(u){return u.y;}));
     var boxB=Math.max.apply(null,us.map(function(u){return u.y+u.h;}));
-    var boxW=boxR-boxL, boxH=boxB-boxT, n=us.length, gap=bcfg().gap||0;
-    // Verteilachse = ueberlappungsfreie Folge entlang der Achse: Reihe -> nur X,
-    // Spalte -> nur Y, Diagonale/Streuung -> beide, Raster/Cluster -> keine (No-Op).
-    function axisSeq(a,s){ var arr=us.slice().sort(function(p,q){return (p[a]+p[s]/2)-(q[a]+q[s]/2);});
-      for(var i=1;i<arr.length;i++){ if(arr[i][a] < arr[i-1][a]+arr[i-1][s]-2) return false; } return true; }
-    var doX=axisSeq('x','w'), doY=axisSeq('y','h');
-    us.forEach(function(u){u._nx=u._ny=u._nw=u._nh=null;});
-    if(doX){ var bx=us.slice().sort(function(a,b){return (a.x+a.w/2)-(b.x+b.w/2);}), cx=boxL;
-      if(resize){var uw=Math.max(8,(boxW-(n-1)*gap)/n); bx.forEach(function(u){u._nx=cx;u._nw=uw;cx+=uw+gap;});}
-      else{var sw=0;bx.forEach(function(u){sw+=u.w;}); var gx=(boxW-sw)/(n-1); bx.forEach(function(u){u._nx=cx;cx+=u.w+gx;});}
-    } else if(resize){ us.forEach(function(u){u._nx=boxL;u._nw=boxW;}); }   // keine X-Streuung -> Breite auf Box
-    if(doY){ var by=us.slice().sort(function(a,b){return (a.y+a.h/2)-(b.y+b.h/2);}), cy=boxT;
-      if(resize){var uh=Math.max(8,(boxH-(n-1)*gap)/n); by.forEach(function(u){u._ny=cy;u._nh=uh;cy+=uh+gap;});}
-      else{var sh=0;by.forEach(function(u){sh+=u.h;}); var gy=(boxH-sh)/(n-1); by.forEach(function(u){u._ny=cy;cy+=u.h+gy;});}
-    } else if(resize){ us.forEach(function(u){u._ny=boxT;u._nh=boxH;}); }   // keine Y-Streuung -> Hoehe auf Box
+    var boxW=boxR-boxL, boxH=boxB-boxT, gap=bcfg().gap||0;
+    // Einheiten clustern, deren Projektion auf die Achse ueberlappt (Spalten bei x, Reihen bei y).
+    function clusters(a,s){
+      var arr=us.slice().sort(function(p,q){return p[a]-q[a];}), gs=[], cur=null, end=-1e9;
+      arr.forEach(function(u){ if(cur && u[a] < end-2){ cur.list.push(u); end=Math.max(end,u[a]+u[s]); }
+        else { cur={list:[u]}; gs.push(cur); end=u[a]+u[s]; } });
+      gs.forEach(function(g){ g.min=Math.min.apply(null,g.list.map(function(u){return u[a];}));
+        g.size=Math.max.apply(null,g.list.map(function(u){return u[a]+u[s];}))-g.min; });
+      return gs;
+    }
+    var cols=clusters('x','w'), rows=clusters('y','h');
+    var doX=cols.length>=2, doY=rows.length>=2;
     if(!doX&&!doY){toast('Auswahl hat keine Streuung zum Verteilen');return;}
-    us.forEach(function(u){ placeUnit(u, u._nx!=null?Math.round(u._nx):u.x, u._ny!=null?Math.round(u._ny):u.y, u._nw!=null?Math.round(u._nw):null, u._nh!=null?Math.round(u._nh):null); });
+    // Ziel-Position/-Groesse je Spalte/Reihe
+    var colX=[], colW=[], rowY=[], rowH=[];
+    if(resize){
+      var W=doX?Math.max(8,(boxW-(cols.length-1)*gap)/cols.length):boxW;
+      var H=doY?Math.max(8,(boxH-(rows.length-1)*gap)/rows.length):boxH;
+      cols.forEach(function(c,i){colX[i]=boxL+i*(W+gap);colW[i]=W;});
+      rows.forEach(function(r,j){rowY[j]=boxT+j*(H+gap);rowH[j]=H;});
+    } else {
+      if(doX){var sw=0;cols.forEach(function(c){sw+=c.size;});var gx=(boxW-sw)/(cols.length-1),cx=boxL;
+        cols.forEach(function(c,i){colX[i]=cx;cx+=c.size+gx;});}
+      if(doY){var sh=0;rows.forEach(function(r){sh+=r.size;});var gy=(boxH-sh)/(rows.length-1),cy=boxT;
+        rows.forEach(function(r,j){rowY[j]=cy;cy+=r.size+gy;});}
+    }
+    function idxOf(gs,u){for(var i=0;i<gs.length;i++)if(gs[i].list.indexOf(u)>=0)return i;return 0;}
+    us.forEach(function(u){
+      var ci=idxOf(cols,u), ri=idxOf(rows,u), nx=u.x, ny=u.y, nw=null, nh=null;
+      if(resize){
+        if(doX){nx=colX[ci];nw=colW[ci];} else {nx=boxL;nw=boxW;}
+        if(doY){ny=rowY[ri];nh=rowH[ri];} else {ny=boxT;nh=boxH;}
+      } else {
+        if(doX)nx=colX[ci]+(u.x-cols[ci].min);   // Offset innerhalb der Spalte erhalten
+        if(doY)ny=rowY[ri]+(u.y-rows[ri].min);
+      }
+      placeUnit(u,Math.round(nx),Math.round(ny),nw!=null?Math.round(nw):null,nh!=null?Math.round(nh):null);
+    });
     render();renderProps();commit();
-    toast(resize?('Verteilt & angeglichen ('+n+')'):('Gleichmässig verteilt ('+n+')'));
+    toast(resize?('Verteilt & angeglichen ('+us.length+')'):('Gleichmässig verteilt ('+us.length+')'));
   }
   function groupSel(){var ws=selWidgets();if(ws.length<2){toast('Mind. 2 Elemente wählen');return;}
     var gid='g'+uid();ws.forEach(function(w){w.group=gid;delete w.gmaster;});
