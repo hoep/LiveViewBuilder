@@ -167,7 +167,11 @@
 
   // ---------- heateditor: Präsenz + Slot-Editor + Übertragen + Speichern ----------
   defWidget('editor',{
-    label:'Editor', paletteIcon:'wtile', size:[300,780],
+    // Kompakt-Zusammensetzung (Slot+Variante+Übertragen+Speichern). Fuer neue Seiten
+    // die Einzelwidgets slotedit/variantbox/transfer/save nutzen; editor bleibt noPalette
+    // fuer Bestandsseiten.
+    noPalette:true,
+    label:'Editor (kompakt)', paletteIcon:'wtile', size:[300,780],
     defaults:function(w){w.session='heat';},
     render:function(w){var r=hfReady(w);if(r.err)return hfMsg(r.err);if(r.loading)return hfMsg('Editor lädt …');var s=r.s,day=hpDayObj(s);
       // Voller Editor wie der Monolith: Slot · Präsenz-Profil · Übertragen (inkl. „Woche übernehmen von") · Speichern.
@@ -189,5 +193,60 @@
       var cp=$('[data-hpcopy]',el);if(cp)cp.onclick=function(){var t=[];$$('[data-hptday]:checked',el).forEach(function(c){t.push(+c.getAttribute('data-hptday'));});if(!t.length){toast('Keine Zieltage gewählt');return;}hpCopyDay(w,s,t);em();};
       var tk=$('[data-hptake]',el);if(tk)tk.onclick=function(){var rm=$('[data-hpfromroom]',el),pr=$('[data-hpfrompres]',el);if(!rm||!pr)return;if(s.dirty&&!confirm('Ungespeicherte Änderungen verwerfen?'))return;hfTakeOver(w,+rm.value,+pr.value,em);};
       var sv=$('[data-hpsave]',el);if(sv)sv.onclick=function(){hfSave(w);};},
+    props:function(w){return hfSessRow(w);}, wire:function(w){hfSessWire(w);}
+  });
+
+  // ---------- Editor ZERLEGT in Einzelwidgets (kleine, wiederverwendbare Bausteine) ----------
+  function hfElOf2(w){return $('.w[data-id="'+w.id+'"]',canvas)||$('.w[data-id="'+w.id+'"]',$('#ovcanvas'));}
+  function hfMount2(w){var el=hfElOf2(w);if(!el)return;hfSub(w);hfEnsure(w,el);}
+
+  // slotedit: nur der Slot-Editor (Wert/Zeit/Sonnen-Anker/einfuegen/loeschen)
+  defWidget('slotedit',{
+    label:'Slot-Editor', paletteIcon:'wtile', size:[300,360],
+    defaults:function(w){w.session='heat';},
+    render:function(w){var r=hfReady(w);if(r.err)return hfMsg(r.err);if(r.loading)return hfMsg('Editor lädt …');var s=r.s;return '<div class="hplan hfbox"><div class="hp-side hfside">'+hpSlotEditor(s,hpDayObj(s))+'</div></div>';},
+    mount:hfMount2,
+    _bind:function(w,el){var s=hfSess(w);function em(){hfEmit(w);}
+      $$('[data-hptemp]',el).forEach(function(b){b.onclick=function(){hpTempStep(w,s,+b.getAttribute('data-hptemp'));em();};});
+      $$('[data-hpstart]',el).forEach(function(b){b.onclick=function(){hpTimeStep(w,s,'start',+b.getAttribute('data-hpstart'));em();};});
+      $$('[data-hpend]',el).forEach(function(b){b.onclick=function(){hpTimeStep(w,s,'end',+b.getAttribute('data-hpend'));em();};});
+      var ab=$('[data-hpadd]',el);if(ab)ab.onclick=function(){hpAddSlot(w,s);em();};
+      var db=$('[data-hpdel]',el);if(db)db.onclick=function(){hpDelSlot(w,s);em();};
+      $$('[data-hpetype]',el).forEach(function(b){b.onclick=function(){hpSetEndType(s,b.getAttribute('data-hpetype'));em();};});
+      var an=$('[data-hpanchor]',el);if(an)an.onchange=function(){hpSetAnchor(s,an.value);em();};
+      $$('[data-hpoff]',el).forEach(function(b){b.onclick=function(){hpOffStep(s,+b.getAttribute('data-hpoff'));em();};});},
+    props:function(w){return hfSessRow(w);}, wire:function(w){hfSessWire(w);}
+  });
+
+  // variantbox: die Varianten-/Praesenz-Auswahl (Plan/Praesenz)
+  defWidget('variantbox',{
+    label:'Varianten', paletteIcon:'wlist', size:[300,180],
+    defaults:function(w){w.session='heat';},
+    render:function(w){var r=hfReady(w);if(r.err)return hfMsg(r.err);if(r.loading)return hfMsg('Varianten lädt …');return '<div class="hplan hfbox"><div class="hp-side hfside">'+hpPresenceBox(r.s)+'</div></div>';},
+    mount:hfMount2,
+    _bind:function(w,el){var s=hfSess(w);
+      $$('[data-hppres]',el).forEach(function(b){b.onclick=function(){var p=+b.getAttribute('data-hppres');if(p==hpVarIdx(s))return;if(s.dirty&&!confirm('Ungespeicherte Änderungen verwerfen?'))return;s.variant=p;s.presence=p;s.slot=1;hfEmit(w);};});},
+    props:function(w){return hfSessRow(w);}, wire:function(w){hfSessWire(w);}
+  });
+
+  // transfer: Tag/Woche kopieren + Woche uebernehmen
+  defWidget('transfer',{
+    label:'Übertragen', paletteIcon:'wtile', size:[300,230],
+    defaults:function(w){w.session='heat';},
+    render:function(w){var r=hfReady(w);if(r.err)return hfMsg(r.err);if(r.loading)return hfMsg('lädt …');return '<div class="hplan hfbox"><div class="hp-side hfside">'+hpTransferBox(w,r.s)+'</div></div>';},
+    mount:hfMount2,
+    _bind:function(w,el){var s=hfSess(w);function em(){hfEmit(w);}
+      var cp=$('[data-hpcopy]',el);if(cp)cp.onclick=function(){var t=[];$$('[data-hptday]:checked',el).forEach(function(c){t.push(+c.getAttribute('data-hptday'));});if(!t.length){toast('Keine Zieltage gewählt');return;}hpCopyDay(w,s,t);em();};
+      var tk=$('[data-hptake]',el);if(tk)tk.onclick=function(){var rm=$('[data-hpfromroom]',el),pr=$('[data-hpfrompres]',el);if(!rm||!pr)return;if(s.dirty&&!confirm('Ungespeicherte Änderungen verwerfen?'))return;hfTakeOver(w,+rm.value,+pr.value,em);};},
+    props:function(w){return hfSessRow(w);}, wire:function(w){hfSessWire(w);}
+  });
+
+  // save: Speichern-Knopf
+  defWidget('save',{
+    label:'Speichern', paletteIcon:'check', size:[300,54],
+    defaults:function(w){w.session='heat';},
+    render:function(w){var r=hfReady(w);if(r.err||r.loading)return '<div class="hplan hfbox"></div>';var s=r.s;return '<div class="hplan hfbox"><button class="hp-save'+(s.dirty?' dirty':'')+'" data-hpsave="1" style="width:100%"><svg class="hp-ic"><use href="#ic-check"/></svg> Speichern</button></div>';},
+    mount:hfMount2,
+    _bind:function(w,el){var sv=$('[data-hpsave]',el);if(sv)sv.onclick=function(){hfSave(w);};},
     props:function(w){return hfSessRow(w);}, wire:function(w){hfSessWire(w);}
   });
