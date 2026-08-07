@@ -73,11 +73,15 @@
         +row('Farbschema','<select id="pHmSch"><option value="heat"'+((w.hmScheme||'heat')==='heat'?' selected':'')+'>Heat (blau→rot)</option><option value="cool"'+(w.hmScheme==='cool'?' selected':'')+'>Kühl→Warm</option><option value="accent"'+(w.hmScheme==='accent'?' selected':'')+'>Akzent</option></select>')
         +row('Werte einblenden','<input type="checkbox" id="pHmLbl"'+(w.labels?' checked':'')+'>');
       // ---- Bar Race ----
-      if(V.race)h+='<div style="font-size:11px;color:var(--muted);margin:2px 2px 6px">Balken-Wettlauf: jede <b>Serie</b> unten ist ein Läufer. Die Frames kommen aus dem <b>Zeitraum</b> oben (Einheit = Bucket, z. B. 12 × Monate). Läuft automatisch.</div>'
-        +row('Sichtbare Ränge (Top N)','<input id="pBrTop" type="number" min="3" max="30" style="width:64px" value="'+(w.brTop!=null?w.brTop:10)+'">')
-        +row('Tempo je Frame (ms)','<input id="pBrSpeed" type="number" min="150" max="4000" step="50" style="width:74px" value="'+(w.brSpeed!=null?w.brSpeed:700)+'">')
-        +row('Kumuliert','<input type="checkbox" id="pBrCumul"'+(w.brCumul===true?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">Running Total (Wachstum)</span>')
-        +row('Endlos-Schleife','<input type="checkbox" id="pBrLoop"'+(w.brLoop!==false?' checked':'')+'>');
+      if(V.race){
+        h+='<div style="font-size:11px;color:var(--muted);margin:2px 2px 6px">Balken-Wettlauf: jede <b>Serie</b> unten ist ein Läufer.'
+          +(w.brLive?' <b>Live:</b> zeigt die aktuellen Werte verschiedener Kategorien und sortiert bei jedem Update in Echtzeit um.':' <b>Verlauf:</b> Frames aus dem <b>Zeitraum</b> oben (Einheit = Bucket, z. B. 12 × Monate), läuft automatisch.')+'</div>'
+          +row('Datenquelle','<select id="pBrLive"><option value=""'+(!w.brLive?' selected':'')+'>Verlauf (Zeit-Animation)</option><option value="1"'+(w.brLive?' selected':'')+'>Live-Werte (Echtzeit)</option></select>')
+          +row('Sichtbare Ränge (Top N)','<input id="pBrTop" type="number" min="3" max="30" style="width:64px" value="'+(w.brTop!=null?w.brTop:10)+'">')
+          +row(w.brLive?'Übergang (ms)':'Tempo je Frame (ms)','<input id="pBrSpeed" type="number" min="150" max="4000" step="50" style="width:74px" value="'+(w.brSpeed!=null?w.brSpeed:(w.brLive?600:700))+'">');
+        if(!w.brLive)h+=row('Kumuliert','<input type="checkbox" id="pBrCumul"'+(w.brCumul===true?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">Running Total (Wachstum)</span>')
+          +row('Endlos-Schleife','<input type="checkbox" id="pBrLoop"'+(w.brLoop!==false?' checked':'')+'>');
+      }
       // ---- Diagramm-Optionen ----
       h+='<div class="pgh">'+(V.wf?'Optionen':(V.hm?'Datenreihe':(V.race?'Balken':'Diagramm-Optionen')))+'</div>';
       if(V.spark)h+=row('Linienfarbe',selOf('pSpLine',w.lineColor,['accent','ok','warn','crit','info']))
@@ -159,6 +163,7 @@
       if($('#pHmRes'))$('#pHmRes').onchange=function(){w.hmRes=parseInt(this.value)||60;delete _hist[w.id];fetchHist(w);commit();};
       if($('#pHmAgg'))$('#pHmAgg').onchange=function(){w.aggField=(this.value==='sum')?'sum':undefined;delete _hist[w.id];fetchHist(w);commit();};
       // --- Bar Race ---
+      if($('#pBrLive'))$('#pBrLive').onchange=function(){w.brLive=this.value?true:undefined;delete _hist[w.id];fetchHist(w);renderProps();commit();};
       if($('#pBrTop'))$('#pBrTop').oninput=function(){w.brTop=this.value===''?undefined:Math.max(3,Math.min(30,parseInt(this.value)||10));reChart();};
       if($('#pBrSpeed'))$('#pBrSpeed').oninput=function(){w.brSpeed=this.value===''?undefined:Math.max(150,Math.min(4000,parseInt(this.value)||700));reChart();};
       if($('#pBrCumul'))$('#pBrCumul').onchange=function(){w.brCumul=this.checked?true:undefined;reChart();};
@@ -209,7 +214,8 @@
     },
     // Anteile -> setPie, Wasserfall -> setWaterfall (Live-Werte, KEIN Historien-Nachzug), sonst (inkl. spark) entprellte Historie
     live:function(w,el,id,d,base,txt,on){var ct=w.ctype||'area';
-      if(ct==='heatmap'||ct==='barrace')return; // historische Aggregation/Animation, kein Live-Nachzug
+      if(ct==='barrace'){ if(w.brLive&&_ec[w.id]&&(_chSeries(w)||[]).some(function(s){return s&&s.vid===id;}))_raceLiveTick(w); return; } // Live-Modus: Balken in Echtzeit umsortieren
+      if(ct==='heatmap')return; // historische Aggregation, kein Live-Nachzug
       if(ct==='pie'||ct==='donut'||ct==='rose'){if(_ec[w.id])setPie(w);}
       else if(ct==='waterfall'){if((w.steps||[]).some(function(s){return s.vid===id;}))setWaterfall(w);}
       else if(_ec[w.id])chartPushRefresh(w);}
