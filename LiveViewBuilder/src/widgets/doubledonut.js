@@ -75,10 +75,21 @@
       var trk='var(--surface-2)';
       function p(d,role,col,lc){return '<path d="'+d+'"'+(role?' data-role="'+role+'"':'')+' fill="none" stroke="'+col+'" stroke-width="'+SW+'" stroke-linecap="'+(lc||cap)+'"/>';}
       // Track + Fuellung IMMER mit geraden Enden (Basis buendig, Spitze via Punkt).
+      // Dezenter, farbgleicher Glow (Default an): weicher Blur-Halo hinter der scharfen
+      // Fuellung+Spitze. SVG-Filter -> skaliert mit dem Donut. Track/Text bleiben scharf.
+      var glow=(w.ddGlow!==false), gid='ddg'+w.id;
+      var fdef=glow?('<defs><filter id="'+gid+'" x="-40%" y="-40%" width="180%" height="180%">'
+        +'<feGaussianBlur in="SourceGraphic" stdDeviation="3" result="b"/>'
+        +'<feComponentTransfer in="b" result="bb"><feFuncA type="linear" slope="0.7"/></feComponentTransfer>'
+        +'<feMerge><feMergeNode in="bb"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>'):'';
       return '<div class="hdd"><svg viewBox="0 0 240 240" preserveAspectRatio="xMidYMid meet"'+(gsty?(' style="'+gsty+'"'):'')+'>'
-        +p(top,'',trk,'butt')+p(bot,'',trk,'butt')+p(top,'ddtf',tc,'butt')+p(bot,'ddbf',bc,'butt')
+        +fdef
+        +p(top,'',trk,'butt')+p(bot,'',trk,'butt')
+        +(glow?'<g filter="url(#'+gid+')">':'')
+        +p(top,'ddtf',tc,'butt')+p(bot,'ddbf',bc,'butt')
         +'<circle data-role="ddtdot" r="'+(SW/2).toFixed(1)+'" fill="'+tc+'" style="display:none"/>'
         +'<circle data-role="ddbdot" r="'+(SW/2).toFixed(1)+'" fill="'+bc+'" style="display:none"/>'
+        +(glow?'</g>':'')
         +'<text class="ddc" data-role="ddcv" x="120" y="'+cY+'" style="font-size:'+fsC+'px"></text>'
         +(w.sub?'<text class="ddcs" x="120" y="'+(cY+fsS+9)+'" style="font-size:'+fsS+'px">'+escL(w.sub)+'</text>':'')
         +'<text class="ddtl" data-role="ddtl" x="120" y="'+tY+'" style="fill:'+tc+';font-size:'+fsV+'px"></text>'
@@ -95,6 +106,7 @@
         +row('Untertitel (Mitte)','<input id="pDdSub" value="'+esc(w.sub||'')+'" placeholder="z. B. Auslastung">')
         +row('Ringdicke (px)','<input id="pDdW" type="number" min="4" max="48" style="width:70px" value="'+(w.ddW!=null?w.ddW:22)+'">')
         +row('Rundung','<select id="pDdCap"><option value="round"'+(w.ddCap!=='butt'?' selected':'')+'>runde Max-Spitze (Basis berührt bei Min)</option><option value="butt"'+(w.ddCap==='butt'?' selected':'')+'>gerade Enden (bündig)</option></select>')
+        +row('Glow','<label style="display:inline-flex;align-items:center;gap:6px;font-size:12px"><input type="checkbox" id="pDdGlow"'+(w.ddGlow!==false?' checked':'')+'> leichter Leuchteffekt</label>')
         +'<div class="pgh">Schrift &amp; Beschriftung</div>'
         +row('Schriftart','<input id="pDdFont" value="'+esc(w.ddFont||'')+'" placeholder="Standard (z. B. Roboto)">')
         +row('Gewicht','<select id="pDdWt"><option value=""'+(!w.ddWeight?' selected':'')+'>Standard</option><option value="400"'+(w.ddWeight=='400'?' selected':'')+'>normal</option><option value="600"'+(w.ddWeight=='600'?' selected':'')+'>halbfett</option><option value="700"'+(w.ddWeight=='700'?' selected':'')+'>fett</option></select>')
@@ -112,6 +124,7 @@
       if($('#pDdBc'))$('#pDdBc').onchange=function(){w.ddBot=this.value||undefined;render();commit();};
       if($('#pDdSub'))$('#pDdSub').onchange=function(){w.sub=this.value||undefined;render();commit();};
       if($('#pDdCap'))$('#pDdCap').onchange=function(){w.ddCap=(this.value==='butt')?'butt':undefined;render();commit();};
+      if($('#pDdGlow'))$('#pDdGlow').onchange=function(){w.ddGlow=this.checked?undefined:false;render();commit();};
       if($('#pDdFont'))$('#pDdFont').onchange=function(){w.ddFont=this.value||undefined;render();commit();};
       if($('#pDdWt'))$('#pDdWt').onchange=function(){w.ddWeight=this.value||undefined;render();commit();};
     }
