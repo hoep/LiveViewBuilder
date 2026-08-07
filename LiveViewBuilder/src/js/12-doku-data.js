@@ -1459,6 +1459,17 @@
       hinweis: "Sonnenstand aus Location #13098; Profil je Zone. Ueber ?api=mod (reconcileProbe, read-only). Doku-Vorschau rein lokal.",
       groesse: [360,232], demo: {}
     },
+    "shadeprofiles": {
+      titel: "Beschattungs-Profile (HomeSuite)",
+      zweck: "Verwaltet die GETEILTEN, benannten Beschattungsprofile (Sonne/Wetter/Tagesbeginn/Tagesende/Temperatur) zentral ueber den Hub und weist sie Zonen zu. Ersetzt die IPSShadowing-Profilverwaltung. Ein Profil aendern -> alle zugewiesenen Zonen aktualisiert.",
+      funktionen: [
+        {name: "Typ-Tabs", beschreibung: "Sonne, Wetter, Tagesbeginn, Tagesende, Temperatur."},
+        {name: "Profile", beschreibung: "Anlegen, bearbeiten (Felder generisch aus dem Schema), duplizieren, umbenennen, loeschen."},
+        {name: "Zuweisen", beschreibung: "Das gewaehlte Profil der gebundenen Zone zuweisen (Session/feste Zone). Der Hub pusht die Werte in die Zone."},
+      ],
+      hinweis: "Ueber ?api=mod&op=hubmanage (ProfileEngine auf dem Hub). Doku-Vorschau rein lokal (Beispielprofile).",
+      groesse: [560,420], demo: {}
+    },
     "shadingpanel": {
       titel: "Beschattungs-Panel",
       zweck: "Alle IPSShadowing-Rollos in EINEM zusammenhaengenden Panel (im Stil des Heizplans): Raum-Tabs gruppiert nach Etage (EG/OG/Markise), grosser Detailbereich fuer das gewaehlte Rollo (Jalousie-Visual, Position-Slider und Presets, Automatik, Programme, Status) und eine Uebersicht aller Rollos als Positionsbalken.",
