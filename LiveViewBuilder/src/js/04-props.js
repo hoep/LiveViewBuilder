@@ -238,7 +238,7 @@
     if($('#pPick3'))$('#pPick3').onclick=function(){showTab('vars');toast('Untergang-Variable im Baum anklicken');_bindTarget3=w.id;};
     ['pX','pY','pW','pH'].forEach(function(k){var el=$('#'+k);el.oninput=function(){var v=parseInt(el.value)||0;if(k==='pX')w.x=v;if(k==='pY')w.y=v;if(k==='pW')w.w=Math.max(40,v);if(k==='pH')w.h=Math.max(28,v);render();};});
     $('#pDel').onclick=function(){var ids=Object.keys(sel).length?Object.keys(sel):[w.id];var _s={};ids.forEach(function(id){_s[id]=1;});state.widgets=state.widgets.filter(function(x){return ids.indexOf(x.id)<0;});if(typeof chromeList==='function')chromeList().forEach(function(_b){if(_b.widgets)_b.widgets=_b.widgets.filter(function(x){return ids.indexOf(x.id)<0;});});delFromContainers(_s);selClear();render();renderProps();};
-    $$('[data-al]',p).forEach(function(bt){bt.onclick=function(){var a=bt.dataset.al;if(a==='disth')distributeSel('h');else if(a==='distv')distributeSel('v');else if(a==='group')groupSel();else if(a==='ungroup')ungroupSel();else alignSel(a);};});
+    $$('[data-al]',p).forEach(function(bt){bt.onclick=function(){var a=bt.dataset.al;if(a==='disth')distributeSel('h');else if(a==='distv')distributeSel('v');else if(a==='even')distributeEven(false);else if(a==='evensize')distributeEven(true);else if(a==='group')groupSel();else if(a==='ungroup')ungroupSel();else alignSel(a);};});
     $$('[data-fc]',p).forEach(function(inp){inp.oninput=inp.onchange=function(){var pr=inp.dataset.fc.split('.'),i=+pr[0],k=pr[1];if(!w.fc||!w.fc[i])return;w.fc[i][k]=(k==='hi'||k==='lo'||k==='pq')?(parseInt(inp.value)||0):inp.value;render();};});
     $$('[data-fcdel]',p).forEach(function(b){b.onclick=function(){w.fc.splice(+b.dataset.fcdel,1);render();renderProps();};});
     if($('#fcAdd'))$('#fcAdd').onclick=function(){if(!w.fc)w.fc=[];w.fc.push({d:'',ic:'cloudsun',hi:0,lo:0,pq:0});render();renderProps();};
@@ -516,6 +516,59 @@
       ws.forEach(function(w,i){if(i>0&&i<ws.length-1)w.y=Math.round(d0+st*i-w.h/2);});}
     render();renderProps();
   }
+  // Einheiten fuer das Verteilen: eine Gruppe (w.group) zaehlt als EINE Einheit
+  // (Mitglieder relativ), Container ebenso (Kinder skalieren automatisch mit der Box).
+  function selUnits(){
+    var ws=selWidgets(),groups={},units=[];
+    ws.forEach(function(w){ if(w.group){(groups[w.group]=groups[w.group]||[]).push(w);} else units.push({members:[w]}); });
+    Object.keys(groups).forEach(function(g){units.push({members:groups[g]});});
+    units.forEach(function(u){
+      u.x=Math.min.apply(null,u.members.map(function(m){return m.x;}));
+      u.y=Math.min.apply(null,u.members.map(function(m){return m.y;}));
+      u.w=Math.max.apply(null,u.members.map(function(m){return m.x+m.w;}))-u.x;
+      u.h=Math.max.apply(null,u.members.map(function(m){return m.y+m.h;}))-u.y;
+    });
+    return units;
+  }
+  // Einheit nach (nx,ny) setzen; nw/nh!=null -> proportional skalieren (Mitglieder relativ).
+  function placeUnit(u,nx,ny,nw,nh){
+    var sx=(nw!=null&&u.w>0)?nw/u.w:1, sy=(nh!=null&&u.h>0)?nh/u.h:1;
+    u.members.forEach(function(m){
+      m.x=Math.round(nx+(m.x-u.x)*sx); m.y=Math.round(ny+(m.y-u.y)*sy);
+      if(nw!=null)m.w=Math.max(8,Math.round(m.w*sx));
+      if(nh!=null)m.h=Math.max(8,Math.round(m.h*sy));
+    });
+  }
+  // Gleichmaessig verteilen. resize=false: Groessen bleiben, Luecken werden gleich (fuellen die Box).
+  // resize=true: Luecken = Skin-Abstand, Groessen angeglichen (alle gleich gross, Box gefuellt).
+  // Beide Achsen UNABHAENGIG, aber nur wo echte Streuung ist (Reihe -> nur X, Spalte -> nur Y).
+  // Aeussere Raender bleiben fix (linkestes/oberstes/rechtestes/unterstes Element markiert den Rand).
+  function distributeEven(resize){
+    var us=selUnits(); if(us.length<2){toast('Mind. 2 Elemente/Gruppen wählen');return;}
+    var boxL=Math.min.apply(null,us.map(function(u){return u.x;}));
+    var boxR=Math.max.apply(null,us.map(function(u){return u.x+u.w;}));
+    var boxT=Math.min.apply(null,us.map(function(u){return u.y;}));
+    var boxB=Math.max.apply(null,us.map(function(u){return u.y+u.h;}));
+    var boxW=boxR-boxL, boxH=boxB-boxT, n=us.length, gap=bcfg().gap||0;
+    // Verteilachse = ueberlappungsfreie Folge entlang der Achse: Reihe -> nur X,
+    // Spalte -> nur Y, Diagonale/Streuung -> beide, Raster/Cluster -> keine (No-Op).
+    function axisSeq(a,s){ var arr=us.slice().sort(function(p,q){return (p[a]+p[s]/2)-(q[a]+q[s]/2);});
+      for(var i=1;i<arr.length;i++){ if(arr[i][a] < arr[i-1][a]+arr[i-1][s]-2) return false; } return true; }
+    var doX=axisSeq('x','w'), doY=axisSeq('y','h');
+    us.forEach(function(u){u._nx=u._ny=u._nw=u._nh=null;});
+    if(doX){ var bx=us.slice().sort(function(a,b){return (a.x+a.w/2)-(b.x+b.w/2);}), cx=boxL;
+      if(resize){var uw=Math.max(8,(boxW-(n-1)*gap)/n); bx.forEach(function(u){u._nx=cx;u._nw=uw;cx+=uw+gap;});}
+      else{var sw=0;bx.forEach(function(u){sw+=u.w;}); var gx=(boxW-sw)/(n-1); bx.forEach(function(u){u._nx=cx;cx+=u.w+gx;});}
+    } else if(resize){ us.forEach(function(u){u._nx=boxL;u._nw=boxW;}); }   // keine X-Streuung -> Breite auf Box
+    if(doY){ var by=us.slice().sort(function(a,b){return (a.y+a.h/2)-(b.y+b.h/2);}), cy=boxT;
+      if(resize){var uh=Math.max(8,(boxH-(n-1)*gap)/n); by.forEach(function(u){u._ny=cy;u._nh=uh;cy+=uh+gap;});}
+      else{var sh=0;by.forEach(function(u){sh+=u.h;}); var gy=(boxH-sh)/(n-1); by.forEach(function(u){u._ny=cy;cy+=u.h+gy;});}
+    } else if(resize){ us.forEach(function(u){u._ny=boxT;u._nh=boxH;}); }   // keine Y-Streuung -> Hoehe auf Box
+    if(!doX&&!doY){toast('Auswahl hat keine Streuung zum Verteilen');return;}
+    us.forEach(function(u){ placeUnit(u, u._nx!=null?Math.round(u._nx):u.x, u._ny!=null?Math.round(u._ny):u.y, u._nw!=null?Math.round(u._nw):null, u._nh!=null?Math.round(u._nh):null); });
+    render();renderProps();commit();
+    toast(resize?('Verteilt & angeglichen ('+n+')'):('Gleichmässig verteilt ('+n+')'));
+  }
   function groupSel(){var ws=selWidgets();if(ws.length<2){toast('Mind. 2 Elemente wählen');return;}
     var gid='g'+uid();ws.forEach(function(w){w.group=gid;delete w.gmaster;});
     var mId=Object.keys(sel)[0],mw=mId?widget(mId):ws[0];if(mw)mw.gmaster=true; // erstes gewähltes = Master
@@ -526,7 +579,8 @@
     return '<div class="prop" style="margin-bottom:10px"><div style="font-size:11px;color:var(--muted);margin-bottom:4px">Ausrichten &amp; Verteilen ('+Object.keys(sel).length+')</div>'
       +'<div style="display:flex;gap:4px">'+b('left','al-left','Links')+b('cx','al-cx','Horizontal zentrieren')+b('right','al-right','Rechts')+b('top','al-top','Oben')+b('cy','al-cy','Vertikal zentrieren')+b('bottom','al-bottom','Unten')+'</div>'
       +'<div style="display:flex;gap:4px;margin-top:4px">'+b('disth','dist-h','Horizontal verteilen')+b('distv','dist-v','Vertikal verteilen')+'</div>'
-      +'<div style="display:flex;gap:4px;margin-top:4px"><button class="btn" data-al="group" style="padding:6px;flex:1" title="Elemente gruppieren (Strg/Cmd+G)">Gruppieren</button><button class="btn" data-al="ungroup" style="padding:6px;flex:1" title="Gruppierung aufheben (Strg/Cmd+Shift+G)">Lösen</button></div></div>';
+      +'<div style="display:flex;gap:4px;margin-top:4px"><button class="btn" data-al="group" style="padding:6px;flex:1" title="Elemente gruppieren (Strg/Cmd+G)">Gruppieren</button><button class="btn" data-al="ungroup" style="padding:6px;flex:1" title="Gruppierung aufheben (Strg/Cmd+Shift+G)">Lösen</button></div>'
+      +'<div style="display:flex;gap:4px;margin-top:4px"><button class="btn" data-al="even" style="padding:6px;flex:1" title="Gleichmässig verteilen: gleiche Lücken, Größen bleiben (äußere Ränder fix)">Verteilen</button><button class="btn" data-al="evensize" style="padding:6px;flex:1" title="Verteilen + Größe: Lücken = Skin-Abstand, alle Widgets gleich groß (Box gefüllt)">Verteilen + Größe</button></div></div>';
   }
 
   canvas.addEventListener('mousedown',function(e){
