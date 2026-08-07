@@ -1428,6 +1428,30 @@
       hinweis: "Schreibt ueber ?api=mod (updateProfile). Doku-Vorschau rein lokal (nichts wird gespeichert).",
       groesse: [300,780], demo: {"session":"dokuheat"}
     },
+    "slotedit": {
+      titel: "Slot-Editor (HomeSuite)",
+      zweck: "Bearbeitet den gewaehlten Schaltpunkt: Wert (Temperatur/Position), Start/Ende, Slot einfuegen/loeschen; Ende-Grenze als feste Uhrzeit ODER Sonnen-Anker (+Offset). Einzelbaustein aus dem zerlegten Editor.",
+      funktionen: [{name:"Wert & Zeit",beschreibung:"Stepper je Domaene."},{name:"Sonnen-Anker",beschreibung:"Ende auf Uhrzeit/Sonne umschalten."}],
+      hinweis: "Teilt die Session der Familie. Doku-Vorschau rein lokal.", groesse:[300,360], demo:{"session":"dokuheat"}
+    },
+    "variantbox": {
+      titel: "Varianten (HomeSuite)",
+      zweck: "Waehlt die aktive Zeitplan-Variante (Heizung: Praesenz; Beschattung: Plan·Saison). Einzelbaustein aus dem zerlegten Editor.",
+      funktionen: [{name:"Variante",beschreibung:"Klick schaltet die aktive Variante fuer die ganze Session."}],
+      hinweis: "Teilt die Session der Familie. Doku-Vorschau rein lokal.", groesse:[300,180], demo:{"session":"dokuheat"}
+    },
+    "transfer": {
+      titel: "Übertragen (HomeSuite)",
+      zweck: "Kopiert den aktuellen Tag auf andere Tage oder uebernimmt die ganze Woche aus einer anderen Zone/Variante. Einzelbaustein aus dem zerlegten Editor.",
+      funktionen: [{name:"Tag kopieren",beschreibung:"Auf gewaehlte Wochentage."},{name:"Woche uebernehmen",beschreibung:"Von Zone+Variante."}],
+      hinweis: "Teilt die Session der Familie. Doku-Vorschau rein lokal.", groesse:[300,230], demo:{"session":"dokuheat"}
+    },
+    "save": {
+      titel: "Speichern (HomeSuite)",
+      zweck: "Speichert den bearbeiteten Plan der Session (schreibt ueber ?api=mod). Einzelbaustein aus dem zerlegten Editor.",
+      funktionen: [{name:"Speichern",beschreibung:"Persistiert die aktive Variante und zeigt den ungespeicherten Zustand an."}],
+      hinweis: "Teilt die Session der Familie. Doku-Vorschau rein lokal.", groesse:[300,54], demo:{"session":"dokuheat"}
+    },
     "roomnav": {
       titel: "Raum-Navigation (HomeSuite)",
       zweck: "Universelle Tab-/Listen-Navigation aus der Raumstruktur: Geschoss waehlen, Raeume selektieren, Klick oeffnet die zugehoerige Ansicht. Voll skinbar, kontrastsicher (nie Schwarz auf Accent).",
