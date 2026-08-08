@@ -47,12 +47,14 @@
       color:function(v){return hpPosColor(v);}, bucket:function(v){return v<=10?'offen':v<=50?'halb':v<=90?'meist zu':'zu';},
       steps:[[-10,'−10'],[-5,'−5'],[5,'+5'],[10,'+10']], scaleLo:0,scaleHi:100,scaleLbl:'0 % offen … 100 % zu', profTitle:'Plan'},
     irrigation:{dom:'irrigation',min:0,max:100,step:100,dec:0,unit:'',def:0,label:'Bewässerung',anchors:true,
-      color:function(v){return v>0?'var(--info)':'var(--surface-2)';}, bucket:function(v){return v>0?'Ein':'Aus';},
-      steps:[[-100,'Aus'],[100,'Ein']], scaleLo:0,scaleHi:100,scaleLbl:'Aus / Ein (An-Abschnitt = Bewässerungsfenster)', profTitle:'Programm'}
+      color:function(v){return v>0?'var(--info)':'var(--surface-2)';}, bucket:function(v){return v>0?'An':'Aus';},
+      valText:function(v){return v>0?'An':'Aus';}, // An/Aus statt 0/100 in Pillen/Kurve/Editor
+      steps:[[-100,'Aus'],[100,'An']], scaleLo:0,scaleHi:100,scaleLbl:'Aus / An (An-Abschnitt = Bewässerungsfenster)', profTitle:'Programm'}
   };
   var _hpVC=HP_VC.heating;
   function hpSetVC(dom){ _hpVC=HP_VC[dom]||HP_VC.heating; return _hpVC; }
   function hpVal(v){ return _hpVC.dec>0 ? (Math.round(v*10)/10).toFixed(1).replace('.',',') : String(Math.round(v)); } // wert nach VC formatieren
+  function hpValText(v){ return _hpVC.valText ? _hpVC.valText(v) : (hpVal(v)+esc(_hpVC.unit)); } // Anzeige-Token (bei binaeren Domaenen An/Aus statt Zahl+Einheit)
   function hpClampV(v){ v=Math.max(_hpVC.min,Math.min(_hpVC.max,v)); return _hpVC.step>=1?Math.round(v/_hpVC.step)*_hpVC.step:Math.round(v/_hpVC.step)*_hpVC.step; }
   // Varianten-Achse: st.variants (aus getSchedule) bzw. Praesenz-Fallback. st.variant = Index.
   function hpVars(st){ return (st&&st.variants&&st.variants.length)?st.variants:HP_PRES; }
@@ -156,7 +158,7 @@
     end.forEach(function(e,i){var en=hpH2M(e),v=+val[i],y=Y(v),col=_hpVC.color(v),sel=(i+1==st.slot);
       g+='<rect class="hp-band" x="'+X(start)+'" y="'+y+'" width="'+(X(en)-X(start))+'" height="'+(H-y)+'" fill="'+col+'" opacity="'+(sel?0.34:0.20)+'"/>';
       g+='<line class="hp-plat'+(sel?' sel':'')+'" x1="'+X(start)+'" y1="'+y+'" x2="'+X(en)+'" y2="'+y+'" stroke="'+col+'" data-hpplat="'+i+'"/>';
-      labels.push({x:(start+en)/2/1440*100, y:y/H*100, t:hpVal(v)+uy, sel:sel, col:col});
+      labels.push({x:(start+en)/2/1440*100, y:y/H*100, t:(_hpVC.valText?_hpVC.valText(v):hpVal(v)+uy), sel:sel, col:col});
       start=en;
     });
     // senkrechte Riser + Grenz-Griffe (Griffe kommen als HTML-Overlay -> immer runde
@@ -184,7 +186,7 @@
     var day=hpDayObj(st),end=day.end||[],val=day.val||[],anch=hpAnch(day),start=0;
     return end.map(function(e,i){var v=+val[i],col=_hpVC.color(v),sel=(i+1==st.slot),s=hpM2H(start),en=e;start=hpH2M(e);
       return '<button class="hp-pill'+(sel?' on':'')+'" data-hpslot="'+(i+1)+'" style="--pc:'+col+'">'
-        +'<b>'+hpVal(v)+esc(_hpVC.unit)+'</b><span>'+(anch[i]?'☀ ':'')+s+'–'+en+'</span></button>';}).join('');
+        +'<b>'+hpValText(v)+'</b><span>'+(anch[i]?'☀ ':'')+s+'–'+en+'</span></button>';}).join('');
   }
 
   function hpWeekView(w,st){
@@ -211,7 +213,7 @@
     var firstStart=(i==0); // erster Slot: Start fix 00:00
     var h='<div class="hp-box hp-slotedit"><div class="hp-boxh">Slot '+st.slot+' · '+start+'–'+ende+' <span class="hp-bkt" style="color:'+_hpVC.color(v)+'">'+esc(_hpVC.bucket(v))+'</span></div>';
     // Wert (VC-parametrisiert: Solltemperatur/Position)
-    h+='<div class="hp-field"><label>'+esc(_hpVC.label)+'</label><div class="hp-val">'+hpVal(v)+' '+esc(_hpVC.unit)+'</div>'
+    h+='<div class="hp-field"><label>'+esc(_hpVC.label)+'</label><div class="hp-val">'+hpValText(v)+'</div>'
       +'<div class="hp-steps">'+_hpVC.steps.map(function(s){return '<button data-hptemp="'+s[0]+'">'+esc(s[1])+'</button>';}).join('')+'</div></div>';
     // Start (= Ende des Vorgänger-Slots)
     h+='<div class="hp-field"><label>Start</label><div class="hp-val">'+start+'</div>'
@@ -267,8 +269,8 @@
   function hpNowMin(){var d=new Date();return d.getHours()*60+d.getMinutes();}
   function hpSollAt(day,m){var end=day.end||[],val=day.val||[],start=0;for(var i=0;i<end.length;i++){var en=hpH2M(end[i]);if(m<en||i==end.length-1)return +val[i];start=en;}return +val[val.length-1]||0;}
   function hpNowText(st){var day=hpDayObj(st),nowM=hpNowMin(),soll=hpSollAt(day,nowM);
-    var s='jetzt '+hpM2H(nowM)+' · Soll '+hpVal(soll)+' '+esc(_hpVC.unit);
-    if(st.ist!=null)s+=' · <b class="hp-ist">Ist '+hpVal(st.ist)+' '+esc(_hpVC.unit)+'</b>';
+    var s='jetzt '+hpM2H(nowM)+' · Soll '+hpValText(soll);
+    if(st.ist!=null)s+=' · <b class="hp-ist">Ist '+hpValText(st.ist)+'</b>';
     if(st.hum!=null)s+=' <span class="hp-hum">· '+Math.round(st.hum)+' % rF</span>';
     return s;}
 
