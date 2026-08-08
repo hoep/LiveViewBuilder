@@ -1468,4 +1468,18 @@ $html = str_replace('__LV_RUN__', ($LV_MODE === 'run' ? '1' : ''), $html); // /h
 $html = str_replace('__LV_DOKU__', ($LV_MODE === 'doku' ? '1' : ''), $html); // /hook/doku -> Doku/Demo
 header('Content-Type: text/html; charset=utf-8');
 header('Cache-Control: no-store, no-cache, must-revalidate'); // Builder nie cachen -> nach Rebuild immer frisch
+// Die Symcon-Hook-Schicht kappt die Ausgabe bei 1 MB. builder.html ist inzwischen groesser;
+// daher gzip-komprimiert ausliefern (~250 KB). Bei >1 MB ist gzip Pflicht (best effort fuer
+// Clients ohne Accept-Encoding, die praktisch alle gzip verstehen), sonst nur wenn angeboten.
+$ae  = (string) ($_SERVER['HTTP_ACCEPT_ENCODING'] ?? '');
+$big = strlen($html) > 1000000;
+if (function_exists('gzencode') && ($big || stripos($ae, 'gzip') !== false)) {
+    $gz = gzencode($html, 6);
+    if ($gz !== false && strlen($gz) < strlen($html)) {
+        header('Content-Encoding: gzip');
+        header('Vary: Accept-Encoding');
+        echo $gz;
+        return;
+    }
+}
 echo $html;
