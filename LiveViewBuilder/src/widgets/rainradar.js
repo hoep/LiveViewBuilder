@@ -56,23 +56,28 @@
       if(img){
         img.style.width=dW+'px'; img.style.height=dH+'px';
         img.style.left=(CW/2-lx*dW)+'px'; img.style.top=(CH/2-ly*dH)+'px'; img.style.display='';
-        // Animation: einstellbare Frame-Rate ODER Original-GIF
+        // Animation: einstellbare Frame-Rate (zeigt die Frame-UHRZEIT) ODER Original-GIF.
         var animMs=(w.animMs!=null&&w.animMs!==''?+w.animMs:0);
         var frames=(m.frames&&m.frames.length>1)?m.frames:null;
+        var showTs=(w.showTs!==false);
+        function frUrl(f){return (typeof f==='string')?f:(f&&f.url)||'';}
+        function frT(f){return (f&&typeof f==='object')?(f.t||''):'';}
         if(animMs>0 && frames){
-          var fi=0; img.src=frames[0];
+          var fi=0; img.src=frUrl(frames[0]);
+          if(tsEl&&showTs&&frT(frames[0]))tsEl.textContent=frT(frames[0]); // Uhrzeit des angezeigten Frames
           _rrTimer[w.id]=setInterval(function(){
-            var e2=rrEl(w), i2=e2&&$('.rr-img',e2); if(!i2){rrStop(w);return;}
-            fi=(fi+1)%frames.length; i2.src=frames[fi];
+            var e2=rrEl(w), i2=e2&&$('.rr-img',e2), t2=e2&&$('[data-role=rrts]',e2); if(!i2){rrStop(w);return;}
+            fi=(fi+1)%frames.length; i2.src=frUrl(frames[fi]);
+            if(t2&&showTs&&frT(frames[fi]))t2.textContent=frT(frames[fi]);
           }, Math.max(60,animMs));
-        } else if(m.img.url){ img.src=m.img.url; } // animiertes GIF (Original-Tempo)
+        } else if(m.img.url){ img.src=m.img.url; } // animiertes GIF (Original-Tempo, Kopf zeigt Lauf-Zeit)
         else { img.style.display='none'; }
       }
       if(mk)mk.style.display=(w.showMarker!==false)?'':'none';
     }
     defWidget('rainradar',{
       label:'Niederschlagsradar', paletteIcon:'cloudsun', size:[420,300],
-      defaults:function(w){w.title='Niederschlagsradar';w.zoom=1;w.animMs=0;},
+      defaults:function(w){w.title='Niederschlagsradar';w.zoom=1;w.animMs=500;}, // Frame-Modus: zeigt die Bild-Uhrzeit
       render:rrRender,
       mount:function(w){rrPaint(w);},
       live:function(w,el,id,d){ if(id===w.varId)rrPaint(w); },
@@ -84,7 +89,7 @@
           +row('Zoom','<input id="pRrZoom" type="number" min="1" max="5" step="0.1" style="width:70px" value="'+(w.zoom!=null?w.zoom:1)+'"> <span style="font-size:11px;color:var(--muted)">1 = füllt</span>')
           +row('Standort-Marker','<input type="checkbox" id="pRrMk"'+(w.showMarker!==false?' checked':'')+'>')
           +'<div class="pgh">Animation</div>'
-          +row('Dauer je Frame (ms)','<input id="pRrAnim" type="number" min="0" max="5000" step="50" style="width:80px" value="'+(w.animMs!=null?w.animMs:0)+'"> <span style="font-size:11px;color:var(--muted)">0 = GIF-Original (750ms)</span>')
+          +row('Dauer je Frame (ms)','<input id="pRrAnim" type="number" min="0" max="5000" step="50" style="width:80px" value="'+(w.animMs!=null?w.animMs:500)+'"> <span style="font-size:11px;color:var(--muted)">&gt;0 = Frames (zeigt Bild-Uhrzeit); 0 = GIF-Original</span>')
           +row('Zeitstempel','<input type="checkbox" id="pRrTs"'+(w.showTs!==false?' checked':'')+'>');
       },
       wire:function(w){
