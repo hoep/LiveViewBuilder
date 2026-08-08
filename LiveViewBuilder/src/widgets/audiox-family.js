@@ -144,13 +144,15 @@
       var bar='<div style="display:flex;border:1px solid var(--line);border-radius:999px;background:var(--surface-2);overflow:hidden;margin-bottom:10px">'
         +seg(afSvg(AF_IC.prev,18),'5',false)+seg(afSvg(playing?AF_IC.pause:AF_IC.play,20),playing?'2':'1',true)
         +seg(afSvg(AF_IC.stop,16),'3',false)+seg(afSvg(AF_IC.next,18),'4',false)+'</div>';
-      var vol='<div style="display:flex;align-items:center;gap:9px;margin-bottom:9px"><span style="color:var(--muted)">'+afSvg(c.mute?AF_IC.mute:AF_IC.vol,17)+'</span>'
+      // Shuffle/Repeat als breite Buttons (Design A)
+      function wide(ic,lbl,cmd,on){return '<button data-afcmd="'+cmd+'" style="flex:1;display:flex;align-items:center;justify-content:center;gap:7px;height:40px;border:1px solid '+(on?'var(--accent)':'var(--line)')+';border-radius:var(--r-s,9px);background:'+(on?'color-mix(in oklab,var(--accent) 14%,transparent)':'var(--tile)')+';color:'+(on?'var(--accent)':'var(--text)')+';font-size:13px;cursor:pointer">'+ic+lbl+'</button>';}
+      var sr='<div style="display:flex;gap:10px;margin-bottom:10px">'+wide(afSvg(AF_IC.shuffle,16),'Shuffle','shuffle',!!c.shuffle)+wide(afSvg(AF_IC.repeat,16),'Repeat','repeat',!!c.repeat)+'</div>';
+      // Volume-Zeile mit Mute-Icon links + Power-Icon rechts (Design A)
+      function ibtn(ic,cmd,on){return '<button data-afcmd="'+cmd+'" style="width:40px;height:40px;flex:none;border:1px solid '+(on?'var(--accent)':'var(--line)')+';border-radius:var(--r-s,9px);background:'+(on?'color-mix(in oklab,var(--accent) 14%,transparent)':'var(--tile)')+';color:'+(on?'var(--accent)':'var(--muted)')+';display:flex;align-items:center;justify-content:center;cursor:pointer">'+ic+'</button>';}
+      var vol='<div style="display:flex;align-items:center;gap:10px">'+ibtn(afSvg(c.mute?AF_IC.mute:AF_IC.vol,17),'mute',!!c.mute)
         +'<div data-afvol style="position:relative;flex:1;height:8px;border-radius:999px;background:var(--surface-2);border:1px solid var(--line);cursor:pointer"><div style="position:absolute;left:0;top:0;bottom:0;border-radius:999px;background:var(--accent);width:'+Math.max(0,Math.min(100,c.volume||0))+'%"></div></div>'
-        +'<span style="font-family:var(--fm);width:30px;text-align:right;font-size:12px">'+(c.volume||0)+'</span></div>';
-      function tog(lbl,cmd,on){return '<button data-afcmd="'+cmd+'" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;height:34px;border:1px solid '+(on?'var(--accent)':'var(--line)')+';border-radius:var(--r-s,9px);background:'+(on?'color-mix(in oklab,var(--accent) 14%,transparent)':'var(--tile)')+';color:'+(on?'var(--accent)':'var(--muted)')+';font-size:12px;cursor:pointer">'+lbl+'</button>';}
-      var togs='<div style="display:flex;gap:8px">'+tog(afSvg(AF_IC.mute,15)+'Stumm','mute',!!c.mute)+tog(afSvg(AF_IC.power,15)+'Power','power',!!c.power)
-        +tog(afSvg(AF_IC.shuffle,15),'shuffle',!!c.shuffle)+tog(afSvg(AF_IC.repeat,15),'repeat',!!c.repeat)+'</div>';
-      return '<div style="position:absolute;inset:0;padding:12px;box-sizing:border-box;background:var(--surface);display:flex;flex-direction:column;justify-content:center">'+bar+vol+togs+'</div>';},
+        +'<span style="font-family:var(--fm);width:30px;text-align:right;font-size:12px">'+(c.volume||0)+'</span>'+ibtn(afSvg(AF_IC.power,16),'power',!!c.power)+'</div>';
+      return '<div style="position:absolute;inset:0;padding:12px;box-sizing:border-box;background:var(--surface);display:flex;flex-direction:column;justify-content:center">'+bar+sr+vol+'</div>';},
     mount:afMount,
     _bind:function(w,el){var s=afSess(w);
       $$('[data-afcmd]',el).forEach(function(b){b.onclick=function(){var cmd=b.getAttribute('data-afcmd');var c=afCur(s);if(!c)return;
