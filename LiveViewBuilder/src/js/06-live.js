@@ -318,7 +318,7 @@
   function autoUnit(w,n){ // Profil-Einheit ins passende Feld vorausfüllen (nur wenn leer)
     var su=(n&&n.suffix!=null)?String(n.suffix):'';if(!su)return;
     if(w.type==='value'){if(!w.suf)w.suf=su;}
-    else if(w.type==='kpi'||w.type==='calc'||w.type==='cval'||w.type==='sval'){if(!w.unit)w.unit=su.replace(/^\s+/,'');}
+    else if(w.type==='kpi'||w.type==='calc'||w.type==='cval'||w.type==='sval'||w.type==='valuecard'){if(!w.unit)w.unit=su.replace(/^\s+/,'');}
   }
   function bindVar(n){
     if(_bindSeries){var wS=widget(_bindSeries.wid);if(wS){_ensureSeries(wS);var se=wS.series[_bindSeries.idx]=(wS.series[_bindSeries.idx]||{});se.vid=n.id;if(!se.name)se.name=n.name;delete _hist[wS.id];render();select(wS.id);fetchHist(wS);toast('Serie gebunden: '+n.name);}_bindSeries=null;return;}

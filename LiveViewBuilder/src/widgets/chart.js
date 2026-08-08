@@ -23,7 +23,7 @@
       br:(bar||wf||race),              // Balken-Rundung (w.barRadius)
       leg:(!wf&&!sp&&!hm&&!race),      // Legende + Position (Bar-Race sortiert selbst, keine Legende)
       dl:(!wf&&!sp&&!dayl&&!hm&&!race), // Datenlabels generisch (Bar-Race hat eigene Wertlabels)
-      title:(!sp&&!race),              // Titelblock (Bar-Race zeigt die Zeit-Uhr statt Titel)
+      title:(!sp),                     // Titelblock (auch Bar-Race: Titel oben, Zeit-Uhr/Live-Badge unten)
       ax:(!part&&!sp&&!hm&&!race),     // Achsen & Raster (Bar-Race: feste Kategorie/Wert-Achsen)
       axPlus:(!part&&!sp&&!wf&&!dayl&&!hm&&!race), // Raster-Teilung, Stapeln, Zoom, Extrema, Perioden-Navigation
       cmp:(!part&&!sp&&!wf&&!dayl&&!hm&&!race),    // Vergleich (Zeitversatz)
@@ -110,12 +110,12 @@
         +'<div style="font-size:11px;color:var(--muted);margin:-2px 2px 5px">Leer = automatisch: wächst mit der Kachelgröße und folgt der Schriftgröße aus „Typografie".</div>'
         +(V.title?_fsRow('pFsTitle','Titel',w.fsTitle):'')
         +(V.leg?_fsRow('pFsLegend','Legende',w.fsLegend):'')
-        +(V.ax?_fsRow('pAxFs','Achsen (Skalenwerte)',w.axFs):'')
+        +((V.ax||V.race)?_fsRow('pAxFs','Achsen (Skalenwerte)',w.axFs):'')
         +(V.ax?_fsRow('pFsAxName','Achsentitel / Einheit',w.fsAxName):'')
         +_fsRow('pFsLabel','Datenlabels',w.fsLabel);
-      if(V.ax){
+      if(V.ax||V.race){
         h+='<div class="pgh">Achsen & Raster</div>'+row('Y-Beschriftung','<input type="checkbox" id="pYLab"'+(w.yLabels!==false?' checked':'')+'>')+row('X-Beschriftung','<input type="checkbox" id="pXLab"'+(w.xLabels!==false?' checked':'')+'>')+row('Y-Hilfslinien','<input type="checkbox" id="pYg"'+(w.ygrid!==false?' checked':'')+'>')+row('X-Hilfslinien','<input type="checkbox" id="pXg"'+(w.xgrid?' checked':'')+'>')+row('Achslinien','<input type="checkbox" id="pAxLine"'+(w.axLine?' checked':'')+'>')+row('Tickmarks','<input type="checkbox" id="pAxTicks"'+(w.axTicks?' checked':'')+'>');
-        if(V.axPlus)h+=row('Raster-Teilung','<input id="pGridDivs" type="number" min="0" style="width:56px" value="'+(w.gridDivs||'')+'" placeholder="auto"> <span style="font-size:11px;color:var(--muted)">Y-Achse: Anzahl</span>');
+        if(V.axPlus||V.race)h+=row('Raster-Teilung','<input id="pGridDivs" type="number" min="0" style="width:56px" value="'+(w.gridDivs||'')+'" placeholder="auto"> <span style="font-size:11px;color:var(--muted)">'+(V.race?'Werte-Achse: Anzahl':'Y-Achse: Anzahl')+'</span>');
         if(V.axPlus)h+='<div class="pgh">Achsenbeschriftung</div>'
           +row('X: Dichte','<select id="pXTM"><option value=""'+(!w.xTickMode?' selected':'')+'>automatisch</option><option value="count"'+(w.xTickMode==='count'?' selected':'')+'>Anzahl</option><option value="every"'+(w.xTickMode==='every'?' selected':'')+'>jede N-te</option></select> <input id="pXTN" type="number" min="1" style="width:52px" value="'+(w.xTicks||'')+'" placeholder="N">')
           +row('X: Zeitformat','<input id="pXFmt" style="width:96px" value="'+esc(w.xFmt||'')+'" placeholder="automatisch"> <span style="font-size:11px;color:var(--muted)">z.&nbsp;B. H:i oder d.m.</span>')
