@@ -13,17 +13,35 @@
     var _rrTimer={};
     function rrStop(w){ if(_rrTimer[w.id]){clearInterval(_rrTimer[w.id]);delete _rrTimer[w.id];} }
     function rrMeta(w){
-      if(typeof DOKU!=='undefined'&&DOKU) return {img:{w:1398,h:798,lx:62.59,ly:39.6,url:'',ts:'04.08.26 15:00'},frames:[]};
+      if(typeof DOKU!=='undefined'&&DOKU) return {img:{w:1398,h:798,lx:62.59,ly:39.6,url:'',ts:'04.08.26 15:00'},frames:[],
+        forecast:(function(){var a=[],b=Math.floor(Date.now()/3600000)*3600;for(var i=0;i<48;i++)a.push({t:b+i*3600,v:0});return a;})()};
       var d=w.varId&&_lastVals[w.varId]; if(!d)return null;
       try{ return JSON.parse(d.v); }catch(e){ return null; }
+    }
+    function rrWord(v){ // mm/h -> Intensitaetstext (wie rainintensity)
+      if(v<0.5)return 'Sehr leichter Regen'; if(v<1)return 'Leichter Regen'; if(v<3)return 'Mäßiger Regen';
+      if(v<5)return 'Regen'; if(v<10)return 'Intensiver Regen'; if(v<15)return 'Starker Regen';
+      if(v<20)return 'Sehr starker Regen'; return 'Extremer Regen'; }
+    function rrHHMM(t){var d=new Date(t*1000);return (d.getHours()<10?'0':'')+d.getHours()+':'+(d.getMinutes()<10?'0':'')+d.getMinutes();}
+    function rrSummary(w,m){ // Vorhersage-Kurztext aus RadarMeta.forecast
+      var fc=(m&&m.forecast)||[]; if(!fc.length)return '';
+      fc=fc.slice().sort(function(a,b){return a.t-b.t;});
+      var hours=(w.sumHours!=null&&w.sumHours!==''?Math.max(6,Math.min(96,+w.sumHours)):Math.min(48,fc.length));
+      fc=fc.slice(0,hours);
+      var thr=0.1, maxAll=0, onset=null, phases=0, inRun=false;
+      fc.forEach(function(p){ var v=+p.v||0; maxAll=Math.max(maxAll,v); var on=v>=thr;
+        if(on&&!inRun){phases++;inRun=true;if(onset==null)onset=p.t;} else if(!on)inRun=false; });
+      if(phases===0)return 'Kein Regen in den nächsten '+hours+' h';
+      return rrWord(maxAll)+' gegen '+rrHHMM(onset);
     }
     function rrEl(w){return $('.w[data-id="'+w.id+'"]',canvas)||$('.w[data-id="'+w.id+'"]',$('#ovcanvas'));}
     function rrRender(w){
       var title=esc(w.title||'Niederschlagsradar');
       return '<div class="rr" style="position:absolute;inset:0;display:flex;flex-direction:column;background:var(--surface);border-radius:inherit;overflow:hidden">'
         +'<div class="rr-head" style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 10px;font-size:11px;letter-spacing:.4px;color:var(--muted);text-transform:uppercase;flex:0 0 auto">'
-          +'<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+title+'</span>'
-          +'<span data-role="rrts" style="font-family:monospace;letter-spacing:0;flex:0 0 auto"></span></div>'
+          +'<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:0 1 auto">'+title+'</span>'
+          +'<span data-role="rrsum" style="text-transform:none;letter-spacing:0;color:var(--text);flex:1 1 auto;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>'
+          +'<span data-role="rrts" style="font-family:monospace;letter-spacing:0;flex:0 0 auto;opacity:.7"></span></div>'
         +'<div class="rr-clip" style="position:relative;flex:1 1 auto;overflow:hidden;background:var(--surface-2)">'
           +'<img class="rr-img" style="position:absolute;max-width:none;display:none" alt="">'
           +'<div class="rr-mk" style="position:absolute;left:50%;top:50%;width:16px;height:16px;transform:translate(-50%,-50%);pointer-events:none">'
@@ -36,13 +54,14 @@
       var el=rrEl(w);if(!el){rrStop(w);return;} var host=el.querySelector('.winner')||el;
       if(!$('.rr-clip',el)) host.innerHTML=rrRender(w);
       var clip=$('.rr-clip',el), img=$('.rr-img',el), tsEl=$('[data-role=rrts]',el),
-          mk=$('.rr-mk',el), empty=$('.rr-empty',el);
+          mk=$('.rr-mk',el), empty=$('.rr-empty',el), sumEl=$('[data-role=rrsum]',el);
       if(!clip){rrStop(w);return;}
       rrStop(w); // bestehenden Frame-Timer stoppen; ggf. unten neu starten
       var m=rrMeta(w);
-      if(!m||!m.img){ if(img)img.style.display='none'; if(mk)mk.style.display='none'; if(empty)empty.style.display='flex'; if(tsEl)tsEl.textContent=''; return; }
+      if(!m||!m.img){ if(img)img.style.display='none'; if(mk)mk.style.display='none'; if(empty)empty.style.display='flex'; if(tsEl)tsEl.textContent=''; if(sumEl)sumEl.textContent=''; return; }
       if(empty)empty.style.display='none';
       if(tsEl)tsEl.textContent=(w.showTs!==false&&m.img.ts)?m.img.ts:'';
+      if(sumEl)sumEl.textContent=(w.showSum!==false)?rrSummary(w,m):'';
       // Standort (%) — Widget-Override vor Meta
       var lxP=(w.locX!=null&&w.locX!=='')?+w.locX:(m.img.lx!=null?m.img.lx:50);
       var lyP=(w.locY!=null&&w.locY!=='')?+w.locY:(m.img.ly!=null?m.img.ly:50);
@@ -90,7 +109,10 @@
           +row('Standort-Marker','<input type="checkbox" id="pRrMk"'+(w.showMarker!==false?' checked':'')+'>')
           +'<div class="pgh">Animation</div>'
           +row('Dauer je Frame (ms)','<input id="pRrAnim" type="number" min="0" max="5000" step="50" style="width:80px" value="'+(w.animMs!=null?w.animMs:500)+'"> <span style="font-size:11px;color:var(--muted)">&gt;0 = Frames (zeigt Bild-Uhrzeit); 0 = GIF-Original</span>')
-          +row('Zeitstempel','<input type="checkbox" id="pRrTs"'+(w.showTs!==false?' checked':'')+'>');
+          +row('Zeitstempel','<input type="checkbox" id="pRrTs"'+(w.showTs!==false?' checked':'')+'>')
+          +'<div class="pgh">Vorhersage-Text</div>'
+          +row('Vorhersage-Text','<input type="checkbox" id="pRrSum"'+(w.showSum!==false?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">z. B. „Kein Regen in den nächsten 48 h"</span>')
+          +row('Fenster (h)','<input id="pRrSumH" type="number" min="6" max="96" style="width:70px" value="'+(w.sumHours!=null?w.sumHours:'')+'" placeholder="48"> <span style="font-size:11px;color:var(--muted)">leer = 48 (bzw. verfügbare)</span>');
       },
       wire:function(w){
         if($('#pRrVar'))$('#pRrVar').onchange=function(){w.varId=parseInt(this.value)||undefined;render();commit();};
@@ -102,6 +124,8 @@
         if($('#pRrMk'))$('#pRrMk').onchange=function(){w.showMarker=this.checked?undefined:false;rrPaint(w);commit();};
         if($('#pRrAnim'))$('#pRrAnim').oninput=function(){w.animMs=this.value===''?0:Math.max(0,parseInt(this.value)||0);rrPaint(w);commit();};
         if($('#pRrTs'))$('#pRrTs').onchange=function(){w.showTs=this.checked?undefined:false;rrPaint(w);commit();};
+        if($('#pRrSum'))$('#pRrSum').onchange=function(){w.showSum=this.checked?undefined:false;rrPaint(w);commit();};
+        if($('#pRrSumH'))$('#pRrSumH').oninput=function(){w.sumHours=this.value===''?undefined:Math.max(6,Math.min(96,parseInt(this.value)||48));rrPaint(w);commit();};
       }
     });
   })();

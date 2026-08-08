@@ -466,7 +466,7 @@
     var cols=[cssv('--accent'),cssv('--info'),cssv('--warm')];
     return _chSeries(w).filter(function(s){return s&&s.vid;}).map(function(s,i){
       var lv=_lastVals[s.vid],v=lv?parseFloat(String(lv.v).replace(',','.')):NaN;
-      return {name:s.name||('Serie '+(i+1)),color:_skinColor(s.color||cols[i%cols.length]),val:isNaN(v)?0:v};
+      return {name:s.name||('Serie '+(i+1)),color:(_skinToCss(s.color)||cols[i%cols.length]),val:isNaN(v)?0:v};
     });
   }
   function _raceBars(R){return R.map(function(r){return {value:Math.round(r.val*100)/100,itemStyle:{color:r.color}};});}
@@ -483,7 +483,7 @@
       tooltip:{trigger:'axis',axisPointer:{type:'none'},confine:true,valueFormatter:function(v){return _chNum(w,v,true);}},
       xAxis:{type:'value',max:'dataMax',axisLabel:{color:cssv('--muted'),formatter:function(v){return _chNum(w,v);}},
         splitLine:{lineStyle:{color:cssv('--line'),opacity:.35}}},
-      yAxis:{type:'category',data:R.map(function(r){return r.name;}),inverse:true,max:topN-1,animationDuration:300,animationDurationUpdate:upd,
+      yAxis:{type:'category',data:R.map(function(r){return r.name;}),inverse:true,max:Math.min(topN,R.length)-1,animationDuration:300,animationDurationUpdate:upd,
         axisLabel:{color:cssv('--text')},axisTick:{show:false},axisLine:{show:false}},
       series:[{type:'bar',realtimeSort:true,data:_raceBars(R),itemStyle:{borderRadius:rad},
         label:{show:true,position:'right',valueAnimation:true,color:cssv('--text'),formatter:function(p){return _chNum(w,p.value,true);}}}],
@@ -513,7 +513,7 @@
     var runners=hs.map(function(s,i){
       var di=0,acc=0,last=0,d=s.data;
       var vals=times.map(function(t){ while(di<d.length&&d[di][0]<=t){var v=+d[di][1]||0;if(cum)acc+=v;else last=v;di++;} return cum?acc:last; });
-      return {name:s.name||('Serie '+(i+1)),color:_skinColor(s.color||cols[i%cols.length]),vals:vals};
+      return {name:s.name||('Serie '+(i+1)),color:(_skinToCss(s.color)||cols[i%cols.length]),vals:vals};
     });
     var topN=(w.brTop!=null&&w.brTop!==''?Math.max(3,Math.min(30,+w.brTop)):10);
     var frameMs=(w.brSpeed!=null&&w.brSpeed!==''?Math.max(150,Math.min(4000,+w.brSpeed)):700);
@@ -527,7 +527,7 @@
       tooltip:{trigger:'axis',axisPointer:{type:'none'},confine:true,valueFormatter:function(v){return _chNum(w,v,true);}},
       xAxis:{type:'value',max:'dataMax',axisLabel:{color:cssv('--muted'),formatter:function(v){return _chNum(w,v);}},
         splitLine:{lineStyle:{color:cssv('--line'),opacity:.35}}},
-      yAxis:{type:'category',data:names,inverse:true,max:topN-1,animationDuration:300,animationDurationUpdate:frameMs,
+      yAxis:{type:'category',data:names,inverse:true,max:Math.min(topN,names.length)-1,animationDuration:300,animationDurationUpdate:frameMs,
         axisLabel:{color:cssv('--text')},axisTick:{show:false},axisLine:{show:false}},
       series:[{type:'bar',realtimeSort:true,data:frame(0),itemStyle:{borderRadius:rad},
         label:{show:true,position:'right',valueAnimation:true,color:cssv('--text'),formatter:function(p){return _chNum(w,p.value,true);}}}],

@@ -34,7 +34,7 @@
       var phases=0,onset=null,maxAll=0,inRun=false;
       slots.forEach(function(s){ maxAll=Math.max(maxAll,s.max);
         if(s.on&&!inRun){phases++;inRun=true;if(onset==null)onset=s.t;} else if(!s.on)inRun=false; });
-      return {slots:slots,phases:phases,onset:onset,maxAll:maxAll,sh:sh};
+      return {slots:slots,phases:phases,onset:onset,maxAll:maxAll,sh:sh,hours:hours};
     }
     function riHHMM(t){var d=new Date(t*1000);return (d.getHours()<10?'0':'')+d.getHours()+':'+(d.getMinutes()<10?'0':'')+d.getMinutes();}
 
@@ -43,7 +43,7 @@
       var accent=w.riColor?('var(--'+esc(w.riColor)+')'):'var(--info)';
       var sum='';
       if(!b){ sum=''; }
-      else if(b.phases===0){ sum='Kein Regen'; }
+      else if(b.phases===0){ sum='Kein Regen in den nächsten '+b.hours+' h'; }
       else { sum=esc(riWord(b.maxAll))+' gegen <b style="color:var(--text)">'+riHHMM(b.onset)+'</b> · '+b.phases+' Phase'+(b.phases>1?'n':''); }
       var h='<div class="rint" style="position:absolute;inset:0;display:flex;flex-direction:column;background:var(--surface);border-radius:inherit;padding:8px 12px;box-sizing:border-box">'
         +'<div class="rint-head" style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;font-size:11px;letter-spacing:.4px;color:var(--muted);text-transform:uppercase">'
