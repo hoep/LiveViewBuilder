@@ -114,13 +114,15 @@
       // Radio: laufender Titel + Song-Cover (RadioNow) statt Sender-Platzhalter.
       var rad=(s.radio&&s.radio.roomId===c.id&&s.radio.isRadio)?s.radio:null;
       var cover=(rad&&rad.cover)?rad.cover:c.coverUrl;
+      var isLogo=!!(rad&&rad.coverIsLogo);
       var line1=rad?(rad.isTalk?(rad.station||c.name):rad.title):(c.title||'—');
-      var line2=rad?(rad.isTalk?(rad.station||''):rad.artist):(c.artist||'');
-      var line3=rad?(rad.isTalk?'Wortprogramm / Nachrichten':(rad.station||'')):(c.album||'');
+      var line2=rad?(rad.isTalk?'Nachrichten / Wortprogramm':rad.artist):(c.artist||'');
+      var line3=rad?(rad.isTalk?'':(rad.station||'')):(c.album||'');
       var tag=esc(c.name)+(rad?' · '+(rad.station||'Radio'):(c.playing?' · spielt':' · pausiert'));
-      var cov=cover?('<img src="'+esc(cover)+'" style="width:100%;height:100%;object-fit:cover" onerror="this.style.display=\'none\'">'):'';
+      var fit=isLogo?'contain':'cover',pad=isLogo?'padding:16px;box-sizing:border-box;':'',bg=isLogo?'var(--surface-2)':'linear-gradient(135deg,var(--accent),var(--accent-2))';
+      var cov=cover?('<img src="'+esc(cover)+'" style="width:100%;height:100%;object-fit:'+fit+';'+pad+'" onerror="this.style.display=\'none\'">'):'';
       return '<div style="position:absolute;inset:0;display:flex;gap:13px;padding:12px;box-sizing:border-box;background:var(--surface);align-items:center">'
-        +'<div style="width:40%;max-width:170px;aspect-ratio:1;align-self:center;border-radius:var(--r-s,9px);overflow:hidden;flex:none;background:linear-gradient(135deg,var(--accent),var(--accent-2))">'+cov+'</div>'
+        +'<div style="width:40%;max-width:170px;aspect-ratio:1;align-self:center;border-radius:var(--r-s,9px);overflow:hidden;flex:none;background:'+bg+'">'+cov+'</div>'
         +'<div style="flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:3px">'
         +'<div style="font-size:9px;letter-spacing:.7px;text-transform:uppercase;font-weight:700;color:var(--faint)">'+tag+'</div>'
         +'<div style="font-size:19px;font-weight:700;line-height:1.15;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(line1||'—')+'</div>'
