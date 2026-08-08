@@ -708,6 +708,38 @@ if ($api === 'audio') {
         return;
     }
 
+    if ($op === 'medialib') {                            // Bibliothek browsen/suchen (Hub-Provider)
+        $hub = (int) (@IPS_GetInstanceListByModuleID('{A0C082B4-9E74-430E-BD97-F9CEBB364257}')[0] ?? 0);
+        if ($hub <= 0 || !function_exists('HSH_Manage')) { echo json_encode(['ok' => false, 'err' => 'hub']); return; }
+        $sub = (string) ($_GET['sub'] ?? 'providers');
+        $map = ['providers' => 'mediaProviders', 'browse' => 'mediaBrowse', 'search' => 'mediaSearch'];
+        $hop = $map[$sub] ?? 'mediaProviders';
+        $args = ['provider' => (string) ($_GET['provider'] ?? ''), 'container' => (string) ($_GET['container'] ?? ''),
+            'query' => (string) ($_GET['query'] ?? ''), 'offset' => (int) ($_GET['offset'] ?? 0)];
+        echo HSH_Manage($hub, json_encode(['op' => $hop, 'args' => $args]));
+        return;
+    }
+
+    if ($op === 'playcontent') {                         // Inhalt aufloesen (Hub) + auf Zone spielen (token)
+        if (!hash_equals($TOKEN, (string) ($_GET['key'] ?? ''))) {
+            http_response_code(403); echo json_encode(['ok' => false, 'err' => 'forbidden']); return;
+        }
+        $iid = (int) ($_GET['id'] ?? 0);
+        if (!in_array($iid, $list, true)) { echo json_encode(['ok' => false, 'err' => 'instance']); return; }
+        $hub = (int) (@IPS_GetInstanceListByModuleID('{A0C082B4-9E74-430E-BD97-F9CEBB364257}')[0] ?? 0);
+        $body = (string) ($_POST['data'] ?? ''); if ($body === '') $body = (string) file_get_contents('php://input');
+        $ref = json_decode($body, true); if (!is_array($ref)) { echo json_encode(['ok' => false, 'err' => 'ref']); return; }
+        // 1) ueber Hub aufloesen (uri fuellen)
+        $res = json_decode((string) @HSH_Manage($hub, json_encode(['op' => 'mediaResolve',
+            'args' => ['provider' => (string) ($_GET['provider'] ?? ($ref['provider'] ?? '')), 'ref' => $ref]])), true);
+        $resolved = $res['ref'] ?? $ref;
+        // 2) auf der Zone abspielen
+        $fn = $pfx($iid) . '_Manage';
+        echo function_exists($fn) ? $fn($iid, json_encode(['op' => 'playContent', 'args' => ['ref' => $resolved]]))
+            : json_encode(['ok' => false, 'err' => 'prefix']);
+        return;
+    }
+
     if ($op === 'manage') {                              // Gruppen/Quellen/PlaySource (token)
         if (!hash_equals($TOKEN, (string) ($_GET['key'] ?? ''))) {
             http_response_code(403);
