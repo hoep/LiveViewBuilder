@@ -582,6 +582,98 @@ if ($api === 'shading') {
     return;
 }
 
+// ---- Audio/Media (AudioZone HSAU): op=list|getall|groups frei lesen; op=manage token ----
+//      Liest ueber die HomeSuite-RPC (HSAU_GetState/_Manage) der AudioZone-Instanzen.
+//      Steuern (Transport/Volume/...) laeuft ueber ?api=setvar auf die AudioZone-Controls;
+//      Gruppen/Quellen/Play-Source ueber op=manage (token). CoverUri wird als BARE URL
+//      geliefert (aus dem IPSSonos-HTMLBox-Snippet extrahiert), damit das image-Widget bindet.
+if ($api === 'audio') {
+    header('Content-Type: application/json; charset=utf-8');
+    $HSAU = '{C4F2639D-2A87-453D-8175-B586BF605A38}';
+    $op   = (string) ($_GET['op'] ?? 'getall');
+    $list = array_map('intval', @IPS_GetInstanceListByModuleID($HSAU) ?: []);
+
+    $coverUrl = function ($s) {
+        $s = (string) $s;
+        if ($s === '') return '';
+        if (preg_match('/src="([^"]*)"/i', $s, $m)) return $m[1];   // ~HTMLBox <img src="...">
+        return (strpos($s, '<') === false) ? $s : '';               // bereits bare URL?
+    };
+    $stateOf = function ($iid) {
+        if (!function_exists('HSAU_GetState')) return [];
+        $d = json_decode((string) @HSAU_GetState($iid), true);
+        return is_array($d) ? $d : [];
+    };
+
+    if ($op === 'list') {
+        $out = [];
+        foreach ($list as $iid) {
+            $st = $stateOf($iid);
+            $out[] = ['id' => $iid, 'name' => IPS_GetName($iid),
+                'role' => (string) ($st['GroupRole'] ?? 'standalone'),
+                'coordinator' => (string) ($st['GroupCoordinator'] ?? '')];
+        }
+        echo json_encode(['ok' => true, 'rooms' => $out]);
+        return;
+    }
+
+    if ($op === 'getall') {
+        $out = [];
+        foreach ($list as $iid) {
+            $st = $stateOf($iid);
+            $out[] = [
+                'id' => $iid, 'name' => IPS_GetName($iid),
+                'title' => (string) ($st['Title'] ?? ''), 'artist' => (string) ($st['Artist'] ?? ''),
+                'album' => (string) ($st['Album'] ?? ''), 'albumArtist' => (string) ($st['AlbumArtist'] ?? ''),
+                'coverUrl' => $coverUrl($st['CoverUri'] ?? ''),
+                'playing' => (bool) ($st['PlayState'] ?? false),
+                'volume' => (int) ($st['Volume'] ?? 0), 'mute' => (bool) ($st['Mute'] ?? false),
+                'power' => (bool) ($st['Power'] ?? false),
+                'repeat' => (int) ($st['Repeat'] ?? 0), 'shuffle' => (bool) ($st['Shuffle'] ?? false),
+                'positionPct' => (int) ($st['Position'] ?? 0),
+                'position' => (string) ($st['PositionTime'] ?? ''), 'duration' => (string) ($st['Duration'] ?? ''),
+                'online' => (bool) ($st['Online'] ?? true),
+                'fav' => (int) ($st['SourceFavorite'] ?? 0), 'radio' => (int) ($st['SourceRadio'] ?? 0),
+                'playlist' => (int) ($st['SourcePlaylist'] ?? 0),
+                'role' => (string) ($st['GroupRole'] ?? 'standalone'),
+                'coordinator' => (string) ($st['GroupCoordinator'] ?? ''),
+            ];
+        }
+        echo json_encode(['ok' => true, 'rooms' => $out]);
+        return;
+    }
+
+    if ($op === 'groups') {
+        $byUid = [];
+        foreach ($list as $iid) {
+            $st = $stateOf($iid);
+            if ((string) ($st['GroupRole'] ?? '') === 'member') {
+                $coord = (string) ($st['GroupCoordinator'] ?? '');
+                if ($coord !== '') $byUid[$coord][] = $iid;
+            }
+        }
+        echo json_encode(['ok' => true, 'groups' => $byUid]);
+        return;
+    }
+
+    if ($op === 'manage') {                              // Gruppen/Quellen/PlaySource (token)
+        if (!hash_equals($TOKEN, (string) ($_GET['key'] ?? ''))) {
+            http_response_code(403);
+            echo json_encode(['ok' => false, 'err' => 'forbidden']);
+            return;
+        }
+        $iid = (int) ($_GET['id'] ?? 0);
+        if (!in_array($iid, $list, true)) { echo json_encode(['ok' => false, 'err' => 'instance']); return; }
+        $body = (string) ($_POST['data'] ?? '');
+        if ($body === '') $body = (string) file_get_contents('php://input');
+        echo HSAU_Manage($iid, $body !== '' ? $body : '{}');
+        return;
+    }
+
+    echo json_encode(['ok' => false, 'err' => 'op']);
+    return;
+}
+
 // ---- Veröffentlichen: einmaliger Reload-Push an alle Run-Clients (bewusst, NICHT an Autosave gekoppelt) ----
 if ($api === 'publish') {
     header('Content-Type: application/json; charset=utf-8');
