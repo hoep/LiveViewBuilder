@@ -37,6 +37,7 @@
         sess.prof=prof;sess.roomIdx=idx;sess.name=hpRoomName(idx);sess.type='';
         if(dom==='shading'){ sess.ist=(st.ActualPosition==null?null:+st.ActualPosition); sess.sollDev=(st.Position==null?null:+st.Position); sess.hum=null;
           sess.active=(st.Plan!=null&&st.Season!=null)?((+st.Plan)*2+(+st.Season)):-1; }
+        else if(dom==='irrigation'){ sess.ist=(st.Running===true||st.Running===1||st.Running==='1')?1:0; sess.sollDev=(st.Duration==null?null:+st.Duration); sess.hum=null; sess.active=0; }
         else { sess.ist=(st.ActualTemp==null?null:+st.ActualTemp); sess.sollDev=(st.Setpoint==null?null:+st.Setpoint); sess.hum=(st.Humidity==null?null:+st.Humidity); sess.active=(st.Presence==null?-1:+st.Presence); }
         if(sess.variant>=vs.length)sess.variant=0;
         sess.err='';cb&&cb();
@@ -62,7 +63,7 @@
 
   function hfEnsure(w,el){var sess=hfSess(w);var def=WIDGETS[w.type];
     if(w.domain)sess.domain=w.domain;                   // heating (Default) | shading
-    if(w.hsMode||w.domain==='shading')sess.hsMode=true; // Controller flippt die Session auf HomeSuite
+    if(w.hsMode||w.domain==='shading'||w.domain==='irrigation')sess.hsMode=true; // shading/irrigation nur HomeSuite
     if(sess.loaded){if(def._bind)def._bind(w,el);return;}
     if(sess.loading)return; sess.loading=true; if(w.rootId)sess.root=w.rootId;
     // Im HomeSuite-Modus die Raumliste aus den Entitaeten holen (synthetisches hsMode-w).
@@ -103,8 +104,8 @@
         var first=(_hpRooms||[]).filter(function(r){return (r.group||'')===g;})[0];
         if(first){s.slot=1;hfLoadRoom(w,first.idx,function(){hfEmit(w);});}else{hfEmit(w);}};});},
     props:function(w){var h=hfSessRow(w);
-      h+=row('Domäne','<select id="hfDom"><option value="heating"'+((w.domain||'heating')==='heating'?' selected':'')+'>Heizung</option><option value="shading"'+(w.domain==='shading'?' selected':'')+'>Beschattung</option></select>');
-      h+=row('Quelle','<label style="display:inline-flex;align-items:center;gap:6px;font-size:12px"><input type="checkbox" id="hfHs"'+(w.hsMode?' checked':'')+(w.domain==='shading'?' disabled':'')+'> HomeSuite-Zonen</label>');
+      h+=row('Domäne','<select id="hfDom"><option value="heating"'+((w.domain||'heating')==='heating'?' selected':'')+'>Heizung</option><option value="shading"'+(w.domain==='shading'?' selected':'')+'>Beschattung</option><option value="irrigation"'+(w.domain==='irrigation'?' selected':'')+'>Bewässerung</option></select>');
+      h+=row('Quelle','<label style="display:inline-flex;align-items:center;gap:6px;font-size:12px"><input type="checkbox" id="hfHs"'+(w.hsMode?' checked':'')+((w.domain==='shading'||w.domain==='irrigation')?' disabled':'')+'> HomeSuite-Zonen</label>');
       if(!w.hsMode) h+=row('Steuerung (Root-ID)','<input id="hfRoot" type="number" value="'+(w.rootId||'')+'" placeholder="53700" style="width:110px">');
       h+='<div class="pgh">'+(w.hsMode?'Zonen (HeatingZone)':'Räume &amp; Etage')+'</div>';
       if(!_hpRooms){hpLoadRooms(w,function(){if(typeof renderProps==='function')renderProps();});return h+'<div style="color:var(--muted);font-size:12px;padding:4px 2px">'+(w.hsMode?'Zonen laden …':'Raumliste lädt …')+'</div>';}
@@ -115,7 +116,7 @@
       if(w.hsMode)h+='<div style="font-size:11px;color:var(--muted);margin:4px 2px">Geschoss-Filter = nur dieses Geschoss. Leer bei Zonen = alle. Reihenfolge = Tab-Reihenfolge.</div>';
       return h;},
     wire:function(w){hfSessWire(w);
-      if($('#hfDom'))$('#hfDom').onchange=function(){w.domain=this.value;if(w.domain==='shading')w.hsMode=true;w.rooms=[];_hpRooms=null;_hpRoomsRoot=null;var s=hfSess(w);s.domain=w.domain;s.hsMode=!!w.hsMode;s.loaded=false;s.loading=false;s.roomIdx=0;s.variant=0;s.variants=null;commit();renderProps();var el=$('.w[data-id="'+w.id+'"]',canvas);if(el)hfEnsure(w,el);hfEmit(w);};
+      if($('#hfDom'))$('#hfDom').onchange=function(){w.domain=this.value;if(w.domain==='shading'||w.domain==='irrigation')w.hsMode=true;w.rooms=[];_hpRooms=null;_hpRoomsRoot=null;var s=hfSess(w);s.domain=w.domain;s.hsMode=!!w.hsMode;s.loaded=false;s.loading=false;s.roomIdx=0;s.variant=0;s.variants=null;commit();renderProps();var el=$('.w[data-id="'+w.id+'"]',canvas);if(el)hfEnsure(w,el);hfEmit(w);};
       if($('#hfHs'))$('#hfHs').onchange=function(){w.hsMode=this.checked||undefined;w.rooms=[];_hpRooms=null;_hpRoomsRoot=null;var s=hfSess(w);s.hsMode=!!w.hsMode;s.loaded=false;s.loading=false;s.roomIdx=0;commit();renderProps();var el=$('.w[data-id="'+w.id+'"]',canvas);if(el)hfEnsure(w,el);hfEmit(w);};
       if($('#hfFloor'))$('#hfFloor').onchange=function(){w.floor=this.value||undefined;var s=hfSess(w);s.loaded=false;s.loading=false;s.roomIdx=0;commit();renderProps();var el=$('.w[data-id="'+w.id+'"]',canvas);if(el)hfEnsure(w,el);hfEmit(w);};
       if($('#hfFtabs'))$('#hfFtabs').onchange=function(){w.floorTabs=this.checked||undefined;if(w.floorTabs)w.floor=undefined;var s=hfSess(w);s.floorSel=null;s.loaded=false;s.loading=false;s.roomIdx=0;commit();renderProps();var el=$('.w[data-id="'+w.id+'"]',canvas);if(el)hfEnsure(w,el);hfEmit(w);};
