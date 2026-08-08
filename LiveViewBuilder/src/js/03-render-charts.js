@@ -472,21 +472,24 @@
   function _raceBars(R){return R.map(function(r){return {value:Math.round(r.val*100)/100,itemStyle:{color:r.color}};});}
   function setBarRaceLive(w){
     var ec=_ec[w.id];if(!ec)return; stopRace(w);
+    var axw=_axShow(w);
     var R=_raceLiveData(w);
     if(R.length<1){ec.setOption({backgroundColor:'transparent',title:{text:'Bar Race (Live): Serien wählen',left:'center',top:'middle',textStyle:{color:cssv('--muted'),fontSize:12}},xAxis:{show:false},yAxis:{show:false},series:[]},true);return;}
     var topN=(w.brTop!=null&&w.brTop!==''?Math.max(3,Math.min(30,+w.brTop)):10);
     var upd=(w.brSpeed!=null&&w.brSpeed!==''?Math.max(150,Math.min(4000,+w.brSpeed)):600);
     var rad=(w.barRadius!=null?+w.barRadius:4);
-    ec.setOption({backgroundColor:'transparent',
+    ec.setOption({backgroundColor:'transparent',title:_titleOpt(w),
       animationDuration:300,animationDurationUpdate:upd,animationEasing:'cubicOut',animationEasingUpdate:'cubicOut',
-      grid:{left:8,right:70,top:12,bottom:8,containLabel:true},
+      grid:{left:8,right:70,top:12+_titleSpace(w),bottom:8,containLabel:true},
       tooltip:{trigger:'axis',axisPointer:{type:'none'},confine:true,valueFormatter:function(v){return _chNum(w,v,true);}},
-      xAxis:{type:'value',max:'dataMax',axisLabel:{color:cssv('--muted'),formatter:function(v){return _chNum(w,v);}},
-        splitLine:{lineStyle:{color:cssv('--line'),opacity:.35}}},
+      xAxis:{type:'value',max:'dataMax',splitNumber:(w.gridDivs>0?+w.gridDivs:undefined),
+        axisLine:{show:axw.line,lineStyle:{color:cssv('--line')}},axisTick:{show:axw.ticks},
+        axisLabel:{show:axw.xLab,color:cssv('--muted'),fontSize:_axFs(w),formatter:function(v){return _chNum(w,v);}},
+        splitLine:{show:axw.xGrid,lineStyle:{color:cssv('--line'),opacity:.35}}},
       yAxis:{type:'category',data:R.map(function(r){return r.name;}),inverse:true,max:Math.min(topN,R.length)-1,animationDuration:300,animationDurationUpdate:upd,
-        axisLabel:{color:cssv('--text')},axisTick:{show:false},axisLine:{show:false}},
+        axisLabel:{show:axw.yLab,color:cssv('--text'),fontSize:_axFs(w)},axisTick:{show:axw.ticks},axisLine:{show:axw.line,lineStyle:{color:cssv('--line')}},splitLine:{show:axw.yGrid,lineStyle:{color:cssv('--line-soft')}}},
       series:[{type:'bar',realtimeSort:true,data:_raceBars(R),itemStyle:{borderRadius:rad},
-        label:{show:true,position:'right',valueAnimation:true,color:cssv('--text'),formatter:function(p){return _chNum(w,p.value,true);}}}],
+        label:{show:true,position:'right',valueAnimation:true,fontSize:_ecF(w,'label',11),color:cssv('--text'),formatter:function(p){return _chNum(w,p.value,true);}}}],
       graphic:{elements:[{type:'text',right:12,bottom:8,z:100,silent:true,style:{text:'live',fontSize:13,fontWeight:700,fill:(cssv('--ok')||cssv('--accent')),opacity:.6}}]}
     },true);
   }
@@ -496,6 +499,7 @@
   function setBarRace(w){
     var ec=_ec[w.id];if(!ec)return; stopRace(w);
     if(w.brLive){setBarRaceLive(w);return;}     // Live-Werte statt Zeit-Replay
+    var axw=_axShow(w);
     var cols=[cssv('--accent'),cssv('--info'),cssv('--warm')];
     var hs=chartSeries(w).filter(function(s){return s&&s.data&&s.data.length;});
     var tset={}; hs.forEach(function(s){s.data.forEach(function(p){tset[p[0]]=1;});});
@@ -521,16 +525,18 @@
     var names=runners.map(function(r){return r.name;}), fmtT=_raceTimeFmt(times);
     function frame(fi){return runners.map(function(r){return {value:Math.round((r.vals[fi]||0)*100)/100,itemStyle:{color:r.color}};});}
     ec.setOption({
-      backgroundColor:'transparent',
+      backgroundColor:'transparent',title:_titleOpt(w),
       animationDuration:0,animationDurationUpdate:frameMs,animationEasing:'linear',animationEasingUpdate:'linear',
-      grid:{left:8,right:70,top:12,bottom:8,containLabel:true},
+      grid:{left:8,right:70,top:12+_titleSpace(w),bottom:8,containLabel:true},
       tooltip:{trigger:'axis',axisPointer:{type:'none'},confine:true,valueFormatter:function(v){return _chNum(w,v,true);}},
-      xAxis:{type:'value',max:'dataMax',axisLabel:{color:cssv('--muted'),formatter:function(v){return _chNum(w,v);}},
-        splitLine:{lineStyle:{color:cssv('--line'),opacity:.35}}},
+      xAxis:{type:'value',max:'dataMax',splitNumber:(w.gridDivs>0?+w.gridDivs:undefined),
+        axisLine:{show:axw.line,lineStyle:{color:cssv('--line')}},axisTick:{show:axw.ticks},
+        axisLabel:{show:axw.xLab,color:cssv('--muted'),fontSize:_axFs(w),formatter:function(v){return _chNum(w,v);}},
+        splitLine:{show:axw.xGrid,lineStyle:{color:cssv('--line'),opacity:.35}}},
       yAxis:{type:'category',data:names,inverse:true,max:Math.min(topN,names.length)-1,animationDuration:300,animationDurationUpdate:frameMs,
-        axisLabel:{color:cssv('--text')},axisTick:{show:false},axisLine:{show:false}},
+        axisLabel:{show:axw.yLab,color:cssv('--text'),fontSize:_axFs(w)},axisTick:{show:axw.ticks},axisLine:{show:axw.line,lineStyle:{color:cssv('--line')}},splitLine:{show:axw.yGrid,lineStyle:{color:cssv('--line-soft')}}},
       series:[{type:'bar',realtimeSort:true,data:frame(0),itemStyle:{borderRadius:rad},
-        label:{show:true,position:'right',valueAnimation:true,color:cssv('--text'),formatter:function(p){return _chNum(w,p.value,true);}}}],
+        label:{show:true,position:'right',valueAnimation:true,fontSize:_ecF(w,'label',11),color:cssv('--text'),formatter:function(p){return _chNum(w,p.value,true);}}}],
       graphic:_raceClock(fmtT(times[0]))
     },true);
     var fi=0;

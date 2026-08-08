@@ -198,7 +198,11 @@
           }else if(!gs.length){trk.style.background='';}}
       }
       if(w.varId===id){
-        var v=$('[data-role=val]',el);if(v)v.textContent=txt;
+        // Wert OHNE Einheit anzeigen — die Einheit steht separat im <small> (aus dem Profil
+        // vorausgefüllt). Falls die Profil-Einheit doch noch am Wert klebt (z. B. Server
+        // liefert kein d.u), hier hart abschneiden, damit sie nicht doppelt erscheint.
+        var v=$('[data-role=val]',el);
+        if(v){var vt=txt,uu=(w.unit||'').trim();if(uu){var st=String(vt).trim();if(st.length>=uu.length&&st.slice(-uu.length)===uu)vt=st.slice(0,-uu.length).replace(/\s+$/,'');}v.textContent=vt;}
         if(w.okMin!=null||w.okMax!=null){var nv=parseFloat(String(d.v).replace(',','.'));var bd=$('[data-role=badge]',el);if(bd&&!isNaN(nv)){var okv=(w.okMin==null||nv>=w.okMin)&&(w.okMax==null||nv<=w.okMax);bd.className='hpill '+(okv?'ok':'warn');bd.innerHTML='<span class="hpd"></span>'+esc(okv?(w.okText||'OPTIMAL'):(w.badText||'PRÜFEN'));}}
         if(w.barOn&&!w.varId3){var mn=(w.barMin!=null?w.barMin:0),mx=(w.barMax!=null?w.barMax:100),nb=parseFloat(String(d.v).replace(',','.')),bar=$('[data-role=bar]',el);if(bar&&!isNaN(nb))bar.style.width=Math.max(0,Math.min(100,((nb-mn)/((mx-mn)||1))*100))+'%';}
       }
