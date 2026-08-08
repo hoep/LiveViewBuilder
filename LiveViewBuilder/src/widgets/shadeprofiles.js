@@ -19,42 +19,74 @@
 
     function spTypeDef(st){return (st.types||[]).filter(function(t){return t.id===st.type;})[0]||null;}
 
+    // Icons je Profiltyp (lucide-artig)
+    var SP_IC={sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5 19 19M19 5l-1.5 1.5M6.5 17.5 5 19"/>',
+      weather:'<path d="M17.5 19a4.5 4.5 0 1 0 0-9 6 6 0 0 0-11.6 1.8A3.5 3.5 0 0 0 6.5 19z"/><path d="M8 21l-1 2M12 21l-1 2M16 21l-1 2"/>',
+      dayBegin:'<path d="M17 18a5 5 0 0 0-10 0"/><path d="M12 2v7M4.2 10.2l1.4 1.4M1 18h2M21 18h2M18.4 11.6l1.4-1.4M12 9l3 3M12 9l-3 3"/>',
+      dayEnd:'<path d="M17 18a5 5 0 0 0-10 0"/><path d="M12 9V2M4.2 10.2l1.4 1.4M1 18h2M21 18h2M18.4 11.6l1.4-1.4M9 6l3 3 3-3"/>',
+      temp:'<path d="M14 14.76V5a2 2 0 1 0-4 0v9.76a4 4 0 1 0 4 0z"/>'};
+    function spIcon(id,sz){return '<svg viewBox="0 0 24 24" width="'+(sz||16)+'" height="'+(sz||16)+'" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'+(SP_IC[id]||SP_IC.sun)+'</svg>';}
+    var SP_INP='height:34px;border:1px solid var(--line);border-radius:8px;background:var(--surface-2);color:var(--text);padding:0 10px;font-family:var(--fm);font-size:13px;width:100%;box-sizing:border-box';
+
     function spField(k,spec,val){
-      var t=spec.type||'int', id='sp_f_'+k, lbl=esc(spec.label||k);
-      if(t==='bool')return row(lbl,'<input type="checkbox" data-spf="'+k+'"'+(val?' checked':'')+'>');
-      if(t==='enum'){var o=(spec.options||[]).map(function(x){return '<option value="'+esc(x.value)+'"'+(String(val)===String(x.value)?' selected':'')+'>'+esc(x.label)+'</option>';}).join('');return row(lbl,'<select data-spf="'+k+'">'+o+'</select>');}
-      if(t==='time')return row(lbl,'<input type="time" data-spf="'+k+'" value="'+esc(val||'')+'">');
-      // int/float/objid -> Zahl
+      var t=spec.type||'int', lbl=esc(spec.label||k);
+      var wrap=function(inner){return '<label style="display:flex;flex-direction:column;gap:5px;font-size:11px;color:var(--muted)"><span>'+lbl+'</span>'+inner+'</label>';};
+      if(t==='bool')return wrap('<label style="display:inline-flex;align-items:center;gap:8px;height:34px;cursor:pointer"><input type="checkbox" data-spf="'+k+'"'+(val?' checked':'')+' style="width:18px;height:18px;accent-color:var(--accent)"><span style="color:var(--text);font-size:13px">'+(val?'an':'aus')+'</span></label>');
+      if(t==='enum'){var o=(spec.options||[]).map(function(x){return '<option value="'+esc(x.value)+'"'+(String(val)===String(x.value)?' selected':'')+'>'+esc(x.label)+'</option>';}).join('');return wrap('<select data-spf="'+k+'" style="'+SP_INP+'">'+o+'</select>');}
+      if(t==='time')return wrap('<input type="time" data-spf="'+k+'" value="'+esc(val||'')+'" style="'+SP_INP+'">');
       var step=(t==='float')?'0.1':'1';
-      return row(lbl,'<input type="number" step="'+step+'" data-spf="'+k+'" value="'+(val!=null?esc(val):'')+'" style="width:120px">');
+      return wrap('<input type="number" step="'+step+'" data-spf="'+k+'" value="'+(val!=null?esc(val):'')+'" style="'+SP_INP+'">');
     }
 
     function spRender(w){
       var st=spSt(w), doku=(typeof DOKU!=='undefined'&&DOKU);
       if(doku && !st.types){var d=spDemo();st.types=d.types;st.list=d.list;st.name=d.name;st.fields=d.fields;}
-      if(!st.types)return '<div class="spf"><div class="spf-msg">Profile laden …</div></div>';
-      if(st.err)return '<div class="spf"><div class="spf-msg">'+esc(st.err)+'</div></div>';
+      var box='position:absolute;inset:0;background:var(--surface);display:flex;flex-direction:column;box-sizing:border-box';
+      var msg=function(t){return '<div style="'+box+';align-items:center;justify-content:center;color:var(--muted);font-size:13px">'+esc(t)+'</div>';};
+      if(!st.types)return msg('Profile laden …');
+      if(st.err)return msg(st.err);
       var td=spTypeDef(st);
-      var h='<div class="spf"><div class="spf-tabs">'+st.types.map(function(t){return '<button class="spf-tab'+(t.id===st.type?' on':'')+'" data-sptype="'+esc(t.id)+'">'+esc(t.title)+'</button>';}).join('')+'</div>';
-      h+='<div class="spf-body"><div class="spf-list">';
-      (st.list||[]).forEach(function(n){h+='<button class="spf-item'+(n===st.name?' on':'')+'" data-spname="'+esc(n)+'">'+esc(n)+'</button>';});
-      if(!(st.list||[]).length)h+='<div class="spf-empty">Noch keine Profile</div>';
-      h+='<button class="spf-new" data-spnew="1">+ Neues Profil</button></div>';
-      // Editor
-      h+='<div class="spf-edit">';
+      // Typ-Reiter (Unterstrich-Tabs)
+      var tabs=st.types.map(function(t){var on=t.id===st.type;
+        return '<button data-sptype="'+esc(t.id)+'" style="display:inline-flex;align-items:center;gap:7px;padding:10px 14px;border:0;background:none;cursor:pointer;white-space:nowrap;font-size:12.5px;font-weight:600;color:'+(on?'var(--text)':'var(--muted)')+';border-bottom:2px solid '+(on?'var(--accent)':'transparent')+'">'+spIcon(t.id,15)+esc(t.title)+'</button>';}).join('');
+      var h='<div style="'+box+'"><div style="display:flex;flex-wrap:wrap;border-bottom:1px solid var(--line);padding:0 8px;flex:none">'+tabs+'</div>'
+        +'<div style="flex:1;display:flex;min-height:0">';
+      // Linke Spalte: Profil-Karten
+      h+='<div style="width:240px;flex:none;border-right:1px solid var(--line);overflow:auto;padding:12px;display:flex;flex-direction:column;gap:8px">'
+        +'<div style="font-size:9px;letter-spacing:.7px;text-transform:uppercase;font-weight:700;color:var(--faint)">'+esc(td?td.title:'Profile')+'</div>';
+      (st.list||[]).forEach(function(n){var on=n===st.name;
+        h+='<button data-spname="'+esc(n)+'" style="display:flex;align-items:center;gap:9px;text-align:left;border:1px solid '+(on?'var(--accent)':'var(--line)')+';border-radius:var(--r-s,9px);background:'+(on?'color-mix(in oklab,var(--accent) 12%,transparent)':'var(--tile)')+';color:var(--text);padding:9px 11px;cursor:pointer;font-size:13px;font-weight:600">'
+          +'<span style="color:'+(on?'var(--accent)':'var(--faint)')+'">'+spIcon(st.type,15)+'</span>'+esc(n)+'</button>';});
+      if(!(st.list||[]).length)h+='<div style="color:var(--muted);font-size:12px;padding:4px 2px">Noch keine Profile</div>';
+      h+='<button data-spnew="1" style="margin-top:2px;border:1px dashed var(--accent);border-radius:var(--r-s,9px);background:none;color:var(--accent);padding:9px;cursor:pointer;font-size:13px;font-weight:600">+ Neues Profil</button></div>';
+      // Rechte Spalte: Editor
+      h+='<div style="flex:1;min-width:0;overflow:auto;padding:16px">';
       if(st.name && st.fields && td){
+        h+='<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px"><span style="width:34px;height:34px;border-radius:9px;flex:none;display:flex;align-items:center;justify-content:center;background:color-mix(in oklab,var(--accent) 14%,transparent);color:var(--accent)">'+spIcon(st.type,18)+'</span>'
+          +'<div style="min-width:0"><div style="font-size:17px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(st.name)+'</div>'
+          +'<div style="font-size:11px;color:var(--muted)">'+esc(td.title)+'</div></div></div>';
+        h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px 16px;max-width:520px">';
         Object.keys(td.schema).forEach(function(k){h+=spField(k,td.schema[k],st.fields[k]);});
-        h+='<div class="spf-btns"><button class="spf-save'+(st.dirty?' dirty':'')+'" data-spsave="1">Speichern</button>'
-          +'<button data-spdup="1">Duplizieren</button><button data-sprename="1">Umbenennen</button><button class="spf-del" data-spdel="1">Löschen</button></div>';
+        h+='</div>';
+        var gbtn='border:1px solid var(--line);border-radius:8px;background:var(--tile);color:var(--text);padding:8px 14px;cursor:pointer;font-size:12.5px';
+        h+='<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:16px">'
+          +'<button data-spsave="1" style="border:1px solid var(--accent);border-radius:8px;background:var(--accent);color:#fff;padding:8px 16px;cursor:pointer;font-size:12.5px;font-weight:600">Speichern</button>'
+          +'<button data-spdup="1" style="'+gbtn+'">Duplizieren</button><button data-sprename="1" style="'+gbtn+'">Umbenennen</button>'
+          +'<button data-spdel="1" style="border:1px solid color-mix(in oklab,var(--crit) 45%,var(--line));border-radius:8px;background:none;color:var(--crit);padding:8px 14px;cursor:pointer;font-size:12.5px">Löschen</button></div>';
         // Zuweisung
         var idx=spEntity(w), asg=(st.assigned&&st.assigned[st.type])||null;
-        h+='<div class="spf-assign"><div class="pgh">Zuweisung</div>';
-        if(idx){ h+='<div class="spf-arow">Zone-Profil ('+esc(td.title)+'): <b>'+esc(asg||'—')+'</b>'
-          +' <button data-spassign="1"'+(asg===st.name?' disabled':'')+'>Diese Zone → '+esc(st.name)+'</button>'
-          +(asg?' <button data-spunassign="1">entfernen</button>':'')+'</div>'; }
-        else h+='<div class="spf-arow spf-msg">Keine Zone gebunden (Session/feste Zone in den Eigenschaften)</div>';
+        h+='<div style="margin-top:18px;border-top:1px solid var(--line-soft);padding-top:12px">'
+          +'<div style="font-size:9px;letter-spacing:.7px;text-transform:uppercase;font-weight:700;color:var(--faint);margin-bottom:8px">Zuweisung</div>';
+        if(idx){ h+='<div style="display:flex;align-items:center;flex-wrap:wrap;gap:10px;font-size:13px">Zone-Profil: <b style="color:var(--text)">'+esc(asg||'—')+'</b>'
+          +'<button data-spassign="1"'+(asg===st.name?' disabled':'')+' style="border:1px solid var(--accent);border-radius:999px;background:'+(asg===st.name?'var(--surface-2)':'color-mix(in oklab,var(--accent) 14%,transparent)')+';color:'+(asg===st.name?'var(--muted)':'var(--accent)')+';padding:6px 13px;cursor:pointer;font-size:12px;font-weight:600">Diese Zone → '+esc(st.name)+'</button>'
+          +(asg?'<button data-spunassign="1" style="'+gbtn+'">entfernen</button>':'')+'</div>'; }
+        else h+='<div style="color:var(--muted);font-size:12px">Keine Zone gebunden (Session/feste Zone in den Eigenschaften)</div>';
         h+='</div>';
-      } else { h+='<div class="spf-msg">Profil links waehlen oder „+ Neues Profil".</div>'; }
+      } else {
+        h+='<div style="height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:var(--muted);text-align:center">'
+          +'<span style="color:var(--faint)">'+spIcon(st.type,40)+'</span><div style="font-size:14px">'+esc(td?td.title:'Profil')+' wählen oder anlegen</div>'
+          +'<div style="font-size:12px;color:var(--faint)">Links ein Profil antippen oder „+ Neues Profil"</div></div>';
+      }
       h+='</div></div></div>';
       return h;
     }
