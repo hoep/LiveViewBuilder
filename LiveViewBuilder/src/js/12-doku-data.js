@@ -1351,39 +1351,70 @@
       demo: {"label":"Heizplan","rooms":[{"idx":12,"group":"EG"},{"idx":3,"group":"EG"},{"idx":14,"group":"EG"},{"idx":16,"group":"EG"},{"idx":1,"group":"OG"},{"idx":5,"group":"OG"},{"idx":20,"group":"DG"},{"idx":24,"group":"DG"}]}
     },
     "rooms": {
-      titel: "Räume",
-      zweck: "Baustein der zerlegten Heizungssteuerung: die Raum-Tab-Leiste (gruppiert EG/OG/DG) plus Titel/Status. Steuert als „Controller\" die geteilte Editiersitzung - alle Heizung-Bausteine mit gleicher Session-ID arbeiten am selben Raum/Profil/Tag.",
+      titel: "Räume / Zonen (Controller)",
+      zweck: "Steuernder Familien-Baustein: Raum-/Zonen-Tab-Leiste (nach Geschoss gruppiert) plus Titel + Status. Wählt als „Controller“ die aktive Zone/Variante/Tag für ALLE Bausteine mit derselben Session-ID (Heizung & Beschattung).",
       funktionen: [
-        {name: "Session-ID", beschreibung: "Gleiche ID (Vorgabe „heat\") verbindet diese Kachel mit heatcurve/heatweek/heatslots/heateditor zu einer gemeinsamen Bedienung."},
-        {name: "Räume & Etage", beschreibung: "Welche Räume die Tab-Leiste zeigt und ihre Etage (EG/OG/DG). Ein Tab wechselt den Raum fuer die ganze Session."},
-        {name: "Datenquelle", beschreibung: "Root-ID der Steuerung (Vorgabe #53700). Laedt/speichert ueber ?api=heat."},
+        {name: "Session-ID", beschreibung: "Frei wählbare Kennung (Vorgabe „heat“). Gleiche ID = geteilte Bedienung mit curve/week/slots/slotedit/variantbox/transfer/save."},
+        {name: "Domäne", beschreibung: "heating (Heizung, °C) oder shading (Beschattung, Position %). Bestimmt Farbskala, Einheit und Datenquelle der ganzen Session."},
+        {name: "Quelle (HomeSuite-Zonen)", beschreibung: "An = Zonen aus den HomeSuite-Modulen (Topologie, ?api=mod). Aus = Legacy-Heizung (?api=heat). Bei Domäne Beschattung fest an."},
+        {name: "Steuerung (Root-ID)", beschreibung: "Nur ohne HomeSuite-Zonen: Objekt-ID der Legacy-Heizsteuerung (Vorgabe 53700)."},
+        {name: "Geschoss (Filter)", beschreibung: "Alle Geschosse oder nur EG/OG/DG. Deaktiviert, wenn Geschoss-Tabs aktiv sind."},
+        {name: "Geschoss-Tabs", beschreibung: "Eine Seite, Etagen als zusätzliche Tab-Reihe (statt einer Seite je Geschoss)."},
+        {name: "Räume/Zonen-Liste", beschreibung: "Listeneditor: welche Zonen/Räume die Leiste zeigt und ihre Etage (EG/OG/DG). Tab-Beschriftung = Raumname (bei mehreren Beschattungen je Raum mit Ausrichtung)."},
+        {name: "Verhalten", beschreibung: "Tab-Klick wechselt die Zone für die ganze Session; ungespeicherte Änderungen werden vorher abgefragt. Titelzeile zeigt Zone · Variante · Slots · Ø-Wert · „ungespeichert“."},
+        {name: "Gemeinsame Eigenschaften", beschreibung: "Wie bei allen Widgets: Position (X/Y/Breite/Höhe), Sichtbarkeit (zur Laufzeit / Steuer-Variable mit Bedingung), Einblend-Animation und Ebene (Stapelreihenfolge)."}
       ],
-      hinweis: "Reine Zerlegung des Widgets „Heizplan\" in einzeln platzierbare Teile - das Alles-in-einem-Widget bleibt weiter verfuegbar. Doku-Vorschau lokal.",
+      hinweis: "Reiner Frontend-Baustein; lädt/speichert über ?api=mod (HomeSuite) bzw. ?api=heat (Legacy). Doku-Vorschau rein lokal.",
       groesse: [720,120], demo: {"session":"heat","rooms":[{"idx":12,"group":"EG"},{"idx":3,"group":"EG"},{"idx":1,"group":"OG"},{"idx":20,"group":"DG"}]}
     },
     "curve": {
       titel: "Sollkurve",
-      zweck: "Baustein: die ziehbare Tages-Sollkurve der Heizung (Plateau senkrecht = Temperatur, Grenzgriff waagrecht = Zeit) samt jetzt/Soll/Ist-Legende. Teilt die Session mit den anderen Heizung-Bausteinen.",
-      funktionen: [{name: "Session-ID", beschreibung: "Verbindet mit den uebrigen Heizung-Bausteinen (gleiche ID)."},{name: "Ziehen", beschreibung: "Plateau ziehen aendert die Solltemperatur, der runde Griff die Slotgrenze - wirkt sofort in der geteilten Sitzung."}],
-      hinweis: "Einzeln platzierbarer Teil des Heizplans. Doku-Vorschau lokal.", groesse: [560,320], demo: {"session":"heat"}
+      zweck: "Familien-Baustein (Heizung & Beschattung): ziehbare 24h-Kurve der aktiven Zone/Variante. Kopfzeile jetzt/Soll/Ist.",
+      funktionen: [
+        {name: "Session-ID", beschreibung: "Gleiche Kennung wie die übrigen Familien-Bausteine (rooms/curve/week/slots/…) = gemeinsame Zone/Variante/Tag."},
+        {name: "Plateau ziehen", beschreibung: "Senkrecht = Wert des Slots (°C bzw. Position %); wirkt sofort in der Session."},
+        {name: "Grenzgriff ziehen", beschreibung: "Waagrecht = Slot-Grenze (Uhrzeit)."},
+        {name: "Sonnen-Anker", beschreibung: "An Sonnenereignisse gebundene Grenzen (aus dem Slot-Editor) erscheinen als Marker."},
+        {name: "Gemeinsame Eigenschaften", beschreibung: "Wie bei allen Widgets: Position (X/Y/Breite/Höhe), Sichtbarkeit (zur Laufzeit / Steuer-Variable mit Bedingung), Einblend-Animation und Ebene (Stapelreihenfolge)."}
+      ],
+      hinweis: "Teilt die Session der Familie. Doku-Vorschau rein lokal.",
+      groesse: [560,320], demo: {"session":"heat"}
     },
     "week": {
       titel: "Woche",
-      zweck: "Baustein: die Wochenuebersicht der Heizung (sieben Farbband-Zeilen nach Solltemperatur) - ein Tag anklicken waehlt ihn in der geteilten Sitzung.",
-      funktionen: [{name: "Session-ID", beschreibung: "Verbindet mit den uebrigen Heizung-Bausteinen."},{name: "Tag waehlen", beschreibung: "Klick auf eine Zeile setzt den Bearbeitungstag."}],
-      hinweis: "Einzeln platzierbarer Teil des Heizplans. Doku-Vorschau lokal.", groesse: [420,240], demo: {"session":"heat"}
+      zweck: "Familien-Baustein: Wochenübersicht der aktiven Variante (sieben Farbband-Zeilen, Farbe = Wert je Slot).",
+      funktionen: [
+        {name: "Session-ID", beschreibung: "Gleiche Kennung wie die übrigen Familien-Bausteine (rooms/curve/week/slots/…) = gemeinsame Zone/Variante/Tag."},
+        {name: "Tag wählen", beschreibung: "Klick auf eine Zeile setzt den Bearbeitungstag der Session; Ø-Wert je Tag rechts."},
+        {name: "Farbskala", beschreibung: "Nach Domäne: Temperatur (Heizung) bzw. Position (Beschattung)."},
+        {name: "Gemeinsame Eigenschaften", beschreibung: "Wie bei allen Widgets: Position (X/Y/Breite/Höhe), Sichtbarkeit (zur Laufzeit / Steuer-Variable mit Bedingung), Einblend-Animation und Ebene (Stapelreihenfolge)."}
+      ],
+      hinweis: "Teilt die Session der Familie. Doku-Vorschau rein lokal.",
+      groesse: [420,240], demo: {"session":"heat"}
     },
     "slots": {
       titel: "Slots",
-      zweck: "Baustein: Wochentag-Wahl + Slot-Pillen (Temperatur/Zeitspanne) der Heizung; ein Slot anklicken waehlt ihn fuer den Editor der geteilten Sitzung.",
-      funktionen: [{name: "Session-ID", beschreibung: "Verbindet mit den uebrigen Heizung-Bausteinen."},{name: "Slot waehlen", beschreibung: "Tag- und Slot-Auswahl fuer den Editor."}],
-      hinweis: "Einzeln platzierbarer Teil des Heizplans. Doku-Vorschau lokal.", groesse: [560,150], demo: {"session":"heat"}
+      zweck: "Familien-Baustein: Wochentag-Leiste + Schaltpunkte des Tages als Pillen (Wert + Zeitspanne).",
+      funktionen: [
+        {name: "Session-ID", beschreibung: "Gleiche Kennung wie die übrigen Familien-Bausteine (rooms/curve/week/slots/…) = gemeinsame Zone/Variante/Tag."},
+        {name: "Tag", beschreibung: "Wochentag-Leiste Mo–So."},
+        {name: "Slot-Pille", beschreibung: "Zeigt Wert + Zeitspanne; Klick wählt den Slot für den Slot-Editor."},
+        {name: "Gemeinsame Eigenschaften", beschreibung: "Wie bei allen Widgets: Position (X/Y/Breite/Höhe), Sichtbarkeit (zur Laufzeit / Steuer-Variable mit Bedingung), Einblend-Animation und Ebene (Stapelreihenfolge)."}
+      ],
+      hinweis: "Teilt die Session der Familie. Doku-Vorschau rein lokal.",
+      groesse: [560,150], demo: {"session":"heat"}
     },
     "editor": {
-      titel: "Editor",
-      zweck: "Baustein: Praesenz-Profil, Slot-Editor (Sollwert/Start/Ende-Stepper, Slot einfuegen/loeschen), Tag uebertragen und Profil speichern - alles auf der geteilten Sitzung.",
-      funktionen: [{name: "Session-ID", beschreibung: "Verbindet mit den uebrigen Heizung-Bausteinen."},{name: "Bearbeiten & Speichern", beschreibung: "Stepper aendern den gewaehlten Slot; Speichern schreibt das Profil (wie beim Alles-in-einem-Heizplan)."}],
-      hinweis: "Einzeln platzierbarer Teil des Heizplans. Doku-Vorschau lokal (speichert nichts).", groesse: [260,470], demo: {"session":"heat"}
+      titel: "Editor (kompakt)",
+      zweck: "Kompakt-Baustein: Slot-Editor + Varianten + Übertragen + Speichern in einer Spalte (Heizung & Beschattung).",
+      funktionen: [
+        {name: "Session-ID", beschreibung: "Gleiche Kennung wie die übrigen Familien-Bausteine (rooms/curve/week/slots/…) = gemeinsame Zone/Variante/Tag."},
+        {name: "Enthält", beschreibung: "slotedit (Wert/Zeit/Sonnen-Anker) + variantbox (Präsenz bzw. Plan·Saison) + transfer + Speichern."},
+        {name: "Empfehlung", beschreibung: "Für neue Seiten die vier Einzel-Bausteine nutzen; der Editor bleibt für Bestandsseiten."},
+        {name: "Gemeinsame Eigenschaften", beschreibung: "Wie bei allen Widgets: Position (X/Y/Breite/Höhe), Sichtbarkeit (zur Laufzeit / Steuer-Variable mit Bedingung), Einblend-Animation und Ebene (Stapelreihenfolge)."}
+      ],
+      hinweis: "Nicht mehr in der Palette (noPalette). Doku-Vorschau rein lokal.",
+      groesse: [300,780], demo: {"session":"heat"}
     },
     "stepper": {
       titel: "Stepper",
@@ -1410,117 +1441,129 @@
       groesse: [340,190],
       demo: {"label":"Filterzeiten","eventId":900801}
     },
-    "rooms": {
-      titel: "Zonen-Leiste (HomeSuite)",
-      zweck: "Waehlt die aktive Zone (Raum/Rollo) fuer die komponierbare HomeSuite-Zeitplan-Familie. Domaenen-generisch: Heizung ODER Beschattung. Tabs nach Geschoss gruppiert (aus der Raumstruktur). Teilt eine Session mit curve/week/slots/editor.",
-      funktionen: [
-        {name: "Domaene", beschreibung: "In den Eigenschaften Heizung oder Beschattung - bestimmt Werteinheit (°C bzw. %), Farben und Varianten-Achse."},
-        {name: "Session", beschreibung: "Gleiche Session-ID wie die anderen Familien-Widgets -> geteilte Bedienung (eine Auswahl steuert alle)."},
-        {name: "Geschoss-Filter", beschreibung: "Optional nur ein Geschoss zeigen (eine Seite je Geschoss)."},
-      ],
-      hinweis: "HomeSuite-Entitaeten ueber ?api=mod (Topologie). Doku-Vorschau rein lokal (Beispieldaten Heizung).",
-      groesse: [720,120], demo: {"session":"dokuheat"}
-    },
-    "curve": {
-      titel: "Sollkurve (HomeSuite)",
-      zweck: "24-Stunden-Kurve der Sollwerte des gewaehlten Tages mit ziehbaren Griffen (Grenze waagrecht, Wert senkrecht). Heizung: Temperatur; Beschattung: Position 0-100 %.",
-      funktionen: [
-        {name: "Griffe ziehen", beschreibung: "Plateau senkrecht = Wert, Grenze waagrecht = Uhrzeit. Rasterung je Domaene (0,5 °C bzw. 5 %)."},
-        {name: "Jetzt-Linie", beschreibung: "Zeigt die aktuelle Uhrzeit und den Soll/Ist-Wert."},
-      ],
-      hinweis: "Teilt die Session mit rooms/week/slots/editor. Doku-Vorschau rein lokal.",
-      groesse: [560,320], demo: {"session":"dokuheat"}
-    },
-    "week": {
-      titel: "Wochenuebersicht (HomeSuite)",
-      zweck: "Alle 7 Tage der gewaehlten Variante als eingefaerbte Streifen (nach Wert). Tag anklicken = zum Bearbeiten waehlen.",
-      funktionen: [{name: "Tag waehlen", beschreibung: "Klick auf einen Streifen setzt den aktiven Tag fuer curve/slots/editor."}],
-      hinweis: "Teilt die Session der Familie. Doku-Vorschau rein lokal.",
-      groesse: [420,240], demo: {"session":"dokuheat"}
-    },
-    "slots": {
-      titel: "Slot-Leiste (HomeSuite)",
-      zweck: "Wochentag-Wahl + die Schaltpunkte des gewaehlten Tages als Pillen (Wert + Zeitspanne). Bei Beschattung markiert ein ☀ sonnen-verankerte Grenzen.",
-      funktionen: [{name: "Slot waehlen", beschreibung: "Klick waehlt den Slot fuer den Editor."}],
-      hinweis: "Teilt die Session der Familie. Doku-Vorschau rein lokal.",
-      groesse: [560,150], demo: {"session":"dokuheat"}
-    },
-    "editor": {
-      titel: "Plan-Editor (HomeSuite)",
-      zweck: "Bearbeitet den gewaehlten Slot: Wert (Temperatur/Position), Start/Ende der Grenze, Slot einfuegen/loeschen, Varianten-Wahl, Tag/Woche kopieren, Speichern. Grenze wahlweise feste Uhrzeit ODER Sonnen-Anker (Auf-/Untergang + Daemmerung + Offset).",
-      funktionen: [
-        {name: "Wert & Zeit", beschreibung: "Stepper fuer Wert und Grenze; je Domaene passende Schrittweiten/Einheiten."},
-        {name: "Sonnen-Anker", beschreibung: "Ende-Grenze auf Uhrzeit oder Sonne umschalten: Sonnenauf-/-untergang, buergerl./naut./astron. Daemmerung + Offset, mit aufgeloester ≈-Zeit."},
-        {name: "Uebertragen", beschreibung: "Tag auf andere Tage kopieren; ganze Woche aus einer anderen Zone/Variante uebernehmen."},
-      ],
-      hinweis: "Schreibt ueber ?api=mod (updateProfile). Doku-Vorschau rein lokal (nichts wird gespeichert).",
-      groesse: [300,780], demo: {"session":"dokuheat"}
-    },
     "slotedit": {
       titel: "Slot-Editor (HomeSuite)",
-      zweck: "Bearbeitet den gewaehlten Schaltpunkt: Wert (Temperatur/Position), Start/Ende, Slot einfuegen/loeschen; Ende-Grenze als feste Uhrzeit ODER Sonnen-Anker (+Offset). Einzelbaustein aus dem zerlegten Editor.",
-      funktionen: [{name:"Wert & Zeit",beschreibung:"Stepper je Domaene."},{name:"Sonnen-Anker",beschreibung:"Ende auf Uhrzeit/Sonne umschalten."}],
-      hinweis: "Teilt die Session der Familie. Doku-Vorschau rein lokal.", groesse:[300,360], demo:{"session":"dokuheat"}
+      zweck: "Familien-Baustein: bearbeitet den gewählten Schaltpunkt der aktiven Zone/Variante.",
+      funktionen: [
+        {name: "Session-ID", beschreibung: "Gleiche Kennung wie die übrigen Familien-Bausteine (rooms/curve/week/slots/…) = gemeinsame Zone/Variante/Tag."},
+        {name: "Wert (Stepper)", beschreibung: "−1 / −0,1 / +0,1 / +1 je Domäne (°C bzw. %)."},
+        {name: "Start/Ende (Stepper)", beschreibung: "−1h / −10m / +10m / +1h verschieben die Grenzen."},
+        {name: "Uhrzeit ↔ Sonne", beschreibung: "Ende-Grenze umschalten: feste Uhrzeit ODER Sonnenereignis."},
+        {name: "Sonnen-Anker + Offset", beschreibung: "Bei Sonne: Ereignis (Aufgang/Untergang/Dämmerung civil/nautisch/astro) + ±Minuten; aufgelöste Uhrzeit wird angezeigt."},
+        {name: "Einfügen / Löschen", beschreibung: "Slot hinzufügen oder entfernen."},
+        {name: "Gemeinsame Eigenschaften", beschreibung: "Wie bei allen Widgets: Position (X/Y/Breite/Höhe), Sichtbarkeit (zur Laufzeit / Steuer-Variable mit Bedingung), Einblend-Animation und Ebene (Stapelreihenfolge)."}
+      ],
+      hinweis: "Teilt die Session der Familie. Doku-Vorschau rein lokal.",
+      groesse: [300,360], demo: {"session":"dokuheat"}
     },
     "variantbox": {
       titel: "Varianten (HomeSuite)",
-      zweck: "Waehlt die aktive Zeitplan-Variante (Heizung: Praesenz; Beschattung: Plan·Saison). Einzelbaustein aus dem zerlegten Editor.",
-      funktionen: [{name:"Variante",beschreibung:"Klick schaltet die aktive Variante fuer die ganze Session."}],
-      hinweis: "Teilt die Session der Familie. Doku-Vorschau rein lokal.", groesse:[300,180], demo:{"session":"dokuheat"}
+      zweck: "Familien-Baustein: wählt die aktive Zeitplan-Variante.",
+      funktionen: [
+        {name: "Session-ID", beschreibung: "Gleiche Kennung wie die übrigen Familien-Bausteine (rooms/curve/week/slots/…) = gemeinsame Zone/Variante/Tag."},
+        {name: "Variante wählen", beschreibung: "Heizung = Präsenz (Normal/Erweitert/Abgesenkt); Beschattung = Plan · Saison (Anwesend/Abwesend/Urlaub × Sommer/Winter)."},
+        {name: "Aktiv-Markierung", beschreibung: "Die real aktive Variante ist als „aktiv“ hervorgehoben; Ø-Wert je Variante rechts."},
+        {name: "Schutz", beschreibung: "Rückfrage vor dem Wechsel, wenn ungespeicherte Änderungen bestehen."},
+        {name: "Gemeinsame Eigenschaften", beschreibung: "Wie bei allen Widgets: Position (X/Y/Breite/Höhe), Sichtbarkeit (zur Laufzeit / Steuer-Variable mit Bedingung), Einblend-Animation und Ebene (Stapelreihenfolge)."}
+      ],
+      hinweis: "Teilt die Session der Familie. Doku-Vorschau rein lokal.",
+      groesse: [300,180], demo: {"session":"dokuheat"}
     },
     "transfer": {
       titel: "Übertragen (HomeSuite)",
-      zweck: "Kopiert den aktuellen Tag auf andere Tage oder uebernimmt die ganze Woche aus einer anderen Zone/Variante. Einzelbaustein aus dem zerlegten Editor.",
-      funktionen: [{name:"Tag kopieren",beschreibung:"Auf gewaehlte Wochentage."},{name:"Woche uebernehmen",beschreibung:"Von Zone+Variante."}],
-      hinweis: "Teilt die Session der Familie. Doku-Vorschau rein lokal.", groesse:[300,230], demo:{"session":"dokuheat"}
+      zweck: "Familien-Baustein: überträgt Zeitpläne innerhalb der Woche oder aus einer anderen Zone.",
+      funktionen: [
+        {name: "Session-ID", beschreibung: "Gleiche Kennung wie die übrigen Familien-Bausteine (rooms/curve/week/slots/…) = gemeinsame Zone/Variante/Tag."},
+        {name: "Tag kopieren", beschreibung: "Zieltage (Di–So) ankreuzen, „Auf gewählte Tage übertragen“ dupliziert den aktuellen Tag."},
+        {name: "Woche übernehmen", beschreibung: "Quell-Zone + Quell-Variante wählen, „Übernehmen“ kopiert die ganze Woche."},
+        {name: "Schutz", beschreibung: "Rückfrage bei ungespeicherten Änderungen."},
+        {name: "Gemeinsame Eigenschaften", beschreibung: "Wie bei allen Widgets: Position (X/Y/Breite/Höhe), Sichtbarkeit (zur Laufzeit / Steuer-Variable mit Bedingung), Einblend-Animation und Ebene (Stapelreihenfolge)."}
+      ],
+      hinweis: "Teilt die Session der Familie. Doku-Vorschau rein lokal.",
+      groesse: [300,230], demo: {"session":"dokuheat"}
     },
     "save": {
       titel: "Speichern (HomeSuite)",
-      zweck: "Speichert den bearbeiteten Plan der Session (schreibt ueber ?api=mod). Einzelbaustein aus dem zerlegten Editor.",
-      funktionen: [{name:"Speichern",beschreibung:"Persistiert die aktive Variante und zeigt den ungespeicherten Zustand an."}],
-      hinweis: "Teilt die Session der Familie. Doku-Vorschau rein lokal.", groesse:[300,54], demo:{"session":"dokuheat"}
+      zweck: "Familien-Baustein: persistiert den bearbeiteten Plan der aktiven Zone/Variante (schreibt über ?api=mod) und lädt frisch nach.",
+      funktionen: [
+        {name: "Session-ID", beschreibung: "Gleiche Kennung wie die übrigen Familien-Bausteine (rooms/curve/week/slots/…) = gemeinsame Zone/Variante/Tag."},
+        {name: "Speichern", beschreibung: "Schreibt die aktive Variante dauerhaft."},
+        {name: "Ungespeichert-Anzeige", beschreibung: "Der Knopf hebt sich hervor, solange ungespeicherte Änderungen bestehen."},
+        {name: "Gemeinsame Eigenschaften", beschreibung: "Wie bei allen Widgets: Position (X/Y/Breite/Höhe), Sichtbarkeit (zur Laufzeit / Steuer-Variable mit Bedingung), Einblend-Animation und Ebene (Stapelreihenfolge)."}
+      ],
+      hinweis: "Teilt die Session der Familie. Doku-Vorschau rein lokal (speichert nichts).",
+      groesse: [300,54], demo: {"session":"dokuheat"}
+    },
+    "homesuite": {
+      titel: "HomeSuite Übersicht",
+      zweck: "Manifest-getriebene Suite-Übersicht: holt über den Hub (?api=mod&op=suite) das Aggregat-Manifest und rendert Hub-Status + alle Entitäten (Heizung/Beschattung) generisch, unabhängig von der Domäne.",
+      funktionen: [
+        {name: "Hub-Status", beschreibung: "Zeigt den HomeSuite-Hub und die Anzahl der Entitäten."},
+        {name: "Entitäten-Liste", beschreibung: "Alle erkannten Entitäten aus dem Objektbaum (discoverEntities), je Domäne mit Status."},
+        {name: "Keine eigenen Parameter", beschreibung: "Rein manifest-getrieben; Bedienung/Verwaltung erfolgt über die Zeitplan- und Navigations-Widgets."},
+        {name: "Gemeinsame Eigenschaften", beschreibung: "Wie bei allen Widgets: Position (X/Y/Breite/Höhe), Sichtbarkeit (zur Laufzeit / Steuer-Variable mit Bedingung), Einblend-Animation und Ebene (Stapelreihenfolge)."}
+      ],
+      hinweis: "Braucht den HomeSuite-Hub. Übersicht/Diagnose. Doku-Vorschau lokal.",
+      groesse: [420,320], demo: {}
     },
     "roomnav": {
-      titel: "Raum-Navigation (HomeSuite)",
-      zweck: "Universelle Tab-/Listen-Navigation aus der Raumstruktur: Geschoss waehlen, Raeume selektieren, Klick oeffnet die zugehoerige Ansicht. Voll skinbar, kontrastsicher (nie Schwarz auf Accent).",
+      titel: "Raum-Navigation",
+      zweck: "Universelle Navigation aus der Raumstruktur (Geschoss/Bereich → Räume). Wählt/öffnet den Raum; unabhängig von den Zeitplan-Widgets einsetzbar.",
       funktionen: [
-        {name: "Struktur", beschreibung: "Baut sich aus der HomeSuite-Topologie (Haus/Bereich/Raum)."},
-        {name: "Skin", beschreibung: "Akzentfarbe waehlbar; aktiver Tab als lesbarer Indikator."},
+        {name: "Geschoss/Bereich", beschreibung: "Alle Bereiche oder auf einen Bereich (EG/OG/DG/Garten …) einschränken."},
+        {name: "Ausrichtung", beschreibung: "Tabs (horizontal) oder Liste (vertikal)."},
+        {name: "Aktiv-Stil", beschreibung: "Indikator (beste Lesbarkeit) oder Gefüllt (kontrastsicher)."},
+        {name: "Beschriftung", beschreibung: "Voller Raumname oder Kürzel."},
+        {name: "Icons", beschreibung: "Raum-Icons an/aus."},
+        {name: "Akzentfarbe", beschreibung: "Skin-Farbe für den aktiven Eintrag."},
+        {name: "Gemeinsame Eigenschaften", beschreibung: "Wie bei allen Widgets: Position (X/Y/Breite/Höhe), Sichtbarkeit (zur Laufzeit / Steuer-Variable mit Bedingung), Einblend-Animation und Ebene (Stapelreihenfolge)."}
       ],
-      hinweis: "Struktur ueber ?api=mod (Topologie). Doku-Vorschau rein lokal.",
-      groesse: [720,56], demo: {}
+      hinweis: "Liest die Struktur aus der HomeSuite-Topologie (?api=mod). Doku-Vorschau rein lokal.",
+      groesse: [560,60], demo: {}
     },
     "zonesync": {
-      titel: "Zonen-Sync (HomeSuite)",
-      zweck: "Zeigt den Sync-Status einer Zone (Modul-Plan ⟷ Geraeteprogramm) und bietet Vom Geraet laden / Ans Geraet schreiben. Bei controller-Zonen (kein Geraeteprogramm): Modul steuert laufend.",
+      titel: "Zonen-Sync",
+      zweck: "Zeigt den Sync-Status Gerät ⟷ Modul einer Zone und bietet „Vom Gerät laden“ / „Ans Gerät schreiben“ — für Treiber mit eigenem Geräteprogramm (scheduleMode „device“).",
       funktionen: [
-        {name: "Status", beschreibung: "synchron / abweichend / Modul steuert laufend."},
-        {name: "Aktionen", beschreibung: "Vom Geraet laden bzw. Ans Geraet schreiben (Backup/Verify)."},
+        {name: "Modus", beschreibung: "Session (folgt der Zonen-Auswahl der Familie) oder feste Zone."},
+        {name: "Session-ID", beschreibung: "Bei Modus Session: an welche Familie gekoppelt (Vorgabe „heat“)."},
+        {name: "Zone (Instanz-ID)", beschreibung: "Bei fester Zone: Instanz-ID der Heizung/Beschattung."},
+        {name: "Akzentfarbe", beschreibung: "Skin-Farbe der Aktionen."},
+        {name: "Verhalten", beschreibung: "„Vom Gerät laden“ übernimmt das Geräteprogramm ins Modul, „Ans Gerät schreiben“ überträgt das Modulprofil aufs Gerät. Nur relevant bei Geräte-Zeitplänen."},
+        {name: "Gemeinsame Eigenschaften", beschreibung: "Wie bei allen Widgets: Position (X/Y/Breite/Höhe), Sichtbarkeit (zur Laufzeit / Steuer-Variable mit Bedingung), Einblend-Animation und Ebene (Stapelreihenfolge)."}
       ],
-      hinweis: "Ueber ?api=mod (syncStatus/loadFromDevice/syncToDevice). Doku-Vorschau rein lokal.",
-      groesse: [320,44], demo: {}
+      hinweis: "Bedient ?api=mod (loadFromDevice/syncToDevice/syncStatus). Doku-Vorschau rein lokal.",
+      groesse: [300,150], demo: {"session":"heat"}
     },
     "shadesun": {
-      titel: "Sonnenstand (HomeSuite)",
-      zweck: "Zeigt den Live-Sonnenstand (Azimut/Elevation) gegen das Fassaden-Sonnenprofil einer Zone als Balken - damit man falsche Configs SOFORT sieht: liegt die Sonne im Azimut-Fenster? kommt sie ueber die Elevations-/Helligkeitsschwelle?",
+      titel: "Sonnenstand vs. Profil",
+      zweck: "Vergleicht den aktuellen Sonnenstand mit dem Sonnen-Fassadenprofil der Zone: zwei Balken (Azimut, Höhe) zeigen, ob die Sonne im aktiven Fenster steht. So werden falsche Sonnen-Configs sofort sichtbar.",
       funktionen: [
-        {name: "Azimut-Balken", beschreibung: "0-360° mit N/O/S/W, markiertem Fassaden-Fenster und Sonnen-Marker."},
-        {name: "Hoehe-Balken", beschreibung: "Aktuelle Elevation gegen die Schwelle; Warnung bei 0° (keine Schwelle)."},
-        {name: "Verdikt", beschreibung: "Klartext: Sonne im Fenster -> schliesst / ausserhalb / zu tief."},
+        {name: "Modus", beschreibung: "Session (folgt der Beschattungs-Auswahl) oder feste Zone."},
+        {name: "Session-ID", beschreibung: "Bei Modus Session: Kopplung an die Familie (Vorgabe „shade“)."},
+        {name: "Zone (Instanz-ID)", beschreibung: "Bei fester Zone: Instanz-ID der Beschattung."},
+        {name: "Höhe-Achse max", beschreibung: "Maximum der Elevations-(Höhen-)Achse in Grad (Vorgabe 70)."},
+        {name: "Akzentfarbe", beschreibung: "Skin-Farbe der Balken/Marker."},
+        {name: "Anzeige", beschreibung: "Azimut- und Höhen-Balken markieren das Profil-Fenster; der Live-Sonnenstand als Marker. „aktiv/inaktiv“ zeigt, ob die Sonne gerade im Fenster steht."},
+        {name: "Gemeinsame Eigenschaften", beschreibung: "Wie bei allen Widgets: Position (X/Y/Breite/Höhe), Sichtbarkeit (zur Laufzeit / Steuer-Variable mit Bedingung), Einblend-Animation und Ebene (Stapelreihenfolge)."}
       ],
-      hinweis: "Sonnenstand aus Location #13098; Profil je Zone. Ueber ?api=mod (reconcileProbe, read-only). Doku-Vorschau rein lokal.",
-      groesse: [360,232], demo: {}
+      hinweis: "Liest Zonen-Config + Sonnenstand über ?api=mod (reconcileProbe). Doku-Vorschau rein lokal.",
+      groesse: [560,150], demo: {"session":"shade"}
     },
     "shadeprofiles": {
-      titel: "Beschattungs-Profile (HomeSuite)",
-      zweck: "Verwaltet die GETEILTEN, benannten Beschattungsprofile (Sonne/Wetter/Tagesbeginn/Tagesende/Temperatur) zentral ueber den Hub und weist sie Zonen zu. Ersetzt die IPSShadowing-Profilverwaltung. Ein Profil aendern -> alle zugewiesenen Zonen aktualisiert.",
+      titel: "Beschattungs-Profile",
+      zweck: "Verwaltet die GETEILTEN benannten Beschattungsprofile über den Hub: Sonne, Wetterschutz, Tagesbeginn, Tagesende, Temperatur-Gate. Anlegen/bearbeiten/duplizieren/umbenennen/löschen und Zonen zuweisen. Felder werden generisch aus dem Typ-Schema gerendert.",
       funktionen: [
-        {name: "Typ-Tabs", beschreibung: "Sonne, Wetter, Tagesbeginn, Tagesende, Temperatur."},
-        {name: "Profile", beschreibung: "Anlegen, bearbeiten (Felder generisch aus dem Schema), duplizieren, umbenennen, loeschen."},
-        {name: "Zuweisen", beschreibung: "Das gewaehlte Profil der gebundenen Zone zuweisen (Session/feste Zone). Der Hub pusht die Werte in die Zone."},
+        {name: "Zone-Bindung", beschreibung: "Session (folgt der Auswahl) oder feste Zone — für die Zuweisung."},
+        {name: "Session-ID", beschreibung: "Bei Bindung Session: Kopplung an die Familie (Vorgabe „shade“)."},
+        {name: "Zone (Instanz-ID)", beschreibung: "Bei fester Zone: Instanz-ID für die Zuweisung."},
+        {name: "Typ-Tabs", beschreibung: "Sonne / Wetter / Tagesbeginn / Tagesende / Temperatur — je Typ eigene Profile."},
+        {name: "Profil-Editor", beschreibung: "Felder aus dem Schema (z. B. Azimut von/bis, Elevation, Ziel-Position; Wind max, Regen, sichere Position; Zeitpunkt/Offset/Position). Speichern pusht in alle zugewiesenen Zonen."},
+        {name: "Verwalten", beschreibung: "Neu / Duplizieren / Umbenennen / Löschen; „Diese Zone → Profil“ weist zu, „entfernen“ hebt die Zuweisung auf."},
+        {name: "Gemeinsame Eigenschaften", beschreibung: "Wie bei allen Widgets: Position (X/Y/Breite/Höhe), Sichtbarkeit (zur Laufzeit / Steuer-Variable mit Bedingung), Einblend-Animation und Ebene (Stapelreihenfolge)."}
       ],
-      hinweis: "Ueber ?api=mod&op=hubmanage (ProfileEngine auf dem Hub). Doku-Vorschau rein lokal (Beispielprofile).",
-      groesse: [560,420], demo: {}
+      hinweis: "Läuft über den Hub (?api=mod&op=hubmanage → ProfileEngine). Doku-Vorschau mit Demodaten.",
+      groesse: [560,420], demo: {"session":"shade"}
     },
     "shadingpanel": {
       titel: "Beschattungs-Panel",
