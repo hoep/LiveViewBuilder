@@ -589,9 +589,13 @@ if ($api === 'shading') {
 //      geliefert (aus dem IPSSonos-HTMLBox-Snippet extrahiert), damit das image-Widget bindet.
 if ($api === 'audio') {
     header('Content-Type: application/json; charset=utf-8');
-    $HSAU = '{C4F2639D-2A87-453D-8175-B586BF605A38}';
+    $HSAU  = '{C4F2639D-2A87-453D-8175-B586BF605A38}'; // AudioZone (parentless, Sonos)
+    $HSAUX = '{053E7017-584E-4F62-A246-EBA6CE3DE034}'; // AudioZoneBridged (HEOS u. a.)
     $op   = (string) ($_GET['op'] ?? 'getall');
-    $list = array_map('intval', @IPS_GetInstanceListByModuleID($HSAU) ?: []);
+    $list = array_map('intval', array_merge(
+        @IPS_GetInstanceListByModuleID($HSAU) ?: [],
+        @IPS_GetInstanceListByModuleID($HSAUX) ?: []
+    ));
 
     $coverUrl = function ($s) {
         $s = (string) $s;
@@ -599,9 +603,15 @@ if ($api === 'audio') {
         if (preg_match('/src="([^"]*)"/i', $s, $m)) return $m[1];   // ~HTMLBox <img src="...">
         return (strpos($s, '<') === false) ? $s : '';               // bereits bare URL?
     };
-    $stateOf = function ($iid) {
-        if (!function_exists('HSAU_GetState')) return [];
-        $d = json_decode((string) @HSAU_GetState($iid), true);
+    // Prefix je nach Modul (HSAU parentless vs. HSAUX bridged).
+    $pfx = function ($iid) use ($HSAUX) {
+        $g = (string) (@IPS_GetInstance($iid)['ModuleInfo']['ModuleID'] ?? '');
+        return $g === $HSAUX ? 'HSAUX' : 'HSAU';
+    };
+    $stateOf = function ($iid) use ($pfx) {
+        $fn = $pfx($iid) . '_GetState';
+        if (!function_exists($fn)) return [];
+        $d = json_decode((string) @$fn($iid), true);
         return is_array($d) ? $d : [];
     };
 
@@ -679,7 +689,8 @@ if ($api === 'audio') {
         if (!in_array($iid, $list, true)) { echo json_encode(['ok' => false, 'err' => 'instance']); return; }
         $body = (string) ($_POST['data'] ?? '');
         if ($body === '') $body = (string) file_get_contents('php://input');
-        echo HSAU_Manage($iid, $body !== '' ? $body : '{}');
+        $fn = $pfx($iid) . '_Manage';
+        echo function_exists($fn) ? $fn($iid, $body !== '' ? $body : '{}') : json_encode(['ok' => false, 'err' => 'prefix']);
         return;
     }
 
