@@ -637,6 +637,19 @@ if ($api === 'audio') {
                 'playlist' => (int) ($st['SourcePlaylist'] ?? 0),
                 'role' => (string) ($st['GroupRole'] ?? 'standalone'),
                 'coordinator' => (string) ($st['GroupCoordinator'] ?? ''),
+                // Control-Variablen-IDs zum Steuern via ?api=setvar (billige Ident-Aufloesung).
+                'vars' => [
+                    'Transport'      => (int) (@IPS_GetObjectIDByIdent('Transport', $iid) ?: 0),
+                    'Volume'         => (int) (@IPS_GetObjectIDByIdent('Volume', $iid) ?: 0),
+                    'Mute'           => (int) (@IPS_GetObjectIDByIdent('Mute', $iid) ?: 0),
+                    'Power'          => (int) (@IPS_GetObjectIDByIdent('Power', $iid) ?: 0),
+                    'Repeat'         => (int) (@IPS_GetObjectIDByIdent('Repeat', $iid) ?: 0),
+                    'Shuffle'        => (int) (@IPS_GetObjectIDByIdent('Shuffle', $iid) ?: 0),
+                    'Position'       => (int) (@IPS_GetObjectIDByIdent('Position', $iid) ?: 0),
+                    'SourceFavorite' => (int) (@IPS_GetObjectIDByIdent('SourceFavorite', $iid) ?: 0),
+                    'SourceRadio'    => (int) (@IPS_GetObjectIDByIdent('SourceRadio', $iid) ?: 0),
+                    'SourcePlaylist' => (int) (@IPS_GetObjectIDByIdent('SourcePlaylist', $iid) ?: 0),
+                ],
             ];
         }
         echo json_encode(['ok' => true, 'rooms' => $out]);
