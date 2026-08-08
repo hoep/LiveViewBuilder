@@ -29,7 +29,7 @@
     ['Werte & Zahlen',          ['value','valuecard','cval','sval','kpi','delta','calc','chip','icon','bar','meterlist','infolist']],
     ['Schalten & Bedienen',     ['switch','light','button','tile','checkbox','select','slider','stepper','colorpick','textbox','cover','shadingpanel','shading','shadeprofile','thermostat','heatplan','weekedit','alarm','bot','timer','eventctl']],
     ['HomeSuite – Zeitplan (Heizung/Beschattung)', ['rooms','curve','week','slots','slotedit','variantbox','transfer','save']],
-    ['HomeSuite – Navigation & Sonne', ['roomnav','zonesync','shadesun','shadeprofiles']],
+    ['HomeSuite – Navigation & Sonne', ['homesuite','roomnav','zonesync','shadesun','shadeprofiles']],
     ['Zustand & Listen',        ['assoc','statusgrid','statuslist','devlist','statusimage','table','objinfo','msglog','statelog','statetl']],
     ['Diagramme',               ['chart','heatmap','gauge','gaugepro','multiring','doubledonut','sankey','flow','flowline','windrose','tempbar']],
     ['Chart-Typen (Beispiele)', ['chartbar','chartbarstack','chartrace','chartscatter','chartspark','chartpie','chartdonut','chartrose','chartwf']],
@@ -314,10 +314,25 @@
        +'sensorId, automaticId), Profilfelder (geoProfile, windStormKmh …), Zeitpläne, armed.\n'
        +'• HoldState — flüchtiger manueller Eingriff (manualHold hält bis zur nächsten Slot-Grenze).\n'
        +'• RtState — flüchtiger Laufzeitstatus (last-commanded etc.).',MUT,110);
-      P('driver() = HAL-Bindung ans echte Gerät: Heizung → HomeMatic-CCU, Beschattung → IPSShadowing-Position-'
-       +'Variable. Die Bindung steht im FabricStore, nicht als Symcon-Link.\n'
+      P('driver() = HAL-Bindung ans echte Gerät (Heizung → HomeMatic-CCU, Beschattung → Aktor-Treiber, s. u.). '
+       +'Die Bindung steht im FabricStore, nicht als Symcon-Link, und wird treiber-abhängig per '
+       +'RegisterReference gegen versehentliches Löschen geschützt.\n'
        +'Zeitplan-Varianten: Heizung = Präsenz (Normal/Erweitert/Abgesenkt); Beschattung = Plan × Saison '
        +'(Anwesend/Abwesend/Urlaub × Sommer/Winter).',MUT,92);
+      H('Aktor-Treiber (HAL) — Beschattung',1);
+      P('Drei austauschbare Treiber (Wahl im Bindungs-Formular), alle mit derselben IShutter-Schnittstelle:\n'
+       +'• generic-shutter — Absolutposition 0..100 auf einer aktionsfähigen Variable (mit Rückmeldung).\n'
+       +'• somfy-rts — Bus-Rollos: rohe RTS-Telegramme über den Client-Socket zum Gateway. KEIN Feedback →\n'
+       +'   Position wird ZEITBASIERT geschätzt (volle Fahrzeit auf/zu + Referenzfahrt in den Endanschlag).\n'
+       +'   Kommandos werden mehrfach gesendet (auf/ab 3×, STOP 4×), sonst gehen Telegramme verloren.\n'
+       +'• hm-shutter — Homematic-LEVEL (0..1), absolut mit Rückmeldung (z. B. Markise).',BLU,140);
+      P('Positionsschätzung (somfy): das Modul fährt per Timer die berechnete Dauer und stoppt selbst '
+       +'(ShadeKinematics). Ohne Referenzfahrt ist die Lage „unbekannt" → dann nur relatives Fahren. '
+       +'Scharf vs. Schatten: solange armed=false wird der geplante Fahrbefehl (inkl. Telegramm) nur '
+       +'protokolliert, NICHT gesendet.',MUT,92);
+      P('Sichtbarkeit & Schutz: je Entität die Variable „Bindung" (BindHealth: OK / FEHLER / Position unbekannt); '
+       +'op=validate prüft eine Entität, der Hub-op=validate scannt ALLE auf tote Bindungen. RegisterReference '
+       +'lässt Symcon beim Löschen einer gebundenen Variable/Instanz warnen.',MUT,92);
       H('Hub — geteilte Dienste',1);
       P('• Benannte Profile (ProfileEngine auf dem Hub-Store): Keys profiles.<typ>.<name> und '
        +'assign.<entityId>.<typ>. Ein Profil ändern → Push in alle zugewiesenen Zonen (configureAutomation).\n'
