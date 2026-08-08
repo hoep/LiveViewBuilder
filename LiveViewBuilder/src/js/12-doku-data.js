@@ -1352,10 +1352,10 @@
     },
     "rooms": {
       titel: "Räume / Zonen (Controller)",
-      zweck: "Steuernder Familien-Baustein: Raum-/Zonen-Tab-Leiste (nach Geschoss gruppiert) plus Titel + Status. Wählt als „Controller“ die aktive Zone/Variante/Tag für ALLE Bausteine mit derselben Session-ID (Heizung & Beschattung).",
+      zweck: "Steuernder Familien-Baustein: Raum-/Zonen-Tab-Leiste (nach Geschoss gruppiert) plus Titel + Status. Wählt als „Controller“ die aktive Zone/Variante/Tag für ALLE Bausteine mit derselben Session-ID (Heizung, Beschattung & Bewässerung).",
       funktionen: [
         {name: "Session-ID", beschreibung: "Frei wählbare Kennung (Vorgabe „heat“). Gleiche ID = geteilte Bedienung mit curve/week/slots/slotedit/variantbox/transfer/save."},
-        {name: "Domäne", beschreibung: "heating (Heizung, °C) oder shading (Beschattung, Position %). Bestimmt Farbskala, Einheit und Datenquelle der ganzen Session."},
+        {name: "Domäne", beschreibung: "heating (Heizung, °C), shading (Beschattung, Position %) oder irrigation (Bewässerung, An/Aus-Zeitplan). Bestimmt Farbskala, Einheit und Datenquelle der ganzen Session; shading/irrigation nutzen fix die HomeSuite-Zonen."},
         {name: "Quelle (HomeSuite-Zonen)", beschreibung: "An = Zonen aus den HomeSuite-Modulen (Topologie, ?api=mod). Aus = Legacy-Heizung (?api=heat). Bei Domäne Beschattung fest an."},
         {name: "Steuerung (Root-ID)", beschreibung: "Nur ohne HomeSuite-Zonen: Objekt-ID der Legacy-Heizsteuerung (Vorgabe 53700)."},
         {name: "Geschoss (Filter)", beschreibung: "Alle Geschosse oder nur EG/OG/DG. Deaktiviert, wenn Geschoss-Tabs aktiv sind."},
@@ -1369,7 +1369,7 @@
     },
     "curve": {
       titel: "Sollkurve",
-      zweck: "Familien-Baustein (Heizung & Beschattung): ziehbare 24h-Kurve der aktiven Zone/Variante. Kopfzeile jetzt/Soll/Ist.",
+      zweck: "Familien-Baustein (Heizung, Beschattung & Bewässerung): ziehbare 24h-Kurve der aktiven Zone/Variante. Kopfzeile jetzt/Soll/Ist.",
       funktionen: [
         {name: "Session-ID", beschreibung: "Gleiche Kennung wie die übrigen Familien-Bausteine (rooms/curve/week/slots/…) = gemeinsame Zone/Variante/Tag."},
         {name: "Plateau ziehen", beschreibung: "Senkrecht = Wert des Slots (°C bzw. Position %); wirkt sofort in der Session."},
@@ -1406,7 +1406,7 @@
     },
     "editor": {
       titel: "Editor (kompakt)",
-      zweck: "Kompakt-Baustein: Slot-Editor + Varianten + Übertragen + Speichern in einer Spalte (Heizung & Beschattung).",
+      zweck: "Kompakt-Baustein: Slot-Editor + Varianten + Übertragen + Speichern in einer Spalte (Heizung, Beschattung & Bewässerung).",
       funktionen: [
         {name: "Session-ID", beschreibung: "Gleiche Kennung wie die übrigen Familien-Bausteine (rooms/curve/week/slots/…) = gemeinsame Zone/Variante/Tag."},
         {name: "Enthält", beschreibung: "slotedit (Wert/Zeit/Sonnen-Anker) + variantbox (Präsenz bzw. Plan·Saison) + transfer + Speichern."},

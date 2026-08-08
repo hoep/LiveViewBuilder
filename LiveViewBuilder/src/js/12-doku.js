@@ -282,12 +282,13 @@
       function add(o){n++;o.id='hs'+n;ws.push(o);}
       H('HomeSuite — Datenmodell im Symcon-Baum & Configurator');
       P('HomeSuite bildet das Zuhause als OBJEKTBAUM ab: die Hierarchie IST die Elternschaft — kein Link, '
-       +'keine Zuordnungstabelle. Vier Modultypen, ein Hub als Wurzel, die Gewerke (Heizung/Beschattung) als Blätter.',MUT,64);
-      H('Vier Modultypen',1);
-      P('HomeSuite Hub      HSH    Wurzel + geteilte Dienste (Profile, Topologie, Suite-Aggregat)\n'
+       +'keine Zuordnungstabelle. Fünf Modultypen, ein Hub als Wurzel, die Gewerke (Heizung/Beschattung/Bewässerung) als Blätter.',MUT,64);
+      H('Fünf Modultypen',1);
+      P('HomeSuite Hub      HSH    Wurzel + geteilte Dienste (Profile, Topologie, Suite-Aggregat, globale Automatik)\n'
        +'HomeSuite Bereich  HSSP   Struktur-Knoten — Kind: Haus | Bereich | Raum\n'
        +'HeatingZone        HSHT   Entität „Heizung"\n'
-       +'ShadingDevice      HSSH   Entität „Beschattung"',BLU,86);
+       +'ShadingDevice      HSSH   Entität „Beschattung"\n'
+       +'IrrigationCircuit  HSIR   Entität „Bewässerung" (Ventil/Kreis)',BLU,100);
       H('Der Baum (konkret)',1);
       P('HomeSuite Hub  (HSH)\n'
        +'└─ Wohnhaus                 HSSP  Kind=Haus\n'
@@ -333,6 +334,19 @@
       P('Sichtbarkeit & Schutz: je Entität die Variable „Bindung" (BindHealth: OK / FEHLER / Position unbekannt); '
        +'op=validate prüft eine Entität, der Hub-op=validate scannt ALLE auf tote Bindungen. RegisterReference '
        +'lässt Symcon beim Löschen einer gebundenen Variable/Instanz warnen.',MUT,92);
+      H('Automatik & Regeln (generisch, alle Domänen)',1);
+      P('• GLOBALE Automatik: Hub-Schalter „Automatik global" (AutomationEnabled). Jede Entität '
+       +'(Heizung/Beschattung/Bewässerung + künftige) respektiert ihn — aus = keine Automatik; '
+       +'Sicherheit (z. B. Sturm bei Beschattung) bleibt aktiv. Als Switch-Widget bindbar.\n'
+       +'• Sonnen-Anker: Slot-Grenzen an Sonnenauf-/-untergang ± Offset (generisch in EntityModule/SunTimes).\n'
+       +'• Schwellen-Überschreibung (Temperatur): > Grenze +x %, < Grenze −x %, < Sperre keine Aktion '
+       +'(Bewässerung-Default: >28 °C +20 %, <20 °C −20 %, <10 °C aus). Wiederverwendbar in allen Domänen.',MUT,110);
+      H('Bewässerung (IrrigationCircuit)',1);
+      P('Ein Kreis = eine Instanz, gebunden an den ROH-Aktor (nie IPSWatering): generic-valve in drei '
+       +'Modi — Dauer-Variable (Sekunden, Gerät timt selbst, z. B. LinkTap StartWateringImmediately), '
+       +'Schalt-Variable (bool, Modul timt) oder Skript (Start/Stop). Zeitplan = normaler An/Aus '
+       +'(An-Abschnitt = Bewässerungsfenster); Dauer = Basis × Saison × Temperatur × Evaporation. '
+       +'Regen-/Feuchte-Gate + Kälte-Sperre. Schatten-Modus bis „scharf" (armed).',MUT,92);
       H('Hub — geteilte Dienste',1);
       P('• Benannte Profile (ProfileEngine auf dem Hub-Store): Keys profiles.<typ>.<name> und '
        +'assign.<entityId>.<typ>. Ein Profil ändern → Push in alle zugewiesenen Zonen (configureAutomation).\n'

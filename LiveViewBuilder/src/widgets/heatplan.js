@@ -45,7 +45,10 @@
       steps:[[-1,'−1'],[-0.1,'−0,1'],[0.1,'+0,1'],[1,'+1']], scaleLo:15,scaleHi:22,scaleLbl:'Solltemperatur 15–22 °C', profTitle:'Präsenz-Profil'},
     shading:{dom:'shading',min:0,max:100,step:5,dec:0,unit:'%',def:0,label:'Position',anchors:true,
       color:function(v){return hpPosColor(v);}, bucket:function(v){return v<=10?'offen':v<=50?'halb':v<=90?'meist zu':'zu';},
-      steps:[[-10,'−10'],[-5,'−5'],[5,'+5'],[10,'+10']], scaleLo:0,scaleHi:100,scaleLbl:'0 % offen … 100 % zu', profTitle:'Plan'}
+      steps:[[-10,'−10'],[-5,'−5'],[5,'+5'],[10,'+10']], scaleLo:0,scaleHi:100,scaleLbl:'0 % offen … 100 % zu', profTitle:'Plan'},
+    irrigation:{dom:'irrigation',min:0,max:100,step:100,dec:0,unit:'',def:0,label:'Bewässerung',anchors:true,
+      color:function(v){return v>0?'var(--info)':'var(--surface-2)';}, bucket:function(v){return v>0?'Ein':'Aus';},
+      steps:[[-100,'Aus'],[100,'Ein']], scaleLo:0,scaleHi:100,scaleLbl:'Aus / Ein (An-Abschnitt = Bewässerungsfenster)', profTitle:'Programm'}
   };
   var _hpVC=HP_VC.heating;
   function hpSetVC(dom){ _hpVC=HP_VC[dom]||HP_VC.heating; return _hpVC; }
