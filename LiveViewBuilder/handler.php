@@ -679,6 +679,35 @@ if ($api === 'audio') {
         return;
     }
 
+    if ($op === 'radionow') {                            // Radio: laufender Titel + Song-Cover (lesend)
+        $iid = (int) ($_GET['id'] ?? 0);
+        if (!in_array($iid, $list, true)) { echo json_encode(['ok' => false, 'err' => 'instance']); return; }
+        $fn = $pfx($iid) . '_Manage';
+        echo function_exists($fn) ? $fn($iid, json_encode(['op' => 'radioNow'])) : json_encode(['ok' => false, 'err' => 'prefix']);
+        return;
+    }
+
+    if ($op === 'radiostations') {                       // Radio: Senderliste (fuer Direkt-Auswahl)
+        $iid = (int) ($_GET['id'] ?? ($list[0] ?? 0));
+        $fn = $pfx($iid) . '_Manage';
+        echo function_exists($fn) ? $fn($iid, json_encode(['op' => 'radioStations'])) : json_encode(['ok' => false, 'err' => 'prefix']);
+        return;
+    }
+
+    if ($op === 'playdirect') {                          // Radio: werbefreien HQ-Stream spielen (token)
+        if (!hash_equals($TOKEN, (string) ($_GET['key'] ?? ''))) {
+            http_response_code(403);
+            echo json_encode(['ok' => false, 'err' => 'forbidden']);
+            return;
+        }
+        $iid = (int) ($_GET['id'] ?? 0);
+        if (!in_array($iid, $list, true)) { echo json_encode(['ok' => false, 'err' => 'instance']); return; }
+        $fn = $pfx($iid) . '_Manage';
+        $st = (string) ($_GET['station'] ?? '');
+        echo function_exists($fn) ? $fn($iid, json_encode(['op' => 'playDirect', 'args' => ['station' => $st]])) : json_encode(['ok' => false, 'err' => 'prefix']);
+        return;
+    }
+
     if ($op === 'manage') {                              // Gruppen/Quellen/PlaySource (token)
         if (!hash_equals($TOKEN, (string) ($_GET['key'] ?? ''))) {
             http_response_code(403);
