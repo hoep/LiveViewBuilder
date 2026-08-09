@@ -1729,6 +1729,7 @@ body:not(.run) .chrome.sel{outline:2px solid var(--accent);outline-offset:-2px;b
         <div class="pitem" data-add="flow">Fluss</div>
         <div class="pgh">Wetter &amp; Zeit</div>
         <div class="pitem" data-add="weather">Wetter</div>
+        <div class="pitem" data-add="weatherpro" title="Wetter (erweitert)">Wetter+</div>
         <div class="pitem" data-add="meteogram" title="Meteogramm: mehrere Panels (Temperatur, Niederschlag, Wind, Wolken/Feuchte, Druck) mit gemeinsamer Zeitachse; stündlich oder täglich">Meteogramm</div>
         <div class="pitem" data-add="windrose">Windrose</div>
         <div class="pitem" data-add="raincard">Regenmenge</div>
@@ -1752,16 +1753,44 @@ body:not(.run) .chrome.sel{outline:2px solid var(--accent);outline-offset:-2px;b
         <div class="pitem" data-add="homesuite" title="Suite-Übersicht: Hub-Status + Entitäten (manifest-getrieben)">Suite-Übersicht</div>
         <div class="pitem" data-add="roomnav" title="Universelle Tab-/Listen-Navigation aus der Raumstruktur (Geschoss → Räume)">Raum-Navigation</div>
         <div class="pitem" data-add="rooms" title="Zonen-/Raumleiste (nach Geschoss gruppiert) — wählt die aktive Zone für die anderen HomeSuite-Widgets">Zonen-Leiste</div>
+        <div class="pitem" data-add="zonesync" title="Sync-Status Gerät ⟷ Modul: Vom Gerät laden / Ans Gerät schreiben">Zonen-Sync</div>
+        <div class="pgh">HomeSuite · Zeitplan (Heizung/Beschattung)</div>
         <div class="pitem" data-add="curve" title="Sollkurve (24 h) — Zeitplan-Griffe ziehen">Sollkurve</div>
         <div class="pitem" data-add="week" title="Wochenübersicht der Zeitpläne">Woche</div>
         <div class="pitem" data-add="slots" title="Schaltpunkte des gewählten Tages als Liste">Slots</div>
         <div class="pitem" data-add="slotedit" title="Slot-Editor: Wert/Zeit/Sonnen-Anker, Slot einfügen/löschen">Slot-Editor</div>
+        <div class="pitem" data-add="editor" title="Zeitplan-Editor (Heizung/Beschattung), vollständig">Zeitplan-Editor</div>
         <div class="pitem" data-add="variantbox" title="Varianten-/Präsenz-Auswahl">Varianten</div>
         <div class="pitem" data-add="transfer" title="Tag/Woche kopieren, Woche übernehmen">Übertragen</div>
         <div class="pitem" data-add="save" title="Speichern-Knopf">Speichern</div>
+        <div class="pgh">HomeSuite · Beschattung</div>
+        <div class="pitem" data-add="shading" title="Rollo-/Markisen-Position (eine Zone): Regler + Auf/Stop/Zu">Position</div>
+        <div class="pitem" data-add="shadeprofile" title="Beschattungs-Profil-Editor (eine Zone)">Profil</div>
+        <div class="pitem" data-add="shadeprofiles" title="Beschattungs-Profile anlegen/zuweisen (Sonne/Wetter/Tag/Temperatur)">Profile-Manager</div>
         <div class="pitem" data-add="shadesun" title="Sonnenstand vs. Fassaden-Profil: sieht falsche Sonnen-Configs sofort">Sonnenstand</div>
-        <div class="pitem" data-add="shadeprofiles" title="Beschattungs-Profile anlegen/zuweisen (Sonne/Wetter/Tag/Temperatur)">Beschattungs-Profile</div>
-        <div class="pitem" data-add="zonesync" title="Sync-Status Gerät ⟷ Modul: Vom Gerät laden / Ans Gerät schreiben">Zonen-Sync</div>
+        <div class="pitem" data-add="suncompass" title="2,5D Haus + Sonnenstand + Einstrahlungsbereiche">Sonnenkompass</div>
+        <div class="pgh">HomeSuite · Licht</div>
+        <div class="pitem" data-add="lightgrid" title="Alle Lampen, nach Geschoss/Raum gruppiert (Toggle/Dimmen/Farbe/CCT)">Licht-Übersicht</div>
+        <div class="pitem" data-add="lightroom" title="Lampen eines Raums (fest oder Session)">Licht-Raum</div>
+        <div class="pgh">HomeSuite · Szenen</div>
+        <div class="pitem" data-add="scenebar" title="Szenen als Chips — anwenden + aufnehmen">Szenen-Leiste</div>
+        <div class="pitem" data-add="sceneeditor" title="Szenen anlegen/bearbeiten (Mitglieder, Farbe/CCT, Überblendung, Icon, Scope)">Szenen-Editor</div>
+        <div class="pgh">HomeSuite · Automatik</div>
+        <div class="pitem" data-add="autolist" title="Automatik-Regeln: Liste + Gesamt-Schalter">Automatik-Liste</div>
+        <div class="pitem" data-add="autoedit" title="Automatik-Regel im Detail bearbeiten">Automatik-Detail</div>
+        <div class="pitem" data-add="autocard" title="Eine Automatik-Kategorie als Karte (Typ wählbar)">Automatik-Karte</div>
+        <div class="pitem" data-add="autotimeline" title="24-h-Tagesverlauf mit Sonnenzeiten + Regel-Markern">Automatik-Tagesverlauf</div>
+        <div class="pgh">HomeSuite · Audio</div>
+        <div class="pitem" data-add="audioroom" title="Audio-Raum: Now Playing + Steuerung kompakt">Audio-Raum</div>
+        <div class="pitem" data-add="audionow" title="Now Playing: Cover + Titel + Fortschritt (Seek)">Now Playing</div>
+        <div class="pitem" data-add="audioctl" title="Transport + Lautstärke/Mute/Power + Sleep + Repeat/Shuffle">Audio-Steuerung</div>
+        <div class="pitem" data-add="audiosrc" title="Quellen-Auswahl (Favoriten/Radio/Playlist)">Audio-Quelle</div>
+        <div class="pitem" data-add="audioradio" title="Radio: laufender Titel + Cover, Direkt-HQ-Stream">Radio</div>
+        <div class="pitem" data-add="audiolib" title="Medien-Bibliothek (Provider) durchsuchen/abspielen">Audio-Bibliothek</div>
+        <div class="pitem" data-add="multiroom" title="Multiroom: Gruppen bilden/auflösen + Gruppen-Lautstärke">Multiroom</div>
+        <div class="pgh">HomeSuite · Bewässerung</div>
+        <div class="pitem" data-add="irriggrid" title="Alle Bewässerungskreise: Jetzt bewässern/Stoppen, Dauer, Programm">Bewässerung · Übersicht</div>
+        <div class="pitem" data-add="irrigcircuit" title="Ein Bewässerungskreis (fest)">Bewässerung · Kreis</div>
         <div class="pgh">Bausteine (eigene)</div>
         <div id="blocks" style="grid-column:1/-1;display:flex;flex-direction:column;gap:5px"></div>
       </div>
