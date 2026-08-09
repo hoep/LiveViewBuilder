@@ -9,6 +9,15 @@
   //  Statusvariable (Vorschau), schaltet aber NICHT die reale Lampe. Steuerung: setVar() auf
   //  die Power/Brightness-Variablen; Farbe/CT ueber ?api=light&op=manage (Token).
   (function(){
+    if(!document.getElementById('lxfamCss')){var _s=document.createElement('style');_s.id='lxfamCss';_s.textContent=
+      '.lxc-cct{margin-top:6px;display:flex;align-items:center;gap:6px}'
+      +'.lxc-cct input[type=range]{flex:1;height:6px;border-radius:6px;background:linear-gradient(90deg,#ff9d3b,#fff,#9dc4ff)}'
+      +'.lxc-col{margin-top:6px;display:flex;align-items:center;gap:6px}'
+      +'.lxc-col label{font-size:11px;color:var(--muted)}'
+      +'.lxc-col input[type=color]{width:34px;height:22px;padding:0;border:1px solid var(--line,rgba(128,128,128,.35));border-radius:6px;background:none;cursor:pointer}'
+      +'.lxr-arm{margin-left:6px;font-size:11px;padding:2px 8px;border-radius:12px;border:1px solid var(--line,rgba(128,128,128,.35));background:none;color:var(--muted);cursor:pointer}'
+      +'.lxr-arm.armed{background:var(--accent);border-color:var(--accent);color:#fff}';
+      document.head.appendChild(_s);}
     var _lxData=null, _lxErr='';
     function lxLoad(cb){
       if(typeof DOKU!=='undefined'&&DOKU){_lxData=lxDemo();cb&&cb();return;}
@@ -17,8 +26,8 @@
         .catch(function(){_lxErr='net';cb&&cb();});
     }
     function lxDemo(){return [
-      {id:1,name:'Kueche',room:'Kueche',floor:'Obergeschoss',on:true,level:70,color:-1,cct:0,watt:9,reachable:true,caps:{dim:true},armed:false,vars:{Power:1,Brightness:2,ColorTemp:0}},
-      {id:2,name:'Esszimmer Tisch',room:'Esszimmer',floor:'Obergeschoss',on:false,level:0,color:-1,cct:0,watt:0,reachable:true,caps:{dim:true},armed:false,vars:{Power:3,Brightness:4,ColorTemp:0}},
+      {id:1,name:'Kueche',room:'Kueche',floor:'Obergeschoss',on:true,level:70,color:-1,cct:3200,watt:9,reachable:true,caps:{dim:true,cct:true,cctMin:2700,cctMax:6500},armed:false,vars:{Power:1,Brightness:2,ColorTemp:8}},
+      {id:2,name:'Esszimmer Tisch',room:'Esszimmer',floor:'Obergeschoss',on:false,level:0,color:0xE0A030,cct:0,watt:0,reachable:true,caps:{dim:true,color:true},armed:true,vars:{Power:3,Brightness:4,ColorTemp:0}},
       {id:3,name:'Stehlampe',room:'Wohnzimmer',floor:'Obergeschoss',on:true,level:-1,color:-1,cct:0,watt:8,reachable:true,caps:{dim:false},armed:false,vars:{Power:5,Brightness:0,ColorTemp:0}},
       {id:4,name:'Bad',room:'Bad',floor:'Erdgeschoss',on:false,level:0,color:-1,cct:0,watt:0,reachable:true,caps:{dim:true},armed:false,vars:{Power:6,Brightness:7,ColorTemp:0}}
     ];}
@@ -43,6 +52,22 @@
     function lxDim(l,val){ if(!l.vars||!l.vars.Brightness)return; if(typeof setVar==='function')setVar(l.vars.Brightness, val); l.level=val; if(val>0&&!l.on){l.on=true;if(l.vars.Power)setVar(l.vars.Power,1);} }
     function lxMaster(lamps,on){ lamps.forEach(function(l){ if(l.vars&&l.vars.Power&&(!!l.on!==on)){ if(typeof setVar==='function')setVar(l.vars.Power,on?1:0); l.on=on; } }); }
 
+    // Farbe/Farbtemperatur/Scharfschalten ueber die Modul-Management-Op (Token noetig).
+    function lxManage(id,body,cb){
+      if(typeof DOKU!=='undefined'&&DOKU){cb&&cb();return;}
+      fetch('?api=light&op=manage&id='+id+'&key='+encodeURIComponent(TOKEN),
+        {method:'POST',cache:'no-store',headers:{'Content-Type':'text/plain'},body:JSON.stringify(body)})
+        .then(function(r){return r.json();})
+        .then(function(j){ if(j&&j.note&&typeof toast==='function')toast(j.note); cb&&cb(); })
+        .catch(function(){ if(typeof toast==='function')toast('Licht: Verbindungsfehler'); });
+    }
+    function lxSetCct(l,kelvin){ l.cct=kelvin; lxManage(l.id,{op:'setCct',args:{kelvin:kelvin}}); }
+    function lxSetColor(l,rgb){ l.color=rgb; lxManage(l.id,{op:'setColor',args:{rgb:rgb}}); }
+    function lxSetArmed(l,armed){ l.armed=armed; lxManage(l.id,{op:'setArmed',args:{armed:armed}}); }
+    // #rrggbb <-> int 0xRRGGBB
+    function lxHex(rgb){ if(rgb==null||rgb<0)return '#ffffff'; var s=(rgb&0xFFFFFF).toString(16); while(s.length<6)s='0'+s; return '#'+s; }
+    function lxInt(hex){ return parseInt(String(hex||'').replace('#',''),16)||0; }
+
     // ---- Render ----
     function lxIcon(){return (typeof iconSVG==='function')?iconSVG('bulb',100):'';}
     function lxCard(l){
@@ -56,6 +81,17 @@
       if(dim){
         h+='<div class="lxc-dim"><input type="range" min="0" max="100" step="1" value="'+lvl+'" data-lxdim="'+l.id+'" aria-label="Helligkeit"></div>';
       }
+      var caps=l.caps||{};
+      if(caps.cct){
+        var kMin=parseInt(caps.cctMin)||2700, kMax=parseInt(caps.cctMax)||6500;
+        var kVal=(l.cct>0?l.cct:Math.round((kMin+kMax)/2));
+        if(kVal<kMin)kVal=kMin; if(kVal>kMax)kVal=kMax;
+        h+='<div class="lxc-cct"><input type="range" min="'+kMin+'" max="'+kMax+'" step="100" value="'+kVal+'" data-lxcct="'+l.id+'" aria-label="Farbtemperatur">'
+          +'<span class="lxc-st">'+kVal+' K</span></div>';
+      }
+      if(caps.color){
+        h+='<div class="lxc-col"><label>Farbe</label><input type="color" value="'+lxHex(l.color)+'" data-lxcol="'+l.id+'" aria-label="Farbe"></div>';
+      }
       if(sub.length)h+='<div class="lxc-sub">'+esc(sub.join(' · '))+'</div>';
       h+='</div>';
       return h;
@@ -63,10 +99,13 @@
     function lxRoomBlock(room,floor,lamps){
       var anyOn=lamps.some(function(l){return l.on;});
       var watt=lamps.reduce(function(a,l){return a+(l.watt>0?l.watt:0);},0);
+      var allArmed=lamps.length>0&&lamps.every(function(l){return l.armed===true;});
+      var key=encodeURIComponent((floor||'')+'|'+(room||''));
       var h='<div class="lxr"><div class="lxr-h">'
         +'<span class="lxr-nm">'+escL(room||floor||'Ohne Raum')+'</span>'
         +'<span class="lxr-meta">'+lamps.length+(watt>0?(' · '+Math.round(watt)+' W'):'')+'</span>'
-        +'<button class="lxr-master'+(anyOn?' on':'')+'" data-lxmaster="'+encodeURIComponent((floor||'')+'|'+(room||''))+'">'+(anyOn?'Alle aus':'Alle an')+'</button>'
+        +'<button class="lxr-master'+(anyOn?' on':'')+'" data-lxmaster="'+key+'">'+(anyOn?'Alle aus':'Alle an')+'</button>'
+        +'<button class="lxr-arm'+(allArmed?' armed':'')+'" data-lxarm="'+key+'" title="'+(allArmed?'Scharf geschaltet – klick für Schatten-Modus':'Schatten-Modus – klick zum Scharfschalten')+'">'+(allArmed?'Scharf':'Schatten')+'</button>'
         +'</div><div class="lxr-grid">'+lamps.map(lxCard).join('')+'</div></div>';
       return h;
     }
@@ -97,7 +136,7 @@
     // anmelden (w.items[].vid) -> der Client verteilt WS-Pushes an unser live(); Server-Abo
     // liefert das LVB-Push-Modul (HSLT-Steuervariablen). Danach Index neu bauen lassen.
     function lxSetItems(w){
-      var it=[]; lxLampsFor(w).forEach(function(l){ if(l.vars){ if(l.vars.Power)it.push({vid:l.vars.Power}); if(l.vars.Brightness)it.push({vid:l.vars.Brightness}); } });
+      var it=[]; lxLampsFor(w).forEach(function(l){ if(l.vars){ if(l.vars.Power)it.push({vid:l.vars.Power}); if(l.vars.Brightness)it.push({vid:l.vars.Brightness}); if(l.vars.ColorTemp)it.push({vid:l.vars.ColorTemp}); } });
       w.items=it;
       if(typeof invalidateVidx==='function')invalidateVidx();
     }
@@ -107,13 +146,30 @@
     function lxWire(w,host){
       host.querySelectorAll('[data-lxid]').forEach(function(c){
         c.addEventListener('click',function(e){
-          if(e.target.closest('.lxc-dim'))return;
+          if(e.target.closest('.lxc-dim,.lxc-cct,.lxc-col'))return;
           var id=parseInt(c.getAttribute('data-lxid'));var l=(_lxData||[]).find(function(x){return x.id===id;});
           if(l){lxToggle(l);lxPaint(w);}
         });
       });
       host.querySelectorAll('[data-lxdim]').forEach(function(r){
         r.addEventListener('change',function(){var id=parseInt(r.getAttribute('data-lxdim'));var l=(_lxData||[]).find(function(x){return x.id===id;});if(l)lxDim(l,parseInt(r.value)||0);});
+      });
+      host.querySelectorAll('[data-lxcct]').forEach(function(r){
+        r.addEventListener('input',function(){var lab=r.parentNode&&r.parentNode.querySelector('.lxc-st');if(lab)lab.textContent=(parseInt(r.value)||0)+' K';});
+        r.addEventListener('change',function(){var id=parseInt(r.getAttribute('data-lxcct'));var l=(_lxData||[]).find(function(x){return x.id===id;});if(l)lxSetCct(l,parseInt(r.value)||0);});
+      });
+      host.querySelectorAll('[data-lxcol]').forEach(function(p){
+        p.addEventListener('change',function(){var id=parseInt(p.getAttribute('data-lxcol'));var l=(_lxData||[]).find(function(x){return x.id===id;});if(l)lxSetColor(l,lxInt(p.value));});
+      });
+      host.querySelectorAll('[data-lxarm]').forEach(function(b){
+        b.addEventListener('click',function(){
+          var k=decodeURIComponent(b.getAttribute('data-lxarm')).split('|');var fl=k[0],rm=k[1];
+          var lamps=(_lxData||[]).filter(function(l){return (l.floor||'')===fl && (l.room||'')===rm;});
+          var allArmed=lamps.length>0&&lamps.every(function(l){return l.armed===true;});
+          var next=!allArmed;
+          lamps.forEach(function(l){lxSetArmed(l,next);});
+          lxPaint(w);
+        });
       });
       host.querySelectorAll('[data-lxmaster]').forEach(function(b){
         b.addEventListener('click',function(){
