@@ -837,11 +837,23 @@ if ($api === 'light') {
 
     // ---- Szenen (Haus-Ebene, Hub/HSH): scenes lesen frei; capture/apply/save/delete token ----
     if ($op === 'scenes' || $op === 'scene' || $op === 'sceneapply' || $op === 'scenecapture'
-        || $op === 'scenesave' || $op === 'scenedelete' || $op === 'scenerename') {
+        || $op === 'scenesave' || $op === 'scenedelete' || $op === 'scenerename'
+        || $op === 'autoget' || $op === 'autoset' || $op === 'autotick') {
         if (!function_exists('HSH_Manage')) { echo json_encode(['ok' => false, 'err' => 'hub_prefix']); return; }
         $hub = (int) (@IPS_GetInstanceListByModuleID('{A0C082B4-9E74-430E-BD97-F9CEBB364257}')[0] ?? 0);
         if ($hub <= 0) { echo json_encode(['ok' => false, 'err' => 'no_hub']); return; }
 
+        if ($op === 'autoget') { echo HSH_Manage($hub, json_encode(['op' => 'lightAutoGet'])); return; }
+        if ($op === 'autoset' || $op === 'autotick') {
+            if (!hash_equals($TOKEN, (string) ($_GET['key'] ?? ''))) {
+                http_response_code(403); echo json_encode(['ok' => false, 'err' => 'forbidden']); return;
+            }
+            if ($op === 'autotick') { echo HSH_Manage($hub, json_encode(['op' => 'lightAutoTick'])); return; }
+            $body = (string) ($_POST['data'] ?? ''); if ($body === '') $body = (string) file_get_contents('php://input');
+            $args = json_decode($body ?: '{}', true); if (!is_array($args)) $args = [];
+            echo HSH_Manage($hub, json_encode(['op' => 'lightAutoSet', 'args' => $args]));
+            return;
+        }
         if ($op === 'scenes') { echo HSH_Manage($hub, json_encode(['op' => 'lightSceneList'])); return; }
         if ($op === 'scene')  { echo HSH_Manage($hub, json_encode(['op' => 'lightSceneGet', 'args' => ['id' => (string) ($_GET['id'] ?? '')]])); return; }
         // schreibende Szenen-Ops: Token
