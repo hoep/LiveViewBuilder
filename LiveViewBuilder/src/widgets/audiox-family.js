@@ -174,7 +174,8 @@
         +'<span style="font-family:var(--fm);width:30px;text-align:right;font-size:12px">'+(c.volume||0)+'</span>'+ibtn(afSvg(AF_IC.power,16),'power',!!c.power)+'</div>';
       // Sleep-Timer: 15/30/60 min + Aus. (Aktueller Reststand ist im getall nicht enthalten -> keine Aktiv-Markierung.)
       function sbtn(m,lbl){return '<button data-afsleep="'+m+'" style="flex:1;height:30px;border:1px solid var(--line);border-radius:7px;background:var(--tile);color:var(--muted);font-size:11px;cursor:pointer">'+lbl+'</button>';}
-      var sleep='<div style="display:flex;align-items:center;gap:6px;margin-top:10px"><span style="width:44px;font-size:11px;color:var(--faint);flex:none">Sleep</span>'+sbtn(15,'15m')+sbtn(30,'30m')+sbtn(60,'60m')+sbtn(0,'Aus')+'</div>';
+      var arm='<button data-afarm="1" title="'+(c.armed?'Scharf – klick für Schatten-Modus':'Schatten-Modus – klick zum Scharfschalten')+'" style="flex:none;height:30px;padding:0 11px;border:1px solid '+(c.armed?'var(--accent)':'var(--line)')+';border-radius:7px;background:'+(c.armed?'color-mix(in oklab,var(--accent) 14%,transparent)':'var(--tile)')+';color:'+(c.armed?'var(--accent)':'var(--muted)')+';font-size:11px;cursor:pointer">'+(c.armed?'Scharf':'Schatten')+'</button>';
+      var sleep='<div style="display:flex;align-items:center;gap:6px;margin-top:10px"><span style="width:44px;font-size:11px;color:var(--faint);flex:none">Sleep</span>'+sbtn(15,'15m')+sbtn(30,'30m')+sbtn(60,'60m')+sbtn(0,'Aus')+arm+'</div>';
       return '<div style="position:absolute;inset:0;padding:12px;box-sizing:border-box;background:var(--surface);display:flex;flex-direction:column;justify-content:center">'+bar+sr+vol+sleep+'</div>';},
     mount:afMount,
     _bind:function(w,el){var s=afSess(w);
@@ -190,7 +191,11 @@
       $$('[data-afsleep]',el).forEach(function(b){b.onclick=function(){var m=+b.getAttribute('data-afsleep');var c=afCur(s);if(!c)return;
         if(typeof DOKU!=='undefined'&&DOKU){toast(m?('Demo: Sleep '+m+' min'):'Demo: Sleep aus');return;}
         if(m>0)afManage(w,c.id,{op:'setSleep',args:{minutes:m}}); else afManage(w,c.id,{op:'cancelSleep'});
-      };});},
+      };});
+      var ab=$('[data-afarm]',el);if(ab)ab.onclick=function(){var c=afCur(s);if(!c)return;
+        if(typeof DOKU!=='undefined'&&DOKU){toast('Demo: '+(c.armed?'Schatten-Modus':'Scharf'));return;}
+        afManage(w,c.id,{op:'setArmed',args:{armed:!c.armed}},function(){c.armed=!c.armed;});
+      };},
     props:function(w){return afSessRow(w);}, wire:function(w){afSessWire(w);}
   });
 
