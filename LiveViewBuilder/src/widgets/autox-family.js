@@ -98,6 +98,8 @@
     function host(w){var el=elOf(w);return el?(el.querySelector('.winner')||el):null;}
 
     // =============================== autolist ===============================
+    // Gesamt-Automatik: kombiniert Regel-Store (A.cfg.enabled) + Hub-Variable (automationEnabled).
+    function masterOn(){if(!A.cfg)return false;var on=!!A.cfg.enabled;if(A.cfg.automationEnabled!=null)on=on&&!!A.cfg.automationEnabled;return on;}
     function listRender(){
       if(!A.cfg)return '<div class="ax"><div class="ax-msg">lädt …</div></div>';
       var rows=(A.cfg.rules||[]).map(function(r,i){
@@ -108,14 +110,14 @@
       }).join('');
       var add='<div class="ax-add">'+Object.keys(TYPES).map(function(k){return '<button data-axadd="'+k+'"><span class="ax-ic">'+aIcon(k)+'</span>'+esc(TYPES[k].label)+'</button>';}).join('')+'</div>';
       return '<div class="ax">'
-        +'<div class="ax-head"><span class="ax-h-t">Automatik</span>'+tog(!!A.cfg.enabled,' data-axmaster="1"')+'</div>'
+        +'<div class="ax-head"><span class="ax-h-t">Automatik</span>'+tog(masterOn(),' data-axmaster="1"')+'</div>'
         +'<div class="ax-list">'+(rows||'<div class="ax-msg">Noch keine Regeln</div>')+'</div>'
         +'<div class="ax-addwrap"><div class="ax-addlbl">＋ Regel</div>'+add+'</div></div>';
     }
     function listWire(h,w){
       h.querySelectorAll('[data-axsel]').forEach(function(e){e.onclick=function(ev){if(ev.target.closest('.ax-tog'))return;A.sel=+e.getAttribute('data-axsel');aEmit();};});
       h.querySelectorAll('[data-axen]').forEach(function(e){e.onclick=function(ev){ev.stopPropagation();var i=+e.getAttribute('data-axen');A.cfg.rules[i].enabled=!(A.cfg.rules[i].enabled!==false);aSave();};});
-      var m=h.querySelector('[data-axmaster]');if(m)m.onclick=function(){A.cfg.enabled=!A.cfg.enabled;aSave();};
+      var m=h.querySelector('[data-axmaster]');if(m)m.onclick=function(){var on=!masterOn();A.cfg.enabled=on;if(A.cfg.automationVar){A.cfg.automationEnabled=on;if(typeof setVar==='function')setVar(A.cfg.automationVar,on);}aSave();};
       h.querySelectorAll('[data-axadd]').forEach(function(e){e.onclick=function(){aAdd(e.getAttribute('data-axadd'));};});
     }
 
@@ -145,7 +147,8 @@
       else if(r.type==='circadian'){
         h+=fld('Lampen',devChips(r.devices,'data-axdev'));
         h+=fld('Farbtemperatur','<div class="ax-r">'+stepper('axMinK',r.minK,'K')+'<span class="ax-mut">bis</span>'+stepper('axMaxK',r.maxK,'K')+'</div><div class="ax-ramp"></div>');
-        h+=fld('Helligkeit auch nachführen',tog(r.level!==false,' id="axLvl"')+'<span class="ax-inline"> '+r.minLevel+'–'+r.maxLevel+' %</span>');
+        h+=fld('Helligkeit auch nachführen',tog(r.level!==false,' id="axLvl"'));
+        h+=fld('Helligkeitsbereich','<div class="ax-r">'+stepper('axMinLvl',(r.minLevel!=null?r.minLevel:0),'%')+'<span class="ax-mut">bis</span>'+stepper('axMaxLvl',(r.maxLevel!=null?r.maxLevel:100),'%')+'</div>');
       }
       else if(r.type==='wake'){
         h+=fld('Weckzeit','<div class="ax-r"><input class="ax-time" type="time" id="axTime" value="'+esc(r.time||'06:30')+'">'+stepper('axRamp',(r.rampMin||0),'min Rampe')+'</div>');
@@ -159,6 +162,7 @@
         h+=fld('Helligkeit (Lux-Variable, optional)','<div class="ax-r"><input class="ax-in ax-mono" id="axLux" type="number" value="'+(r.lux||'')+'" placeholder="Lux-Var" style="width:120px"> '+stepper('axLuxMax',(r.luxMax||0),'lux max')+'</div>');
         h+=fld('Lampen',devChips(r.devices,'data-axdev'));
         h+=fld('Nachlaufzeit',stepper('axHold',Math.round((r.holdSec||0)/60),'min'));
+        h+=fld('Helligkeit',stepper('axLevel',lvlTxt(r.level),''));
       }
       else if(r.type==='presence'){
         h+=fld('Abwesend-Variable (ID)','<input class="ax-in ax-mono" id="axAway" type="number" value="'+(r.awayVar||'')+'" placeholder="Boolean-Var">');
@@ -171,6 +175,7 @@
     }
     function fld(l,b){return '<div class="ax-fld"><label>'+esc(l)+'</label>'+b+'</div>';}
     function stepper(id,val,unit){return '<span class="ax-stp"><button data-axdec="'+id+'">−</button><span class="ax-val" id="'+id+'">'+val+' '+esc(unit||'')+'</span><button data-axinc="'+id+'">+</button></span>';}
+    function lvlTxt(v){return (v==null||v<0)?'voll':(v+' %');}   // -1 = volle Helligkeit
     function devChips(sel,attr){sel=sel||[];return '<div class="ax-chips">'+A.lights.map(function(l){var on=sel.indexOf(l.id)>=0;return '<button class="ax-chip'+(on?' on':'')+'" '+attr+'="'+l.id+'">'+escL(l.name)+'</button>';}).join('')+'</div>';}
 
     function editWire(h,w){
@@ -190,11 +195,12 @@
       h.querySelectorAll('[data-axday]').forEach(function(e){e.onclick=function(){var d=(r.type==='schedule')?(r.trigger.days=r.trigger.days||[]):(r.days=r.days||[]);var i=+e.getAttribute('data-axday');var p=d.indexOf(i);if(p>=0)d.splice(p,1);else d.push(i);paintOnly(w);};});
       h.querySelectorAll('[data-axdev]').forEach(function(e){e.onclick=function(){r.devices=r.devices||[];var i=+e.getAttribute('data-axdev');var p=r.devices.indexOf(i);if(p>=0)r.devices.splice(p,1);else r.devices.push(i);paintOnly(w);};});
       // Stepper
-      var steps={axOff:['trigger.offsetMin',5,'min'],axMinK:['minK',100,'K'],axMaxK:['maxK',100,'K'],axRamp:['rampMin',5,'min Rampe'],axLuxMax:['luxMax',10,'lux max'],axHold:['holdSecMin',1,'min'],axEvery:['every',5,'min']};
-      function stepGet(key){if(key==='holdSecMin')return Math.round((r.holdSec||0)/60);if(key.indexOf('.')>0){var pp=key.split('.');return (r[pp[0]]||{})[pp[1]]||0;}return r[key]||0;}
-      function stepSet(key,v){if(key==='holdSecMin'){r.holdSec=Math.max(5,v)*60;return;}if(key.indexOf('.')>0){var pp=key.split('.');r[pp[0]]=r[pp[0]]||{};r[pp[0]][pp[1]]=v;return;}r[key]=v;}
-      h.querySelectorAll('[data-axinc]').forEach(function(e){e.onclick=function(){var id=e.getAttribute('data-axinc');var s=steps[id];var v=stepGet(s[0])+s[1];stepSet(s[0],v);var el=h.querySelector('#'+id);if(el)el.textContent=(id==='axHold'?Math.round((r.holdSec)/60):stepGet(s[0]))+' '+s[2];};});
-      h.querySelectorAll('[data-axdec]').forEach(function(e){e.onclick=function(){var id=e.getAttribute('data-axdec');var s=steps[id];var v=stepGet(s[0])-s[1];stepSet(s[0],v);var el=h.querySelector('#'+id);if(el)el.textContent=(id==='axHold'?Math.round((r.holdSec)/60):stepGet(s[0]))+' '+s[2];};});
+      var steps={axOff:['trigger.offsetMin',5,'min'],axMinK:['minK',100,'K'],axMaxK:['maxK',100,'K'],axMinLvl:['minLevel',5,'%'],axMaxLvl:['maxLevel',5,'%'],axRamp:['rampMin',5,'min Rampe'],axLuxMax:['luxMax',10,'lux max'],axHold:['holdSecMin',1,'min'],axLevel:['level',5,'%'],axEvery:['every',5,'min']};
+      function stepGet(key){if(key==='holdSecMin')return Math.round((r.holdSec||0)/60);if(key==='minLevel')return (r.minLevel!=null?r.minLevel:0);if(key==='maxLevel')return (r.maxLevel!=null?r.maxLevel:100);if(key.indexOf('.')>0){var pp=key.split('.');return (r[pp[0]]||{})[pp[1]]||0;}return r[key]||0;}
+      function stepSet(key,v){if(key==='holdSecMin'){r.holdSec=Math.max(5,v)*60;return;}if(key==='minLevel'||key==='maxLevel'){r[key]=Math.max(0,Math.min(100,v));return;}if(key.indexOf('.')>0){var pp=key.split('.');r[pp[0]]=r[pp[0]]||{};r[pp[0]][pp[1]]=v;return;}r[key]=v;}
+      function stepTxt(id,s){if(id==='axHold')return Math.round((r.holdSec||0)/60)+' '+s[2];if(id==='axLevel')return lvlTxt(r.level);return stepGet(s[0])+' '+s[2];}
+      h.querySelectorAll('[data-axinc]').forEach(function(e){e.onclick=function(){var id=e.getAttribute('data-axinc');var s=steps[id];if(id==='axLevel'){var cur=(r.level==null?-1:r.level);r.level=(cur<0)?-1:(cur>=100?-1:Math.min(100,cur+5));}else{stepSet(s[0],stepGet(s[0])+s[1]);}var el=h.querySelector('#'+id);if(el)el.textContent=stepTxt(id,s);};});
+      h.querySelectorAll('[data-axdec]').forEach(function(e){e.onclick=function(){var id=e.getAttribute('data-axdec');var s=steps[id];if(id==='axLevel'){var cur=(r.level==null?-1:r.level);r.level=(cur<0)?100:Math.max(0,cur-5);}else{stepSet(s[0],stepGet(s[0])-s[1]);}var el=h.querySelector('#'+id);if(el)el.textContent=stepTxt(id,s);};});
       var sv=h.querySelector('#axSave'); if(sv)sv.onclick=function(){if(nm)r.name=nm.value;aSave(function(){});};
       var dl=h.querySelector('#axDel'); if(dl)dl.onclick=function(){if(window.confirm('Regel löschen?')){A.cfg.rules.splice(A.sel,1);A.sel=-1;aSave();}};
       var ts=h.querySelector('#axTest'); if(ts)ts.onclick=function(){aSave(function(){fetch('?api=light&op=autotick&key='+encodeURIComponent(TOKEN),{method:'POST',cache:'no-store'});});};

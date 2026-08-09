@@ -121,6 +121,10 @@
       var tag=esc(c.name)+(rad?' · '+(rad.station||'Radio'):(c.playing?' · spielt':' · pausiert'));
       var fit=isLogo?'contain':'cover',pad=isLogo?'padding:16px;box-sizing:border-box;':'',bg=isLogo?'var(--surface-2)':'linear-gradient(135deg,var(--accent),var(--accent-2))';
       var cov=cover?('<img src="'+esc(cover)+'" style="width:100%;height:100%;object-fit:'+fit+';'+pad+'" onerror="this.style.display=\'none\'">'):'';
+      // Seek nur bei echter Dauer (nicht bei Live-Radio ohne Position).
+      var seekable=!rad && !!c.duration;
+      var posPct=Math.max(0,Math.min(100,c.positionPct||0));
+      var barSeek='<div'+(seekable?' data-afseek':'')+' style="position:relative;height:8px;border-radius:999px;background:var(--surface-2);border:1px solid var(--line);margin:8px 0 3px;cursor:'+(seekable?'pointer':'default')+'"><div data-afseekfill style="position:absolute;left:0;top:0;bottom:0;border-radius:999px;background:var(--accent);width:'+posPct+'%;pointer-events:none"></div></div>';
       return '<div style="position:absolute;inset:0;display:flex;gap:13px;padding:12px;box-sizing:border-box;background:var(--surface);align-items:center">'
         +'<div style="width:40%;max-width:170px;aspect-ratio:1;align-self:center;border-radius:var(--r-s,9px);overflow:hidden;flex:none;background:'+bg+'">'+cov+'</div>'
         +'<div style="flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:3px">'
@@ -128,10 +132,24 @@
         +'<div style="font-size:19px;font-weight:700;line-height:1.15;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(line1||'—')+'</div>'
         +'<div style="font-size:13px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(line2||'')+'</div>'
         +'<div style="font-size:11px;color:var(--faint);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(line3||'')+'</div>'
-        +'<div style="position:relative;height:6px;border-radius:999px;background:var(--surface-2);border:1px solid var(--line);margin:8px 0 3px"><div style="position:absolute;left:0;top:0;bottom:0;border-radius:999px;background:var(--accent);width:'+Math.max(0,Math.min(100,c.positionPct||0))+'%"></div></div>'
+        +barSeek
         +'<div style="display:flex;justify-content:space-between;font-family:var(--fm);font-size:11px;color:var(--muted)"><span>'+esc(c.position||'0:00')+'</span><span>'+esc(c.duration||'')+'</span></div>'
         +'</div></div>';},
-    mount:afMount, _bind:function(){}, props:function(w){return afSessRow(w);}, wire:function(w){afSessWire(w);}
+    mount:afMount,
+    _bind:function(w,el){var s=afSess(w);var sb=$('[data-afseek]',el);if(!sb)return;var fill=$('[data-afseekfill]',sb);
+      function pctAt(x){var box=sb.getBoundingClientRect();return Math.max(0,Math.min(100,Math.round((x-box.left)/box.width*100)));}
+      function commit(p){var c=afCur(s);if(!c)return;
+        if(typeof DOKU!=='undefined'&&DOKU){if(fill)fill.style.width=p+'%';return;}
+        // Bevorzugt die Position-Control-Var (RequestAction->seek); sonst manage-Fallback.
+        var posVar=(c.vars&&c.vars.Position)||0;
+        if(posVar)afSet(w,'Position',p); else afManage(w,c.id,{op:'seek',args:{percent:p}});}
+      var drag=false;
+      sb.onpointerdown=function(e){drag=true;s.dragging=true;try{sb.setPointerCapture(e.pointerId);}catch(_){}var p=pctAt(e.clientX);if(fill)fill.style.width=p+'%';e.preventDefault();};
+      sb.onpointermove=function(e){if(!drag)return;var p=pctAt(e.clientX);if(fill)fill.style.width=p+'%';};
+      sb.onpointerup=function(e){if(!drag)return;drag=false;s.dragging=false;var p=pctAt(e.clientX);if(fill)fill.style.width=p+'%';commit(p);};
+      sb.onpointercancel=function(){drag=false;s.dragging=false;};
+    },
+    props:function(w){return afSessRow(w);}, wire:function(w){afSessWire(w);}
   });
 
   // ---------- audioctl: Transport + Volume + Mute/Power ----------
@@ -146,23 +164,33 @@
         +seg(afSvg(AF_IC.stop,16),'3',false)+seg(afSvg(AF_IC.next,18),'4',false)+'</div>';
       // Shuffle/Repeat als breite Buttons (Design A)
       function wide(ic,lbl,cmd,on){return '<button data-afcmd="'+cmd+'" style="flex:1;display:flex;align-items:center;justify-content:center;gap:7px;height:40px;border:1px solid '+(on?'var(--accent)':'var(--line)')+';border-radius:var(--r-s,9px);background:'+(on?'color-mix(in oklab,var(--accent) 14%,transparent)':'var(--tile)')+';color:'+(on?'var(--accent)':'var(--text)')+';font-size:13px;cursor:pointer">'+ic+lbl+'</button>';}
-      var sr='<div style="display:flex;gap:10px;margin-bottom:10px">'+wide(afSvg(AF_IC.shuffle,16),'Shuffle','shuffle',!!c.shuffle)+wide(afSvg(AF_IC.repeat,16),'Repeat','repeat',!!c.repeat)+'</div>';
+      // Repeat dreistufig: 0=aus, 1=Titel (one), 2=alle
+      var rep=(c.repeat||0)%3;var repLbl=rep===1?'Titel':(rep===2?'Alle':'Repeat');
+      var sr='<div style="display:flex;gap:10px;margin-bottom:10px">'+wide(afSvg(AF_IC.shuffle,16),'Shuffle','shuffle',!!c.shuffle)+wide(afSvg(AF_IC.repeat,16),repLbl,'repeat',rep>0)+'</div>';
       // Volume-Zeile mit Mute-Icon links + Power-Icon rechts (Design A)
       function ibtn(ic,cmd,on){return '<button data-afcmd="'+cmd+'" style="width:40px;height:40px;flex:none;border:1px solid '+(on?'var(--accent)':'var(--line)')+';border-radius:var(--r-s,9px);background:'+(on?'color-mix(in oklab,var(--accent) 14%,transparent)':'var(--tile)')+';color:'+(on?'var(--accent)':'var(--muted)')+';display:flex;align-items:center;justify-content:center;cursor:pointer">'+ic+'</button>';}
       var vol='<div style="display:flex;align-items:center;gap:10px">'+ibtn(afSvg(c.mute?AF_IC.mute:AF_IC.vol,17),'mute',!!c.mute)
         +'<div data-afvol style="position:relative;flex:1;height:8px;border-radius:999px;background:var(--surface-2);border:1px solid var(--line);cursor:pointer"><div style="position:absolute;left:0;top:0;bottom:0;border-radius:999px;background:var(--accent);width:'+Math.max(0,Math.min(100,c.volume||0))+'%"></div></div>'
         +'<span style="font-family:var(--fm);width:30px;text-align:right;font-size:12px">'+(c.volume||0)+'</span>'+ibtn(afSvg(AF_IC.power,16),'power',!!c.power)+'</div>';
-      return '<div style="position:absolute;inset:0;padding:12px;box-sizing:border-box;background:var(--surface);display:flex;flex-direction:column;justify-content:center">'+bar+sr+vol+'</div>';},
+      // Sleep-Timer: 15/30/60 min + Aus. (Aktueller Reststand ist im getall nicht enthalten -> keine Aktiv-Markierung.)
+      function sbtn(m,lbl){return '<button data-afsleep="'+m+'" style="flex:1;height:30px;border:1px solid var(--line);border-radius:7px;background:var(--tile);color:var(--muted);font-size:11px;cursor:pointer">'+lbl+'</button>';}
+      var sleep='<div style="display:flex;align-items:center;gap:6px;margin-top:10px"><span style="width:44px;font-size:11px;color:var(--faint);flex:none">Sleep</span>'+sbtn(15,'15m')+sbtn(30,'30m')+sbtn(60,'60m')+sbtn(0,'Aus')+'</div>';
+      return '<div style="position:absolute;inset:0;padding:12px;box-sizing:border-box;background:var(--surface);display:flex;flex-direction:column;justify-content:center">'+bar+sr+vol+sleep+'</div>';},
     mount:afMount,
     _bind:function(w,el){var s=afSess(w);
       $$('[data-afcmd]',el).forEach(function(b){b.onclick=function(){var cmd=b.getAttribute('data-afcmd');var c=afCur(s);if(!c)return;
         if(cmd==='mute')afSet(w,'Mute',!c.mute);
         else if(cmd==='power')afSet(w,'Power',!c.power);
         else if(cmd==='shuffle')afSet(w,'Shuffle',!c.shuffle);
-        else if(cmd==='repeat')afSet(w,'Repeat',c.repeat?0:2);
+        else if(cmd==='repeat')afSet(w,'Repeat',((c.repeat||0)+1)%3); // 0=aus,1=Titel,2=alle
         else afSet(w,'Transport',cmd); // 1..5
       };});
-      var vb=$('[data-afvol]',el);if(vb)vb.onclick=function(e){var box=vb.getBoundingClientRect();var pct=Math.round((e.clientX-box.left)/box.width*100);afSet(w,'Volume',Math.max(0,Math.min(100,pct)));};},
+      var vb=$('[data-afvol]',el);if(vb)vb.onclick=function(e){var box=vb.getBoundingClientRect();var pct=Math.round((e.clientX-box.left)/box.width*100);afSet(w,'Volume',Math.max(0,Math.min(100,pct)));};
+      // Sleep-Timer -> ?api=audio&op=manage {setSleep|cancelSleep} an die Zone-Instanz
+      $$('[data-afsleep]',el).forEach(function(b){b.onclick=function(){var m=+b.getAttribute('data-afsleep');var c=afCur(s);if(!c)return;
+        if(typeof DOKU!=='undefined'&&DOKU){toast(m?('Demo: Sleep '+m+' min'):'Demo: Sleep aus');return;}
+        if(m>0)afManage(w,c.id,{op:'setSleep',args:{minutes:m}}); else afManage(w,c.id,{op:'cancelSleep'});
+      };});},
     props:function(w){return afSessRow(w);}, wire:function(w){afSessWire(w);}
   });
 
@@ -263,6 +291,10 @@
       var master=cur.coordinator||'';
       var head='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><span style="font-size:9px;letter-spacing:.7px;text-transform:uppercase;font-weight:700;color:var(--faint)">Multiroom · Master: '+esc(cur.name)+'</span>'
         +'<button data-afungroup="1" style="font-size:11px;color:var(--accent);background:none;border:0;cursor:pointer">Gruppe trennen</button></div>';
+      // Gruppen-Lautstaerke: ein Regler an den Koordinator (Anzeige naeherungsweise = Master-Volume).
+      var gvol='<div style="display:flex;align-items:center;gap:10px;margin:2px 0 12px"><span style="width:44px;font-size:11px;color:var(--faint);flex:none">Gruppe</span>'
+        +'<div data-afgvol style="position:relative;flex:1;height:8px;border-radius:999px;background:var(--surface-2);border:1px solid var(--line);cursor:pointer"><div data-afgvolfill style="position:absolute;left:0;top:0;bottom:0;border-radius:999px;background:var(--accent);width:'+Math.max(0,Math.min(100,cur.volume||0))+'%;pointer-events:none"></div></div>'
+        +'<span style="font-family:var(--fm);width:30px;text-align:right;font-size:12px">'+(cur.volume||0)+'</span></div>';
       var rows=s.rooms.map(function(rr){ if(rr.id===cur.id)return '';
         var inGrp=(rr.role==='member'&&rr.coordinator===master&&master!=='');
         return '<div style="display:flex;align-items:center;gap:10px;padding:8px 2px;border-top:1px solid var(--line-soft)">'
@@ -270,9 +302,20 @@
           +'<span style="flex:1;font-size:13px;font-weight:600">'+esc(rr.name)+'</span>'
           +'<span style="font-size:10.5px;color:var(--muted)">'+(inGrp?'synchron':(rr.role==='member'?'andere Gruppe':(rr.playing?'spielt eigenes':'frei')))+'</span>'
           +'<button data-afgrp="'+rr.id+'" data-afin="'+(inGrp?1:0)+'" style="width:42px;height:24px;border-radius:999px;border:1px solid '+(inGrp?'var(--accent)':'var(--line)')+';background:'+(inGrp?'var(--accent)':'var(--surface-2)')+';position:relative;cursor:pointer"><span style="position:absolute;top:2px;left:'+(inGrp?'20px':'2px')+';width:18px;height:18px;border-radius:50%;background:'+(inGrp?'#fff':'var(--muted)')+';transition:.15s"></span></button></div>';}).join('');
-      return '<div style="position:absolute;inset:0;overflow:auto;padding:11px 13px;box-sizing:border-box;background:var(--surface)">'+head+rows+'</div>';},
+      return '<div style="position:absolute;inset:0;overflow:auto;padding:11px 13px;box-sizing:border-box;background:var(--surface)">'+head+gvol+rows+'</div>';},
     mount:afMount,
     _bind:function(w,el){var s=afSess(w);var cur=afCur(s);if(!cur)return;
+      // Gruppen-Lautstaerke -> ?api=audio&op=manage {setGroupVolume} an den Koordinator (=aktuelle Zone).
+      var gv=$('[data-afgvol]',el);if(gv){var gf=$('[data-afgvolfill]',gv);
+        function gpct(x){var box=gv.getBoundingClientRect();return Math.max(0,Math.min(100,Math.round((x-box.left)/box.width*100)));}
+        var gd=false;
+        gv.onpointerdown=function(e){gd=true;s.dragging=true;try{gv.setPointerCapture(e.pointerId);}catch(_){}var p=gpct(e.clientX);if(gf)gf.style.width=p+'%';e.preventDefault();};
+        gv.onpointermove=function(e){if(!gd)return;var p=gpct(e.clientX);if(gf)gf.style.width=p+'%';};
+        gv.onpointerup=function(e){if(!gd)return;gd=false;s.dragging=false;var p=gpct(e.clientX);if(gf)gf.style.width=p+'%';
+          if(typeof DOKU!=='undefined'&&DOKU){toast('Demo: Gruppen-Vol '+p);return;}
+          afManage(w,cur.id,{op:'setGroupVolume',args:{volume:p}});};
+        gv.onpointercancel=function(){gd=false;s.dragging=false;};
+      }
       // Master-UID (RINCON) des aktuellen Raums als coordinator; members = aktuelle Gruppe +/- toggle.
       function currentMembers(){var m=[];s.rooms.forEach(function(rr){if(rr.role==='member'&&rr.coordinator===cur.coordinator)m.push(rr);});return m;}
       $$('[data-afgrp]',el).forEach(function(b){b.onclick=function(){var rid=+b.getAttribute('data-afgrp');var wasIn=b.getAttribute('data-afin')==='1';
