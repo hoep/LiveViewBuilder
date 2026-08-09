@@ -20,26 +20,6 @@
     function inAz(az,a,b){ if(a==null||b==null)return true; return (a<=b)?(az>=a&&az<=b):(az>=a||az<=b); }
     function bar(pct){return Math.max(0,Math.min(100,pct));}
 
-    // Aussperr-Schutz (Tür-/Fensterkontakt): Status + Kontakt-Variablen setzen (per Zone).
-    function ssGuardHtml(w,d){
-      var ids=(d&&d.doorIds)||[], open=!!(d&&d.doorOpen);
-      var stTxt,cls;
-      if(!ids.length){stTxt='kein Kontakt gesetzt';cls='';}
-      else if(open){stTxt='Tür/Fenster offen → Zufahren blockiert';cls='warn';}
-      else {stTxt='geschützt (Kontakt zu)';cls='ok';}
-      return '<div class="ssun-guard"><div class="ssun-guard-h"><span>Aussperr-Schutz</span>'
-        +'<span class="ssun-guard-st '+cls+'">'+esc(stTxt)+'</span></div>'
-        +'<input class="ssun-guard-in" data-ssguard placeholder="Tür-/Fenster-Kontakt: Variablen-ID(s), Komma" value="'+esc(ids.join(', '))+'"></div>';
-    }
-    function ssSetDoors(w,val){
-      var idx=ssEntity(w); if(!idx)return;
-      var ids=String(val).split(',').map(function(s){return parseInt(s.trim(),10);}).filter(function(n){return n>0;});
-      fetch('?api=mod&op=manage&id='+idx+'&key='+encodeURIComponent(TOKEN),
-        {method:'POST',cache:'no-store',headers:{'Content-Type':'text/plain'},body:JSON.stringify({op:'configureAutomation',args:{doorIds:ids}})})
-        .then(function(r){return r.json();}).then(function(){ssLoad(w);}).catch(function(){});
-    }
-    function ssWire(w,host){var inp=host&&host.querySelector('[data-ssguard]');if(inp)inp.onchange=function(){ssSetDoors(w,this.value);};}
-
     function ssRender(w){
       var st=ssSt(w), doku=(typeof DOKU!=='undefined'&&DOKU);
       var d=doku?ssDemo():st.d, idx=ssEntity(w);
@@ -92,18 +72,14 @@
           +'<span class="ssun-val">'+(br!=null?Math.round(br):'–')+'</span></div>';
         h+='<div class="ssun-hint">Schwelle ≥ '+Math.round(brMin)+'</div>';
       }
-      if(w.guard!==false && (idx||doku)) h+=ssGuardHtml(w,d);
       h+='</div>';
       return h;
     }
     function ssEl(w){return $('.w[data-id="'+w.id+'"]',canvas)||$('.w[data-id="'+w.id+'"]',$('#ovcanvas'));}
-    function ssPaint(w){var el=ssEl(w);if(!el)return;
-      var ae=document.activeElement; // nicht beim Tippen im Kontakt-Feld überschreiben
-      if(ae&&ae.classList&&ae.classList.contains('ssun-guard-in')&&el.contains(ae))return;
-      var host=el.querySelector('.winner')||el;host.innerHTML=ssRender(w);ssWire(w,host);}
+    function ssPaint(w){var el=ssEl(w);if(!el)return;var host=el.querySelector('.winner')||el;host.innerHTML=ssRender(w);}
     function ssLoad(w){ if(typeof DOKU!=='undefined'&&DOKU){ssPaint(w);return;} var idx=ssEntity(w),st=ssSt(w);
       if(!idx){ssPaint(w);return;}
-      ssMg(idx).then(function(j){st.d=j;st.err='';ssPaint(w);}).catch(function(){st.err='net';ssPaint(w);}); }
+      ssMg(idx).then(function(j){st.d=j;st.err="";ssPaint(w);}).catch(function(){st.err='net';ssPaint(w);}); }
 
     defWidget('shadesun',{
       label:'Sonnenstand', paletteIcon:'sun', size:[360,232],
@@ -121,7 +97,6 @@
         h+='<div class="pgh">Darstellung</div>';
         h+=row('Akzentfarbe',skinSel(w.accent||'','id="ssAcc"'));
         h+=row('Höhe-Achse max','<input id="ssElMax" type="number" value="'+(w.elMax||70)+'" style="width:70px"> °');
-        h+=row('Aussperr-Schutz','<input type="checkbox" id="ssGuard"'+(w.guard!==false?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">Tür-/Fensterkontakt-Zeile</span>');
         return h;
       },
       wire:function(w){
@@ -130,7 +105,6 @@
         if($('#ssEnt'))$('#ssEnt').onchange=function(){w.entityId=parseInt(this.value)||undefined;commit();var el=ssEl(w);if(el)ssLoad(w);};
         if($('#ssAcc'))$('#ssAcc').onchange=function(){w.accent=this.value||undefined;commit();var el=ssEl(w);if(el)ssPaint(w);};
         if($('#ssElMax'))$('#ssElMax').onchange=function(){w.elMax=parseInt(this.value)||undefined;commit();var el=ssEl(w);if(el)ssPaint(w);};
-        if($('#ssGuard'))$('#ssGuard').onchange=function(){w.guard=this.checked?undefined:false;commit();var el=ssEl(w);if(el)ssPaint(w);};
       }
     });
   })();
