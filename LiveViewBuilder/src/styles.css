@@ -1515,6 +1515,35 @@
   .lxc-dim{margin-top:7px}
   .lxc-dim input[type=range]{width:100%;accent-color:var(--accent);cursor:pointer}
   .lxc-sub{margin-top:5px;font-size:10px;color:var(--faint);font-variant-numeric:tabular-nums}
+
+  /* ---- Szenen (scenebar/sceneeditor) ---- */
+  .scb{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:6px;height:100%;overflow:auto}
+  .scb-msg{color:var(--muted);font-size:12px}
+  .scb-chip{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;padding:7px 13px;border-radius:999px;border:1px solid var(--line);background:var(--tile);color:var(--text);cursor:pointer;transition:border-color .12s,background .12s}
+  .scb-chip:hover{border-color:var(--accent)}
+  .scb-chip.busy{opacity:.5;pointer-events:none}
+  .scb-chip .scb-ic{width:14px;height:14px;display:inline-flex;color:var(--sun)}
+  .scb-chip .scb-ic svg{width:14px;height:14px}
+  .scb-cap{border-style:dashed;color:var(--muted)}
+  .sced{display:flex;gap:12px;height:100%;padding:2px}
+  .sced-list{width:190px;flex:0 0 190px;display:flex;flex-direction:column;gap:5px;overflow:auto}
+  .sced-item{display:flex;align-items:center;justify-content:space-between;gap:6px;text-align:left;font-size:12.5px;padding:8px 10px;border-radius:9px;border:1px solid var(--line-soft);background:var(--tile);color:var(--text);cursor:pointer}
+  .sced-item.on{border-color:var(--accent);background:color-mix(in oklab,var(--accent) 10%,var(--tile))}
+  .sced-cnt{font-size:10.5px;color:var(--faint);font-variant-numeric:tabular-nums}
+  .sced-new{border-style:dashed;color:var(--muted);justify-content:center}
+  .sced-detail{flex:1;min-width:0;display:flex;flex-direction:column;gap:10px;overflow:auto}
+  .sced-head{display:flex;align-items:center;gap:10px}
+  .sced-name{flex:1;font-size:14px;font-weight:700;background:var(--tile);border:1px solid var(--line);border-radius:8px;padding:7px 10px;color:var(--text)}
+  .sced-scope{font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--faint);border:1px solid var(--line-soft);border-radius:6px;padding:3px 7px}
+  .sced-actions{display:flex;flex-wrap:wrap;gap:6px}
+  .sced-actions button{font-size:11.5px;padding:6px 11px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--text);cursor:pointer}
+  .sced-actions button.prim{border-color:var(--accent);color:var(--accent)}
+  .sced-actions button.danger{border-color:color-mix(in oklab,var(--crit) 50%,var(--line));color:var(--crit)}
+  .sced-members{display:flex;flex-direction:column;gap:4px}
+  .sced-m{display:flex;align-items:center;gap:10px;padding:5px 8px;border-radius:8px;background:var(--tile);border:1px solid var(--line-soft)}
+  .sced-mtog{flex:1;display:flex;align-items:center;gap:7px;font-size:12px;color:var(--text)}
+  .sced-m input[type=range]{width:120px;accent-color:var(--accent)}
+  .sced-nodim{width:120px;text-align:center;color:var(--faint);font-size:11px}
   /* Sonnensimulation */
   .span-sim{display:flex;align-items:center;gap:10px;margin:10px 0 2px;padding:7px 10px;border:1px solid var(--line-soft);border-radius:10px;background:var(--tile)}
   .span-sim-play{flex:0 0 auto;width:30px;height:26px;border:1px solid var(--line-soft);border-radius:7px;background:var(--surface);color:var(--text);cursor:pointer;font-size:11px}
