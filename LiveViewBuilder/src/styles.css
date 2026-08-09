@@ -1635,6 +1635,15 @@
   .ax-mk.off,.ax-span.off{opacity:.42;filter:grayscale(.4)}
   .ax-circ{margin-top:10px}
   .ax-circ-l{font-size:10.5px;color:var(--faint);margin-bottom:5px}
+
+  /* ---- Beschattung Aussperr-Schutz (shadesun) ---- */
+  .ssun-guard{margin-top:8px;padding-top:8px;border-top:1px solid var(--line-soft)}
+  .ssun-guard-h{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:11px;color:var(--muted);margin-bottom:5px}
+  .ssun-guard-st{font-size:10.5px;font-variant-numeric:tabular-nums}
+  .ssun-guard-st.warn{color:var(--warn,#f2b441)}
+  .ssun-guard-st.ok{color:var(--ok,#39d08a)}
+  .ssun-guard-in{width:100%;box-sizing:border-box;font:inherit;font-size:11.5px;background:var(--surface);border:1px solid var(--line);border-radius:7px;padding:6px 8px;color:var(--text)}
+  .ssun-guard-in:focus{outline:none;border-color:var(--accent)}
   /* Sonnensimulation */
   .span-sim{display:flex;align-items:center;gap:10px;margin:10px 0 2px;padding:7px 10px;border:1px solid var(--line-soft);border-radius:10px;background:var(--tile)}
   .span-sim-play{flex:0 0 auto;width:30px;height:26px;border:1px solid var(--line-soft);border-radius:7px;background:var(--surface);color:var(--text);cursor:pointer;font-size:11px}
