@@ -92,6 +92,18 @@
 
     function lxEl(w){return $('.w[data-id="'+w.id+'"]',canvas)||$('.w[data-id="'+w.id+'"]',$('#ovcanvas'));}
     function lxPaint(w){var el=lxEl(w);if(!el)return;var host=el.querySelector('.winner')||el;host.innerHTML=lxRender(w);lxWire(w,host);}
+
+    // WebSocket-Push: die Power/Brightness-Variablen der angezeigten Lampen im Live-Index
+    // anmelden (w.items[].vid) -> der Client verteilt WS-Pushes an unser live(); Server-Abo
+    // liefert das LVB-Push-Modul (HSLT-Steuervariablen). Danach Index neu bauen lassen.
+    function lxSetItems(w){
+      var it=[]; lxLampsFor(w).forEach(function(l){ if(l.vars){ if(l.vars.Power)it.push({vid:l.vars.Power}); if(l.vars.Brightness)it.push({vid:l.vars.Brightness}); } });
+      w.items=it;
+      if(typeof invalidateVidx==='function')invalidateVidx();
+    }
+    // Repaint bündeln (ein Szenen-Apply pusht viele Variablen kurz hintereinander).
+    var _lxRp={};
+    function lxSchedule(w){ if(_lxRp[w.id])return; _lxRp[w.id]=setTimeout(function(){_lxRp[w.id]=null;lxPaint(w);},60); }
     function lxWire(w,host){
       host.querySelectorAll('[data-lxid]').forEach(function(c){
         c.addEventListener('click',function(e){
@@ -120,9 +132,19 @@
         render:function(w){w._kind=(kind==='lightroom')?'room':'grid';return lxRender(w);},
         mount:function(w){w._kind=(kind==='lightroom')?'room':'grid';var el=lxEl(w);if(!el)return;
           if(kind==='lightroom'&&w.bind!=='fixed'&&typeof hfSub==='function')hfSub(w);
-          lxLoad(function(){lxPaint(w);});
-          LVB.panel.startPoll('lightx:'+w.id,10000,function(){lxLoad(function(){lxPaint(w);});});},
-        _bind:function(w){lxPaint(w);},
+          lxLoad(function(){lxSetItems(w);lxPaint(w);});
+          // Voll-Refresh nur noch langsam (neue Lampen / Raumwechsel); Live-Zustand kommt per WebSocket.
+          LVB.panel.startPoll('lightx:'+w.id,60000,function(){lxLoad(function(){lxSetItems(w);lxPaint(w);});});},
+        // WS-Push je Variable -> Modell aktualisieren, gebündelt neu zeichnen
+        live:function(w,el,id,d){
+          var l=(_lxData||[]).find(function(x){return x.vars&&(x.vars.Power===id||x.vars.Brightness===id||x.vars.ColorTemp===id);});
+          if(!l)return; var v=d&&d.v;
+          if(l.vars.Power===id){l.on=(v===true||v===1||v==='1'||String(v).toLowerCase()==='true');}
+          if(l.vars.Brightness===id){var n=parseFloat(String(v).replace(',','.'));if(!isNaN(n)){l.level=Math.round(n);if(l.level>0)l.on=true;else l.on=false;}}
+          if(l.vars.ColorTemp===id){var c=parseInt(v);if(!isNaN(c))l.cct=c;}
+          lxSchedule(w);
+        },
+        _bind:function(w){lxSetItems(w);lxPaint(w);},
         props:function(w){
           var h='';
           if(kind==='lightroom'){

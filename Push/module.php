@@ -207,6 +207,12 @@ class LiveViewBuilderPush extends IPSModule
         foreach ($this->layoutIDs() as $id) {
             $wantVar[$id] = true;
         }
+        // HomeSuite-Licht (HSLT): Steuervariablen IMMER abonnieren, damit die entity-gebundenen
+        // Licht-Widgets (lightgrid/lightroom) ihre Werte per WebSocket statt Poll bekommen —
+        // auch fuer Aenderungen von Handschaltern/Automatik/anderen Clients (self-maintaining).
+        foreach ($this->hsLightVars() as $id) {
+            $wantVar[$id] = true;
+        }
         $wantMedia = [];
         foreach ($this->mediaIDs() as $id) {
             $wantMedia[$id] = true;
@@ -247,6 +253,22 @@ class LiveViewBuilderPush extends IPSModule
                 }
             }
         }
+    }
+
+    /** Steuervariablen aller HomeSuite-LightDevice-Instanzen (Power/Brightness/ColorTemp). */
+    private function hsLightVars(): array
+    {
+        $out = [];
+        $ins = @IPS_GetInstanceListByModuleID('{B7E1C3A4-5D62-4F08-9A1E-2C7D6B4F0E93}') ?: [];
+        foreach ($ins as $iid) {
+            foreach (['Power', 'Brightness', 'ColorTemp'] as $ident) {
+                $v = (int) (@IPS_GetObjectIDByIdent($ident, $iid) ?: 0);
+                if ($v > 0 && @IPS_VariableExists($v)) {
+                    $out[] = $v;
+                }
+            }
+        }
+        return $out;
     }
 
     private function mediaIDs(): array
