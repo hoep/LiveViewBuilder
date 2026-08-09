@@ -47,7 +47,26 @@
 
     // ---------- sceneeditor ----------
     var _sel={};
+    var SC_ICONS=['bulb','sun','moon','tv','bed','home'];
+    function colHex(c){c=parseInt(c);if(isNaN(c)||c<0)return '#ffffff';return '#'+('000000'+(c&0xffffff).toString(16)).slice(-6);}
+    function colInt(h){h=String(h||'').replace('#','');var n=parseInt(h,16);return isNaN(n)?-1:(n&0xffffff);}
+    function edCss(){
+      if(document.getElementById('lvb-scenex-ext-css'))return;
+      var s=document.createElement('style');s.id='lvb-scenex-ext-css';
+      s.textContent=
+        '.sced-scopesel{font:inherit;font-size:11.5px;padding:5px 7px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--text);cursor:pointer}'
+       +'.sced-trans{width:74px;font:inherit;font-size:11.5px;padding:5px 7px;border-radius:8px;border:1px solid var(--line);background:var(--tile);color:var(--text)}'
+       +'.sced-translbl{display:inline-flex;align-items:center;gap:6px;font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--faint)}'
+       +'.sced-iconpick{display:flex;flex-wrap:wrap;gap:6px}'
+       +'.sced-ib{width:32px;height:32px;padding:5px;display:inline-flex;align-items:center;justify-content:center;border-radius:9px;border:1px solid var(--line-soft);background:var(--tile);color:var(--muted);cursor:pointer}'
+       +'.sced-ib.on{border-color:var(--accent);color:var(--accent);background:color-mix(in oklab,var(--accent) 10%,var(--tile))}'
+       +'.sced-ib svg{width:18px;height:18px}'
+       +'.sced-mcct{width:88px;accent-color:var(--warm)}'
+       +'.sced-mcolor{width:28px;height:24px;padding:0;border:1px solid var(--line);border-radius:6px;background:none;cursor:pointer}';
+      document.head.appendChild(s);
+    }
     function edRender(w){
+      edCss();
       if(!_scenes||!_lights) return '<div class="sced"><div class="scb-msg" style="padding:16px">lädt …</div></div>';
       var selId=_sel[w.id]||(_scenes[0]&&_scenes[0].id)||'';
       var list=_scenes.map(function(s){return '<button class="sced-item'+(s.id===selId?' on':'')+'" data-scsel="'+esc(s.id)+'">'+escL(s.name)+'<span class="sced-cnt">'+s.count+'</span></button>';}).join('');
@@ -57,9 +76,18 @@
       else {
         // Detail laden liegt in _sel-Cache (via edLoadDetail); hier nur Kopf + Mitglieder wenn vorhanden
         var det=_sel['_det_'+w.id];
-        var scopeTxt=(sc.scope&&sc.scope.type)||'house';
+        var scopeType=(det&&det.scope&&det.scope.type)||(sc.scope&&sc.scope.type)||'house';
+        var trans=(det&&typeof det.transitionMs!=='undefined')?(parseInt(det.transitionMs)||0):0;
+        var curIcon=(det&&det.icon)||sc.icon||'bulb';
         right='<div class="sced-head"><input class="sced-name" id="scName_'+w.id+'" value="'+esc(sc.name)+'">'
-          +'<span class="sced-scope">'+esc(scopeTxt)+'</span></div>'
+          +'<select class="sced-scopesel" id="scScopeSel_'+w.id+'">'
+            +'<option value="house"'+(scopeType==='house'?' selected':'')+'>Haus</option>'
+            +'<option value="floor"'+(scopeType==='floor'?' selected':'')+'>Geschoss</option>'
+            +'<option value="room"'+(scopeType==='room'?' selected':'')+'>Raum</option>'
+          +'</select>'
+          +'<label class="sced-translbl">Blende<input class="sced-trans" id="scTrans_'+w.id+'" type="number" min="0" step="100" value="'+trans+'">ms</label>'
+          +'</div>'
+          +'<div class="sced-iconpick">'+SC_ICONS.map(function(ic){return '<button type="button" class="sced-ib'+(ic===curIcon?' on':'')+'" data-scicon="'+ic+'" title="'+ic+'">'+(typeof iconSVG==='function'?iconSVG(ic,100):'')+'</button>';}).join('')+'</div>'
           +'<div class="sced-actions">'
           +'<button data-scact="apply">Anwenden</button>'
           +'<button data-scact="recap">Ist übernehmen</button>'
@@ -68,9 +96,13 @@
           +'<button data-scact="save" class="prim">Speichern</button></div>';
         if(det&&det.members){
           right+='<div class="sced-members">'+det.members.map(function(m){
-            var l=lightById(m.device); var nm=l?l.name:('#'+m.device); var dim=l&&l.caps&&l.caps.dim;
-            return '<div class="sced-m"><label class="sced-mtog"><input type="checkbox" data-scmon="'+m.device+'"'+(m.on?' checked':'')+'> '+escL(nm)+'</label>'
-              +(dim?'<input type="range" min="0" max="100" step="1" value="'+(m.level>=0?m.level:100)+'" data-scmlvl="'+m.device+'">':'<span class="sced-nodim">—</span>')+'</div>';
+            var l=lightById(m.device); var nm=l?l.name:('#'+m.device); var caps=(l&&l.caps)||{};
+            var s='<div class="sced-m"><label class="sced-mtog"><input type="checkbox" data-scmon="'+m.device+'"'+(m.on?' checked':'')+'> '+escL(nm)+'</label>'
+              +(caps.dim?'<input type="range" min="0" max="100" step="1" value="'+(m.level>=0?m.level:100)+'" data-scmlvl="'+m.device+'">':'<span class="sced-nodim">—</span>');
+            if(caps.cct){var cmin=parseInt(caps.cctMin)||2700,cmax=parseInt(caps.cctMax)||6500,cv=(m.cct>0?m.cct:cmin);
+              s+='<input type="range" class="sced-mcct" min="'+cmin+'" max="'+cmax+'" step="50" value="'+cv+'" data-scmcct="'+m.device+'" title="Farbtemperatur '+cv+' K">';}
+            if(caps.color){s+='<input type="color" class="sced-mcolor" value="'+colHex(m.color)+'" data-scmcolor="'+m.device+'" title="Farbe">';}
+            return s+'</div>';
           }).join('')+'</div>';
         } else {
           right+='<div class="scb-msg" style="padding:12px">Mitglieder werden geladen …</div>';
@@ -102,12 +134,37 @@
         else if(act==='save'){
           if(!det)return;
           var nmeEl=host.querySelector('#scName_'+w.id); if(nmeEl)det.name=nmeEl.value||det.name;
+          var trEl=host.querySelector('#scTrans_'+w.id); if(trEl)det.transitionMs=Math.max(0,parseInt(trEl.value)||0);
+          var ssEl=host.querySelector('#scScopeSel_'+w.id);
+          if(ssEl){var t=ssEl.value,ref='';
+            if(t==='floor')ref=(det.scope&&det.scope.type==='floor'&&det.scope.ref)||w.floor||'';
+            else if(t==='room')ref=(det.scope&&det.scope.type==='room'&&det.scope.ref)||String(w.roomId||'');
+            det.scope={type:t,ref:String(ref)};}
           scPost('scenesave',det).then(function(){loadScenes(function(){edPaint(w);});});
         }
       };});
       // Mitglieder-Edits in den Detail-Cache schreiben (erst Speichern persistiert)
       host.querySelectorAll('[data-scmon]').forEach(function(c){c.onchange=function(){var det=_sel['_det_'+w.id];if(!det)return;var id=parseInt(c.getAttribute('data-scmon'));var m=det.members.find(function(x){return x.device===id;});if(m)m.on=c.checked;};});
       host.querySelectorAll('[data-scmlvl]').forEach(function(r){r.onchange=function(){var det=_sel['_det_'+w.id];if(!det)return;var id=parseInt(r.getAttribute('data-scmlvl'));var m=det.members.find(function(x){return x.device===id;});if(m){m.level=parseInt(r.value)||0;m.on=m.level>0;}};});
+      // CCT (Kelvin) je Mitglied -> member.cct
+      host.querySelectorAll('[data-scmcct]').forEach(function(r){
+        r.oninput=function(){this.title='Farbtemperatur '+this.value+' K';};
+        r.onchange=function(){var det=_sel['_det_'+w.id];if(!det)return;var id=parseInt(r.getAttribute('data-scmcct'));var m=det.members.find(function(x){return x.device===id;});if(m)m.cct=parseInt(r.value)||0;};
+      });
+      // Farbe je Mitglied -> member.color (RGB-Int)
+      host.querySelectorAll('[data-scmcolor]').forEach(function(c){c.onchange=function(){var det=_sel['_det_'+w.id];if(!det)return;var id=parseInt(c.getAttribute('data-scmcolor'));var m=det.members.find(function(x){return x.device===id;});if(m)m.color=colInt(c.value);};});
+      // Kopf: Scope nachtraeglich aenderbar -> scene.scope
+      var ss=host.querySelector('#scScopeSel_'+w.id);
+      if(ss)ss.onchange=function(){var det=_sel['_det_'+w.id];if(!det)return;var t=this.value,ref='';
+        if(t==='floor')ref=(det.scope&&det.scope.type==='floor'&&det.scope.ref)||w.floor||'';
+        else if(t==='room')ref=(det.scope&&det.scope.type==='room'&&det.scope.ref)||String(w.roomId||'');
+        det.scope={type:t,ref:String(ref)};};
+      // Kopf: Ueberblendzeit -> scene.transitionMs
+      var tr=host.querySelector('#scTrans_'+w.id);
+      if(tr){tr.onclick=function(e){e.stopPropagation();};tr.onchange=function(){var det=_sel['_det_'+w.id];if(!det)return;det.transitionMs=Math.max(0,parseInt(this.value)||0);};}
+      // Kopf: Szenen-Icon-Picker -> scene.icon
+      host.querySelectorAll('[data-scicon]').forEach(function(b){b.onclick=function(){var det=_sel['_det_'+w.id];if(!det)return;det.icon=b.getAttribute('data-scicon');
+        host.querySelectorAll('[data-scicon]').forEach(function(x){x.classList.toggle('on',x===b);});};});
       var ni=host.querySelector('#scName_'+w.id); if(ni)ni.onclick=function(e){e.stopPropagation();};
     }
 
