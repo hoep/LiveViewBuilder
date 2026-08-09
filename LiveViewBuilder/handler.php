@@ -759,6 +759,86 @@ if ($api === 'audio') {
     return;
 }
 
+// ---- Licht (HomeSuite LightDevice HSLT): getall raumgruppiert (lesen), manage (token) ----
+if ($api === 'light') {
+    header('Content-Type: application/json; charset=utf-8');
+    $HSLT = '{B7E1C3A4-5D62-4F08-9A1E-2C7D6B4F0E93}';
+    $op   = (string) ($_GET['op'] ?? 'getall');
+    $list = array_map('intval', @IPS_GetInstanceListByModuleID($HSLT) ?: []);
+
+    // Raum/Geschoss aus der Elternschaft (Zuordnung = Elternschaft).
+    $roomOf = function ($iid) {
+        $parent = (int) @IPS_GetParent($iid);
+        $pName  = $parent > 0 ? (string) @IPS_GetName($parent) : '';
+        $pIdent = $parent > 0 ? (string) (@IPS_GetObject($parent)['ObjectIdent'] ?? '') : '';
+        // Direkt unter einer HSLT-Geschoss-Haltekategorie => noch kein Raum
+        if (strpos($pIdent, 'HSLT_FLOOR_') === 0) {
+            return ['room' => '', 'roomId' => 0, 'floor' => $pName];
+        }
+        $gp = $parent > 0 ? (int) @IPS_GetParent($parent) : 0;
+        return ['room' => $pName, 'roomId' => $parent, 'floor' => $gp > 0 ? (string) @IPS_GetName($gp) : ''];
+    };
+    $stateOf = function ($iid) {
+        if (!function_exists('HSLT_Manage')) return ['state' => [], 'caps' => [], 'driverActive' => false];
+        $d = json_decode((string) @HSLT_Manage($iid, json_encode(['op' => 'readState'])), true);
+        return is_array($d) ? $d : ['state' => [], 'caps' => [], 'driverActive' => false];
+    };
+
+    if ($op === 'getall') {
+        $out = [];
+        foreach ($list as $iid) {
+            $rs = $stateOf($iid);
+            $st = is_array($rs['state'] ?? null) ? $rs['state'] : [];
+            $rm = $roomOf($iid);
+            $out[] = [
+                'id'    => $iid,
+                'name'  => (string) IPS_GetName($iid),
+                'room'  => $rm['room'], 'roomId' => $rm['roomId'], 'floor' => $rm['floor'],
+                'on'    => (bool) ($st['on'] ?? false),
+                'level' => (int) ($st['level'] ?? -1),
+                'color' => (int) ($st['color'] ?? -1),
+                'cct'   => (int) ($st['cct'] ?? 0),
+                'watt'  => (float) ($st['watt'] ?? -1),
+                'reachable' => (bool) ($st['reachable'] ?? true),
+                'caps'  => is_array($rs['caps'] ?? null) ? $rs['caps'] : [],
+                'armed' => (bool) ($rs['armed'] ?? false),
+                // Steuer-Variablen (fuer ?api=setvar): schreibt der Client optimistisch/Schatten.
+                'vars'  => [
+                    'Power'      => (int) (@IPS_GetObjectIDByIdent('Power', $iid) ?: 0),
+                    'Brightness' => (int) (@IPS_GetObjectIDByIdent('Brightness', $iid) ?: 0),
+                    'ColorTemp'  => (int) (@IPS_GetObjectIDByIdent('ColorTemp', $iid) ?: 0),
+                ],
+            ];
+        }
+        echo json_encode(['ok' => true, 'lights' => $out]);
+        return;
+    }
+
+    if ($op === 'state') {
+        $iid = (int) ($_GET['id'] ?? 0);
+        if (!in_array($iid, $list, true)) { echo json_encode(['ok' => false, 'err' => 'instance']); return; }
+        echo json_encode(['ok' => true, 'id' => $iid] + $stateOf($iid));
+        return;
+    }
+
+    if ($op === 'manage') {                              // configureDriver/setArmed/setPower/... (token)
+        if (!hash_equals($TOKEN, (string) ($_GET['key'] ?? ''))) {
+            http_response_code(403);
+            echo json_encode(['ok' => false, 'err' => 'forbidden']);
+            return;
+        }
+        $iid = (int) ($_GET['id'] ?? 0);
+        if (!in_array($iid, $list, true)) { echo json_encode(['ok' => false, 'err' => 'instance']); return; }
+        $body = (string) ($_POST['data'] ?? '');
+        if ($body === '') $body = (string) file_get_contents('php://input');
+        echo function_exists('HSLT_Manage') ? HSLT_Manage($iid, $body !== '' ? $body : '{}') : json_encode(['ok' => false, 'err' => 'prefix']);
+        return;
+    }
+
+    echo json_encode(['ok' => false, 'err' => 'op']);
+    return;
+}
+
 // ---- Veröffentlichen: einmaliger Reload-Push an alle Run-Clients (bewusst, NICHT an Autosave gekoppelt) ----
 if ($api === 'publish') {
     header('Content-Type: application/json; charset=utf-8');
