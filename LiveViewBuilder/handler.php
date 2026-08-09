@@ -614,6 +614,12 @@ if ($api === 'audio') {
         $d = json_decode((string) @$fn($iid), true);
         return is_array($d) ? $d : [];
     };
+    $armedOf = function ($iid) use ($pfx) {
+        $fn = $pfx($iid) . '_Manage';
+        if (!function_exists($fn)) return false;
+        $d = json_decode((string) @$fn($iid, json_encode(['op' => 'getConfig'])), true);
+        return (bool) ($d['config']['armed'] ?? false);
+    };
 
     if ($op === 'list') {
         $out = [];
@@ -643,6 +649,7 @@ if ($api === 'audio') {
                 'positionPct' => (int) ($st['Position'] ?? 0),
                 'position' => (string) ($st['PositionTime'] ?? ''), 'duration' => (string) ($st['Duration'] ?? ''),
                 'online' => (bool) ($st['Online'] ?? true),
+                'armed' => $armedOf($iid),
                 'fav' => (int) ($st['SourceFavorite'] ?? 0), 'radio' => (int) ($st['SourceRadio'] ?? 0),
                 'playlist' => (int) ($st['SourcePlaylist'] ?? 0),
                 'role' => (string) ($st['GroupRole'] ?? 'standalone'),
@@ -838,12 +845,16 @@ if ($api === 'light') {
     // ---- Szenen (Haus-Ebene, Hub/HSH): scenes lesen frei; capture/apply/save/delete token ----
     if ($op === 'scenes' || $op === 'scene' || $op === 'sceneapply' || $op === 'scenecapture'
         || $op === 'scenesave' || $op === 'scenedelete' || $op === 'scenerename'
-        || $op === 'autoget' || $op === 'autoset' || $op === 'autotick') {
+        || $op === 'autoget' || $op === 'autoset' || $op === 'autotick' || $op === 'sensors') {
         if (!function_exists('HSH_Manage')) { echo json_encode(['ok' => false, 'err' => 'hub_prefix']); return; }
         $hub = (int) (@IPS_GetInstanceListByModuleID('{A0C082B4-9E74-430E-BD97-F9CEBB364257}')[0] ?? 0);
         if ($hub <= 0) { echo json_encode(['ok' => false, 'err' => 'no_hub']); return; }
 
         if ($op === 'autoget') { echo HSH_Manage($hub, json_encode(['op' => 'lightAutoGet'])); return; }
+        if ($op === 'sensors') { // Bewegungs-/Anwesenheits-Sensoren erkennen (fuer autox-Auswahl)
+            echo HSH_Manage($hub, json_encode(['op' => 'detectSensors', 'args' => ['kind' => (string) ($_GET['kind'] ?? 'motion')]]));
+            return;
+        }
         if ($op === 'autoset' || $op === 'autotick') {
             if (!hash_equals($TOKEN, (string) ($_GET['key'] ?? ''))) {
                 http_response_code(403); echo json_encode(['ok' => false, 'err' => 'forbidden']); return;
