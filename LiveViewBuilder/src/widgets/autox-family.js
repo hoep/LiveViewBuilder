@@ -8,7 +8,14 @@
   //    autotimeline: 24-h-Tagesverlauf mit Sonnenauf/-untergang + Regel-Markern
   //  Schatten-sicher: Aenderungen schreiben die Konfig; der Hub-Timer wertet aus.
   (function(){
-    var A={cfg:null,scenes:[],lights:[],zones:[],sel:-1,subs:[]};
+    var A={cfg:null,scenes:[],lights:[],zones:[],motionSensors:[],awaySensors:[],sel:-1,subs:[]};
+    function sensorSel(id,list,attr){
+      id=parseInt(id)||0;
+      var opts='<option value="0">— Sensor wählen —</option>'+(list||[]).map(function(s){
+        return '<option value="'+s.id+'"'+(s.id===id?' selected':'')+'>'+escL(s.instance)+(s.var&&s.var!==s.instance?(' · '+escL(s.var)):'')+'</option>';}).join('');
+      if(id&&!(list||[]).some(function(s){return s.id===id;}))opts+='<option value="'+id+'" selected>#'+id+'</option>';
+      return '<select class="ax-sel" '+attr+'>'+opts+'</select>';
+    }
     var TYPES={
       schedule:{label:'Zeitplan',plural:'Zeitpläne'},
       circadian:{label:'Circadian',plural:'Circadian'},
@@ -41,11 +48,14 @@
         fetch('?api=light&op=autoget',{cache:'no-store'}).then(function(r){return r.json();}).catch(function(){return {};}),
         fetch('?api=light&op=scenes',{cache:'no-store'}).then(function(r){return r.json();}).catch(function(){return {};}),
         fetch('?api=light&op=getall',{cache:'no-store'}).then(function(r){return r.json();}).catch(function(){return {};}),
-        fetch('?api=audio&op=list',{cache:'no-store'}).then(function(r){return r.json();}).catch(function(){return {};})
+        fetch('?api=audio&op=list',{cache:'no-store'}).then(function(r){return r.json();}).catch(function(){return {};}),
+        fetch('?api=light&op=sensors&kind=motion',{cache:'no-store'}).then(function(r){return r.json();}).catch(function(){return {};}),
+        fetch('?api=light&op=sensors&kind=away',{cache:'no-store'}).then(function(r){return r.json();}).catch(function(){return {};})
       ]).then(function(res){
         A.cfg=(res[0]&&res[0].ok)?res[0]:{enabled:false,rules:[],sun:{sunrise:360,sunset:1200}};
         if(!A.cfg.sun)A.cfg.sun={sunrise:360,sunset:1200};
         A.scenes=(res[1]&&res[1].scenes)||[]; A.lights=(res[2]&&res[2].lights)||[]; A.zones=(res[3]&&res[3].rooms)||[];
+        A.motionSensors=(res[4]&&res[4].sensors)||[]; A.awaySensors=(res[5]&&res[5].sensors)||[];
         if(A.sel<0 && A.cfg.rules.length)A.sel=0;
         _loading=false; var cbs=_pending; _pending=[];
         cb&&cb(); cbs.forEach(function(f){try{f();}catch(e){}});
@@ -158,14 +168,14 @@
           +' <input class="ax-in" id="axSrc" placeholder="Sender/Quelle" value="'+esc(r.audioSource||'')+'" style="width:130px">');
       }
       else if(r.type==='motion'){
-        h+=fld('Bewegungsmelder (Variablen-ID)','<input class="ax-in ax-mono" id="axSensor" type="number" value="'+(r.sensor||'')+'" placeholder="z. B. 12345">');
+        h+=fld('Bewegungsmelder',sensorSel(r.sensor||0,A.motionSensors,'id="axSensor"'));
         h+=fld('Helligkeit (Lux-Variable, optional)','<div class="ax-r"><input class="ax-in ax-mono" id="axLux" type="number" value="'+(r.lux||'')+'" placeholder="Lux-Var" style="width:120px"> '+stepper('axLuxMax',(r.luxMax||0),'lux max')+'</div>');
         h+=fld('Lampen',devChips(r.devices,'data-axdev'));
         h+=fld('Nachlaufzeit',stepper('axHold',Math.round((r.holdSec||0)/60),'min'));
         h+=fld('Helligkeit',stepper('axLevel',lvlTxt(r.level),''));
       }
       else if(r.type==='presence'){
-        h+=fld('Abwesend-Variable (ID)','<input class="ax-in ax-mono" id="axAway" type="number" value="'+(r.awayVar||'')+'" placeholder="Boolean-Var">');
+        h+=fld('Abwesend-Sensor',sensorSel(r.awayVar||0,A.awaySensors,'id="axAway"'));
         h+=fld('Zeitfenster','<div class="ax-r"><input class="ax-time" type="time" id="axFrom" value="'+esc(r.from||'18:00')+'"><span class="ax-mut">bis</span><input class="ax-time" type="time" id="axTo" value="'+esc(r.to||'23:30')+'"></div>');
         h+=fld('Lampen (Auswahl)',devChips(r.devices,'data-axdev'));
         h+=fld('Takt',stepper('axEvery',(r.every||20),'min'));
