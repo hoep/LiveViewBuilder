@@ -87,9 +87,9 @@
     var per=(w.range&&w.range.mode==='period');
     var leg=w.hideLegend?'':(w.states||[]).filter(function(s){return s.color;}).map(function(s){return '<span class="stl-leg"><i style="background:'+_skinColor(s.color)+'"></i>'+esc(s.label||String(s.v))+'</span>';}).join('')
       +(per?'<span class="stl-leg"><i style="background:'+_STL_HATCH+';opacity:.6"></i>offen</span>':'');
-    var title=w.label?'<span class="stl-title">'+escL(w.label)+'</span>':'';
+    var title=(w.label&&!w.hideLabels)?'<span class="stl-title">'+escL(w.label)+'</span>':'';
     var nav='';
-    if(per){var u=(w.range.unit||'day'),off=(w._pOff||0),start=_periodStart(u,off);
+    if(per&&!w.hideNav){var u=(w.range.unit||'day'),off=(w._pOff||0),start=_periodStart(u,off);
       var pills=[['hour','Std'],['day','Tag'],['week','Woche'],['month','Monat'],['year','Jahr']].map(function(p){
         return '<button class="stl-u'+(u===p[0]?' on':'')+'" data-stlu="'+p[0]+'">'+p[1]+'</button>';}).join('');
       nav='<span class="stl-nav"><span class="stl-pills">'+pills+'</span>'
@@ -97,15 +97,17 @@
         +'<span class="stl-per">'+esc(_stlPeriodLabel(u,off,start))+'</span>'
         +'<button class="stl-arw" data-stlnav="1"'+(off>=0?' disabled':'')+'>▶</button></span>';
     }
+    if(!title&&!nav&&!leg)return ''; // alles ausgeblendet -> kein Kopf, Balken fuellen die Kachel
     return '<div class="stl-head">'+title+nav+'<span class="stl-legs">'+leg+'</span></div>';
   }
   var _stlT={};
   defWidget('statetl',{
-    label:'Zustands-Timeline', paletteIcon:'wchart', size:[360,160],
+    label:'Zustands-Timeline', paletteIcon:'wchart', size:[360,160], noHover:true, // reine Anzeige; nur interne Perioden-Pills sind klickbar -> kein Ganz-Widget-Hover
     defaults:function(w){w.range={mode:'period',unit:'day'};w.orient='h';w.items=[{vid:0,label:'Signal 1'}];w.states=[{v:'1',color:'ok',label:'Ein'},{v:'0',color:'crit',label:'Aus'}];},
     render:function(w){
-      if(w.showLog)return '<div class="wstatetl wstatetl-log" style="position:absolute;inset:0;padding:8px 10px;box-sizing:border-box">'+_stlHead(w)+'<div class="stl-barbox"><div data-role="stl" style="position:absolute;inset:0"></div></div><div data-role="slog" class="slog-list"></div></div>';
-      return '<div class="wstatetl" style="position:absolute;inset:0;padding:8px 10px;box-sizing:border-box">'+_stlHead(w)+'<div data-role="stl" style="position:absolute;inset:34px 10px 6px 10px"></div></div>';
+      var head=_stlHead(w),top=head?34:6;
+      if(w.showLog)return '<div class="wstatetl wstatetl-log" style="position:absolute;inset:0;padding:8px 10px;box-sizing:border-box">'+head+'<div class="stl-barbox"><div data-role="stl" style="position:absolute;inset:0"></div></div><div data-role="slog" class="slog-list"></div></div>';
+      return '<div class="wstatetl" style="position:absolute;inset:0;padding:8px 10px;box-sizing:border-box">'+head+'<div data-role="stl" style="position:absolute;inset:'+top+'px 10px 6px 10px"></div></div>';
     },
     mount:function(w){_stlFetch(w);},
     click:function(w,el,e){
@@ -119,6 +121,7 @@
       +row('Legende','<input type="checkbox" id="pStlLeg"'+(!w.hideLegend?' checked':'')+'>')
       +row('Signal-Bezeichnung','<input type="checkbox" id="pStlLbl"'+(!w.hideLabels?' checked':'')+'>')
       +row('Uhrzeit / Achse','<input type="checkbox" id="pStlAx"'+(!w.hideAxis?' checked':'')+'>')
+      +row('Perioden-Umschalter','<input type="checkbox" id="pStlNav"'+(!w.hideNav?' checked':'')+'>')
       +row('Verlaufsliste','<input type="checkbox" id="pStlLog"'+(w.showLog?' checked':'')+'>')
       +(w.showLog?row('Max. Einträge','<input id="pStlLogN" type="number" min="1" value="'+(w.logCount>0?w.logCount:20)+'">'):'')
       +'<div class="pgh">Zustände &amp; Signale</div>'
@@ -131,6 +134,7 @@
       if($('#pStlLeg'))$('#pStlLeg').onchange=function(){w.hideLegend=this.checked?undefined:true;render();commit();};
       if($('#pStlLbl'))$('#pStlLbl').onchange=function(){w.hideLabels=this.checked?undefined:true;render();_stlFetch(w);commit();};
       if($('#pStlAx'))$('#pStlAx').onchange=function(){w.hideAxis=this.checked?undefined:true;render();_stlFetch(w);commit();};
+      if($('#pStlNav'))$('#pStlNav').onchange=function(){w.hideNav=this.checked?undefined:true;render();_stlFetch(w);commit();};
       if($('#pStlLog'))$('#pStlLog').onchange=function(){w.showLog=this.checked||undefined;render();renderProps();_stlFetch(w);commit();};
       if($('#pStlLogN'))$('#pStlLogN').oninput=function(){w.logCount=parseInt(this.value)||20;_stlDraw(w);commit();};
       if($('#pStlFill'))$('#pStlFill').onclick=function(){
