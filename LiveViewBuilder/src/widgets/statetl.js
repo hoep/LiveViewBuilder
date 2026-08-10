@@ -90,12 +90,11 @@
     var title=(w.label&&!w.hideLabels)?'<span class="stl-title">'+escL(w.label)+'</span>':'';
     var nav='';
     if(per&&!w.hideNav){var u=(w.range.unit||'day'),off=(w._pOff||0),start=_periodStart(u,off);
-      var pills=[['hour','Std'],['day','Tag'],['week','Woche'],['month','Monat'],['year','Jahr']].map(function(p){
-        return '<button class="stl-u'+(u===p[0]?' on':'')+'" data-stlu="'+p[0]+'">'+p[1]+'</button>';}).join('');
-      nav='<span class="stl-nav"><span class="stl-pills">'+pills+'</span>'
-        +'<button class="stl-arw" data-stlnav="-1">◀</button>'
+      // Im Betrieb nur durch die Perioden blaettern (Einheit wird im Editor gewaehlt) -> kein gequetschtes Pill-Menue.
+      nav='<span class="stl-nav">'
+        +'<button class="stl-arw" data-stlnav="-1" title="zurueck">◀</button>'
         +'<span class="stl-per">'+esc(_stlPeriodLabel(u,off,start))+'</span>'
-        +'<button class="stl-arw" data-stlnav="1"'+(off>=0?' disabled':'')+'>▶</button></span>';
+        +'<button class="stl-arw" data-stlnav="1"'+(off>=0?' disabled':'')+' title="vor">▶</button></span>';
     }
     if(!title&&!nav&&!leg)return ''; // alles ausgeblendet -> kein Kopf, Balken fuellen die Kachel
     return '<div class="stl-head">'+title+nav+'<span class="stl-legs">'+leg+'</span></div>';
