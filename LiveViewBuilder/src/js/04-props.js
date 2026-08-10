@@ -342,9 +342,17 @@
     return '<select '+(attrs||'')+' style="'+(cur?(known?('background:var(--'+cur+');color:#08201c'):('background:'+esc(cur)+';color:#08201c')):'')+'">'+op+'</select>';}
   function gaugeColorSel(cur){cur=cur||'accent';var op=skinColorKeys().map(function(k){return '<option value="'+k+'"'+(cur===k?' selected':'')+' style="background:var(--'+k+');color:#08201c">'+(_SKIN_LBL[k]||k)+'</option>';}).join('');op+='<option value="graded"'+(cur==='graded'?' selected':'')+'>Abstufung</option><option value="assoc"'+(cur==='assoc'?' selected':'')+'>Assoziation</option>';return '<select id="pGColor" style="'+((cur&&cur!=='graded'&&cur!=='assoc')?('background:var(--'+cur+');color:#08201c'):'')+'">'+op+'</select>';}
   // Einheitliches Zeitfenster-Control (Anzahl x Einheit) fuer Nicht-Aggregat-Widgets (statetl/statelog)
-  var _WINU=[['hour','Stunden'],['day','Tage'],['week','Wochen'],['month','Monate']];
-  function winCtl(w){var r=w.range||{n:(w.hours>0?w.hours:24),unit:'hour'};return row('Zeitraum','<input id="pWinN" type="number" min="1" style="width:64px" value="'+(r.n||24)+'"> <select id="pWinU">'+_WINU.map(function(u){return '<option value="'+u[0]+'"'+((r.unit||'hour')===u[0]?' selected':'')+'>'+u[1]+'</option>';}).join('')+'</select>');}
-  function winWire(w,cb){function set(patch){var r=w.range||{n:(w.hours>0?w.hours:24),unit:'hour'};w.range={n:r.n,unit:r.unit};for(var k in patch)w.range[k]=patch[k];cb();}if($('#pWinN'))$('#pWinN').oninput=function(){set({n:parseInt(this.value)||1});};if($('#pWinU'))$('#pWinU').onchange=function(){set({unit:this.value});};}
+  var _WINU=[['hour','Stunden'],['day','Tage'],['week','Wochen'],['month','Monate'],['year','Jahre']];
+  var _WINUP=[['hour','Stunde'],['day','Tag'],['week','Woche'],['month','Monat'],['year','Jahr']]; // Singular fuer Kalender-Modus
+  function winCtl(w){var r=w.range||{n:(w.hours>0?w.hours:24),unit:'hour'};var per=(r.mode==='period');
+    var uopt=(per?_WINUP:_WINU).map(function(u){return '<option value="'+u[0]+'"'+((r.unit||'hour')===u[0]?' selected':'')+'>'+u[1]+'</option>';}).join('');
+    return row('Modus','<select id="pWinMode"><option value="roll"'+(!per?' selected':'')+'>rollierend (letzte N)</option><option value="period"'+(per?' selected':'')+'>ganze Einheit (Kalender)</option></select>')
+      +row(per?'Ganze':'Zeitraum',(per?'':'<input id="pWinN" type="number" min="1" style="width:64px" value="'+(r.n||24)+'"> ')+'<select id="pWinU">'+uopt+'</select>')
+      +(per?'<div style="font-size:11px;color:var(--muted);margin:-2px 2px 6px">Kalender-ausgerichtet (Tag ab 00:00, Woche ab Mo …). Im Frontend mit ◀ ▶ blaettern; noch nicht abgelaufene Zeit wird als „offen" markiert.</div>':'');}
+  function winWire(w,cb){function set(patch){var r=w.range||{n:(w.hours>0?w.hours:24),unit:'hour'};w.range={n:r.n,unit:r.unit,mode:r.mode};for(var k in patch)w.range[k]=patch[k];cb();}
+    if($('#pWinMode'))$('#pWinMode').onchange=function(){w._pOff=0;set({mode:this.value==='period'?'period':undefined});if(typeof renderProps==='function')renderProps();};
+    if($('#pWinN'))$('#pWinN').oninput=function(){set({n:parseInt(this.value)||1});};
+    if($('#pWinU'))$('#pWinU').onchange=function(){set({unit:this.value});};}
   function _leFld(key,i,c,r){var d='data-le="'+key+'.'+i+'.'+c.k+'"';
     if(c.type==='color'){var cv=String(r[c.k]!=null?r[c.k]:'');return '<input type="color" '+d+' value="'+(/^#[0-9a-fA-F]{6}$/.test(cv)?cv:'#00cdab')+'">';}
     if(c.type==='select'){if((r[c.k]==null||r[c.k]==='')&&c.def!=null&&c.def!=='')r[c.k]=c.def;var sv=String(r[c.k]!=null?r[c.k]:(c.def||''));return '<select '+d+'>'+(c.options||[]).map(function(o){return '<option value="'+o[0]+'"'+(sv===o[0]?' selected':'')+'>'+esc(o[1])+'</option>';}).join('')+'</select>';}

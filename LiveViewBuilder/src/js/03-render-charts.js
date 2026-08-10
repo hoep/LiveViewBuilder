@@ -890,6 +890,29 @@
   }
   function _setRange(w,patch){var r=_chRange(w);w.range={n:r.n,unit:r.unit,cal:r.cal,aggF:r.aggF,rawUnit:r.rawUnit};for(var k in patch)w.range[k]=patch[k];delete _hist[w.id];fetchHist(w);}
   function _winSec(w){var r=w.range;if(r&&r.unit&&_CHSEC[r.unit])return (r.n||24)*_CHSEC[r.unit];return (w.hours>0?w.hours:24)*3600;} // Fenster (Sek.) fuer statetl/statelog — Anzahl x Einheit, Fallback hours
+  // Kalender-ausgerichteter Zeitraum-Anfang (ganze Stunde/Tag/Woche/Monat/Jahr), off = Verschiebung (0=aktuell, -1=vorheriger)
+  function _periodStart(unit,off){var d=new Date();d.setMinutes(0,0,0);
+    if(unit==='hour'){d.setHours(d.getHours()+off);return d;}
+    d.setHours(0,0,0,0);
+    if(unit==='day'){d.setDate(d.getDate()+off);return d;}
+    if(unit==='week'){var wd=(d.getDay()+6)%7;d.setDate(d.getDate()-wd+off*7);return d;} // Woche ab Montag
+    if(unit==='month'){d.setDate(1);d.setMonth(d.getMonth()+off);return d;}
+    if(unit==='year'){d.setMonth(0,1);d.setFullYear(d.getFullYear()+off);return d;}
+    return d;}
+  function _periodEnd(unit,s){var d=new Date(s.getTime());
+    if(unit==='hour')d.setHours(d.getHours()+1);
+    else if(unit==='day')d.setDate(d.getDate()+1);
+    else if(unit==='week')d.setDate(d.getDate()+7);
+    else if(unit==='month')d.setMonth(d.getMonth()+1);
+    else if(unit==='year')d.setFullYear(d.getFullYear()+1);
+    else d.setHours(d.getHours()+1);
+    return d;}
+  // Sichtbares Zeitfenster fuer statetl/statelog: 'period' = kalender-ausgerichtet (voller Zeitraum,
+  // Rest der laufenden Einheit bleibt "offen"), sonst rollierend (now-win .. now).
+  function _winRange(w){var now=Math.floor(Date.now()/1000),r=w.range||{};
+    if(r.mode==='period'){var unit=r.unit||'day',off=(w._pOff||0),s=_periodStart(unit,off),e=_periodEnd(unit,s);
+      return {from:Math.floor(s.getTime()/1000),to:Math.floor(e.getTime()/1000),now:now,period:unit,start:s,off:off};}
+    return {from:now-_winSec(w),to:now,now:now,period:null,off:0};}
   // Serien: beliebig viele [{vid,name,color,type,axis}] — Fallback aus altem varId/2/3 + sopt (Migration beim ersten Editieren)
   function _chSeries(w){
     if(w.series&&w.series.length)return w.series;
