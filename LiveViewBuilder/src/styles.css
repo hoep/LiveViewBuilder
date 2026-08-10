@@ -980,20 +980,18 @@
   body.run .w.anim-scale{animation:wscale .4s cubic-bezier(.2,.8,.2,1) both}
   body.run .w.anim-slide{animation:wslide .45s cubic-bezier(.2,.8,.2,1) both}
 
-  /* ===== Hover-Affordance — nur ausserhalb Edit-Modus. Zwei klar getrennte Sprachen: =====
-     act-nav  = oeffnet etwas (Popup/Seite/Skript/Menue/Zurueck): hebt sich an + Akzent-Ring.
-     act-tog  = schaltet in-place (Variable/Aktion): KEIN Anheben, sondern getoenter Innen-Ring.
-     act-hold = Lang-Druck-Aktion: Fuellleiste unten. Kombinierbar (z. B. act-tog act-hold). */
+  /* ===== Hover-Affordance — nur ausserhalb Edit-Modus. =====
+     Nutzerwunsch: Hover-Effekt AUSSCHLIESSLICH bei Navigation (oeffnet Popup/Seite/Skript/Menue/Zurueck).
+     act-nav  = oeffnet etwas: hebt sich an + Akzent-Ring.
+     act-tog  = schaltet in-place (Variable/Aktion): KEIN Hover-Effekt (nur Cursor), da reine Schaltaktion.
+     act-hold = Lang-Druck-Aktion: Fuellleiste unten. */
   .stage:not(.edit) .w.act-nav,.stage:not(.edit) .w.act-tog,.stage:not(.edit) .w.act-hold,
   #ovcanvas .w.act-nav,#ovcanvas .w.act-tog,#ovcanvas .w.act-hold{cursor:pointer}
   /* NAVIGATION: anheben + Akzent-Ring (outline: kein Konflikt mit wglow, nicht von overflow:hidden beschnitten) */
   .stage:not(.edit) .w.act-nav,#ovcanvas .w.act-nav{transition:transform .14s cubic-bezier(.2,.8,.2,1),outline-color .12s,box-shadow .12s}
   .stage:not(.edit) .w.act-nav:hover,#ovcanvas .w.act-nav:hover{outline:2px solid color-mix(in oklab,var(--accent) 85%,transparent);outline-offset:1px;transform:translateY(-2px);z-index:7}
   .stage:not(.edit) .w.act-nav:active,#ovcanvas .w.act-nav:active{transform:translateY(0) scale(.985)}
-  /* SCHALTAKTION in-place: getoenter Innen-Ring + leichtes Aufhellen, KEIN Anheben (klar anders als Navigation) */
-  .stage:not(.edit) .w.act-tog,#ovcanvas .w.act-tog{transition:box-shadow .12s,background-color .12s,filter .12s}
-  .stage:not(.edit) .w.act-tog:hover,#ovcanvas .w.act-tog:hover{box-shadow:inset 0 0 0 2px color-mix(in oklab,var(--accent) 50%,transparent);filter:brightness(1.05)}
-  .stage:not(.edit) .w.act-tog:active,#ovcanvas .w.act-tog:active{box-shadow:inset 0 0 0 2px var(--accent);filter:brightness(1.0)}
+  /* SCHALTAKTION in-place: bewusst KEIN Hover-/Press-Highlight (nur Cursor:pointer oben) */
   /* zarter Ring fuer hold-only (ohne Anheben) */
   .stage:not(.edit) .w.act-hold:hover,#ovcanvas .w.act-hold:hover{outline:1.5px solid color-mix(in oklab,var(--accent) 42%,transparent);outline-offset:1px}
   /* Fuellleiste unten (hold): fuellt in 0.55s = Long-Press-Dauer; auch bei :active (Touch = Halte-Fortschritt sichtbar) */

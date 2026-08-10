@@ -6,7 +6,7 @@
     // SCHALTAKTION in-place: schreibt eine Variable / loest RequestAction aus (nur wenn keine Navigation greift)
     var tog=false;
     if(t==='switch')tog=(w.swMode==='multi')?false:!!w.varId; // Multi-State: Segmente sind die Klickziele -> KEIN Ganz-Widget-Hover
-    else if(t==='light'||t==='alarm'||t==='select'||t==='dial'||(t==='slider'&&_rMode(w)==='dial'))tog=!!w.varId; // Dial ist jetzt eine Variante von slider (rmode)
+    else if(t==='light'||t==='alarm'||t==='dial'||(t==='slider'&&_rMode(w)==='dial'))tog=!!w.varId; // Dial ist jetzt eine Variante von slider (rmode). 'select': Knopf/Segment/Dropdown sind die Klickziele -> KEIN Ganz-Widget-Hover
     else if(t==='tile'||t==='button')tog=!nav&&!!w.varId; // ohne Navigationsziel schaltet die Variable
     else if(t==='cover')tog=!!(w.varId||w.varId2);
     else if(t==='thermostat')tog=!!(w.varId2||w.varId3);
