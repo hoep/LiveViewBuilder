@@ -77,7 +77,14 @@
   defWidget('select',{
     label:'Auswahl', paletteIcon:'wselect', size:[220,44],
     defaults:function(w){w.options=[{value:0,text:'Aus',color:''},{value:1,text:'An',color:''}];},
-    render:function(w){return '<div class="hselhost" data-role="selhost">'+_selBody(w)+'</div>';},
+    render:function(w){
+      var host='<div class="hselhost" data-role="selhost" style="flex:1;min-width:0">'+_selBody(w)+'</div>';
+      if(!w.label)return host;                                   // ohne Label wie bisher
+      var ico=w.icon?'<span style="width:16px;height:16px;display:inline-flex;flex:none">'+iconSVG(w.icon)+'</span>':'';
+      return '<div style="display:flex;align-items:center;gap:8px;height:100%">'
+        +'<span style="font-size:12.5px;font-weight:600;color:var(--text);white-space:nowrap;display:flex;align-items:center;gap:6px">'+ico+esc(w.label)+'</span>'
+        +host+'</div>';
+    },
     mount:function(w){_selLoad(w);},
     // Klappliste schreibt beim Wechsel; die Knopfreihe laeuft weiter ueber _wClick.
     input:function(w,el,e){
