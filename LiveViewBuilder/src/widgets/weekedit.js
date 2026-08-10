@@ -99,8 +99,18 @@
     var cur=weH2M(pts[i].h,pts[i].m),lo=weH2M(pts[i-1].h,pts[i-1].m)+10,hi=(i+1<pts.length)?weH2M(pts[i+1].h,pts[i+1].m)-10:1430;
     var nv=Math.max(lo,Math.min(hi,cur+delta)); pts[i].h=Math.floor(nv/60);pts[i].m=nv%60; weDirty(st);}
   function weAddSlot(st){var g=weCurGroup(st);if(!g)return;var pts=wePoints(g),n=pts.length;if(n>=48)return;
-    var last=weH2M(pts[n-1].h,pts[n-1].m),nv=Math.min(1430,last+60);if(nv<=last)nv=last+10;if(nv>1430)return;
-    g.points.push({h:Math.floor(nv/60),m:nv%60,actionId:pts[n-1].actionId}); st.slot=n+1; weDirty(st);}
+    // Neuen Schaltpunkt in die GROESSTE Luecke setzen (zwischen Punkten bzw. bis 24:00) -> immer moeglich, sichtbar.
+    var bestGap=-1,bestAt=-1,bestIdx=0;
+    for(var i=0;i<n;i++){var s=weH2M(pts[i].h,pts[i].m),e=(i+1<n)?weH2M(pts[i+1].h,pts[i+1].m):1440;
+      if(e-s>bestGap){bestGap=e-s;bestAt=s+Math.round((e-s)/2/10)*10;bestIdx=i;}}
+    if(bestGap<20){toast&&toast('Keine Lücke frei zum Einfügen');return;}
+    if(bestAt<=0)bestAt=10; if(bestAt>1430)bestAt=1430;
+    // Aktion: die ANDERE (naechste in der Liste) -> neuer Slot ist sofort sichtbar
+    var curA=pts[bestIdx].actionId,acts=st.actions||[],other=curA;
+    for(var j=0;j<acts.length;j++){if(acts[j].id!=curA){other=acts[j].id;break;}}
+    g.points.push({h:Math.floor(bestAt/60),m:bestAt%60,actionId:other});
+    var np=wePoints(g);for(var k=0;k<np.length;k++){if(weH2M(np[k].h,np[k].m)===bestAt){st.slot=k+1;break;}} // neuen Slot aktiv
+    weDirty(st);}
   function weDelSlot(st){var g=weCurGroup(st);if(!g)return;var pts=wePoints(g),i=st.slot-1;if(pts.length<=1)return;
     var t=pts[i]; g.points=g.points.filter(function(x){return x!==t;});
     if(weH2M((wePoints(g)[0]||{h:0,m:0}).h,(wePoints(g)[0]||{m:0}).m)!==0){var f=wePoints(g)[0];if(f){f.h=0;f.m=0;}} // ersten wieder auf 00:00
@@ -112,12 +122,16 @@
     if(typeof DOKU!=='undefined'&&DOKU){_wePlans=weDemoPlans();cb&&cb();return;}
     fetch('?api=week&op=list',{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){_wePlans=(j&&j.plans)||[];cb&&cb();}).catch(function(){_wePlans=[];cb&&cb();});
   }
+  function weApplyColors(w,st){ // Anzeige-Farben aus Widget-Overrides (w.actColors) auf die Aktionen legen
+    if(!w.actColors||!st.actions)return;
+    st.actions.forEach(function(a){var c=w.actColors[a.id];if(c&&/^#[0-9a-f]{6}$/i.test(c))a.color=c;});
+  }
   function weLoadPlan(w,el,id,cb){var st=weSt(w);
-    if(typeof DOKU!=='undefined'&&DOKU){var d=weDemo();st.planId=id||900801;st.name=d.name;st.actions=d.actions;st.groups=d.groups;st.active=d.active;st.now=d.now;st.loaded=true;st.dirty=false;st.err='';cb&&cb();return;}
+    if(typeof DOKU!=='undefined'&&DOKU){var d=weDemo();st.planId=id||900801;st.name=d.name;st.actions=d.actions;st.groups=d.groups;st.active=d.active;st.now=d.now;st.loaded=true;st.dirty=false;st.err='';weApplyColors(w,st);cb&&cb();return;}
     if(!id){st.loaded=true;st.planId=0;cb&&cb();return;}
     fetch('?api=week&op=get&id='+id,{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
       if(!j||!j.ok){st.err='Plan nicht lesbar';st.loaded=true;cb&&cb();return;}
-      st.planId=j.id;st.name=j.name;st.actions=j.actions||[];st.groups=j.groups||[];st.active=j.active;st.now=j.now;st.loaded=true;st.dirty=false;st.err='';cb&&cb();
+      st.planId=j.id;st.name=j.name;st.actions=j.actions||[];st.groups=j.groups||[];st.active=j.active;st.now=j.now;st.loaded=true;st.dirty=false;st.err='';weApplyColors(w,st);cb&&cb();
     }).catch(function(){st.err='Verbindungsfehler';st.loaded=true;cb&&cb();});
   }
   function weSave(w,el){var st=weSt(w);var g=weCurGroup(st);if(!g)return;
@@ -163,9 +177,27 @@
     if(!_wePlans){ weLoadPlans(function(){if(typeof renderProps==='function')renderProps();}); return h+'<div style="color:var(--muted);font-size:12px;padding:4px 2px">Pläne laden …</div>'; }
     h+=row('Plan','<select id="wePlan"><option value="">— wählen —</option>'+(_wePlans||[]).map(function(p){return '<option value="'+p.id+'"'+(w.eventId==p.id?' selected':'')+'>'+esc(p.name)+' · '+esc(p.path||'')+'</option>';}).join('')+'</select>');
     h+='<div style="font-size:11px;color:var(--muted);margin:2px 2px 4px">Jeder Symcon-Wochenplan (Ereignis) — Pool, Mähroboter, Zirkulation … Werte/Farben kommen aus den Aktionen des Plans.</div>';
+    // Anzeige-Farben je Aktion (ueberschreibt die Plan-Farbe nur in der Darstellung)
+    var st=_weState[w.id];
+    if(st&&st.loaded&&st.actions&&st.actions.length){
+      h+='<div class="pgh">Farben (Anzeige)</div>';
+      st.actions.forEach(function(a){
+        var cur=(w.actColors&&w.actColors[a.id])||a.color||'#888888';
+        if(!/^#[0-9a-f]{6}$/i.test(cur))cur='#888888';
+        h+=row(esc(a.name),'<input type="color" class="weclr" data-weclr="'+a.id+'" value="'+cur+'"> <button class="wecrst" data-wecrst="'+a.id+'" title="Zurücksetzen">↺</button>');
+      });
+      h+='<div style="font-size:11px;color:var(--muted);margin:2px 2px 4px">Überschreibt nur die Anzeige. ↺ setzt auf die Planfarbe zurück.</div>';
+    }
     return h;
   }
   function weWire(w){
     if($('#wePlan'))$('#wePlan').onchange=function(){var v=parseInt(this.value)||0;w.eventId=v||undefined;commit();
       var el=weElOf(w);if(el){var st=weSt(w);st.loaded=false;weRepaint(w,el);WIDGETS.weekedit.mount(w);}};
+    function reflect(){var el=weElOf(w);if(!el)return;var st=weSt(w);weApplyColors(w,st);weRepaint(w,el);}
+    $$('[data-weclr]').forEach(function(inp){inp.oninput=function(){var aid=inp.getAttribute('data-weclr');
+      w.actColors=w.actColors||{};w.actColors[aid]=inp.value;commit();reflect();};});
+    $$('[data-wecrst]').forEach(function(b){b.onclick=function(){var aid=b.getAttribute('data-wecrst');
+      if(w.actColors){delete w.actColors[aid];if(!Object.keys(w.actColors).length)delete w.actColors;}commit();
+      var el=weElOf(w);if(el){var st=weSt(w);st.loaded=false;WIDGETS.weekedit.mount(w);} // Planfarbe frisch laden
+      if(typeof renderProps==='function')renderProps();};});
   }
