@@ -97,7 +97,7 @@
     return '<div class="'+hsSelClass(w)+'">'+items.map(function(it){var r=it.r,i=it.idx;
       var dot=r.role==='member'?'var(--info)':(r.playing?'var(--accent)':'var(--faint)');
       return '<button class="hsroom'+(i===s.roomIdx?' on':'')+'" data-afroom="'+i+'">'+
-        '<span style="width:7px;height:7px;border-radius:50%;background:'+dot+'"></span>'+esc(r.name)+
+        '<span style="width:7px;height:7px;border-radius:50%;background:'+dot+'"></span>'+esc(hsStripDomain(r.name))+
         (r.role==='member'?' <span style="font-family:var(--fm);font-size:8.5px;color:var(--info);border:1px solid color-mix(in oklab,var(--info) 45%,transparent);border-radius:999px;padding:0 5px">GRP</span>':'')+'</button>';}).join('')+'</div>';}
   defWidget('audioroom',{
     label:'Audio · Räume', paletteIcon:'wselect', size:[720,52],
