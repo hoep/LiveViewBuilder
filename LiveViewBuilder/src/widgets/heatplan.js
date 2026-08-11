@@ -11,6 +11,7 @@
   var _hpRooms = null;                       // Raumliste (via ?api=heat&op=list)
   var _hpRoomsRoot = null;                   // Root-ID, für die _hpRooms geladen wurde
   var _hpGroupOrder = null;                  // Gruppen-Reihenfolge (Geschosse aus der Topologie, hsMode)
+  var _hpHouses = [];                         // Haus/Wohnung-Ebene aus der Topologie [{iid,name}]
   function hpRootParam(w){return (w&&w.rootId)?('&root='+encodeURIComponent(w.rootId)):'';}
   var HP_PRES = ['Normal','Erweitert','Abgesenkt'];
   var HP_DAYS = ['Mo','Di','Mi','Do','Fr','Sa','So'];
@@ -74,7 +75,7 @@
     var all=cfg ? cfg.filter(function(r){return r&&r.idx!=null;})
                 : (_hpRooms||[]).map(function(r){return {idx:r.idx,group:r.group||''};});
     if(w&&w.floor){ all=all.filter(function(r){return (r.group||'')===w.floor;}); }  // Geschoss-Filter (Seite pro Geschoss)
-    return all;
+    return hsOrderHide(w, all); // je Widget: Reihenfolge + einzelne Räume aus-/einblenden
   }
   function hpRoomName(idx){var r=(_hpRooms||[]).filter(function(x){return x.idx==idx;})[0];return r?r.name:('#'+idx);}
 
@@ -107,31 +108,24 @@
   function hpAnch(day){return (day&&day.anch)||[];}
 
   function hpRoomsBar(w,st){
-    var rooms=hpCfgRooms(w);
-    // Gruppen-Reihenfolge: Topologie-Geschosse (hsMode) bzw. EG/OG/DG; unbekannte hinten, '' zuletzt.
-    var byG={}, order=[];
-    function bucket(g){ if(!(g in byG)){byG[g]=[];order.push(g);} return byG[g]; }
-    ((_hpGroupOrder&&_hpGroupOrder.length)?_hpGroupOrder:HP_GROUPS).forEach(bucket);
-    rooms.forEach(function(r){ bucket(r.group||'').push(r); });
-    bucket(''); // Sammelbucket fuer ungruppierte immer zuletzt
-    order.sort(function(a,b){ return (a===''?1:0)-(b===''?1:0); }); // '' ans Ende
+    var rooms=hpCfgRooms(w); // bereits geordnet + gefiltert (hsOrderHide)
+    var roomBtn=function(r){var on=(r.idx==st.roomIdx);
+      return '<button class="hsroom hp-room'+(on?' on':'')+'" data-hproom="'+r.idx+'">'+esc(hpRoomName(r.idx))+'</button>';};
     // Geschoss-Tabs (eine Seite, 3 Tabs): Etagen als Reiter, darunter nur die Zonen der gewaehlten Etage.
-    var groups=order.filter(function(g){return byG[g]&&byG[g].length;});
-    if(w&&w.floorTabs&&groups.length>1){
-      var sel=st.floorSel; if(groups.indexOf(sel)<0){sel=st.floorSel=groups[0];}
-      var ht='<div class="hp-rooms hp-hastabs"><div class="hp-ftabs">'+groups.map(function(g){return '<button class="hp-ftab'+(g===sel?' on':'')+'" data-hpfloor="'+esc(g)+'">'+esc(g||'Sonstige')+'</button>';}).join('')+'</div>';
-      ht+='<div class="hp-rgrp">'+(byG[sel]||[]).map(function(r){var on=(r.idx==st.roomIdx);return '<button class="hp-room'+(on?' on':'')+'" data-hproom="'+r.idx+'">'+esc(hpRoomName(r.idx))+'</button>';}).join('')+'</div></div>';
-      return ht;
+    if(w&&w.floorTabs){
+      var byG={}, order=[]; function bucket(g){ if(!(g in byG)){byG[g]=[];order.push(g);} return byG[g]; }
+      ((_hpGroupOrder&&_hpGroupOrder.length)?_hpGroupOrder:HP_GROUPS).forEach(bucket);
+      rooms.forEach(function(r){ bucket(r.group||'').push(r); }); bucket('');
+      var groups=order.filter(function(g){return byG[g]&&byG[g].length;});
+      if(groups.length>1){
+        var sel=st.floorSel; if(groups.indexOf(sel)<0){sel=st.floorSel=groups[0];}
+        var ht='<div class="hp-rooms hp-hastabs"><div class="hp-ftabs">'+groups.map(function(g){return '<button class="hp-ftab'+(g===sel?' on':'')+'" data-hpfloor="'+esc(g)+'">'+esc(g||'Sonstige')+'</button>';}).join('')+'</div>';
+        ht+='<div class="'+hsSelClass(w)+'">'+(byG[sel]||[]).map(roomBtn).join('')+'</div></div>';
+        return ht;
+      }
     }
-    var h='<div class="hp-rooms">';
-    order.forEach(function(g){ var list=byG[g]; if(!list||!list.length)return;
-      h+='<div class="hp-rgrp">'+(g?'<span class="hp-glab">'+esc(g)+'</span>':'')
-        +list.map(function(r){var on=(r.idx==st.roomIdx);
-          return '<button class="hp-room'+(on?' on':'')+'" data-hproom="'+r.idx+'">'+esc(hpRoomName(r.idx))+'</button>';}).join('')
-        +'</div>';
-    });
-    h+='</div>';
-    return h;
+    // Standard: eine einheitliche, geordnete Leiste im gewaehlten Stil (Buttons/Pills/Underline).
+    return '<div class="'+hsSelClass(w)+'">'+rooms.map(roomBtn).join('')+'</div>';
   }
 
   // ---- SVG-Sollkurve ----
@@ -336,7 +330,7 @@
     return out;
   }
   function hpLoadRooms(w,cb){
-    var root=(w&&w.rootId)||0;
+    var root=((w&&w.rootId)||0)+':'+((w&&w.houseId)||0); // Haus/Wohnung-Filter in den Cache-Key
     if(_hpRooms&&_hpRoomsRoot===root){cb&&cb();return;}
     if(typeof DOKU!=='undefined'&&DOKU){_hpRooms=hpDemoRooms();_hpRoomsRoot=root;cb&&cb();return;}
     if(hpHS(w)){ var dom=(w&&w.domain)||'heating'; fetch('?api=mod&op=topology',{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
@@ -348,7 +342,9 @@
         dents.forEach(function(e){ var lbl=rm.name||('#'+e.iid);
           if(dents.length>1){ var suf=String(e.name||'').replace(/^\s*(Heizung|Beschattung)\s*/i,'').replace(rm.name||'','').replace(/\s+/g,' ').trim(); if(suf)lbl+=' '+suf; }
           rooms.push({idx:e.iid,name:lbl,ent:e.name||'',room:rm.name||'',type:'',group:g}); }); }
-      (j&&j.tree||[]).forEach(function(haus){ (haus.children||[]).forEach(function(area){
+      _hpHouses=(j&&j.tree||[]).map(function(h){return {iid:h.iid||0,name:h.name||'Haus'};}).filter(function(h){return h.iid;});
+      var houseFilter=(w&&w.houseId)||0;
+      (j&&j.tree||[]).forEach(function(haus){ if(houseFilter&&(haus.iid||0)!=houseFilter)return; (haus.children||[]).forEach(function(area){
         if(area.kind!=='Bereich')return; var g=area.abbr||area.name||''; grp(g);
         (area.children||[]).forEach(function(rm){ if(rm.kind==='Raum')pushRoom(rm,g); });
       });
