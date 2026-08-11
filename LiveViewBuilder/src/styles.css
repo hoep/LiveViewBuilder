@@ -1725,3 +1725,17 @@
 .spf-assign{margin-top:10px;border-top:1px solid var(--line);padding-top:8px}
 .spf-arow{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .spf-arow button{font-size:11px;padding:3px 8px;border:1px solid var(--accent);border-radius:6px;background:color-mix(in srgb,var(--accent) 12%,transparent);color:var(--text);cursor:pointer}
+
+/* ===== Gemeinsamer Raum-Selektor (Heizung/Beschattung/Bewässerung/Audio) ===== */
+.hssel{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.hssel .hsroom{cursor:pointer;border:0;background:none;font-size:12px;font-weight:600;color:var(--muted);white-space:nowrap;display:inline-flex;align-items:center;gap:6px}
+.hssel .hsglab{font-size:9px;letter-spacing:.6px;text-transform:uppercase;color:var(--faint);padding:0 4px;align-self:center}
+.hssel-buttons .hsroom{padding:6px 12px;border-radius:8px;background:var(--surface-2);border:1px solid var(--line)}
+.hssel-buttons .hsroom.on{background:var(--accent-2);border-color:var(--accent-2);color:#fff}
+.hssel-pills .hsroom{padding:5px 14px;border-radius:999px;background:var(--surface-2);border:1px solid var(--line)}
+.hssel-pills .hsroom.on{background:var(--accent-2);border-color:var(--accent-2);color:#fff}
+.hssel-underline{gap:0;border-bottom:1px solid var(--line);flex-wrap:nowrap;overflow:auto}
+.hssel-underline .hsroom{padding:9px 13px;border-bottom:2px solid transparent}
+.hssel-underline .hsroom.on{color:var(--text);border-bottom-color:var(--accent)}
+.hsroed{display:flex;flex-direction:column;gap:3px;max-height:260px;overflow:auto}
+.hsroed-row{display:flex;align-items:center;gap:4px}

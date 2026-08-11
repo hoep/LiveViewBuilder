@@ -91,19 +91,25 @@
   function afSessWire(w){if($('#afSessInp'))$('#afSessInp').onchange=function(){w.session=this.value||undefined;commit();var el=$('.w[data-id="'+w.id+'"]',canvas);if(el){var s=WIDGETS[w.type];var host=el.querySelector('.winner')||el;host.innerHTML=s.render(w);if(s._bind)s._bind(w,el);}afEmit(w);};}
   function afMount(w){var el=$('.w[data-id="'+w.id+'"]',canvas)||$('.w[data-id="'+w.id+'"]',$('#ovcanvas'));if(!el)return;afSub(w);afEnsure(w,el);}
 
-  // ---------- audioroom (Controller): Raum-Tabs ----------
-  function afRoomBar(s){return '<div style="display:flex;flex-wrap:wrap;gap:0;border-bottom:1px solid var(--line)">'+
-    s.rooms.map(function(r,i){var dot=r.role==='member'?'var(--info)':(r.playing?'var(--accent)':'var(--faint)');
-      return '<button data-afroom="'+i+'" style="padding:9px 13px;font-size:12px;font-weight:600;letter-spacing:.2px;white-space:nowrap;cursor:pointer;background:none;border:0;border-bottom:2px solid '+(i===s.roomIdx?'var(--accent)':'transparent')+';color:'+(i===s.roomIdx?'var(--text)':'var(--muted)')+';display:inline-flex;align-items:center;gap:7px">'+
-      '<span style="width:7px;height:7px;border-radius:50%;background:'+dot+'"></span>'+esc(r.name)+(r.role==='member'?' <span style="font-family:var(--fm);font-size:8.5px;color:var(--info);border:1px solid color-mix(in oklab,var(--info) 45%,transparent);border-radius:999px;padding:0 5px">GRP</span>':'')+'</button>';}).join('')+'</div>';}
+  // ---------- audioroom (Controller): Raum-Tabs (einheitlicher Selektor) ----------
+  function afRoomBar(w,s){
+    var items=hsOrderHide(w,(s.rooms||[]).map(function(r,i){return {idx:i,r:r};})); // Reihenfolge + Ausblenden (Index-stabil)
+    return '<div class="'+hsSelClass(w)+'">'+items.map(function(it){var r=it.r,i=it.idx;
+      var dot=r.role==='member'?'var(--info)':(r.playing?'var(--accent)':'var(--faint)');
+      return '<button class="hsroom'+(i===s.roomIdx?' on':'')+'" data-afroom="'+i+'">'+
+        '<span style="width:7px;height:7px;border-radius:50%;background:'+dot+'"></span>'+esc(r.name)+
+        (r.role==='member'?' <span style="font-family:var(--fm);font-size:8.5px;color:var(--info);border:1px solid color-mix(in oklab,var(--info) 45%,transparent);border-radius:999px;padding:0 5px">GRP</span>':'')+'</button>';}).join('')+'</div>';}
   defWidget('audioroom',{
     label:'Audio · Räume', paletteIcon:'wselect', size:[720,52],
     defaults:function(w){w.session='audio';},
     render:function(w){var r=afReady(w);if(r.err)return afMsg(r.err);if(r.loading)return afMsg('Audio lädt …');
-      return '<div style="position:absolute;inset:0;overflow:auto;background:var(--surface)">'+afRoomBar(r.s)+'</div>';},
+      return '<div style="position:absolute;inset:0;overflow:auto;background:var(--surface)">'+afRoomBar(w,r.s)+'</div>';},
     mount:afMount,
     _bind:function(w,el){var s=afSess(w);$$('[data-afroom]',el).forEach(function(b){b.onclick=function(){s.roomIdx=+b.getAttribute('data-afroom');s.radio=null;afEmit(w);afLoadRadio(w);};});},
-    props:function(w){return afSessRow(w);}, wire:function(w){afSessWire(w);}
+    props:function(w){var h=afSessRow(w)+hsStyleRow(w);var s=afSess(w);
+      h+=hsRoomOrderEditor(w,((s&&s.rooms)||[]).map(function(r,i){return {idx:i,name:r.name};}));return h;},
+    wire:function(w){afSessWire(w);hsStyleWire(w,function(){afEmit(w);});
+      var s=afSess(w);hsRoomOrderWire(w,((s&&s.rooms)||[]).map(function(r,i){return {idx:i,name:r.name};}),function(){afEmit(w);});}
   });
 
   // ---------- audionow: Cover + Titel + Interpret + Fortschritt ----------
