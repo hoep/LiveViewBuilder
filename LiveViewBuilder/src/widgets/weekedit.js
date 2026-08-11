@@ -99,6 +99,9 @@
     var cur=weH2M(pts[i].h,pts[i].m),lo=weH2M(pts[i-1].h,pts[i-1].m)+10,hi=(i+1<pts.length)?weH2M(pts[i+1].h,pts[i+1].m)-10:1430;
     var nv=Math.max(lo,Math.min(hi,cur+delta)); pts[i].h=Math.floor(nv/60);pts[i].m=nv%60; weDirty(st);}
   function weAddSlot(st){var g=weCurGroup(st);if(!g)return;var pts=wePoints(g),n=pts.length;if(n>=48)return;
+    if(n===0){ // leere Gruppe: 00:00 + Mittagspunkt anlegen, damit ueberhaupt editierbar
+      var a0=(st.actions[0]||{id:0}).id,a1=(st.actions[1]||st.actions[0]||{id:0}).id;
+      g.points.push({h:0,m:0,actionId:a0}); g.points.push({h:12,m:0,actionId:a1}); st.slot=2; weDirty(st); return; }
     // Neuen Schaltpunkt in die GROESSTE Luecke setzen (zwischen Punkten bzw. bis 24:00) -> immer moeglich, sichtbar.
     var bestGap=-1,bestAt=-1,bestIdx=0;
     for(var i=0;i<n;i++){var s=weH2M(pts[i].h,pts[i].m),e=(i+1<n)?weH2M(pts[i+1].h,pts[i+1].m):1440;
@@ -124,7 +127,10 @@
   }
   function weApplyColors(w,st){ // Anzeige-Farben aus Widget-Overrides (w.actColors) auf die Aktionen legen
     if(!w.actColors||!st.actions)return;
-    st.actions.forEach(function(a){var c=w.actColors[a.id];if(c&&/^#[0-9a-f]{6}$/i.test(c))a.color=c;});
+    st.actions.forEach(function(a){var c=w.actColors[a.id];if(!c)return;
+      // Skin-Token (accent/ok/…) -> var(--token); Hex/rgb werden durchgereicht; Ungueltiges ignoriert.
+      var col=(typeof _cssColorOrEmpty==='function')?_cssColorOrEmpty(c):(/^#[0-9a-f]{6}$/i.test(c)?c:'');
+      if(col)a.color=col;});
   }
   function weLoadPlan(w,el,id,cb){var st=weSt(w);
     if(typeof DOKU!=='undefined'&&DOKU){var d=weDemo();st.planId=id||900801;st.name=d.name;st.actions=d.actions;st.groups=d.groups;st.active=d.active;st.now=d.now;st.loaded=true;st.dirty=false;st.err='';weApplyColors(w,st);cb&&cb();return;}
@@ -177,16 +183,15 @@
     if(!_wePlans){ weLoadPlans(function(){if(typeof renderProps==='function')renderProps();}); return h+'<div style="color:var(--muted);font-size:12px;padding:4px 2px">Pläne laden …</div>'; }
     h+=row('Plan','<select id="wePlan"><option value="">— wählen —</option>'+(_wePlans||[]).map(function(p){return '<option value="'+p.id+'"'+(w.eventId==p.id?' selected':'')+'>'+esc(p.name)+' · '+esc(p.path||'')+'</option>';}).join('')+'</select>');
     h+='<div style="font-size:11px;color:var(--muted);margin:2px 2px 4px">Jeder Symcon-Wochenplan (Ereignis) — Pool, Mähroboter, Zirkulation … Werte/Farben kommen aus den Aktionen des Plans.</div>';
-    // Anzeige-Farben je Aktion (ueberschreibt die Plan-Farbe nur in der Darstellung)
+    // Anzeige-Farben je Aktion aus der SKIN-Palette (überschreibt die Plan-Farbe nur in der Darstellung)
     var st=_weState[w.id];
     if(st&&st.loaded&&st.actions&&st.actions.length){
       h+='<div class="pgh">Farben (Anzeige)</div>';
       st.actions.forEach(function(a){
-        var cur=(w.actColors&&w.actColors[a.id])||a.color||'#888888';
-        if(!/^#[0-9a-f]{6}$/i.test(cur))cur='#888888';
-        h+=row(esc(a.name),'<input type="color" class="weclr" data-weclr="'+a.id+'" value="'+cur+'"> <button class="wecrst" data-wecrst="'+a.id+'" title="Zurücksetzen">↺</button>');
+        var cur=(w.actColors&&w.actColors[a.id])||'';
+        h+=row(esc(a.name), skinSel(cur,'class="weclr" data-weclr="'+a.id+'"'));
       });
-      h+='<div style="font-size:11px;color:var(--muted);margin:2px 2px 4px">Überschreibt nur die Anzeige. ↺ setzt auf die Planfarbe zurück.</div>';
+      h+='<div style="font-size:11px;color:var(--muted);margin:2px 2px 4px">Skin-Farben (passen sich dem Theme an). „Auto" = Farbe aus dem Plan. Überschreibt nur die Anzeige.</div>';
     }
     return h;
   }
@@ -194,10 +199,11 @@
     if($('#wePlan'))$('#wePlan').onchange=function(){var v=parseInt(this.value)||0;w.eventId=v||undefined;commit();
       var el=weElOf(w);if(el){var st=weSt(w);st.loaded=false;weRepaint(w,el);WIDGETS.weekedit.mount(w);}};
     function reflect(){var el=weElOf(w);if(!el)return;var st=weSt(w);weApplyColors(w,st);weRepaint(w,el);}
-    $$('[data-weclr]').forEach(function(inp){inp.oninput=function(){var aid=inp.getAttribute('data-weclr');
-      w.actColors=w.actColors||{};w.actColors[aid]=inp.value;commit();reflect();};});
-    $$('[data-wecrst]').forEach(function(b){b.onclick=function(){var aid=b.getAttribute('data-wecrst');
-      if(w.actColors){delete w.actColors[aid];if(!Object.keys(w.actColors).length)delete w.actColors;}commit();
-      var el=weElOf(w);if(el){var st=weSt(w);st.loaded=false;WIDGETS.weekedit.mount(w);} // Planfarbe frisch laden
+    $$('[data-weclr]').forEach(function(sel){sel.onchange=function(){var aid=sel.getAttribute('data-weclr');
+      w.actColors=w.actColors||{};
+      if(sel.value===''){delete w.actColors[aid];if(!Object.keys(w.actColors).length)delete w.actColors;
+        var el=weElOf(w);if(el){var st=weSt(w);st.loaded=false;WIDGETS.weekedit.mount(w);} // Planfarbe frisch laden
+        if(typeof renderProps==='function')renderProps();return;}
+      w.actColors[aid]=sel.value;commit();reflect();
       if(typeof renderProps==='function')renderProps();};});
   }
