@@ -735,7 +735,9 @@
   function _titleOn(w){var t=(w.showTitle!=null)?w.showTitle:(!w.legend&&!!w.label);return !!(t&&(w.label||'')!=='');}
   function _titleOpt(w){
     if(!_titleOn(w))return {show:false};
-    var o={text:w.label||'',top:2,textStyle:{color:cssv('--muted'),fontSize:_ecF(w,'title',11),fontWeight:'normal'}};
+    // "\n" (getippt als Backslash-n) bzw. CR/LF -> echter Zeilenumbruch (ECharts bricht bei \n).
+    var _tt=String(w.label||'').replace(/\\n|\r\n|\r|\n/g,'\n');
+    var o={text:_tt,top:2,textStyle:{color:cssv('--muted'),fontSize:_ecF(w,'title',11),fontWeight:'normal',lineHeight:_ecF(w,'title',11)+3}};
     var p=w.titlePos||'left';
     if(p==='center')o.left='center';else if(p==='right')o.right=6;else o.left=4;
     return o;}
@@ -1501,7 +1503,8 @@
   function _popupFit(){
     if(!_popup)return; var oc=$('#ovcanvas'),card=$('#ovcard');if(!oc||!card)return;
     var pw=_popup.page.w||1440,ph=_popup.page.h||900;
-    var sc=Math.min((window.innerWidth*0.94)/pw,(window.innerHeight*0.90)/ph); if(!(sc>0))sc=1;
+    // EXAKT wie die Main-Seite (letterboxFit): auf das volle Viewport einpassen.
+    var sc=Math.min(window.innerWidth/pw,window.innerHeight/ph); if(!(sc>0))sc=1;
     oc.style.width=pw+'px';oc.style.height=ph+'px';oc.style.transformOrigin='top left';oc.style.transform='scale('+sc+')';
     card.style.width=Math.round(pw*sc)+'px';card.style.height=Math.round(ph*sc)+'px';
   }
