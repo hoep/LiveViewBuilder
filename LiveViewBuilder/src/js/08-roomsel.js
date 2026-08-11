@@ -11,6 +11,11 @@
   }
   function hsSelClass(w) { return 'hssel hssel-' + hsSelStyle(w); }
 
+  // Entfernt den Gewerke-Suffix "(Licht)"/"(Audio)"/… aus dem Raum-/Zonennamen für die Anzeige.
+  function hsStripDomain(name) {
+    return String(name || '').replace(/\s*\((Licht|Heizung|Beschattung|Bew(ä|ae)sserung|Audio|Pool)\)\s*$/i, '').trim();
+  }
+
   // Wendet Ausblenden (w.roomHidden) + Reihenfolge (w.roomOrder) auf eine Raumliste an.
   // rooms: [{idx,...}]. Nicht in order gelistete bleiben in Ursprungsreihenfolge hinten.
   function hsOrderHide(w, rooms) {
@@ -54,7 +59,7 @@
       return '<div class="hsroed-row" data-hsr="' + r.idx + '">'
         + '<button class="btn" data-hsrup="' + r.idx + '" title="hoch" style="padding:2px' + (i === 0 ? ';opacity:.3;pointer-events:none' : '') + '"><svg class="i"><use href="#ic-chevup"/></svg></button>'
         + '<button class="btn" data-hsrdn="' + r.idx + '" title="runter" style="padding:2px' + (i === ordered.length - 1 ? ';opacity:.3;pointer-events:none' : '') + '"><svg class="i"><use href="#ic-chevdn"/></svg></button>'
-        + '<label style="flex:1;display:flex;align-items:center;gap:6px;font-size:12px;min-width:0"><input type="checkbox" data-hsrvis="' + r.idx + '"' + (vis ? ' checked' : '') + '><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap' + (vis ? '' : ';opacity:.45') + '">' + esc(r.name || ('#' + r.idx)) + '</span></label>'
+        + '<label style="flex:1;display:flex;align-items:center;gap:6px;font-size:12px;min-width:0"><input type="checkbox" data-hsrvis="' + r.idx + '"' + (vis ? ' checked' : '') + '><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap' + (vis ? '' : ';opacity:.45') + '">' + esc(hsStripDomain(r.name) || ('#' + r.idx)) + '</span></label>'
         + '</div>';
     }).join('') + '</div>';
     h += '<div style="font-size:11px;color:var(--muted);margin:3px 2px">▲▼ = Reihenfolge · Häkchen aus = Raum im Frontend ausgeblendet.</div>';
@@ -88,10 +93,11 @@
   // --- Props: Haus/Wohnung-Auswahl (Filter auf eine Haus-Instanz der Topologie) ---
   // houses: [{iid,name}] aus der Topologie. Leer = alle Häuser.
   function hsHouseRow(w, houses) {
-    if (!houses || houses.length < 2) return ''; // nur anzeigen, wenn mehr als ein Haus existiert
+    if (!houses || !houses.length) return ''; // keine Topologie geladen
     var cur = (w.houseId) || 0;
     return row('Haus/Wohnung', '<select id="hsHouse"><option value="0"' + (!cur ? ' selected' : '') + '>Alle</option>'
-      + houses.map(function (hh) { return '<option value="' + hh.iid + '"' + (cur == hh.iid ? ' selected' : '') + '>' + esc(hh.name) + '</option>'; }).join('') + '</select>');
+      + houses.map(function (hh) { return '<option value="' + hh.iid + '"' + (cur == hh.iid ? ' selected' : '') + '>' + esc(hh.name) + '</option>'; }).join('') + '</select>')
+      + '<div style="font-size:11px;color:var(--muted);margin:2px 2px 4px">Bindet dieses Widget an eine Haus/Wohnung-Instanz (Multi-Haus, z. B. Duna Verde). „Alle" = kein Filter.</div>';
   }
   function hsHouseWire(w, rerender) {
     var e = $('#hsHouse'); if (!e) return;

@@ -110,7 +110,7 @@
   function hpRoomsBar(w,st){
     var rooms=hpCfgRooms(w); // bereits geordnet + gefiltert (hsOrderHide)
     var roomBtn=function(r){var on=(r.idx==st.roomIdx);
-      return '<button class="hsroom hp-room'+(on?' on':'')+'" data-hproom="'+r.idx+'">'+esc(hpRoomName(r.idx))+'</button>';};
+      return '<button class="hsroom hp-room'+(on?' on':'')+'" data-hproom="'+r.idx+'">'+esc(hsStripDomain(hpRoomName(r.idx)))+'</button>';};
     // Geschoss-Tabs (eine Seite, 3 Tabs): Etagen als Reiter, darunter nur die Zonen der gewaehlten Etage.
     if(w&&w.floorTabs){
       var byG={}, order=[]; function bucket(g){ if(!(g in byG)){byG[g]=[];order.push(g);} return byG[g]; }
