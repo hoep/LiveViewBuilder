@@ -277,7 +277,7 @@
   };
   var PAL_ICON={
     blank:'wblank',value:'meter',text:'wcode',icon:'star',line:'wline',switch:'power',tile:'wtile',button:'power',
-    slider:'wslider',thermostat:'thermostat',cover:'blinds',light:'bulb',dial:'wdial',colorpick:'wdial',select:'wselect',alarm:'shield',
+    slider:'wslider',thermostat:'thermostat',cover:'blinds',light:'bulb',dial:'wdial',colorpick:'wdial',select:'wselect',alarm:'bell',alarmpanel:'bell',
     bot:'mower',media:'music',skinswitch:'moon',chip:'star',gauge:'gauge',gaugepro:'gauge',bar:'wbars',room:'home',
     statuslist:'wlist',devlist:'wlist',ticker:'wticker',tempbar:'temperature',statusgrid:'wgrid',meterlist:'wbars',
     infolist:'wlist',kpi:'wkpi',delta:'wdelta',statusimage:'wimage',chart:'wchart',spark:'wchart',sankey:'wsankey',
