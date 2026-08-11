@@ -1734,8 +1734,8 @@
 .hssel-buttons .hsroom.on{background:var(--accent-2);border-color:var(--accent-2);color:#fff}
 .hssel-pills .hsroom{padding:5px 14px;border-radius:999px;background:var(--surface-2);border:1px solid var(--line)}
 .hssel-pills .hsroom.on{background:var(--accent-2);border-color:var(--accent-2);color:#fff}
-.hssel-underline{gap:0;border-bottom:1px solid var(--line);flex-wrap:nowrap;overflow:auto}
-.hssel-underline .hsroom{padding:9px 13px;border-bottom:2px solid transparent}
+.hssel-underline{gap:2px 0;flex-wrap:wrap}
+.hssel-underline .hsroom{padding:8px 13px;border-bottom:2px solid var(--line)}
 .hssel-underline .hsroom.on{color:var(--text);border-bottom-color:var(--accent)}
 .hsroed{display:flex;flex-direction:column;gap:3px;max-height:260px;overflow:auto}
 .hsroed-row{display:flex;align-items:center;gap:4px}
