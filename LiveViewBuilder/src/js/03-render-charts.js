@@ -856,12 +856,14 @@
   }
   function fetchCalYear(w){
     var EMPTY=[null,null,null,null,null,null,null,null,null,null,null,null];
-    if(!w.varId){_hist[w.id]={cal:{cur:EMPTY.slice(),prev:EMPTY.slice(),curY:'',prevY:''}};if(_ec[w.id])renderChartData(w);return;}
+    // Serie hat Vorrang vor der (evtl. veralteten, im Panel ausgeblendeten) Hauptvariable.
+    var vid=(_chSeries(w)[0]||{}).vid||w.varId;
+    if(!vid){_hist[w.id]={cal:{cur:EMPTY.slice(),prev:EMPTY.slice(),curY:'',prevY:''}};if(_ec[w.id])renderChartData(w);return;}
     var aggF=(w.aggField==='sum')?'sum':'avg';
     var Y=new Date().getFullYear(),need=w.cmpOn?[Y,Y-1]:[Y],res={},done=0;
     need.forEach(function(y){
       var from=Math.floor(new Date(y,0,1,0,0,0).getTime()/1000),to=Math.floor(new Date(y+1,0,1,0,0,0).getTime()/1000)-1;
-      fetch('?api=aggregated&id='+encodeURIComponent(w.varId)+'&level=3&from='+from+'&to='+to,{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
+      fetch('?api=aggregated&id='+encodeURIComponent(vid)+'&level=3&from='+from+'&to='+to,{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
         var arr=EMPTY.slice();((j&&j.rows)||[]).forEach(function(b){var mo=new Date(b.t*1000).getMonth();if(mo>=0&&mo<12&&b[aggF]!=null)arr[mo]=Math.round(b[aggF]*100)/100;});res[y]=arr;
       }).catch(function(){res[y]=EMPTY.slice();}).then(function(){
         done++;if(done>=need.length){_hist[w.id]={cal:{cur:res[Y]||EMPTY.slice(),prev:res[Y-1]||EMPTY.slice(),curY:Y,prevY:Y-1}};if(_ec[w.id])renderChartData(w);}
@@ -1481,9 +1483,7 @@
     var v=store.views[name],ws=_ovClone(v,alias);
     _popup={name:name,widgets:ws,page:(v.page||{w:1440,h:900})};
     var oc=$('#ovcanvas'),card=$('#ovcard');if(!oc||!card)return;
-    var pw=_popup.page.w,ph=_popup.page.h,sc=Math.min(1,(window.innerWidth*0.9)/pw,(window.innerHeight*0.84)/ph);
-    oc.style.width=pw+'px';oc.style.height=ph+'px';oc.style.transform='scale('+sc+')';
-    card.style.width=Math.round(pw*sc)+'px';card.style.height=Math.round(ph*sc)+'px';
+    _popupFit(); // Stretch analog zur Seite (hoch UND runter, refit bei Resize)
     oc.innerHTML='';
     _popup.widgets.forEach(function(w){oc.appendChild(_ovWidgetEl(w));});
     $('#overlay').classList.add('open');
@@ -1496,6 +1496,16 @@
     _popup.widgets.forEach(function(w){var wc=WIDGETS[w.type];if(wc&&wc.mount){try{wc.mount(w);}catch(e){}}}); // mount-Hooks im Popup (wsmon/msglog/suncard … initialisieren + Timer starten)
     _pvSince=0;pollVals();
   }
+  // Popup analog zur Seite einpassen: skaliert HOCH und runter (kein 1er-Deckel) auf
+  // max. 94% Breite / 90% Hoehe des Viewports; wird bei jedem Resize neu berechnet.
+  function _popupFit(){
+    if(!_popup)return; var oc=$('#ovcanvas'),card=$('#ovcard');if(!oc||!card)return;
+    var pw=_popup.page.w||1440,ph=_popup.page.h||900;
+    var sc=Math.min((window.innerWidth*0.94)/pw,(window.innerHeight*0.90)/ph); if(!(sc>0))sc=1;
+    oc.style.width=pw+'px';oc.style.height=ph+'px';oc.style.transformOrigin='top left';oc.style.transform='scale('+sc+')';
+    card.style.width=Math.round(pw*sc)+'px';card.style.height=Math.round(ph*sc)+'px';
+  }
+  window.addEventListener('resize',function(){if(_popup)_popupFit();});
   function closePopup(){var ov=$('#overlay');if(ov)ov.classList.remove('open');var oc=$('#ovcanvas');if(oc)oc.innerHTML='';_popup=null;invalidateVidx();}
   // M3: Custom Controls — eine Ansicht als parametrierbare, wiederverwendbare Komponente (Master), Instanzen remappen IDs (Alias)
   var _compKids=[];
