@@ -40,7 +40,6 @@
     // 'cover' stand hier frueher mit fest verdrahteten Werten (100 / 0 / 1). Die Logik liegt
     // jetzt in widgets/cover.js, wo sie die einstellbaren Befehlswerte auswerten kann.
     if(w.type==='media'&&w.varId2){if(e.target.closest('[data-role=mplay]')){var md=_lastVals[w.varId2];var mc=md?(md.v===true||md.v===1||md.v==='1'):false;setVar(w.varId2,mc?0:1);}return;}
-    if(w.type==='alarm'&&w.varId){if(e.target.closest('[data-role=aon]'))setVar(w.varId,1);else if(e.target.closest('[data-role=aoff]'))setVar(w.varId,0);return;}
     if(w.type==='bot'&&w.varId3){if(e.target.closest('[data-role=vstart]'))setVar(w.varId3,1);else if(e.target.closest('[data-role=vstop]'))setVar(w.varId3,0);return;}
     if(w.type==='select'&&w.varId){var sb=e.target.closest('.hselb');if(sb){setVar(w.varId,sb.getAttribute('data-selval'));$$('.hselb',el).forEach(function(b){b.classList.toggle('on',b===sb);});return;}
       var seg=e.target.closest('.swmseg');if(seg){setVar(w.varId,seg.getAttribute('data-swval'));if(typeof _selMark==='function')_selMark(w,el,seg.getAttribute('data-swval'));}return;}

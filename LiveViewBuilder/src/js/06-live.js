@@ -3,6 +3,10 @@
     if(w.varId===id||w.varId2===id||w.varId3===id||w.cmpVid===id||w.ackVid===id||w.condVar===id||w.vTemp===id||w.vCond===id||w.vHum===id||w.vWind===id||w.vRain===id)return true;
     var A=['items','links','rows','src','snk','fc','elements','stages','steps','series'],i,j,o;
     for(i=0;i<A.length;i++){var a=w[A[i]];if(a)for(j=0;j<a.length;j++){o=a[j];if(o&&(o.vid===id||o.subvid===id||o.hi===id||o.lo===id||o.pq===id||o.cond===id||o.speedVid===id||o.socVid===id))return true;}}
+    // Alarm-Karte: nur im Text (title/sub/notify) referenzierte Formel-IDs treiben live() ebenfalls
+    if(w.type==='alarm'){var _at=[w.title,w.sub,w.notify];for(i=0;i<_at.length;i++){var _as=_at[i];if(_fIsFormula(_as)&&_fIds(_as).indexOf(id)>=0)return true;}}
+    // Alarm-Panel: eine Kind-Karten-Variable aendert sich -> Panel-live() (Leer-Zustand/Quittung nachziehen)
+    if(w.type==='alarmpanel'&&w.kids){for(i=0;i<w.kids.length;i++){if(w.kids[i]&&widgetDataId(w.kids[i],id))return true;}}
     return false;
   }
   // C1: Sichtbarkeits-Bedingung auswerten
@@ -114,7 +118,8 @@
     if(w.stages)w.stages.forEach(function(o){if(o){add(o.vid);add(o.subvid);add(o.sv);}}); // Pipeline-Stationen (Wert + Zusatzwert + Status-Var fuer bedingten Fluss)
     if(w.elements)w.elements.forEach(function(o){if(o){add(o.vid);add(o.speedVid);add(o.socVid);}});
     if(w.tankVid)add(w.tankVid);
-    if(w.type==='container'&&w.kids)w.kids.forEach(function(k){if(k)_collectIds(k,add);}); // Container: IDs der Kinder mitsammeln (Poll)
+    if((w.type==='container'||w.type==='alarmpanel')&&w.kids)w.kids.forEach(function(k){if(k)_collectIds(k,add);}); // Container/Alarm-Panel: IDs der Kinder mitsammeln (Poll)
+    if(w.type==='alarm')[w.title,w.sub,w.notify].forEach(function(s){if(_fIsFormula(s))add(s);}); // Alarm-Karte: Formel-IDs aus dem Text (add=_emit -> Token + Komponenten)
   }
   function _vidxOne(w,root){_collectIds(w,_emit(function(id){_vidxAdd(id,w,root);}));}
   var _allIds=null;
@@ -368,7 +373,7 @@
     selClear();var newIds=[],gmap={};
     (b.widgets||[]).forEach(function(cw){var c=JSON.parse(JSON.stringify(cw));c.id=uid();c.x=snap(ox+(cw.x||0));c.y=snap(oy+(cw.y||0));
       if(c.group){if(!gmap[c.group])gmap[c.group]='g'+uid();c.group=gmap[c.group];}                 // Gruppen je Einfügung neu binden
-      if(c.type==='container'&&c.kids)c.kids.forEach(function(k){if(k)k.id=uid();});                 // Container: Kind-IDs neu vergeben (sonst Kollision bei Mehrfach-Einfügung)
+      if(c.kids)c.kids.forEach(function(k){if(k)k.id=uid();});                 // Container/Alarm-Panel: Kind-IDs neu vergeben (sonst Kollision bei Mehrfach-Einfügung)
       state.widgets.push(c);newIds.push(c.id);});
     render();newIds.forEach(function(i){sel[i]=true;});selId=newIds[newIds.length-1]||null;markSel();renderProps();commit();
   }

@@ -394,8 +394,33 @@
   .hmedia{height:100%;display:flex;flex-direction:column;justify-content:center;gap:8px;padding:10px 12px}
   .hmtitle{font-size:var(--wf-txt);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .hmctl{display:flex;align-items:center;gap:10px}.hmctl button{width:32px;height:32px;border-radius:9px;border:1px solid var(--line);background:var(--surface-2);color:var(--text);cursor:pointer;display:flex;align-items:center;justify-content:center}.hmctl button svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}.hmvol{flex:1}
-  .halarm{height:100%;display:flex;flex-direction:column;justify-content:center;gap:9px;padding:10px;align-items:center}.hastate{font-family:var(--fm);font-size:var(--wf-txt);font-weight:600}
-  .habtns{display:flex;gap:8px}.habtns button{padding:7px 12px;border-radius:9px;border:1px solid var(--line);background:var(--surface-2);color:var(--text);cursor:pointer;font-size:var(--wf-txt);font-weight:600}
+  /* Alarm (regelgesteuerte Karte) — getoente Karte, Icon-Box + fetter Titel + gedaempfte Unterzeile. Toenung via --_at* aus stateTint (Skin/Theme-fest). */
+  .halarm{display:flex;align-items:center;gap:clamp(8px,4cqmin,14px);padding:clamp(9px,5cqmin,15px) clamp(12px,6cqmin,18px);border-radius:16px;box-sizing:border-box;height:100%;container-type:size;background:var(--_atbg,var(--surface));border:1px solid var(--_atbd,var(--line))}
+  .halarm-ico{width:clamp(30px,26cqmin,44px);height:clamp(30px,26cqmin,44px);flex:none;border-radius:12px;display:grid;place-items:center;background:var(--_atchip,var(--surface-2));color:var(--_atic,var(--accent))}
+  .halarm-ico svg{width:54%;height:54%}
+  .halarm-tx{min-width:0;flex:1}
+  .halarm-ttl{font-size:var(--wf-txt);font-weight:700;line-height:1.15;color:var(--_atttl,var(--text));white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .halarm-sub{font-size:var(--wf-cap);color:var(--_atsub,var(--muted));white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
+  .w.alarm-off{display:none}                         /* inaktiver Alarm / leeres Panel: nimmt keinen Platz */
+  /* Alarm-Panel — Rahmen + Kopf (Eyebrow/Alle quittieren) + flex-wrap-Reihe der aktiven Karten */
+  .alarmpanel{position:absolute;inset:0;box-sizing:border-box;display:flex;flex-direction:column;gap:10px;padding:12px 14px;border:1px solid var(--line-soft);border-radius:16px;background:var(--surface);container-type:inline-size;overflow:auto}
+  .alp-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+  .alp-eye{font-family:var(--fu);font-size:11px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--_alpeye,var(--crit))}
+  .alp-ackall{border:0;background:none;cursor:pointer;font-size:12px;color:var(--muted);padding:2px 4px}
+  .alp-ackall:hover{color:var(--text)}
+  .alp-rowwrap{position:relative;flex:1 1 auto;min-height:0;display:flex}
+  .alp-row{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(200px,1fr);gap:var(--_alpgap,12px);align-items:stretch;flex:1 1 auto;min-width:0;min-height:0;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;-ms-overflow-style:none;scroll-behavior:smooth}
+  .alp-row::-webkit-scrollbar{display:none}
+  .alp-row .alp-card{position:relative!important;left:auto!important;top:auto!important;width:auto!important;height:auto!important;align-self:stretch;justify-self:stretch}
+  .alp-card>.winner{height:100%;width:100%}
+  .alp-card .halarm{height:100%}
+  /* Chevron rechts, wenn weitere Meldungen ausserhalb liegen (Scroll ohne sichtbare Leiste) */
+  .alp-more{position:absolute;right:0;top:0;bottom:0;z-index:3;display:none;align-items:center;justify-content:flex-end;pointer-events:none;width:56px;padding-right:6px;
+    background:linear-gradient(90deg,transparent,var(--surface) 78%)}
+  .alp-more svg{width:20px;height:20px;color:var(--muted);filter:drop-shadow(0 1px 3px color-mix(in oklab,var(--text) 25%,transparent))}
+  .alp-rowwrap.has-more .alp-more{display:flex}
+  .alp-empty{color:var(--muted);font-size:13px;padding:4px 2px}
+  .alp-acked{display:none!important}                  /* quittierte Karte (client-seitig) */
   .hroom{height:100%;display:flex;flex-direction:column;justify-content:center;gap:8px;padding:10px 12px}
   .hrhead{display:flex;align-items:center;gap:10px}.hricon{width:30px;height:30px;flex:none;border-radius:9px;background:color-mix(in oklab,var(--accent) 15%,var(--surface-2));color:var(--wicon,var(--accent));display:flex;align-items:center;justify-content:center;padding:6px}
   .hrname{font-size:var(--wf-txt);font-weight:600}.hrmetrics{display:flex;gap:14px;font-size:var(--wf-lbl);color:var(--muted)}.hrmetrics b{font-family:var(--fm);color:var(--text);font-weight:600}
@@ -687,6 +712,53 @@
     background:linear-gradient(90deg,var(--info) 0%,var(--ok) 45%,var(--warn) 75%,var(--crit) 100%);opacity:.85}
   .hvcrng .rdot{position:absolute;top:50%;width:clamp(8px,9cqmin,15px);height:clamp(8px,9cqmin,15px);border-radius:50%;
     background:var(--text);border:2px solid var(--surface);transform:translate(-50%,-50%);box-shadow:0 0 0 1px var(--line)}
+  /* Regel-Tabelle (ruletable) — sektionierte Matrix: Chip / Toggle / Segment, sticky Kopf+Regelspalte */
+  .rt{width:100%;height:100%;display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden;box-shadow:0 1px 2px color-mix(in oklab,var(--text) 6%,transparent)}
+  .rt .rthead{display:flex;align-items:baseline;justify-content:space-between;gap:10px;padding:11px 16px 10px;flex:none;border-bottom:1px solid var(--line)}
+  .rt .rthead .rth-eyebrow{font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
+  .rt .rthead .rth-meta{font-size:10.5px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--faint);font-variant-numeric:tabular-nums;white-space:nowrap}
+  .rt .rtscroll{flex:1;overflow:auto;overscroll-behavior:contain;position:relative}
+  .rtt{border-collapse:separate;border-spacing:0;width:100%;font-size:12px;font-variant-numeric:tabular-nums}
+  .rtt thead th{position:sticky;top:0;z-index:3;background:var(--surface-2);color:var(--muted);font-weight:600;font-size:10px;letter-spacing:.06em;text-transform:uppercase;text-align:center;padding:9px 12px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+  .rtt thead th small{display:block;font-size:8.5px;font-weight:500;color:var(--faint);letter-spacing:.04em;margin-top:2px}
+  .rtt thead th.rt-num{text-align:right}
+  .rtt th.rtrl,.rtt td.rtrl{position:sticky;left:0;text-align:left;white-space:nowrap;padding:0 16px 0 12px;border-right:1px solid var(--line);box-shadow:9px 0 10px -10px color-mix(in oklab,var(--text) 26%,transparent)}
+  .rtt th.rtrl{z-index:4;background:var(--surface-2);color:var(--faint);font-size:10px;letter-spacing:.06em;text-transform:uppercase}
+  .rtt td.rtrl{z-index:2;background:var(--surface)}
+  .rtt tbody tr:nth-child(even) td.rtrl{background:var(--tile)}
+  .rtrl-in{display:flex;align-items:center;gap:10px;min-height:44px}
+  .rtrl-ix{flex:none;width:22px;height:22px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;font-variant-numeric:tabular-nums;background:color-mix(in oklab,var(--accent) 15%,var(--surface));color:var(--accent);box-shadow:inset 0 0 0 1px color-mix(in oklab,var(--accent) 28%,transparent)}
+  .rtrl-tx{font-weight:600;color:var(--text)}
+  .rtt tbody td{padding:7px 12px;border-bottom:1px solid var(--line-soft);text-align:center;vertical-align:middle;height:44px}
+  .rtt tbody tr:nth-child(even) td{background:var(--tile)}
+  .rtt tbody tr:hover td{background:color-mix(in oklab,var(--accent) 7%,var(--surface))}
+  .rtt tbody tr:hover td.rtrl{background:color-mix(in oklab,var(--accent) 9%,var(--surface))}
+  .rtt tr[data-active="1"] td.rtrl{box-shadow:inset 3px 0 0 var(--accent),9px 0 10px -10px color-mix(in oklab,var(--text) 26%,transparent)}
+  .rtt tr[data-active="0"] td.rtc{opacity:.4}
+  .rtt tr[data-active="0"] .rtrl-tx{color:var(--muted)}
+  .rtt tr[data-active="0"] .rtrl-ix{background:var(--surface-2);color:var(--faint);box-shadow:inset 0 0 0 1px var(--line)}
+  .rtc{cursor:pointer}
+  .rtc-empty{color:var(--faint);cursor:default}
+  .rtc-num{text-align:right}
+  .rtchip{display:inline-flex;align-items:baseline;gap:3px;justify-content:flex-end;min-width:58px;padding:5px 10px;border-radius:8px;background:var(--surface);border:1px solid var(--line);transition:border-color .12s,box-shadow .12s}
+  .rtt tbody tr:nth-child(even) .rtchip{background:var(--surface)}
+  .rtchip .rtv{font-weight:700;color:var(--text);font-variant-numeric:tabular-nums}
+  .rtchip small{font-size:9px;font-weight:600;color:var(--muted);letter-spacing:.02em}
+  .rtc-num:hover .rtchip,.rtc-num:focus-visible .rtchip{border-color:color-mix(in oklab,var(--accent) 55%,var(--line));box-shadow:0 0 0 3px color-mix(in oklab,var(--accent) 14%,transparent)}
+  .rtsw{display:inline-block;width:34px;height:19px;border-radius:99px;position:relative;vertical-align:middle;background:color-mix(in oklab,var(--accent) 30%,transparent);border:1px solid var(--accent);transition:.15s}
+  .rtsw i{position:absolute;top:1px;left:16px;width:15px;height:15px;border-radius:50%;background:var(--accent);transition:.15s}
+  .rtsw.off{background:var(--surface-2);border-color:var(--line)}
+  .rtsw.off i{left:1px;background:var(--muted)}
+  .rtseg{display:inline-flex;align-items:center;gap:6px;max-width:100%;padding:4px 8px 4px 11px;border-radius:8px;background:var(--surface);border:1px solid var(--line);color:var(--accent);font-weight:650;transition:border-color .12s}
+  .rtt tbody tr:nth-child(even) .rtseg{background:var(--surface)}
+  .rtseg .rtsel{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .rtseg .rtcv{width:9px;height:9px;flex:none;color:var(--muted)}
+  .rtc-sel:hover .rtseg,.rtc-sel:focus-visible .rtseg{border-color:color-mix(in oklab,var(--accent) 55%,var(--line))}
+  .rtc:focus-visible{outline:none}
+  /* Norm-Skala (pH/Redox): statischer Farbverlauf als Leiste, Marker zeigt den aktuellen Wert */
+  .hvcscale{position:relative;height:clamp(5px,5cqh,10px);border-radius:999px;margin-top:5px;opacity:.92;box-shadow:inset 0 0 0 1px rgba(0,0,0,.10)}
+  .hvcscale .sdot{position:absolute;top:50%;left:0;width:clamp(9px,9cqmin,16px);height:clamp(9px,9cqmin,16px);border-radius:50%;
+    background:var(--surface);border:2px solid var(--text);transform:translate(-50%,-50%);box-shadow:0 0 0 1px var(--line),0 1px 3px rgba(0,0,0,.3)}
   /* Doku-Seite: Erklaerungsblock ueber den Einstellungen */
   .dkdoc{border:1px solid var(--line);border-radius:var(--r-s);background:var(--surface-2);padding:10px 12px;margin-bottom:10px}
   .dkdoc .dkdt{font-size:14px;font-weight:700;margin-bottom:4px}
@@ -1739,3 +1811,4 @@
 .hssel-underline .hsroom.on{color:var(--text);border-bottom-color:var(--accent)}
 .hsroed{display:flex;flex-direction:column;gap:3px;max-height:260px;overflow:auto}
 .hsroed-row{display:flex;align-items:center;gap:4px}
+

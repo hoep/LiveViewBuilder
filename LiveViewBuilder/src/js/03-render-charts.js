@@ -6,7 +6,7 @@
     // SCHALTAKTION in-place: schreibt eine Variable / loest RequestAction aus (nur wenn keine Navigation greift)
     var tog=false;
     if(t==='switch')tog=(w.swMode==='multi')?false:!!w.varId; // Multi-State: Segmente sind die Klickziele -> KEIN Ganz-Widget-Hover
-    else if(t==='light'||t==='alarm'||t==='dial'||(t==='slider'&&_rMode(w)==='dial'))tog=!!w.varId; // Dial ist jetzt eine Variante von slider (rmode). 'select': Knopf/Segment/Dropdown sind die Klickziele -> KEIN Ganz-Widget-Hover
+    else if(t==='light'||t==='dial'||(t==='slider'&&_rMode(w)==='dial'))tog=!!w.varId; // Dial ist jetzt eine Variante von slider (rmode). 'select': Knopf/Segment/Dropdown sind die Klickziele -> KEIN Ganz-Widget-Hover
     else if(t==='tile'||t==='button')tog=!nav&&!!w.varId; // ohne Navigationsziel schaltet die Variable
     else if(t==='cover')tog=!!(w.varId||w.varId2);
     else if(t==='thermostat')tog=!!(w.varId2||w.varId3);
@@ -39,7 +39,7 @@
     cval:{val:'[data-role=val]',ico:null}, sval:{val:'[data-role=val]',ico:null},
     delta:{val:'[data-role=val]',ico:null}, raincard:{val:'[data-role=val]',ico:null},
     sun:{val:'[data-role=val]',ico:null}, objinfo:{val:'[data-role=oival]',ico:null},
-    alarm:{val:'[data-role=val]',ico:null}, clock:{val:'.hctime',ico:null},
+    clock:{val:'.hctime',ico:null},
     timer:{val:'.httime',ico:null}, tempbar:{val:'.htval',ico:null},
     bot:{val:'.hvst',ico:null}, thermostat:{val:'.htc-ist',ico:null},
     slider:{val:'[data-role=val]',ico:null}, cover:{val:'[data-role=val]',ico:null}
@@ -145,6 +145,7 @@
     });
     _compKids=[];allWidgets().forEach(function(w){if(w.type==='component')expandComponent(w);}); // M3: Komponenten-Instanzen expandieren
     _contKids=[];state.widgets.forEach(function(w){if(w.type==='container')expandContainer(w);}); // Container-Kinder zeichnen (echte, editierbare Widgets)
+    state.widgets.forEach(function(w){if(w.type==='alarmpanel'&&typeof expandAlarmPanel==='function')expandAlarmPanel(w);}); // Alarm-Panel: aktive Alarm-Karten einhaengen
     // mount-Hooks auch für Klone (Laufband/Komponenten) + Werte aus Cache spiegeln -> Status-Bild/Wetter/cval usw. erscheinen sofort, nicht erst bei Wertänderung
     function _mountKid(w){try{var _mw=WIDGETS[w.type];if(_mw&&_mw.mount)_mw.mount(w);}catch(e){}}
     if(_compKids&&_compKids.length)_compKids.forEach(_mountKid);
@@ -333,10 +334,10 @@
     var box=el.querySelector('.hbtn,.htile');if(box)box.style.background=bg;
     if(badge)badge.style.color=fg;if(name)name.style.color=fg;
   }
-  function btnStateProps(w){return row('Seite öffnen','<select id="pNavTo"><option value="">— (Variable schalten)</option>'+Object.keys(store.views).map(function(n){return '<option value="'+esc(n)+'"'+(w.navTo===n?' selected':'')+'>'+esc(n)+'</option>';}).join('')+'</select>')
-    +row('Popup öffnen','<select id="pPopupTo"><option value="">—</option>'+Object.keys(store.views).map(function(n){return '<option value="'+esc(n)+'"'+(w.popupTo===n?' selected':'')+'>'+esc(n)+'</option>';}).join('')+'</select>')
-    +row('Lang-Druck → Popup','<select id="pLongPop"><option value="">—</option>'+Object.keys(store.views).map(function(n){return '<option value="'+esc(n)+'"'+(w.longPopup===n?' selected':'')+'>'+esc(n)+'</option>';}).join('')+'</select>')
-    +row('Lang-Druck → Seite','<select id="pLongNav"><option value="">—</option>'+Object.keys(store.views).map(function(n){return '<option value="'+esc(n)+'"'+(w.longNav===n?' selected':'')+'>'+esc(n)+'</option>';}).join('')+'</select>')
+  function btnStateProps(w){return row('Seite öffnen','<select id="pNavTo">'+viewOpts(w.navTo,'page','— (Variable schalten)')+'</select>')
+    +row('Popup öffnen','<select id="pPopupTo">'+viewOpts(w.popupTo,'popup')+'</select>')
+    +row('Lang-Druck → Popup','<select id="pLongPop">'+viewOpts(w.longPopup,'popup')+'</select>')
+    +row('Lang-Druck → Seite','<select id="pLongNav">'+viewOpts(w.longNav,'page')+'</select>')
     +row('Hover-Ansicht','<select id="pHoverTo"><option value="">—</option>'+Object.keys(store.views).map(function(n){return '<option value="'+esc(n)+'"'+(w.hoverTo===n?' selected':'')+'>'+esc(n)+'</option>';}).join('')+'</select>')
     +(w.hoverTo?'<div style="font-size:11px;color:var(--warn);line-height:1.4;margin:-2px 2px 6px">Flyout beim <b>Überfahren mit der Maus</b> (Desktop). Auf Touch öffnet ein Tipp den Flyout nur, wenn keine andere Klick-Aktion gesetzt ist.</div>':'')
     +row('Region setzen','<input id="pRegSlot" value="'+esc(w.regSlot||'')+'" placeholder="Region" style="width:80px"> <select id="pRegView"><option value="">Ansicht…</option>'+Object.keys(store.views).map(function(n){return '<option value="'+esc(n)+'"'+(w.regView===n?' selected':'')+'>'+esc(n)+'</option>';}).join('')+'</select>')
@@ -841,7 +842,7 @@
     var ec=_ec[w.id];if(!ec)return;
     var m=(_hist[w.id]&&_hist[w.id].cal)||{cur:[],prev:[],curY:'',prevY:''};
     var ML=['Jän','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'];
-    var acc=cssv('--accent'),prevCol=darken(acc,(w.cmpShade!=null?w.cmpShade:55)/100);
+    var acc=_chColor((_chSeries(w)[0]||{}).color,0),prevCol=darken(acc,(w.cmpShade!=null?w.cmpShade:55)/100);
     var unit=(w.yunit||''),br=parseFloat(w.barRadius!=null?w.barRadius:3);
     var lbl=w.labels?{show:true,fontSize:_ecF(w,'label',8),color:cssv('--muted'),position:'top',formatter:function(p){return (p.value==null)?'':_chNum(w,p.value,false);}}:{show:false};
     var showLeg=(w.legend!==false),series=[];
@@ -1562,14 +1563,14 @@
     body.appendChild(inner);
     (w.kids||[]).forEach(function(k){if(!k||k.type==='container')return; try{var _ke=_mkWidgetEl(k);_ke.classList.add('contkid');inner.appendChild(_ke);_contKids.push(k);}catch(e){}}); // (kein Container-in-Container in v1)
   }
-  function containerOfKid(id){for(var i=0;i<state.widgets.length;i++){var c=state.widgets[i];if(c.type==='container'&&c.kids){for(var j=0;j<c.kids.length;j++)if(c.kids[j]&&c.kids[j].id===id)return {cont:c,kid:c.kids[j],idx:j};}}return null;}
+  function containerOfKid(id){for(var i=0;i<state.widgets.length;i++){var c=state.widgets[i];if((c.type==='container'||c.type==='alarmpanel')&&c.kids){for(var j=0;j<c.kids.length;j++)if(c.kids[j]&&c.kids[j].id===id)return {cont:c,kid:c.kids[j],idx:j};}}return null;}
   // Strukturelle Änderung (Kind rein/raus/gelöscht) -> eingefrorenes Artboard verwerfen, beim nächsten Render neu aus der Hüllbox
   function contFitBase(c){if(c)delete _cbase[c.id];}
   function containerScreenScale(contId){var inr=$('.w[data-id="'+contId+'"] [data-role=continner]',canvas);var s=inr?parseFloat(inr.dataset.sc):1;return (isFinite(s)&&s>0)?s:1;}
   function containerInnerRect(contId){var inr=$('.w[data-id="'+contId+'"] [data-role=continner]',canvas);return inr?inr.getBoundingClientRect():null;}
   // Container unter einem Bildschirmpunkt (px,py = Canvas-Koordinaten/zoom), ausser den mitgezogenen IDs
   function containerHitTest(px,py,exclude){exclude=exclude||{};var hit=null;
-    state.widgets.forEach(function(c){if(c.type!=='container'||exclude[c.id])return;if(px>=c.x&&px<=c.x+c.w&&py>=c.y&&py<=c.y+c.h)hit=c;});return hit;}
+    state.widgets.forEach(function(c){if((c.type!=='container'&&c.type!=='alarmpanel')||exclude[c.id])return;if(px>=c.x&&px<=c.x+c.w&&py>=c.y&&py<=c.y+c.h)hit=c;});return hit;}
   // Wert-Format pro Widget
   var FMTS={auto:'Original',kw:'kW',kwh:'kWh',w:'W',r0:'0 Dez.',r1:'1 Dez.',pct:'Prozent',time:'Uhrzeit',date:'Datum',rel:'Relativzeit'};
   var FMT_TYPES=['value','bar','chip','tile','room','sun','thermostat','weather','light','cover','slider','valuecard','stepper'];

@@ -6,6 +6,27 @@
   //    rngOn  = Bereichsmodus (Var2=Min, Var3=Max) · barOn = Fortschrittsbalken · okMin/okMax = Zielbereich-Badge
   //    vcMode='select' = Auswahl-Modus: Profil-Zuordnungen von Var1 als schaltbare Knoepfe (ersetzt Toggle/Badge/Balken)
   //  „Darstellung" in den Eigenschaften ist nur ein Schnell-Preset, das diese Flags setzt.
+  // ---- Norm-Skalen fuer Wasserwerte: Wert -> Farbton (kontinuierlich interpoliert) ----
+  //  pH: spektral aus Phenol-Rot abgeleitet (gelb-orange niedrig -> rot-orange ~7,4 ideal -> rosa/violett hoch).
+  //  Redox/Chlor: kein kolorimetrischer Standard -> Amber->Orange-Skala entlang der mV-Bereiche (Desinfektion 650-750 mV).
+  //  Toene 1:1 aus der ProCon.IP-Elektroden-Anzeige (ColorTable() im topleft.htm) uebernommen:
+  //  pH-Balken  ColorTable(high=0xEB994E orange, low=0xFAFEA3 blassgelb), Schwellen 7,8/7,6/7,38/7,18/7,0/6,8
+  //  Cl/Redox   ColorTable(high=0xF09FDF pink,   low=0xF7E9F4 blassrosa), mV-Schwellen aus dem Geraet (RDX=815,800,790,755,740,720)
+  var VC_SCALES={
+    ph:{name:'pH (Pool-Elektrode)', unit:'pH',
+      desc:'Wie der ProCon-pH-Balken: blassgelb (niedrig) → orange (hoch). Bereich 6,8–7,8.',
+      stops:[{v:6.8,c:'#fafea3'},{v:7.0,c:'#f7e992'},{v:7.18,c:'#f4d581'},{v:7.38,c:'#f1c170'},{v:7.6,c:'#eead5f'},{v:7.8,c:'#eb994e'}]},
+    redox:{name:'Redox / Chlor (Pool-Elektrode)', unit:'mV',
+      desc:'Wie der ProCon-Redox/Cl-Balken: blassrosa (niedrig) → kräftiges Pink (hoch). mV-Schwellen aus der DPD-Kalibrierung 720–815 mV.',
+      stops:[{v:720,c:'#f7e9f4'},{v:740,c:'#f5daef'},{v:755,c:'#f4cbeb'},{v:790,c:'#f2bce7'},{v:800,c:'#f1ade3'},{v:815,c:'#f09fdf'}]}
+  };
+  function _vcScaleColor(key,val){var sc=VC_SCALES[key];if(!sc||isNaN(val))return '';var st=sc.stops,n=st.length;
+    if(val<=st[0].v)return st[0].c;if(val>=st[n-1].v)return st[n-1].c;
+    for(var i=0;i<n-1;i++){if(val>=st[i].v&&val<=st[i+1].v)return _lerpHex(st[i].c,st[i+1].c,(val-st[i].v)/((st[i+1].v-st[i].v)||1));}
+    return st[n-1].c;}
+  function _vcScaleGrad(key){var sc=VC_SCALES[key];if(!sc)return '';var st=sc.stops,a=st[0].v,b=st[st.length-1].v;
+    return 'linear-gradient(90deg,'+st.map(function(o){return o.c+' '+((o.v-a)/((b-a)||1)*100).toFixed(1)+'%';}).join(',')+')';}
+  function _vcScalePct(key,val){var sc=VC_SCALES[key];if(!sc||isNaN(val))return null;var a=sc.stops[0].v,b=sc.stops[sc.stops.length-1].v;return Math.max(0,Math.min(100,(val-a)/((b-a)||1)*100));}
   function _vcNorm(x){var s=String(x==null?'':x).toLowerCase().trim();if(s==='true'||s==='on')return '1';if(s==='false'||s==='off')return '0';return s;}
   function _vcSel(w){return w.vcMode==='select';}
   function _vcMode(w){ // abgeleiteter Modus (nur fuer die „Darstellung"-Vorauswahl in den Eigenschaften)
@@ -86,12 +107,13 @@
         if(st==='muted')tr='<span class="hvcmuted" data-role="badge">'+esc(w.badge||'')+'</span>';
         else tr='<span class="hpill '+esc(st)+'" data-role="badge"><span class="hpd"></span>'+esc(w.badge||'')+'</span>';
       }
-      var val='<div class="hvcval"><span data-role="val">–</span>'+(w.unit?'<small> '+esc(w.unit)+'</small>':'')+'</div>';
+      var val='<div class="hvcval"'+(w.valfs?' style="font-size:'+(parseInt(w.valfs)||0)+'px"':'')+'><span data-role="val">–</span>'+(w.unit?'<small> '+esc(w.unit)+'</small>':'')+'</div>';
       var cap=w.label?'<div class="hvccap">'+escL(w.label)+'</div>':'';
       var bar=(!isSel&&w.barOn)?('<div class="hvcbar"><div class="btrack"><i data-role="bar"></i></div>'+((w.barCap!=null&&w.barCap!=='')?'<div class="hvcbarcap" data-role="barcap">'+esc(w.barCap)+'</div>':'')+'</div>'):'';
       var rng=(!isSel&&w.rngOn)?('<div class="hvcrng"><span class="rmin" data-role="rmin">–</span><span class="rtrack"><i class="rdot" data-role="rdot"></i></span><span class="rmax" data-role="rmax">–</span></div>'):'';
       var sel=isSel?('<div class="hvcselhost" data-role="vcselhost">'+_vcSelBody(w)+'</div>'):'';
-      return '<div class="hvcard" data-role="card"><div class="hvctop"><div class="hvctl">'+icon+title+'</div>'+tr+'</div>'+val+cap+rng+bar+sel+'</div>';
+      var scl=(!isSel&&w.vcScale&&VC_SCALES[w.vcScale])?('<div class="hvcscale" data-role="scale" style="background:'+_vcScaleGrad(w.vcScale)+'"><i class="sdot" data-role="sdot"></i></div>'):'';
+      return '<div class="hvcard" data-role="card"><div class="hvctop"><div class="hvctl">'+icon+title+'</div>'+tr+'</div>'+val+cap+scl+rng+bar+sel+'</div>';
     },
     mount:function(w){if(_vcSel(w))_vcSelLoad(w);if(w.cmpVid){var el=$('.w[data-id="'+w.id+'"]',canvas);if(el)_vcCmp(w,el);}},
     props:function(w){if(w.type!=='valuecard')return '';
@@ -100,7 +122,8 @@
       var s=row('Darstellung (Preset)','<select id="pVcMode">'+MODES.map(function(o){return '<option value="'+o[0]+'"'+(vm===o[0]?' selected':'')+'>'+o[1]+'</option>';}).join('')+'</select>')
         +'<div style="font-size:11px;color:var(--muted);margin:-2px 2px 7px">Setzt die passenden Optionen unten. Merkmale sind frei kombinierbar (z. B. Schalter + Balken).</div>'
         +row('Titel (oben-links)','<input id="pVcTitle" value="'+esc(w.title||'')+'" placeholder="statt/neben Icon">')
-        +row('Einheit','<input id="pVcUnit" value="'+esc(w.unit||'')+'" style="width:100px">');
+        +row('Einheit','<input id="pVcUnit" value="'+esc(w.unit||'')+'" style="width:100px">')
+        +row('Wert-Größe (px)','<input id="pVcValFs" type="number" min="0" style="width:80px" value="'+(w.valfs||'')+'" placeholder="auto"> <span style="font-size:11px;color:var(--muted)">nur die große Zahl (leer = automatisch)</span>');
       if(_vcSel(w)){
         return s+'<div style="font-size:11px;color:var(--muted);margin:6px 2px 4px">Auswahl-Modus: Knöpfe kommen aus den Profil-Zuordnungen von <b>Var 1</b> (RequestAction bei schaltbarer Variable). Ersetzt Toggle/Badge/Balken.</div>'
           +'<div class="pgh">Farbe nach Zustand</div>'
@@ -110,8 +133,14 @@
       // Bereichsmodus
       s+='<div class="pgh">Bereich Min/Max</div>'
         +row('Bereich zeigen','<input type="checkbox" id="pVcRng"'+(w.rngOn?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">Var 2 = Min, Var 3 = Max</span>')
-        +(w.rngOn?('<div style="font-size:11px;color:var(--muted);margin:2px 2px 5px">Farbstufen der Leiste (Wert in der Einheit der Variable, z. B. 30 für 30 °C). Leer = Temperaturskala.</div>'
+        +(w.rngOn?(row('Nachkommastellen (Min/Max)','<input id="pVcRngDec" type="number" min="0" max="6" style="width:60px" value="'+(w.rngDec!=null?w.rngDec:'')+'" placeholder="auto"> <span style="font-size:11px;color:var(--muted)">leer = wie Variable</span>')
+          +'<div style="font-size:11px;color:var(--muted);margin:2px 2px 5px">Farbstufen der Leiste (Wert in der Einheit der Variable, z. B. 30 für 30 °C). Leer = Temperaturskala.</div>'
           +listEditor(w,'rngGrad','Farbstufen: Wert · Farbe',[{k:'v',ph:'Wert'},{k:'color',type:'skincolor'}])):'');
+      // Norm-Skala (Farbe nach Wert) — z. B. pH / Redox der Poolwerte
+      s+='<div class="pgh">Wert-Skala (Farbe nach Wert)</div>'
+        +row('Skala','<select id="pVcScale"><option value="">— keine</option>'+Object.keys(VC_SCALES).map(function(k){return '<option value="'+k+'"'+(w.vcScale===k?' selected':'')+'>'+esc(VC_SCALES[k].name)+'</option>';}).join('')+'</select>')
+        +(w.vcScale?('<div style="font-size:11px;color:var(--muted);margin:2px 2px 5px">'+esc((VC_SCALES[w.vcScale]||{}).desc||'')+' Färbt den Großwert und zeigt eine Skalen-Leiste mit Marker.</div>'
+          +row('Ganze Kachel einfärben','<input type="checkbox" id="pVcScaleFill"'+(w.scaleFill?' checked':'')+'>')):'');
       // Badge / Zielbereich (nur ohne Bereichsmodus sinnvoll)
       if(!w.rngOn){
         s+='<div class="pgh">Badge (oben-rechts)</div>'
@@ -160,7 +189,7 @@
         else if(m==='toggle'){w.rngOn=undefined;}
         render();renderProps();commit();};
       function bind(id,prop,num){var e=$('#'+id);if(!e)return;e.oninput=e.onchange=function(){var v=num?(this.value===''?undefined:parseFloat(this.value)):(this.value||undefined);w[prop]=v;render();};}
-      bind('pVcTitle','title');bind('pVcUnit','unit');bind('pVcBadge','badge');bind('pVcBarCap','barCap');bind('pVcOkT','okText');bind('pVcBadT','badText');
+      bind('pVcTitle','title');bind('pVcUnit','unit');bind('pVcValFs','valfs',1);bind('pVcBadge','badge');bind('pVcBarCap','barCap');bind('pVcOkT','okText');bind('pVcBadT','badText');
       bind('pVcOkMin','okMin',1);bind('pVcOkMax','okMax',1);bind('pVcBarMin','barMin',1);bind('pVcBarMax','barMax',1);
       bind('pVcCmpText','cmpText');bind('pVcCmpTol','cmpTol',1);
       if($('#pVcCmpMode'))$('#pVcCmpMode').onchange=function(){w.cmpMode=this.value;render();renderProps();commit();};
@@ -175,6 +204,9 @@
       if($('#pVcSwOffIco'))$('#pVcSwOffIco').onclick=function(){_iconPick={wid:w.id,field:'swOffIcon'};showTab('icons');toast('Aus-Icon wählen');};
       if($('#pVcSwOffIcoX'))$('#pVcSwOffIcoX').onclick=function(){delete w.swOffIcon;render();renderProps();commit();};
       if($('#pVcVaFill'))$('#pVcVaFill').onchange=function(){w.vaFill=this.checked||undefined;render();if(w.varId&&_lastVals[w.varId])applyVal(w.varId,_lastVals[w.varId]);commit();};
+      if($('#pVcScale'))$('#pVcScale').onchange=function(){w.vcScale=this.value||undefined;if(!w.vcScale)w.scaleFill=undefined;render();renderProps();if(w.varId&&_lastVals[w.varId])applyVal(w.varId,_lastVals[w.varId]);commit();};
+      if($('#pVcScaleFill'))$('#pVcScaleFill').onchange=function(){w.scaleFill=this.checked||undefined;render();if(w.varId&&_lastVals[w.varId])applyVal(w.varId,_lastVals[w.varId]);commit();};
+      if($('#pVcRngDec'))$('#pVcRngDec').oninput=function(){w.rngDec=(this.value===''?undefined:Math.max(0,Math.min(6,parseInt(this.value)||0)));render();[w.varId,w.varId2,w.varId3].forEach(function(id){if(id&&_lastVals[id])applyVal(id,_lastVals[id]);});commit();};
       if($('#pVcOkMin')||$('#pVcOkMax')){['#pVcOkMin','#pVcOkMax'].forEach(function(sq){if($(sq))$(sq).addEventListener('change',function(){renderProps();});});}
     },
     click:function(w,el,e){
@@ -186,7 +218,9 @@
       if(_vcSel(w)){if(w.varId===id){var vs=$('[data-role=val]',el);if(vs)vs.textContent=txt;_vcSelMark(w,el,d.v);}_vcState(w,el);return true;}
       if(w.rngOn&&(id===w.varId||id===w.varId2||id===w.varId3)){
         var _n=function(vid){var lv=vid&&_lastVals[vid];if(!lv)return null;var q=parseFloat(String(lv.v).replace(',','.'));return isNaN(q)?null:q;};
-        var _t=function(vid){var lv=vid&&_lastVals[vid];return lv?((lv.f!=null&&lv.f!=='')?lv.f:String(lv.v)):'–';};
+        var _t=function(vid){var lv=vid&&_lastVals[vid];if(!lv)return '–';
+          if(w.rngDec!=null&&w.rngDec!==''){var q=parseFloat(String(lv.v).replace(',','.'));if(!isNaN(q))return q.toFixed(Math.max(0,Math.min(6,w.rngDec|0))).replace('.',',');}
+          return (lv.f!=null&&lv.f!=='')?lv.f:String(lv.v);};
         var cu=_n(w.varId),mi=_n(w.varId2),ma=_n(w.varId3);
         var eMin=$('[data-role=rmin]',el),eMax=$('[data-role=rmax]',el),dot=$('[data-role=rdot]',el);
         if(eMin)eMin.textContent=_t(w.varId2);if(eMax)eMax.textContent=_t(w.varId3);
@@ -203,6 +237,10 @@
         // liefert kein d.u), hier hart abschneiden, damit sie nicht doppelt erscheint.
         var v=$('[data-role=val]',el);
         if(v){var vt=txt,uu=(w.unit||'').trim();if(uu){var st=String(vt).trim();if(st.length>=uu.length&&st.slice(-uu.length)===uu)vt=st.slice(0,-uu.length).replace(/\s+$/,'');}v.textContent=vt;}
+        if(w.vcScale&&VC_SCALES[w.vcScale]){var _sv=parseFloat(String(d.v).replace(',','.')),_scol=_vcScaleColor(w.vcScale,_sv);
+          if(v&&_scol)v.style.color=_scol;
+          if(w.scaleFill&&_scol){var _st2=stateTint(_scol);el.style.background=_st2.bg;el.style.borderColor=_st2.bd;}
+          var _sd=$('[data-role=sdot]',el),_sp=_vcScalePct(w.vcScale,_sv);if(_sd&&_sp!=null)_sd.style.left=_sp+'%';}
         if(w.okMin!=null||w.okMax!=null){var nv=parseFloat(String(d.v).replace(',','.'));var bd=$('[data-role=badge]',el);if(bd&&!isNaN(nv)){var okv=(w.okMin==null||nv>=w.okMin)&&(w.okMax==null||nv<=w.okMax);bd.className='hpill '+(okv?'ok':'warn');bd.innerHTML='<span class="hpd"></span>'+esc(okv?(w.okText||'OPTIMAL'):(w.badText||'PRÜFEN'));}}
         if(w.barOn&&!w.varId3){var mn=(w.barMin!=null?w.barMin:0),mx=(w.barMax!=null?w.barMax:100),nb=parseFloat(String(d.v).replace(',','.')),bar=$('[data-role=bar]',el);if(bar&&!isNaN(nb))bar.style.width=Math.max(0,Math.min(100,((nb-mn)/((mx-mn)||1))*100))+'%';}
       }

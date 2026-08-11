@@ -27,7 +27,7 @@
   // dadurch faellt ein neu angelegtes Widget auf, statt lautlos zu verschwinden.
   var DOKU_GROUPS = [
     ['Werte & Zahlen',          ['value','valuecard','cval','sval','kpi','delta','calc','chip','icon','bar','meterlist','infolist']],
-    ['Schalten & Bedienen',     ['switch','light','button','tile','checkbox','select','slider','stepper','colorpick','textbox','cover','shadingpanel','shading','shadeprofile','thermostat','heatplan','weekedit','alarm','bot','timer','eventctl']],
+    ['Schalten & Bedienen',     ['switch','light','button','tile','checkbox','select','slider','stepper','colorpick','textbox','cover','shadingpanel','shading','shadeprofile','thermostat','heatplan','weekedit','alarm','alarmpanel','bot','timer','eventctl']],
     ['HomeSuite – Zeitplan (Heizung/Beschattung)', ['rooms','curve','week','slots','slotedit','variantbox','transfer','save']],
     ['HomeSuite – Navigation & Sonne', ['homesuite','roomnav','zonesync','shadesun','shadeprofiles']],
     ['Zustand & Listen',        ['assoc','statusgrid','statuslist','devlist','statusimage','table','objinfo','msglog','statelog','statetl']],

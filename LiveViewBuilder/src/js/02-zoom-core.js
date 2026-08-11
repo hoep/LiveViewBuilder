@@ -11,7 +11,7 @@
   function toast(m){var t=$('#toast');t.textContent=m;t.classList.add('show');setTimeout(function(){t.classList.remove('show');},1600);}
   function snap(n){return gridOn?Math.round(n/GS)*GS:Math.round(n);}
   // Kollisionssicher: nie eine ID vergeben, die ein Seiten-Widget, Container-Kind oder Leisten-Kind schon hat.
-  function _idTaken(id){var hit=false;function scan(w){if(!w||hit)return;if(w.id===id){hit=true;return;}if(w.type==='container'&&w.kids)w.kids.forEach(scan);}
+  function _idTaken(id){var hit=false;function scan(w){if(!w||hit)return;if(w.id===id){hit=true;return;}if(w.kids)w.kids.forEach(scan);}
     try{((typeof state!=='undefined'&&state&&state.widgets)||[]).forEach(scan);if(!hit&&typeof chromeAllKids==='function')chromeAllKids().forEach(scan);}catch(e){}return hit;}
   function uid(){var id;do{id='w'+(seq++);}while(_idTaken(id));return id;}
 

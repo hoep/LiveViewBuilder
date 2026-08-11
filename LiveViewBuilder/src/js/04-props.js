@@ -1,11 +1,11 @@
   // Universelle Interaktion (Popup/Skript) für JEDES Widget — Klick/Lang-Druck öffnet eine Ansicht als Popup
-  function popupSection(w){function vopts(cur){return '<option value="">—</option>'+Object.keys(store.views).map(function(n){return '<option value="'+esc(n)+'"'+(cur===n?' selected':'')+'>'+esc(n)+'</option>';}).join('');}
+  function popupSection(w){
     return '<div class="pgh">Interaktion</div>'
-    +row('Seite öffnen','<select id="pNavToG">'+vopts(w.navTo)+'</select>')
-    +row('Lang-Druck → Seite','<select id="pLongNav">'+vopts(w.longNav)+'</select>')
-    +row('Popup öffnen','<select id="pPopupTo">'+vopts(w.popupTo)+'</select>')
-    +row('Lang-Druck → Popup','<select id="pLongPop">'+vopts(w.longPopup)+'</select>')
-    +row('Hover-Ansicht','<select id="pHoverTo">'+vopts(w.hoverTo)+'</select>')
+    +row('Seite öffnen','<select id="pNavToG">'+viewOpts(w.navTo,'page')+'</select>')
+    +row('Lang-Druck → Seite','<select id="pLongNav">'+viewOpts(w.longNav,'page')+'</select>')
+    +row('Popup öffnen','<select id="pPopupTo">'+viewOpts(w.popupTo,'popup')+'</select>')
+    +row('Lang-Druck → Popup','<select id="pLongPop">'+viewOpts(w.longPopup,'popup')+'</select>')
+    +row('Hover-Ansicht','<select id="pHoverTo">'+viewOpts(w.hoverTo,'any')+'</select>')
     +(w.hoverTo?'<div style="font-size:11px;color:var(--warn);line-height:1.4;margin:-2px 2px 6px">Erscheint als Flyout beim <b>Überfahren mit der Maus</b> (Desktop). Auf Touch-Geräten gibt es kein Hover: dort öffnet ein Tipp den Flyout <b>nur, wenn das Widget keine andere Klick-Aktion hat</b> (sonst gewinnt Seite/Popup/Schalten).</div>':'')
     +row('Popup schließen','<input type="checkbox" id="pClosePop"'+(w.closePopup?' checked':'')+'>')
     +row('Skript ID','<input id="pScriptId" value="'+(w.scriptId||'')+'" placeholder="bei Klick ausführen">')
@@ -149,7 +149,7 @@
         +row('Stil','<select id="pFsty"><option value=""'+(!w.fsty?' selected':'')+'>Normal</option><option value="italic"'+(w.fsty==='italic'?' selected':'')+'>Kursiv</option></select>')
         +row('Schriftgröße (px)','<input id="pFsz" type="number" min="0" value="'+(w.fsz||'')+'" placeholder="Standard">')
       ):'')
-      +(['icon','value','switch','bar','tile','button','light','chip','room','kpi','assoc','valuecard','bot'].indexOf(w.type)>=0?row('Icon (Fallback)','<span style="width:20px;height:20px;display:inline-flex;align-items:center;color:var(--accent)">'+(w.icon?iconSVG(w.icon):'')+'</span> <button class="btn" id="pIcon" style="padding:5px 8px">wählen</button>'+(w.icon?' <button class="btn" id="pIconX" style="padding:5px 8px" title="Icon entfernen"><svg class="i"><use href="#ic-minus"/></svg></button>':'')):'')
+      +(['icon','value','switch','bar','tile','button','light','chip','room','kpi','assoc','valuecard','bot','alarm'].indexOf(w.type)>=0?row('Icon (Fallback)','<span style="width:20px;height:20px;display:inline-flex;align-items:center;color:var(--accent)">'+(w.icon?iconSVG(w.icon):'')+'</span> <button class="btn" id="pIcon" style="padding:5px 8px">wählen</button>'+(w.icon?' <button class="btn" id="pIconX" style="padding:5px 8px" title="Icon entfernen"><svg class="i"><use href="#ic-minus"/></svg></button>':'')):'')
       +(['icon','value','switch','bar','chip','room','kpi','valuecard'].indexOf(w.type)>=0&&w.icon?row('Icon-Farbe',(function(){var SK=[['','Standard'],['accent','Akzent'],['ok','OK'],['warn','Warnung'],['crit','Kritisch'],['info','Info'],['text','Neutral']];return '<span class="iconsw" data-role="iconsw">'+SK.map(function(c){var cur=(w.iconColor||'')===c[0];var st=c[0]?('background:var(--'+c[0]+')'):'background:transparent;border-style:dashed;border-color:var(--muted)';return '<button type="button" class="iconswb'+(cur?' on':'')+'" data-skin="'+c[0]+'" title="'+esc(c[1])+'" style="'+st+'"></button>';}).join('')+'</span>';})()):'')
       +(['icon','value','switch','bar','tile','button','light','chip','room','kpi','assoc','valuecard'].indexOf(w.type)>=0&&w.varId?'<div id="assocBox" class="assocbox"></div>':'')
       +universalSection(w)
@@ -285,7 +285,7 @@
   }
   function row(l,html){return '<div class="prow"><label>'+l+'</label>'+html+'</div>';}
   function delFromContainers(idset){ // Kinder aus w.kids entfernen (Loeschen/Ausschneiden)
-    (state.widgets||[]).forEach(function(c){if(c.type==='container'&&c.kids&&c.kids.length){var _n=c.kids.length;c.kids=c.kids.filter(function(k){return !(k&&idset[k.id]);});if(c.kids.length!==_n&&typeof contFitBase==='function')contFitBase(c);}});}
+    (state.widgets||[]).forEach(function(c){if((c.type==='container'||c.type==='alarmpanel')&&c.kids&&c.kids.length){var _n=c.kids.length;c.kids=c.kids.filter(function(k){return !(k&&idset[k.id]);});if(c.kids.length!==_n&&typeof contFitBase==='function')contFitBase(c);}});}
   function moveToTicker(w){ // Widget benennen, in erste Laufzeile referenzieren, auf der Seite ausblenden
     // Laufzeile auch in einer Leiste suchen - dort liegt sie beim gemeinsamen Kopfbereich.
     var tk=allWidgets().filter(function(x){return x.type==='ticker';})[0];
@@ -501,7 +501,7 @@
     return res;
   }
   function addCopies(src){if(!src||!src.length)return;
-    var _kidIds={};src.forEach(function(w){if(w&&w.type==='container'&&w.kids)w.kids.forEach(function(k){if(k)_kidIds[k.id]=1;});});
+    var _kidIds={};src.forEach(function(w){if(w&&w.kids)w.kids.forEach(function(k){if(k)_kidIds[k.id]=1;});});
     src=src.filter(function(w){return w&&!_kidIds[w.id];}); // Kinder eines mitkopierten Containers nicht separat duplizieren
     if(!src.length)return;
     var gmap={};var copies=src.map(function(w){var c=JSON.parse(JSON.stringify(w));c.id=uid();c.x=(c.x||0)+16;c.y=(c.y||0)+16;delete c.name;delete c.hidden;if(c.group){if(!gmap[c.group])gmap[c.group]='g'+uid();c.group=gmap[c.group];}if(c.type==='container'&&c.kids)c.kids.forEach(function(k){if(k)k.id=uid();});return c;});copies.forEach(function(c){state.widgets.push(c);});sel={};copies.forEach(function(c){sel[c.id]=true;});selId=copies.slice(-1)[0].id;render();renderProps();commit();}
@@ -711,7 +711,8 @@
       var _r3=canvas.getBoundingClientRect(),_px3=(e.clientX-_r3.left)/zoom,_py3=(e.clientY-_r3.top)/zoom,_exc={};
       drag.items.forEach(function(it){_exc[it.w.id]=1;});
       var _cont=containerHitTest(_px3,_py3,_exc);
-      var _movers=drag.items.map(function(it){return it.w;}).filter(function(x){return x.type!=='container'&&state.widgets.indexOf(x)>=0;});
+      var _movers=drag.items.map(function(it){return it.w;}).filter(function(x){return x.type!=='container'&&x.type!=='alarmpanel'&&state.widgets.indexOf(x)>=0;});
+      if(_cont&&_cont.type==='alarmpanel'){var _am=_movers.filter(function(x){return x.type==='alarm';});if(!_am.length){if(typeof toast==='function')toast('In das Alarm-Panel gehören Alarm-Widgets');clearGuides();drag=null;render();return;}_movers=_am;} // Alarm-Panel nimmt nur Alarm-Karten
       if(_cont&&_movers.length){var _ir=containerInnerRect(_cont.id),_sc=containerScreenScale(_cont.id);
         _movers.forEach(function(mw){var _wel=$('.w[data-id="'+mw.id+'"]',canvas),_wr=_wel?_wel.getBoundingClientRect():null,_dx=8,_dy=8;
           if(_wr&&_ir){_dx=Math.round((_wr.left-_ir.left)/(zoom*_sc));_dy=Math.round((_wr.top-_ir.top)/(zoom*_sc));}

@@ -41,6 +41,17 @@
     for(var vn in store.views){var ws=(store.views[vn].widgets)||[];for(var i=0;i<ws.length;i++){if(ws[i].popupTo===name||ws[i].longPopup===name)return true;}}
     return false;
   }
+  // Optionen fuer Ziel-Selektoren. kind: 'page' = nur normale Seiten, 'popup' = nur Popups, sonst alle.
+  // Der aktuell gesetzte Wert bleibt immer waehlbar (auch wenn er inzwischen der anderen Art ist).
+  function viewOpts(cur,kind,ph){
+    var all=Object.keys(store.views).filter(function(n){
+      if(kind==='page')return !_isPopupView(n);
+      if(kind==='popup')return _isPopupView(n);
+      return true;
+    }).sort(function(a,b){return a.localeCompare(b,'de',{sensitivity:'base'});});
+    if(cur&&all.indexOf(cur)<0)all.unshift(cur);   // bestehende (evtl. abweichende) Auswahl behalten
+    return '<option value="">'+(ph||'—')+'</option>'+all.map(function(n){return '<option value="'+esc(n)+'"'+(cur===n?' selected':'')+'>'+esc(n)+'</option>';}).join('');
+  }
   function refreshViewSel(){var s=$('#viewSel');
     if(s){s.innerHTML=''; // optionales Dropdown (falls vorhanden) fuellen ...
       var all=Object.keys(store.views),cmp=function(a,b){return a.localeCompare(b,'de',{sensitivity:'base'});};
@@ -54,7 +65,7 @@
   function reseq(){seq=1;var all=[];
     // Container-Kinder MITZÄHLEN – sonst vergibt uid() IDs, die ein Kind (z. B. ein Toggle) schon hat,
     // und beim Selektieren greifen zwei Widgets zugleich. Zusätzlich Duplikate heilen (späteres bekommt neue ID).
-    function collect(w){if(!w)return;all.push(w);var n=parseInt(String(w.id||'w0').replace('w',''))||0;if(n>=seq)seq=n+1;if(w.type==='container'&&w.kids)w.kids.forEach(collect);}
+    function collect(w){if(!w)return;all.push(w);var n=parseInt(String(w.id||'w0').replace('w',''))||0;if(n>=seq)seq=n+1;if(w.kids)w.kids.forEach(collect);}
     (state.widgets||[]).forEach(collect);
     var seen={};all.forEach(function(w){if(!w.id||seen[w.id]){w.id='w'+(seq++);}seen[w.id]=1;});}
   function switchView(name){if(!store.views[name])return;store.current=name;state=store.views[name];if(!state.page)state.page={w:1440,h:900};if(!state.widgets)state.widgets=[];selId=null;sel={};reseq();refreshViewSel();setCanvas();invalidateSC();_scMode='';document.body.classList.remove('reflow');restoring=true;render();restoring=false;renderProps();resetHist();chromeUI();} // render() macht bereits Kamera/HTML-Init + Sofort-Poll (kein doppeltes Rendern mehr)
