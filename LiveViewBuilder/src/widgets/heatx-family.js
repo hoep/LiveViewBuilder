@@ -82,10 +82,36 @@
       }).catch(function(){toast('Speichern: Verbindungsfehler');hfEmit(w);});
   }
   function hfMsg(txt){return '<div class="hplan hp-loading"><div class="hp-spin">'+esc(txt)+'</div></div>';}
-  function hfReady(w){var s=hfSess(w);_hpStops=hpColors(w);hpSetVC(s.domain||w.domain||'heating');if(s.err)return {err:s.err};if(!s.loaded)return {loading:true};return {s:s};}
+  function hfReady(w){var s=hfSess(w);
+    // Farbskala session-weit teilen: setzt ein Widget w.tcolors, gilt sie fuer alle
+    // Teil-Widgets derselben Session (konsistente Darstellung, egal welches rendert).
+    if(w.tcolors&&w.tcolors.length===5)s.tcolors=w.tcolors.slice();
+    _hpStops=hpColors((s.tcolors&&s.tcolors.length===5)?{tcolors:s.tcolors}:w);
+    hpSetVC(s.domain||w.domain||'heating');if(s.err)return {err:s.err};if(!s.loaded)return {loading:true};return {s:s};}
   function hfSessRow(w){return row('Session-ID','<input id="hfSessInp" value="'+esc(w.session||'heat')+'" placeholder="heat">')
     +'<div style="font-size:11px;color:var(--muted);margin:2px 2px 4px">Gleiche Session-ID = geteilte Bedienung mit den anderen Heizplan-Teil-Widgets.</div>';}
   function hfSessWire(w){if($('#hfSessInp'))$('#hfSessInp').onchange=function(){w.session=this.value||undefined;commit();var el=$('.w[data-id="'+w.id+'"]',canvas);if(el){var s=WIDGETS[w.type];var host=el.querySelector('.winner')||el;host.innerHTML=s.render(w);if(s._bind)s._bind(w,el);}hfEmit(w);};}
+
+  // ---- anpassbare Temperatur-Farbskala (nur Heizung) ----
+  function hfColorScaleRows(w){
+    if((w.domain||'heating')!=='heating')return ''; // Skala gilt nur fuer Heizungs-Domaene
+    var labels=['≤ 14 °C','16 °C','19 °C','21 °C','≥ 23 °C'];
+    var cols=(w.tcolors&&w.tcolors.length===5)?w.tcolors:HP_TDEF;
+    var h='<div class="pgh">Farbskala (Temperatur)</div>';
+    for(var i=0;i<5;i++){var c=/^#[0-9a-fA-F]{6}$/.test(cols[i])?cols[i]:HP_TDEF[i];
+      h+=row(labels[i],'<input type="color" class="hptc" data-hptc="'+i+'" value="'+c+'">');}
+    h+=row('','<button class="wecrst" data-hptcrst="1" title="Standard-Skala">↺ Standard</button>');
+    h+='<div style="font-size:11px;color:var(--muted);margin:2px 2px 4px">5 Stützstellen (14/16/19/21/23 °C), Zwischenwerte interpoliert. Gilt für alle Heizplan-Widgets derselben Session.</div>';
+    return h;
+  }
+  function hfColorScaleWire(w){
+    $$('[data-hptc]').forEach(function(inp){inp.oninput=function(){var i=+inp.getAttribute('data-hptc');
+      var cols=(w.tcolors&&w.tcolors.length===5)?w.tcolors.slice():HP_TDEF.slice();
+      cols[i]=inp.value;w.tcolors=cols;commit();var s=hfSess(w);s.tcolors=cols.slice();hfEmit(w);};});
+    var rb=$('[data-hptcrst]');if(rb)rb.onclick=function(){w.tcolors=undefined;commit();var s=hfSess(w);s.tcolors=null;hfEmit(w);if(typeof renderProps==='function')renderProps();};
+  }
+  function hfProps(w){return hfSessRow(w)+hfColorScaleRows(w);}
+  function hfWire(w){hfSessWire(w);hfColorScaleWire(w);}
 
   // ---------- heatrooms (Controller): Raum-Tabs + Titel ----------
   defWidget('rooms',{
@@ -114,13 +140,15 @@
         h+=row('Geschoss-Tabs','<label style="display:inline-flex;align-items:center;gap:6px;font-size:12px"><input type="checkbox" id="hfFtabs"'+(w.floorTabs?' checked':'')+'> eine Seite, Etagen als Tabs</label>'); }
       h+=listEditor(w,'rooms',w.hsMode?'Zone · Etage':'Raum · Gruppe',[{k:'idx',type:'select',options:(_hpRooms||[]).map(function(r){return [String(r.idx),r.name];})},{k:'group',type:'select',options:[['','–'],['EG','EG'],['OG','OG'],['DG','DG']]}]);
       if(w.hsMode)h+='<div style="font-size:11px;color:var(--muted);margin:4px 2px">Geschoss-Filter = nur dieses Geschoss. Leer bei Zonen = alle. Reihenfolge = Tab-Reihenfolge.</div>';
+      h+=hfColorScaleRows(w);
       return h;},
     wire:function(w){hfSessWire(w);
       if($('#hfDom'))$('#hfDom').onchange=function(){w.domain=this.value;if(w.domain==='shading'||w.domain==='irrigation')w.hsMode=true;w.rooms=[];_hpRooms=null;_hpRoomsRoot=null;var s=hfSess(w);s.domain=w.domain;s.hsMode=!!w.hsMode;s.loaded=false;s.loading=false;s.roomIdx=0;s.variant=0;s.variants=null;commit();renderProps();var el=$('.w[data-id="'+w.id+'"]',canvas);if(el)hfEnsure(w,el);hfEmit(w);};
       if($('#hfHs'))$('#hfHs').onchange=function(){w.hsMode=this.checked||undefined;w.rooms=[];_hpRooms=null;_hpRoomsRoot=null;var s=hfSess(w);s.hsMode=!!w.hsMode;s.loaded=false;s.loading=false;s.roomIdx=0;commit();renderProps();var el=$('.w[data-id="'+w.id+'"]',canvas);if(el)hfEnsure(w,el);hfEmit(w);};
       if($('#hfFloor'))$('#hfFloor').onchange=function(){w.floor=this.value||undefined;var s=hfSess(w);s.loaded=false;s.loading=false;s.roomIdx=0;commit();renderProps();var el=$('.w[data-id="'+w.id+'"]',canvas);if(el)hfEnsure(w,el);hfEmit(w);};
       if($('#hfFtabs'))$('#hfFtabs').onchange=function(){w.floorTabs=this.checked||undefined;if(w.floorTabs)w.floor=undefined;var s=hfSess(w);s.floorSel=null;s.loaded=false;s.loading=false;s.roomIdx=0;commit();renderProps();var el=$('.w[data-id="'+w.id+'"]',canvas);if(el)hfEnsure(w,el);hfEmit(w);};
-      if($('#hfRoot'))$('#hfRoot').onchange=function(){w.rootId=parseInt(this.value)||undefined;var s=hfSess(w);s.root=w.rootId||0;s.loaded=false;s.loading=false;commit();var el=$('.w[data-id="'+w.id+'"]',canvas);if(el)hfEnsure(w,el);};}
+      if($('#hfRoot'))$('#hfRoot').onchange=function(){w.rootId=parseInt(this.value)||undefined;var s=hfSess(w);s.root=w.rootId||0;s.loaded=false;s.loading=false;commit();var el=$('.w[data-id="'+w.id+'"]',canvas);if(el)hfEnsure(w,el);};
+      hfColorScaleWire(w);}
   });
 
   // ---------- heatcurve (=Step-Kurve): ziehbare Sollkurve ----------
@@ -138,7 +166,7 @@
         startDrag(box,function(e){var f=(e.clientY-box.top)/box.height,t=hi-f*(hi-lo);t=Math.max(_hpVC.min,Math.min(_hpVC.max,t));t=Math.round(t/_hpVC.step)*_hpVC.step;day.val[i]=t;hpMarkDirty(s);});});});
       $$('[data-hpb]',el).forEach(function(bh){bh.addEventListener('pointerdown',function(ev){ev.preventDefault();var i=+bh.getAttribute('data-hpb');var day=hpDayObj(s),end=day.end,box=svg.getBoundingClientRect();
         startDrag(box,function(e){var f=(e.clientX-box.left)/box.width,m=Math.round(f*1440/10)*10;var loB=(i==0?0:hpH2M(end[i-1]))+10,hiB=hpH2M(end[i+1])-10;m=Math.max(loB,Math.min(hiB,m));end[i]=hpM2H(m);hpMarkDirty(s);});});});},
-    props:function(w){return hfSessRow(w);}, wire:function(w){hfSessWire(w);}
+    props:function(w){return hfProps(w);}, wire:function(w){hfWire(w);}
   });
 
   // ---------- heatweek: Wochenübersicht ----------
@@ -149,7 +177,7 @@
     mount:function(w){var el=$('.w[data-id="'+w.id+'"]',canvas)||$('.w[data-id="'+w.id+'"]',$('#ovcanvas'));if(!el)return;hfSub(w);hfEnsure(w,el);},
     _bind:function(w,el){var s=hfSess(w);$$('[data-hpwday]',el).forEach(function(b){b.onclick=function(){s.day=+b.getAttribute('data-hpwday');s.slot=1;hfEmit(w);};});
       $$('[data-hpday]',el).forEach(function(b){b.onclick=function(){s.day=+b.getAttribute('data-hpday');s.slot=1;hfEmit(w);};});},
-    props:function(w){return hfSessRow(w);}, wire:function(w){hfSessWire(w);}
+    props:function(w){return hfProps(w);}, wire:function(w){hfWire(w);}
   });
 
   // ---------- heatslots: Wochentag-Wahl + Slot-Pillen ----------
@@ -163,7 +191,7 @@
     _bind:function(w,el){var s=hfSess(w);
       $$('[data-hpday]',el).forEach(function(b){b.onclick=function(){s.day=+b.getAttribute('data-hpday');s.slot=1;hfEmit(w);};});
       $$('[data-hpslot]',el).forEach(function(b){b.onclick=function(){s.slot=+b.getAttribute('data-hpslot');hfEmit(w);};});},
-    props:function(w){return hfSessRow(w);}, wire:function(w){hfSessWire(w);}
+    props:function(w){return hfProps(w);}, wire:function(w){hfWire(w);}
   });
 
   // ---------- heateditor: Präsenz + Slot-Editor + Übertragen + Speichern ----------
@@ -194,7 +222,7 @@
       var cp=$('[data-hpcopy]',el);if(cp)cp.onclick=function(){var t=[];$$('[data-hptday]:checked',el).forEach(function(c){t.push(+c.getAttribute('data-hptday'));});if(!t.length){toast('Keine Zieltage gewählt');return;}hpCopyDay(w,s,t);em();};
       var tk=$('[data-hptake]',el);if(tk)tk.onclick=function(){var rm=$('[data-hpfromroom]',el),pr=$('[data-hpfrompres]',el);if(!rm||!pr)return;if(s.dirty&&!confirm('Ungespeicherte Änderungen verwerfen?'))return;hfTakeOver(w,+rm.value,+pr.value,em);};
       var sv=$('[data-hpsave]',el);if(sv)sv.onclick=function(){hfSave(w);};},
-    props:function(w){return hfSessRow(w);}, wire:function(w){hfSessWire(w);}
+    props:function(w){return hfProps(w);}, wire:function(w){hfWire(w);}
   });
 
   // ---------- Editor ZERLEGT in Einzelwidgets (kleine, wiederverwendbare Bausteine) ----------
@@ -216,7 +244,7 @@
       $$('[data-hpetype]',el).forEach(function(b){b.onclick=function(){hpSetEndType(s,b.getAttribute('data-hpetype'));em();};});
       var an=$('[data-hpanchor]',el);if(an)an.onchange=function(){hpSetAnchor(s,an.value);em();};
       $$('[data-hpoff]',el).forEach(function(b){b.onclick=function(){hpOffStep(s,+b.getAttribute('data-hpoff'));em();};});},
-    props:function(w){return hfSessRow(w);}, wire:function(w){hfSessWire(w);}
+    props:function(w){return hfProps(w);}, wire:function(w){hfWire(w);}
   });
 
   // variantbox: die Varianten-/Praesenz-Auswahl (Plan/Praesenz)
