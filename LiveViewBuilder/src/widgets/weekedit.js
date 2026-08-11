@@ -46,7 +46,10 @@
     var h='<div class="wep">';
     // Kopf
     h+='<div class="wep-head"><div class="wep-title">'+esc(st.name)+(st.active?'':' <span class="wep-off">inaktiv</span>')+(st.dirty?' <b class="wep-unsaved">· ungespeichert</b>':'')+'</div>';
-    h+='<div class="wep-now">'+(st.now!=null?('jetzt: <b style="color:'+weAct(st,st.now).color+'">'+esc(weAct(st,st.now).name)+'</b>'):'')+'</div></div>';
+    // Gut sichtbarer Slot-Hinzufügen-Knopf in der Kopfzeile (zusätzlich zum Editor-Kasten).
+    h+='<div class="wep-hact" style="margin-left:auto;display:flex;gap:6px;align-items:center">'
+      +'<button class="wep-hadd" data-weadd="1" title="Schaltpunkt einfügen" style="background:var(--accent-2,var(--accent));color:#fff;border:0;border-radius:6px;padding:4px 12px;font-weight:600;cursor:pointer">+ Slot</button>'
+      +'<div class="wep-now">'+(st.now!=null?('jetzt: <b style="color:'+weAct(st,st.now).color+'">'+esc(weAct(st,st.now).name)+'</b>'):'')+'</div></div></div>';
     // Wochentage
     h+='<div class="wep-days">'+WE_DAYS.map(function(d,i){var gg=weGroupForDay(st,i);return '<button class="wep-day'+(i==st.day?' on':'')+(gg?'':' empty')+'" data-weday="'+i+'">'+d+'</button>';}).join('')+'</div>';
     // Wochenübersicht
@@ -160,8 +163,8 @@
     $$('[data-weslot]',el).forEach(function(b){b.onclick=function(){st.slot=+b.getAttribute('data-weslot');rp();};});
     var as=$('[data-weact]',el);if(as)as.onchange=function(){weActChange(st,+as.value);rp();};
     $$('[data-westart]',el).forEach(function(b){b.onclick=function(){weStartStep(st,+b.getAttribute('data-westart'));rp();};});
-    var ab=$('[data-weadd]',el);if(ab)ab.onclick=function(){weAddSlot(st);rp();};
-    var db=$('[data-wedel]',el);if(db)db.onclick=function(){weDelSlot(st);rp();};
+    $$('[data-weadd]',el).forEach(function(ab){ab.onclick=function(){weAddSlot(st);rp();};}); // Kopf- UND Editor-Knopf
+    $$('[data-wedel]',el).forEach(function(db){db.onclick=function(){weDelSlot(st);rp();};});
     var sv=$('[data-wesave]',el);if(sv)sv.onclick=function(){weSave(w,el);};
   }
 
