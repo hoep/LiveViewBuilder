@@ -10,22 +10,39 @@
   var DOKU_INFO = {
     "alarm": {
       titel: "Alarm",
-      zweck: "Zeigt den Zustand einer Alarmanlagen-Variablen als farbigen Text und bietet darunter zwei Schaltflaechen zum Scharf- und Unscharfschalten. Der Zustandstext wird rot (crit) bei aktivem/wahrem Wert und gruen (ok) bei inaktivem Wert eingefaerbt.",
+      zweck: "Regelgesteuerte Alarm-Karte: eine abgerundete, getoente Karte aus Icon-Box, fettem Titel und gedaempfter Unterzeile - sichtbar nur, wenn eine Bedingung erfuellt ist; sonst blendet sie sich vollstaendig aus und nimmt keinen Platz. Gedacht als Einzelmeldung oder als Kind im Alarm-Panel.",
       funktionen: [
-        {name: "Variable", beschreibung: "Zustandsvariable der Alarmanlage. Ihr formatierter Wert (Profiltext, z. B. An/Aus) erscheint als grosse Zustandszeile in Mono-Schrift; auf diese ID schreiben auch die beiden Schaltflaechen."},
-        {name: "Text (zwei Felder)", beschreibung: "Beschriftung der beiden Knoepfe. Erstes Feld = Scharf-Knopf (Vorgabe 'Scharf'), zweites Feld = Unscharf-Knopf (Vorgabe 'Unscharf'). Aenderungen wirken sofort in der Vorschau."},
-        {name: "Klick auf Scharf/Unscharf", beschreibung: "Nicht als Feld sichtbar: Der linke Knopf schreibt 1, der rechte 0 auf die gebundene Variable. Wirkt nur im Vorschau-/Run-Modus, im Edit-Modus passiert nichts."},
-        {name: "Zustandsfaerbung", beschreibung: "Nicht einstellbar: Der Zustandstext wird bei wahrem Wert (true/1/'1') in var(--crit), sonst in var(--ok) dargestellt - unabhaengig von der eingestellten Textfarbe."},
-        {name: "Label", beschreibung: "Gemeinsame Eigenschaft. Wird von diesem Widget nicht gezeichnet (die Karte zeigt nur Zustand + Knoepfe). Als interne Kennung (Laufzeile, Referenzen) dient nicht das Label, sondern das eigene Feld 'Name'."},
-        {name: "Farben / Rahmen / Hintergrund", beschreibung: "Gemeinsame Eigenschaften: Text- und Hintergrundfarbe der Karte, Rahmen an/aus/Ansicht-Standard, Hintergrund deckend oder transparent."},
-        {name: "Typografie", beschreibung: "Gemeinsame Eigenschaften: Schriftart, Gewicht, Stil und Schriftgroesse; wirkt auch auf die Knopfbeschriftung."},
-        {name: "Interaktion", beschreibung: "Gemeinsame Eigenschaften: Seite oeffnen, Popup oeffnen, Popup schliessen, Skript-ID bei Klick, Alias-Zuordnung Vorlagen-ID -> echte Geraete-ID (nur bei gesetztem Popup). Achtung: Diese Aktionen werden VOR der Knopf-Auswertung geprueft - ist eine davon gesetzt, schalten die Knoepfe die Variable nicht mehr, sondern jeder Klick loest die Aktion aus."},
-        {name: "Lang-Druck", beschreibung: "Gemeinsam: Lang-Druck (550 ms) oeffnet wahlweise eine Seite oder ein Popup; ist beides gesetzt, gewinnt die Seite. Danach wird der nachfolgende Klick unterdrueckt."},
-        {name: "Sichtbarkeit / Animation / Ebene", beschreibung: "Gemeinsam: Anzeigen im Betrieb, Steuervariable mit Bedingung (wahr/nicht 0, =, !=, >=, <=), Einblend-Animation (Fade, Scale, SlideUp), Reihenfolge nach vorn/hinten, Position und Groesse."},
+        {name: "Variable", beschreibung: "Quelle der Bedingung (das Feld „Variable\" oben): eine ID oder eine =Formel. Ihr Wert wird gegen den Vergleich geprueft; ist er erfuellt, erscheint die Karte."},
+        {name: "Bedingung", beschreibung: "Drei Modi: „Variable vs. Konstante\" (Operator + Schwelle), „Variable vs. Variable\" (Operator + zweite Variable) oder „Vergleichsliste\" (trifft eine Zeile → aktiv). Operatoren <, <=, ==, !=, >=, >; die Liste kennt zusaetzlich Bereiche (25..60) und Platzhalter (*, else)."},
+        {name: "Vergleichsliste", beschreibung: "Nur im Listen-Modus: je Zeile ein Muster (z. B. >50, !=0, 1..5, *) und eine Skin-Farbe. Trifft eine Zeile, ist der Alarm aktiv und die Karte wird in der Zeilenfarbe getoent."},
+        {name: "Farbe (Skin)", beschreibung: "Skin-Farbschluessel (crit/warn/info…), der Karte und Icon-Box toent (stateTint, passt sich Hell/Dunkel an). Im Listen-Modus gewinnt die Farbe der getroffenen Zeile."},
+        {name: "Titel", beschreibung: "Fette Kopfzeile. Klartext oder =Formel mit #id + Text (z. B. =#33962.\" Sensor-Alarme\" → „12 Sensor-Alarme\")."},
+        {name: "Unterzeile", beschreibung: "Gedaempfte Zeile darunter. Klartext oder =Formel; das Kuerzel {seit} wird durch „seit HH:MM\" (Zeitpunkt der letzten Aenderung der Bedingungs-Variable) ersetzt."},
+        {name: "Icon (Fallback)", beschreibung: "Icon in der getoenten Box (gemeinsame Icon-Zeile). Die Icon-Farbe folgt der Alarm-Farbe."},
+        {name: "Benachrichtigung", beschreibung: "Reines Textfeld (Klartext/=Formel), am Element als data-notify hinterlegt - KEIN Push aus dem Widget. Echter Push laeuft ueber einen separaten Symcon-Skript-Hook."},
+        {name: "Sichtbarkeit / Position", beschreibung: "Ist die Bedingung nicht erfuellt, verschwindet die Karte im Betrieb komplett (im Editor bleibt sie sichtbar und bearbeitbar)."},
       ],
-      hinweis: "Die Knoepfe schreiben feste Werte 1/0 - die Variable muss boolesch oder 0/1-numerisch und beschreibbar sein (Aktion/Profil mit Schaltmoeglichkeit). Ohne gebundene Variable bleibt die Anzeige auf '-' und die Knoepfe tun nichts. Die Demo haengt an der echten Alarmanlagen-Variablen: ein Klick im Bedien-Modus schaltet die Anlage wirklich.",
-      groesse: [240,130],
-      demo: {"label": "Alarmanlage", "varId": 22090, "onText": "Scharf", "offText": "Unscharf"}
+      hinweis: "Standalone blendet sich die Karte bei nicht erfuellter Bedingung ganz aus. Als Kind eines Alarm-Panels wird sie zusaetzlich nur gezeigt, wenn sie aktiv und nicht quittiert ist. Die Demo vergleicht eine Zaehlervariable > 0 und faerbt kritisch (rot).",
+      groesse: [320,72],
+      demo: {"varId": 900015, "condMode": "const", "op": ">", "thr": 0, "color": "crit", "icon": "smoke", "title": "=#900015.\" Sensor-Alarme\"", "sub": "Rauchmelder Leonie, Z-Wave · {seit}"}
+    },
+    "alarmpanel": {
+      titel: "Alarm-Panel",
+      zweck: "Sammelbehaelter fuer Alarm-Karten: roter Eyebrow („BRAUCHT AUFMERKSAMKEIT\") plus „Alle quittieren\", darunter eine automatisch gepackte Reihe der Alarm-Karten. Gezeigt werden nur AKTIVE, nicht quittierte Karten; ist keine aktiv, verschwindet das ganze Panel (oder zeigt eine „Keine Alarme\"-Zeile).",
+      funktionen: [
+        {name: "Alarm-Karten (Kinder)", beschreibung: "Ein Alarm-Widget in das Panel ziehen macht es zum Kind (w.kids). Jede Karte entscheidet selbst ueber ihre Bedingung; inaktive Karten werden im Betrieb ausgeblendet."},
+        {name: "Eyebrow / Farbe", beschreibung: "Kleiner Ueberschrifttext oben links und seine Skin-Farbe (Vorgabe crit = rot)."},
+        {name: "Alle quittieren", beschreibung: "Knopf oben rechts. Blendet alle aktuell aktiven Karten aus (client-seitig, an die Signatur des Alarms gebunden). Aendert sich der Zustand oder wird ein Alarm zwischendurch inaktiv, taucht die Karte wieder auf. Optional wird zusaetzlich eine Quittier-Variable geschrieben."},
+        {name: "Kritische zuerst", beschreibung: "Sortiert die Reihe so, dass kritische (rote) Karten vor gelben/amber stehen."},
+        {name: "Abstand", beschreibung: "Luecke zwischen den Karten in Pixel."},
+        {name: "Wenn leer", beschreibung: "„Panel verstecken\" (Vorgabe) blendet das ganze Panel aus, sobald keine Karte aktiv ist; „Keine Alarme-Zeile\" laesst den Rahmen stehen und zeigt einen dezenten Hinweis."},
+      ],
+      hinweis: "Die Karten-Innenoptik (getoente Box, fetter Titel, gedaempfte Unterzeile, crit=rot/warn=amber) liefert das Alarm-Widget; das Panel steuert Rahmen, Kopf, Reihe, Sortierung und Quittung. Quittungen sind bewusst nicht ueber einen Reload hinweg persistent (fail-safe: lieber zeigen als verstecken).",
+      groesse: [760,150],
+      demo: {"eyebrow": "BRAUCHT AUFMERKSAMKEIT", "ackText": "Alle quittieren", "kids": [
+        {"type": "alarm", "id": "adk1", "x": 0, "y": 0, "w": 320, "h": 64, "varId": 900015, "condMode": "const", "op": ">", "thr": 0, "color": "crit", "icon": "smoke", "title": "=#900015.\" Sensor-Alarme\"", "sub": "Rauchmelder Leonie, Z-Wave · {seit}"},
+        {"type": "alarm", "id": "adk2", "x": 0, "y": 0, "w": 320, "h": 64, "varId": 900022, "condMode": "const", "op": ">", "thr": 0, "color": "warn", "icon": "warning", "title": "=#900022.\" % Luftfeuchte\"", "sub": "Bad OG, Homematic · {seit}"}
+      ]}
     },
     "assoc": {
       titel: "Zustand",
@@ -1615,12 +1632,40 @@
         {name: "Wochentage & Gruppen", beschreibung: "Mo-So anwaehlbar. Symcon fasst Tage zu Gruppen zusammen (z. B. Mo-Fr, Sa+So) - der Editor zeigt, fuer welche Tage die gerade bearbeitete Gruppe gilt; Aenderungen wirken auf alle Tage der Gruppe."},
         {name: "Wochenuebersicht", beschreibung: "Sieben Farbband-Zeilen, je Tag die Schaltpunkte nach Aktionsfarbe. Ein Tag anklicken oeffnet ihn."},
         {name: "Slot-Editor", beschreibung: "Je Schaltpunkt: Aktion aus der Liste waehlen, Startzeit in -1h/-10m/+10m/+1h-Schritten. Der erste Punkt liegt fix auf 00:00. \"+ Einfuegen\" / \"- Loeschen\" (mind. 1)."},
+        {name: "Max. Ein-Fenster/Tag", beschreibung: "maxWin - begrenzt die schaltbaren Ein-Perioden pro Tag auf das, was das Zielgeraet tatsaechlich speichern kann (z. B. ProCon-Pool-Pumpe = 4 TIMEC-Fenster). Zeigt einen Zaehler x/N in der Gruppenzeile und sperrt das Einfuegen des naechsten Fensters, sobald das Limit erreicht ist. 0/leer = keine Grenze (fuer generische Plaene wie Maehroboter)."},
         {name: "jetzt", beschreibung: "Oben rechts die aktuell gueltige Aktion, aus dem Plan zur aktuellen Uhrzeit berechnet."},
         {name: "Speichern", beschreibung: "Schreibt die Schaltpunkte der Gruppe zurueck in den Symcon-Wochenplan (IPS_SetEventScheduleGroupPoint); ueberzaehlige Punkte werden entfernt."},
       ],
       hinweis: "Lesen/Schreiben ueber ?api=week (Symcon-Wochenplan-Ereignisse, EventType 2); Schreiben ist token-geschuetzt. Diese Doku-Vorschau ist rein lokal (Beispiel-Plan, kein Zugriff auf echte Ereignisse, speichert nichts).",
       groesse: [720,460],
       demo: {"label":"Wochenplan","eventId":900801}
+    },
+    "ruletable": {
+      titel: "Regel-Tabelle",
+      zweck: "Kompakte Matrix fuer Geraete-Regelmatrizen (z. B. ProCon TEMPC/ADCC/SWITCHC): eine ZEILE je Regel, eine SPALTE je Feld. Jede Zelle ist an eine eigene schreibbare Variable gebunden. Statt hunderter Einzelkacheln entsteht eine scanbare Tabelle mit stickerm Kopf und stickerer Regelspalte.",
+      funktionen: [
+        {name: "Spalten (cols)", beschreibung: "Liste der Feld-Spalten: label, type (num/bool/sel), unit, options[] (fuer sel). Wird i. d. R. generiert (aus den Geraete-Regelvariablen)."},
+        {name: "Regeln (rowLabels)", beschreibung: "Zeilenbeschriftungen, je eine Regel (z. B. Regel 0..7)."},
+        {name: "Zellen (items)", beschreibung: "Bindung je belegter Zelle: {vid, r, c}. Die Zell-Variablen werden automatisch gepollt (ueber items[].vid) und live aktualisiert."},
+        {name: "Bedienen", beschreibung: "num-Zelle: Tipp oeffnet eine Zahleneingabe. bool-Zelle: Klick schaltet (Toggle). sel-Zelle: Klick schaltet auf die naechste Profil-Option weiter. Schreiben ist gegated (armed) - im Schatten-Modus passiert nichts am Geraet."},
+        {name: "Nur Skin-Farben", beschreibung: "Kopf/Trenner/Akzente aus den Skin-Token -> funktioniert im hellen und dunklen Skin."},
+      ],
+      hinweis: "Fuer die Pool-Controller-Konfig aus dem Generator poolcfg_pages_gen.php erzeugt. Sehr breite Matrizen (viele Spalten) scrollen horizontal.",
+      groesse: [900,320],
+      demo: {"label":"TEMPC-Regeln","cols":[{"label":"Aktiv","type":"bool"},{"label":"Ziel","type":"sel","options":[{"value":0,"text":"Pumpe"},{"value":1,"text":"Ventil"}]},{"label":"Diff","type":"num","unit":"K"}],"rowLabels":["Regel 0","Regel 1"],"items":[]}
+    },
+    "regiontabs": {
+      titel: "Region-Tabs",
+      zweck: "Tab-Leiste im HomeSuite-Raum-Look (Buttons/Pills/Underline), die den Inhalt eines Komponenten-Bereichs zwischen mehreren Ansichten umschaltet. Der aktive Tab (= aktuell in der Region gezeigte Ansicht) wird hervorgehoben. Zusammen mit einem Komponente-Widget gleichen Region-Namens entsteht eine Seite mit festem Rahmen und tab-geschaltetem Inhalt.",
+      funktionen: [
+        {name: "Stil", beschreibung: "style — Buttons, Pills oder Underline (identische Optik zu den Raum-Selektoren)."},
+        {name: "Region-Name", beschreibung: "slot — muss zum Region-Namen des Komponente-Widgets passen, dessen Inhalt umgeschaltet wird."},
+        {name: "Standard-Ansicht", beschreibung: "default — die Ansicht, die anfangs aktiv ist (i. d. R. = die Komponente-Vorgabe)."},
+        {name: "Tabs", beschreibung: "tabs[] — Liste aus Label und Ziel-Ansicht. Klick schaltet die Region auf die Ansicht und markiert den Tab aktiv."},
+      ],
+      hinweis: "Region-Umschaltung ist rein clientseitig (kein Speichern). Sehr viele Tabs brechen um (flex-wrap). Reine Skin-Farben.",
+      groesse: [900,48],
+      demo: {"style":"pills","slot":"demo","default":"A","tabs":[{"label":"Live","view":"A"},{"label":"Konfig","view":"B"}]}
     },
     "ticker": {
       titel: "Laufzeile",
@@ -1756,10 +1801,13 @@
         {name: "Var 3", beschreibung: "Quelle des Fortschrittsbalkens (leer = Hauptwert) bzw. im Bereichsmodus das Maximum."},
         {name: "Titel (oben-links)", beschreibung: "Kurztext neben oder statt des Icons in der Kopfzeile."},
         {name: "Einheit", beschreibung: "Kleiner Zusatz hinter dem Wert. Ist eine Einheit gesetzt, wird die Profil-Einheit aus Symcon vom Wert abgezogen, damit nichts doppelt steht."},
+        {name: "Wert-Groesse (px)", beschreibung: "valfs — feste Schriftgroesse NUR der grossen Zahl in px; leer = automatisch (skaliert mit der Kachelhoehe). Die Einheit daneben bleibt unveraendert. Fuer 'ganze Karte gleich gross' gibt es zusaetzlich die gemeinsame Eigenschaft 'Schriftgroesse (px)' ganz unten, die aber alle Texte der Kachel betrifft."},
         {name: "Badge (Wert/Zielbereich)", beschreibung: "Nur in den Modi Einfacher Wert und Zielbereich: Text und Zustandsfarbe der Plakette oben rechts (grau/OK/Aktiv/Warnung/Kritisch/Akzent)."},
         {name: "Zielbereich min/max (Zielbereich-Modus)", beschreibung: "Liegt der Hauptwert im Bereich, wird die Plakette gruen (Text OPTIMAL), sonst gelb (Text PRUEFEN). Beide Texte sind einstellbar."},
         {name: "Vergleich / Soll (Abweichung)", beschreibung: "Optionale Soll-/Vergleichs-Variable: Der Hauptwert (Var 1 = Ist) wird live gegen die Soll-Variable verglichen und die Abweichung als gefaerbte Pille oben rechts gezeigt - Modus Prozent oder Absolut, mit Toleranzband (innerhalb = gruen, ausserhalb = gelb), Pfeilrichtung und frei waehlbarem Zusatztext (z. B. 'ggue. Plan'). Belegt den Badge-Platz; ein Schalter (Var 2) hat weiterhin Vorrang."},
         {name: "Farbstufen: Wert · Farbe (Bereichs-Modus)", beschreibung: "Jede Stufe traegt einen Wert in der Einheit der Variable (z. B. 30 fuer 30 Grad), nicht in Prozent; die Umlegung auf die Leiste passiert zur Laufzeit, sobald Minimum und Maximum bekannt sind. Eine Stufe ergibt einfarbig blass nach voll, keine Stufe die voreingestellte Temperaturskala."},
+        {name: "Nachkommastellen (Min/Max) (Bereichs-Modus)", beschreibung: "Rundet die beiden Beschriftungen links/rechts der Bereichs-Leiste (Var 2 = Min, Var 3 = Max) auf feste Nachkommastellen (0-6, deutsches Komma). Leer = so wie die Variable formatiert ist. Betrifft nur die Min/Max-Labels, nicht den Grosswert."},
+        {name: "Wert-Skala (Farbe nach Wert)", beschreibung: "Norm-Skala fuer Poolwerte, Toene 1:1 aus der ProCon.IP-Elektroden-Anzeige: faerbt den Grosswert je nach Messwert und zeigt eine Skalen-Leiste mit Marker. Preset pH (blassgelb niedrig -> orange hoch; 6,8-7,8) oder Redox/Chlor (blassrosa niedrig -> kraeftiges Pink hoch; mV-Schwellen aus der DPD-Kalibrierung 720-815 mV). Die Farbtoene werden zwischen den Stuetzstellen kontinuierlich interpoliert. Optional 'Ganze Kachel einfaerben'."},
         {name: "Balken min/max · Text rechts (Balken-Modus)", beschreibung: "Wertebereich, auf den die Balken-Quelle in 0-100 Prozent umgerechnet wird (Vorgabe 0-100), plus feste Beschriftung neben dem Balken (z. B. 81 % Kanister)."},
         {name: "Schalter-Farben / Knopf-Icons (Schalter-Modus)", beschreibung: "Skin-Farben und Icons des Schaltknopfs je Stellung."},
         {name: "Auswahl (Auswahl-Modus)", beschreibung: "Die Knoepfe kommen aus den Profil-Zuordnungen von Var 1 (ueber ?api=assoc) und folgen dem Profil automatisch. Ein Klick schreibt den Wert - hat die Variable eine Aktion, per RequestAction, sonst per SetValue."},

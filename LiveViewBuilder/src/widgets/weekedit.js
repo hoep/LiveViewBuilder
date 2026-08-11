@@ -22,6 +22,8 @@
   function weGroupForDay(st,day){var gs=st.groups||[];for(var i=0;i<gs.length;i++){if((gs[i].dayList||[]).indexOf(day)>=0)return gs[i];}return null;}
   function weCurGroup(st){return weGroupForDay(st,st.day);}
   function wePoints(g){return (g&&g.points)?g.points.slice().sort(function(a,b){return weH2M(a.h,a.m)-weH2M(b.h,b.m);}):[];}
+  // Anzahl EIN-Fenster einer Gruppe (Aktion != 0 = „Ein"), analog zur Controller-Uebersetzung ruleFromEvent (TIMEC = max. 4).
+  function weWindows(g){var pts=wePoints(g),open=false,wins=0;for(var i=0;i<pts.length;i++){var on=(pts[i].actionId!=0);if(on){open=true;}else if(open){wins++;open=false;}}if(open)wins++;return wins;}
   function weDayLabel(g){ if(!g)return '–'; return (g.dayList||[]).map(function(d){return WE_DAYS[d];}).join(' '); }
 
   // ---------- Demodaten (Doku) ----------
@@ -43,12 +45,13 @@
     if(!st.planId||!(st.groups&&st.groups.length))return '<div class="wep wep-msg"><div>Kein Wochenplan gewählt – im Panel auswählen.</div></div>';
     var g=weCurGroup(st), pts=wePoints(g), n=pts.length;
     if(st.slot>n)st.slot=n; if(st.slot<1)st.slot=1;
+    var _mw=(w.maxWin)|0, _wc=weWindows(g), _atMax=(_mw>0&&_wc>=_mw);   // Fenster-Limit (z. B. Pool-Pumpe = 4, Controller-TIMEC)
     var h='<div class="wep">';
     // Kopf
     h+='<div class="wep-head"><div class="wep-title">'+esc(st.name)+(st.active?'':' <span class="wep-off">inaktiv</span>')+(st.dirty?' <b class="wep-unsaved">· ungespeichert</b>':'')+'</div>';
     // Gut sichtbarer Slot-Hinzufügen-Knopf in der Kopfzeile (zusätzlich zum Editor-Kasten).
     h+='<div class="wep-hact" style="margin-left:auto;display:flex;gap:6px;align-items:center">'
-      +'<button class="wep-hadd" data-weadd="1" title="Schaltpunkt einfügen" style="background:var(--accent-2,var(--accent));color:#fff;border:0;border-radius:6px;padding:4px 12px;font-weight:600;cursor:pointer">+ Slot</button>'
+      +'<button class="wep-hadd" data-weadd="1"'+(_atMax?' disabled title="Max. '+_mw+' Ein-Fenster/Tag (Controller-Limit)"':' title="Schaltpunkt einfügen"')+' style="background:var(--accent-2,var(--accent));color:#fff;border:0;border-radius:6px;padding:4px 12px;font-weight:600;cursor:'+(_atMax?'not-allowed;opacity:.4':'pointer')+'">+ Slot</button>'
       +'<div class="wep-now">'+(st.now!=null?('jetzt: <b style="color:'+weAct(st,st.now).color+'">'+esc(weAct(st,st.now).name)+'</b>'):'')+'</div></div></div>';
     // Wochentage
     h+='<div class="wep-days">'+WE_DAYS.map(function(d,i){var gg=weGroupForDay(st,i);return '<button class="wep-day'+(i==st.day?' on':'')+(gg?'':' empty')+'" data-weday="'+i+'">'+d+'</button>';}).join('')+'</div>';
@@ -63,20 +66,20 @@
     h+='<div class="wep-legend">'+(st.actions||[]).map(function(a){return '<span class="wep-lchip"><i style="background:'+a.color+'"></i>'+esc(a.name)+'</span>';}).join('')+'</div>';
     // Gruppen-Hinweis + Slot-Pillen
     h+='<div class="wep-body"><div class="wep-main">';
-    h+='<div class="wep-grpnote">'+WE_DAYL[st.day]+' · Gruppe gilt für <b>'+weDayLabel(g)+'</b> · '+n+' Slot'+(n!=1?'s':'')+'</div>';
+    h+='<div class="wep-grpnote">'+WE_DAYL[st.day]+' · Gruppe gilt für <b>'+weDayLabel(g)+'</b> · '+n+' Slot'+(n!=1?'s':'')+(_mw>0?(' · <b'+(_wc>=_mw?' style="color:var(--warn)"':'')+'>'+_wc+'/'+_mw+' Ein-Fenster</b>'):'')+'</div>';
     var start2=0;
     h+='<div class="wep-pills">'+pts.map(function(p,i){var s=weM2H(start2),e=(i+1<n)?weM2H(weH2M(pts[i+1].h,pts[i+1].m)):'24:00';start2=weH2M(p.h,p.m+0);var a=weAct(st,p.actionId);
       var lbl=weM2H(weH2M(p.h,p.m))+'–'+e; return '<button class="wep-pill'+(i+1==st.slot?' on':'')+'" data-weslot="'+(i+1)+'" style="--wc:'+a.color+'"><b>'+esc(a.name)+'</b><span>'+lbl+'</span></button>';}).join('')+'</div>';
     h+='</div>';
     // Editor
-    h+='<div class="wep-side">'+weSlotEditor(st,g,pts)+'</div>';
+    h+='<div class="wep-side">'+weSlotEditor(st,g,pts,_atMax,_mw)+'</div>';
     h+='</div>';
     h+='<button class="wep-save'+(st.dirty?' dirty':'')+'" data-wesave="1"><svg class="wep-ic"><use href="#ic-check"/></svg> Speichern</button>';
     h+='</div>';
     return h;
   }
 
-  function weSlotEditor(st,g,pts){
+  function weSlotEditor(st,g,pts,atMax,mw){
     var i=st.slot-1,p=pts[i]||{h:0,m:0,actionId:0},first=(i===0),a=weAct(st,p.actionId),n=pts.length;
     var start=weH2M(p.h,p.m);
     var h='<div class="wep-box"><div class="wep-boxh">Slot '+st.slot+'</div>';
@@ -87,8 +90,8 @@
     h+='<div class="wep-field"><label>Start</label><div class="wep-val">'+(first?'00:00 (fix)':weM2H(start))+'</div></div>';
     h+='<div class="wep-steps'+(first?' dis':'')+'"><button data-westart="-60"'+(first?' disabled':'')+'>−1h</button><button data-westart="-10"'+(first?' disabled':'')+'>−10m</button><button data-westart="10"'+(first?' disabled':'')+'>+10m</button><button data-westart="60"'+(first?' disabled':'')+'>+1h</button></div>';
     // add/del
-    h+='<div class="wep-slotbtns"><button class="wep-addb" data-weadd="1">+ Einfügen</button><button class="wep-delb" data-wedel="1"'+(n<=1?' disabled':'')+'>− Löschen</button></div>';
-    h+='<div class="wep-hint">Änderungen gelten für '+weDayLabel(g)+'.</div>';
+    h+='<div class="wep-slotbtns"><button class="wep-addb" data-weadd="1"'+(atMax?' disabled title="Max. '+mw+' Ein-Fenster/Tag"':'')+'>+ Einfügen</button><button class="wep-delb" data-wedel="1"'+(n<=1?' disabled':'')+'>− Löschen</button></div>';
+    h+='<div class="wep-hint">'+(atMax?'<b style="color:var(--warn)">Fenster-Limit '+mw+' erreicht</b> (Controller-Grenze). ':'')+'Änderungen gelten für '+weDayLabel(g)+'.</div>';
     h+='</div>';
     return h;
   }
@@ -101,7 +104,8 @@
   function weStartStep(st,delta){var g=weCurGroup(st),pts=wePoints(g),i=st.slot-1;if(i===0)return; // erster fix 00:00
     var cur=weH2M(pts[i].h,pts[i].m),lo=weH2M(pts[i-1].h,pts[i-1].m)+10,hi=(i+1<pts.length)?weH2M(pts[i+1].h,pts[i+1].m)-10:1430;
     var nv=Math.max(lo,Math.min(hi,cur+delta)); pts[i].h=Math.floor(nv/60);pts[i].m=nv%60; weDirty(st);}
-  function weAddSlot(st){var g=weCurGroup(st);if(!g)return;var pts=wePoints(g),n=pts.length;if(n>=48)return;
+  function weAddSlot(st,maxWin){var g=weCurGroup(st);if(!g)return;var pts=wePoints(g),n=pts.length;if(n>=48)return;
+    if(maxWin>0&&weWindows(g)>=maxWin){toast&&toast('Max. '+maxWin+' Ein-Fenster/Tag (Controller-Limit)');return;}
     if(n===0){ // leere Gruppe: 00:00 + Mittagspunkt anlegen, damit ueberhaupt editierbar
       var a0=(st.actions[0]||{id:0}).id,a1=(st.actions[1]||st.actions[0]||{id:0}).id;
       g.points.push({h:0,m:0,actionId:a0}); g.points.push({h:12,m:0,actionId:a1}); st.slot=2; weDirty(st); return; }
@@ -163,7 +167,7 @@
     $$('[data-weslot]',el).forEach(function(b){b.onclick=function(){st.slot=+b.getAttribute('data-weslot');rp();};});
     var as=$('[data-weact]',el);if(as)as.onchange=function(){weActChange(st,+as.value);rp();};
     $$('[data-westart]',el).forEach(function(b){b.onclick=function(){weStartStep(st,+b.getAttribute('data-westart'));rp();};});
-    $$('[data-weadd]',el).forEach(function(ab){ab.onclick=function(){weAddSlot(st);rp();};}); // Kopf- UND Editor-Knopf
+    $$('[data-weadd]',el).forEach(function(ab){ab.onclick=function(){weAddSlot(st,(w.maxWin)|0);rp();};}); // Kopf- UND Editor-Knopf
     $$('[data-wedel]',el).forEach(function(db){db.onclick=function(){weDelSlot(st);rp();};});
     var sv=$('[data-wesave]',el);if(sv)sv.onclick=function(){weSave(w,el);};
   }
@@ -186,6 +190,8 @@
     if(!_wePlans){ weLoadPlans(function(){if(typeof renderProps==='function')renderProps();}); return h+'<div style="color:var(--muted);font-size:12px;padding:4px 2px">Pläne laden …</div>'; }
     h+=row('Plan','<select id="wePlan"><option value="">— wählen —</option>'+(_wePlans||[]).map(function(p){return '<option value="'+p.id+'"'+(w.eventId==p.id?' selected':'')+'>'+esc(p.name)+' · '+esc(p.path||'')+'</option>';}).join('')+'</select>');
     h+='<div style="font-size:11px;color:var(--muted);margin:2px 2px 4px">Jeder Symcon-Wochenplan (Ereignis) — Pool, Mähroboter, Zirkulation … Werte/Farben kommen aus den Aktionen des Plans.</div>';
+    h+=row('Max. Ein-Fenster/Tag','<input id="weMaxWin" type="number" min="0" max="12" style="width:70px" value="'+(w.maxWin||'')+'" placeholder="unbegrenzt"> <span style="font-size:11px;color:var(--muted)">Geräte-Limit, z. B. Pool-Pumpe (ProCon TIMEC) = 4</span>');
+    h+='<div style="font-size:11px;color:var(--muted);margin:-2px 2px 6px">Begrenzt die schaltbaren Ein-Perioden pro Tag auf das, was der Controller tatsächlich speichern kann. 0/leer = keine Grenze.</div>';
     // Anzeige-Farben je Aktion aus der SKIN-Palette (überschreibt die Plan-Farbe nur in der Darstellung)
     var st=_weState[w.id];
     if(st&&st.loaded&&st.actions&&st.actions.length){
@@ -199,6 +205,7 @@
     return h;
   }
   function weWire(w){
+    if($('#weMaxWin'))$('#weMaxWin').oninput=function(){var v=parseInt(this.value)||0;w.maxWin=(v>0?Math.min(12,v):undefined);commit();var el=weElOf(w);if(el)weRepaint(w,el);};
     if($('#wePlan'))$('#wePlan').onchange=function(){var v=parseInt(this.value)||0;w.eventId=v||undefined;commit();
       var el=weElOf(w);if(el){var st=weSt(w);st.loaded=false;weRepaint(w,el);WIDGETS.weekedit.mount(w);}};
     function reflect(){var el=weElOf(w);if(!el)return;var st=weSt(w);weApplyColors(w,st);weRepaint(w,el);}

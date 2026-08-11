@@ -2,3 +2,6 @@
 *.log
 *.tmp
 __pycache__/
+terser.err
+*.err
+11945.ips.php

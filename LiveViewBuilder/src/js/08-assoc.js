@@ -130,7 +130,7 @@
   function assignIcon(id){
     if(_iconPick){var wp=widget(_iconPick.wid);if(wp){if(_iconPick.path)setPath(wp,_iconPick.path,id);else wp[_iconPick.field]=id;render();select(wp.id);renderProps();toast('Icon: '+id);}_iconPick=null;return;}
     if(_assocPick){var wa=widget(_assocPick.wid);if(wa){if(!wa.assocMap)wa.assocMap={};if(!wa.assocMap[_assocPick.key])wa.assocMap[_assocPick.key]={};wa.assocMap[_assocPick.key].icon=id;wa.assocOn=true;render();select(wa.id);renderProps();refreshAssocLive(wa);toast('Status-Icon: '+id);}_assocPick=null;return;}
-    var ICONABLE=['icon','value','switch','bar','tile','button','light','chip','weather','weatherpro','room','kpi','assoc']; // wie die Icon-Zeile in renderProps
+    var ICONABLE=['icon','value','switch','bar','tile','button','light','chip','weather','weatherpro','room','kpi','assoc','alarm']; // wie die Icon-Zeile in renderProps
     var ids=Object.keys(sel);if(!ids.length&&selId)ids=[selId];
     var targets=ids.map(widget).filter(function(w){return w&&ICONABLE.indexOf(w.type)>=0;});
     if(targets.length){targets.forEach(function(w){w.icon=id;});render();renderProps();toast('Icon: '+id);}
