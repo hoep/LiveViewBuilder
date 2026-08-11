@@ -82,7 +82,7 @@
       if(!w.label)return host;                                   // ohne Label wie bisher
       var ico=w.icon?'<span style="width:16px;height:16px;display:inline-flex;flex:none">'+iconSVG(w.icon)+'</span>':'';
       return '<div style="display:flex;align-items:center;gap:8px;height:100%">'
-        +'<span style="font-size:12.5px;font-weight:600;color:var(--text);white-space:nowrap;display:flex;align-items:center;gap:6px">'+ico+esc(w.label)+'</span>'
+        +'<span style="font-size:12.5px;font-weight:600;color:var(--text);white-space:nowrap;display:flex;align-items:center;gap:6px">'+ico+escL(w.label)+'</span>'
         +host+'</div>';
     },
     mount:function(w){_selLoad(w);},

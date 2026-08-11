@@ -36,7 +36,7 @@
     }
     function rrEl(w){return $('.w[data-id="'+w.id+'"]',canvas)||$('.w[data-id="'+w.id+'"]',$('#ovcanvas'));}
     function rrRender(w){
-      var title=esc(w.title||'Niederschlagsradar');
+      var title=escL(w.title||'Niederschlagsradar');
       return '<div class="rr" style="position:absolute;inset:0;display:flex;flex-direction:column;background:var(--surface);border-radius:inherit;overflow:hidden">'
         +'<div class="rr-head" style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 10px;font-size:11px;letter-spacing:.4px;color:var(--muted);text-transform:uppercase;flex:0 0 auto">'
           +'<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:0 1 auto">'+title+'</span>'

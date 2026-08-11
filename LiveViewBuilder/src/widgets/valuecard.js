@@ -71,7 +71,7 @@
     render:function(w){
       var isSel=_vcSel(w);
       var icon=w.icon?'<span class="hkbi">'+iconSVG(w.icon)+'</span>':'';
-      var title=w.title?'<span class="hvctitle">'+esc(w.title)+'</span>':'';
+      var title=w.title?'<span class="hvctitle">'+escL(w.title)+'</span>':'';
       var tr='';
       // oben-rechts: Toggle (Var2, kein Akzent, kein Bereich) hat Vorrang; sonst Badge
       if(!isSel&&w.varId2&&!w.v2acc&&!w.rngOn){

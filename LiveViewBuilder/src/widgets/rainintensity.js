@@ -39,7 +39,7 @@
     function riHHMM(t){var d=new Date(t*1000);return (d.getHours()<10?'0':'')+d.getHours()+':'+(d.getMinutes()<10?'0':'')+d.getMinutes();}
 
     function riRender(w){
-      var title=esc(w.title||'Regen 48 h'), b=riBuild(w);
+      var title=escL(w.title||'Regen 48 h'), b=riBuild(w);
       var accent=w.riColor?('var(--'+esc(w.riColor)+')'):'var(--info)';
       var sum='';
       if(!b){ sum=''; }
