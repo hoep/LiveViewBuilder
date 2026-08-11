@@ -1503,8 +1503,11 @@
   function _popupFit(){
     if(!_popup)return; var oc=$('#ovcanvas'),card=$('#ovcard');if(!oc||!card)return;
     var pw=_popup.page.w||1440,ph=_popup.page.h||900;
-    // EXAKT wie die Main-Seite (letterboxFit): auf das volle Viewport einpassen.
-    var sc=Math.min(window.innerWidth/pw,window.innerHeight/ph); if(!(sc>0))sc=1;
+    // DEN Faktor der Main-Seite verwenden (letterboxFit der aktuellen Seite), NICHT
+    // das Popup an die Viewport-Hoehe anpassen. Popup bleibt in Originalabmessungen,
+    // nur mit demselben Faktor skaliert wie die darunterliegende Seite.
+    var mw=(state&&state.page&&state.page.w)||pw,mh=(state&&state.page&&state.page.h)||ph;
+    var sc=Math.min(window.innerWidth/mw,window.innerHeight/mh); if(!(sc>0))sc=1;
     oc.style.width=pw+'px';oc.style.height=ph+'px';oc.style.transformOrigin='top left';oc.style.transform='scale('+sc+')';
     card.style.width=Math.round(pw*sc)+'px';card.style.height=Math.round(ph*sc)+'px';
   }
