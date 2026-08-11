@@ -297,7 +297,13 @@
     var axw=_axShow(w);
     var opt={backgroundColor:'transparent',animation:!!bcfg().chartAnim,grid:{left:8,right:10,top:6+_titleSpace(w),bottom:4,containLabel:true},
       title:_titleOpt(w),
-      tooltip:{trigger:'axis',axisPointer:{type:'shadow'},formatter:function(ps){var p=ps&&ps.length?ps[ps.length-1]:null;if(!p)return '';return (p.name||'')+': '+_chNum(w,p.value);}},
+      tooltip:{trigger:'axis',axisPointer:{type:'shadow'},formatter:function(ps){
+        // Nur den BALKEN (Serie 1) zeigen — NICHT die Basis (0) oder die Verbindungslinie
+        // (=laufender Saldo/Zwischensumme). Einzelwert, negative als Absolutwert.
+        var p=null;for(var i=0;i<ps.length;i++){if(ps[i].seriesIndex===1){p=ps[i];break;}}
+        if(!p)return '';var v=p.value;if(v&&typeof v==='object'&&v.value!=null)v=v.value;
+        v=parseFloat(v);if(isNaN(v))return (p.name||'');
+        return (p.name||'')+': '+_chNum(w,Math.abs(v));}},
       xAxis:{type:'category',data:cats,axisTick:{show:axw.ticks},axisLine:{show:axw.line,lineStyle:{color:cssv('--line')}},axisLabel:{show:axw.xLab,color:cssv('--faint'),fontSize:_axFs(w),interval:0},splitLine:{show:axw.xGrid,lineStyle:{color:cssv('--line-soft')}}},
       yAxis:{type:'value',name:unit,nameTextStyle:{color:cssv('--muted'),fontSize:_ecF(w,'axname',9)},nameGap:7,axisLine:{show:axw.line,lineStyle:{color:cssv('--line')}},axisTick:{show:axw.ticks},axisLabel:_axLabY(w,axw),splitLine:{show:axw.yGrid,lineStyle:{color:cssv('--line-soft')}}},
       series:series};
