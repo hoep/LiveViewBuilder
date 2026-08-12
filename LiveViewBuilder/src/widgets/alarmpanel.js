@@ -56,7 +56,10 @@
       ke.classList.toggle('alp-acked',!!acked);
     });
     var isEmpty=(mode!=='edit'&&_alpShown(w).length===0);
-    var em=w.emptyMode||'hide';
+    // „Alle quittieren" macht das Panel leer (shown=0), obwohl Alarme noch AKTIV sind.
+    // In dem Fall NICHT verstecken, sondern OK-Zustand zeigen (Panel bleibt sichtbar).
+    var ackedEmpty=isEmpty&&_alpKids(w).some(_alpActive);
+    var em=ackedEmpty?'ok':(w.emptyMode||'hide');
     var okEl=$('.w[data-id="'+w.id+'"] [data-role=alpok]',canvas);
     var eyeEl=$('.w[data-id="'+w.id+'"] .alp-eye',canvas);
     var rwrap=$('.w[data-id="'+w.id+'"] .alp-rowwrap',canvas);
