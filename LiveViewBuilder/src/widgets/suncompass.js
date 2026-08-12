@@ -100,7 +100,7 @@
       var up=eff&&eff.elev>0, rp=eff?P(eff.az,0):[CX,30], spos=eff?P(eff.az,Math.max(eff.elev,0)):[CX,CY];
       var ray=eff?'<line x1="180" y1="180" x2="'+rp[0].toFixed(1)+'" y2="'+rp[1].toFixed(1)+'" stroke="#f5a623" stroke-opacity="'+(up?0.35:0.12)+'" stroke-width="1.5"/>':'';
       var sun=eff?'<g transform="translate('+spos[0].toFixed(1)+' '+spos[1].toFixed(1)+')" opacity="'+(up?1:0.15)+'"><circle r="20" fill="url(#sccglow)"/><circle r="6" fill="#ffcb52" stroke="#f5a623" stroke-width="1.5"/></g>':'';
-      return '<svg class="cmp" viewBox="0 0 360 360"'+(acc2?' style="--accent:'+esc(acc2)+'"':'')+'>'
+      return '<svg class="cmp" viewBox="0 0 360 360" preserveAspectRatio="xMidYMid meet"'+(acc2?' style="--accent:'+esc(acc2)+'"':'')+'>'
         +'<defs><radialGradient id="sccsky" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="var(--surface-2)"/><stop offset="100%" stop-color="var(--tile)"/></radialGradient>'
         +'<radialGradient id="sccglow" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#ffcb52" stop-opacity="0.9"/><stop offset="60%" stop-color="#f5a623" stop-opacity="0.25"/><stop offset="100%" stop-color="#f5a623" stop-opacity="0"/></radialGradient></defs>'
         +'<circle cx="180" cy="180" r="150" fill="url(#sccsky)" stroke="var(--line)"/>'
@@ -121,9 +121,12 @@
       var hit=inWin&&isEl&&(el>0);
       var pos=(el!=null&&el>0)?(Math.round(az)+'° / '+Math.round(el)+'°'):(el!=null?'unter Horizont':'—');
       var verdict=(el==null)?'—':(el<=0?'Nacht':(hit?'ja':(!inWin?'außerhalb Fenster':'unter Schwelle')));
+      // Ist-Schließung = tatsächliche aktuelle Rollo-Position (nicht der Soll/Schließgrad,
+      // der ist im Besonnung-Widget einstellbar). -1 = unbekannt.
+      var cur=(d.current!=null?+d.current:null);
       return '<div class="span-status">'
         +'<div class="span-badge'+(hit?' on-sun':'')+'">Fenster besonnt<b>'+esc(verdict)+'</b></div>'
-        +'<div class="span-badge'+(hit?' on-prof':'')+'">Schließung Soll<b>'+(d.rawSun!=null?d.rawSun+' %':'—')+'</b></div>'
+        +'<div class="span-badge">Schließung Ist<b>'+((cur!=null&&cur>=0)?Math.round(cur)+' %':'?')+'</b></div>'
         +'<div class="span-badge">Azimut / Höhe<b>'+esc(pos)+'</b></div></div>';
     }
 
@@ -138,7 +141,7 @@
       var win=scWindow(d.geoProfile);
       var head=win?('Fassade '+Math.round(win.fz)+'° · Fenster '+Math.round(win.bgn)+'–'+Math.round(win.end)+'°'):'kein Fenster';
       var h='<div class="span-sun">';
-      h+='<div class="span-sun-h"><span><b>Sonnenstand</b></span><span class="span-sun-az">'+esc(head)+'</span></div>';
+      h+='<div class="span-sun-h"><span><b>Sonnenstandsdiagramm</b></span><span class="span-sun-az">'+esc(head)+'</span></div>';
       h+=scCompass(w,d);
       h+='<div class="span-sun-legend"><span class="lg gold">Sonne / Bahn</span><span class="lg teal">Fenster / Profil</span></div>';
       h+=scBadges(d);
@@ -153,7 +156,7 @@
       scMg(idx).then(function(j){st.d=j;st.err='';scPaint(w);}).catch(function(){st.err='net';scPaint(w);}); }
 
     defWidget('suncompass',{
-      label:'Sonnenkompass', paletteIcon:'sun', size:[360,470],
+      label:'Sonnenstandsdiagramm', paletteIcon:'sun', size:[360,470],
       defaults:function(w){w.bind='session';w.session='shade';},
       render:function(w){return scRender(w);},
       mount:function(w){var el=scEl(w);if(!el)return;

@@ -46,6 +46,7 @@
       if(!st.types)return msg('Profile laden …');
       if(st.err)return msg(st.err);
       var td=spTypeDef(st);
+      var asg=(st.assigned&&st.assigned[st.type])||null; // dieser Zone zugewiesenes Profil des aktuellen Typs
       // Typ-Reiter (Unterstrich-Tabs)
       var tabs=st.types.map(function(t){var on=t.id===st.type;
         return '<button data-sptype="'+esc(t.id)+'" style="display:inline-flex;align-items:center;gap:7px;padding:10px 14px;border:0;background:none;cursor:pointer;white-space:nowrap;font-size:12.5px;font-weight:600;color:'+(on?'var(--text)':'var(--muted)')+';border-bottom:2px solid '+(on?'var(--accent)':'transparent')+'">'+spIcon(t.id,15)+esc(t.title)+'</button>';}).join('');
@@ -54,9 +55,10 @@
       // Linke Spalte: Profil-Karten
       h+='<div style="width:240px;flex:none;border-right:1px solid var(--line);overflow:auto;padding:12px;display:flex;flex-direction:column;gap:8px">'
         +'<div style="font-size:9px;letter-spacing:.7px;text-transform:uppercase;font-weight:700;color:var(--faint)">'+esc(td?td.title:'Profile')+'</div>';
-      (st.list||[]).forEach(function(n){var on=n===st.name;
-        h+='<button data-spname="'+esc(n)+'" style="display:flex;align-items:center;gap:9px;text-align:left;border:1px solid '+(on?'var(--accent)':'var(--line)')+';border-radius:var(--r-s,9px);background:'+(on?'color-mix(in oklab,var(--accent) 12%,transparent)':'var(--tile)')+';color:var(--text);padding:9px 11px;cursor:pointer;font-size:13px;font-weight:600">'
-          +'<span style="color:'+(on?'var(--accent)':'var(--faint)')+'">'+spIcon(st.type,15)+'</span>'+esc(n)+'</button>';});
+      (st.list||[]).forEach(function(n){var on=n===st.name, mine=(n===asg);
+        h+='<button data-spname="'+esc(n)+'" style="display:flex;align-items:center;gap:9px;text-align:left;border:1px solid '+(on?'var(--accent)':(mine?'color-mix(in oklab,var(--accent) 45%,var(--line))':'var(--line)'))+';border-radius:var(--r-s,9px);background:'+(on?'color-mix(in oklab,var(--accent) 12%,transparent)':'var(--tile)')+';color:var(--text);padding:9px 11px;cursor:pointer;font-size:13px;font-weight:600">'
+          +'<span style="color:'+(on||mine?'var(--accent)':'var(--faint)')+'">'+spIcon(st.type,15)+'</span><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis">'+esc(n)+'</span>'
+          +(mine?'<span style="flex:none;font-size:9px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:#fff;background:var(--accent-2);border-radius:999px;padding:2px 7px">Rollo</span>':'')+'</button>';});
       if(!(st.list||[]).length)h+='<div style="color:var(--muted);font-size:12px;padding:4px 2px">Noch keine Profile</div>';
       h+='<button data-spnew="1" style="margin-top:2px;border:1px dashed var(--accent);border-radius:var(--r-s,9px);background:none;color:var(--accent);padding:9px;cursor:pointer;font-size:13px;font-weight:600">+ Neues Profil</button></div>';
       // Rechte Spalte: Editor
@@ -74,13 +76,14 @@
           +'<button data-spdup="1" style="'+gbtn+'">Duplizieren</button><button data-sprename="1" style="'+gbtn+'">Umbenennen</button>'
           +'<button data-spdel="1" style="border:1px solid color-mix(in oklab,var(--crit) 45%,var(--line));border-radius:8px;background:none;color:var(--crit);padding:8px 14px;cursor:pointer;font-size:12.5px">Löschen</button></div>';
         // Zuweisung
-        var idx=spEntity(w), asg=(st.assigned&&st.assigned[st.type])||null;
+        var idx=spEntity(w);
         h+='<div style="margin-top:18px;border-top:1px solid var(--line-soft);padding-top:12px">'
           +'<div style="font-size:9px;letter-spacing:.7px;text-transform:uppercase;font-weight:700;color:var(--faint);margin-bottom:8px">Zuweisung</div>';
-        if(idx){ h+='<div style="display:flex;align-items:center;flex-wrap:wrap;gap:10px;font-size:13px">Zone-Profil: <b style="color:var(--text)">'+esc(asg||'—')+'</b>'
-          +'<button data-spassign="1"'+(asg===st.name?' disabled':'')+' style="border:1px solid var(--accent);border-radius:999px;background:'+(asg===st.name?'var(--surface-2)':'color-mix(in oklab,var(--accent) 14%,transparent)')+';color:'+(asg===st.name?'var(--muted)':'var(--accent)')+';padding:6px 13px;cursor:pointer;font-size:12px;font-weight:600">Diese Zone → '+esc(st.name)+'</button>'
-          +(asg?'<button data-spunassign="1" style="'+gbtn+'">entfernen</button>':'')+'</div>'; }
-        else h+='<div style="color:var(--muted);font-size:12px">Keine Zone gebunden (Session/feste Zone in den Eigenschaften)</div>';
+        if(idx){ h+='<div style="display:flex;align-items:center;flex-wrap:wrap;gap:10px;font-size:13px">Rollo-Profil: <b style="color:var(--text)">'+esc(asg||'—')+'</b>'
+          +'<button data-spassign="1"'+(asg===st.name?' disabled':'')+' style="border:1px solid var(--accent);border-radius:999px;background:'+(asg===st.name?'var(--surface-2)':'color-mix(in oklab,var(--accent) 14%,transparent)')+';color:'+(asg===st.name?'var(--muted)':'var(--accent)')+';padding:6px 13px;cursor:pointer;font-size:12px;font-weight:600">Dieses Rollo → '+esc(st.name)+'</button>'
+          +(asg?'<button data-spunassign="1" style="'+gbtn+'">entfernen</button>':'')+'</div>';
+        }
+        else h+='<div style="color:var(--muted);font-size:12px">Kein Rollo gebunden (Session/festes Rollo in den Eigenschaften)</div>';
         h+='</div>';
       } else {
         h+='<div style="height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:var(--muted);text-align:center">'

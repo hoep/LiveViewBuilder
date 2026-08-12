@@ -583,6 +583,16 @@ if ($api === 'shading') {
         echo HSH_Manage($hub, json_encode(['op' => 'shadeLog', 'args' => ['limit' => (int) ($_GET['limit'] ?? 300)]]));
         return;
     }
+    // op=setclose: per-Rollo Sonnen-Schliessgrad (SunClose %) setzen (Token, schreibend – reiner Config-Wert, kein Geraetebefehl).
+    if (($_GET['op'] ?? '') === 'setclose') {
+        if (!hash_equals($TOKEN, (string) ($_GET['key'] ?? ''))) { echo json_encode(['ok' => false, 'err' => 'forbidden']); return; }
+        $iid = (int) ($_GET['id'] ?? 0);
+        $pct = max(0, min(100, (int) ($_GET['pct'] ?? 0)));
+        if ($iid <= 0 || !function_exists('HSSH_SetControl')) { echo json_encode(['ok' => false, 'err' => 'inst']); return; }
+        $ok = @HSSH_SetControl($iid, 'SunClose', (string) $pct);
+        echo json_encode(['ok' => (bool) $ok, 'pct' => $pct]);
+        return;
+    }
     $sid = (int) (@IPS_GetObjectIDByIdent('LVB_ShadingAPI', 23491) ?: 0);
     if ($sid <= 0 || !IPS_ScriptExists($sid)) { echo json_encode(['ok' => false, 'err' => 'backend']); return; }
     echo IPS_RunScriptWaitEx($sid, ['op' => (string) ($_GET['op'] ?? 'list'), 'device' => (string) ($_GET['device'] ?? ''), 'profile' => (string) ($_GET['profile'] ?? '')]);
