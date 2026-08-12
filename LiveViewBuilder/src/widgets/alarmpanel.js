@@ -37,7 +37,8 @@
     if(w.sortSev!==false)kids=kids.slice().sort(function(a,b){return (_alpSev(b)==='crit'?1:0)-(_alpSev(a)==='crit'?1:0);}); // kritische zuerst
     kids.forEach(function(k){try{
       var ke=_mkWidgetEl(k);ke.classList.add('alp-card');ke.dataset.alp=w.id;
-      ke.style.position='relative';ke.style.left='';ke.style.top='';ke.style.width='';ke.style.height=''; // Absolut -> Grid-Item (relative: eigener Kontext fuer .winner inset:0)
+      ke.style.position='relative';ke.style.left='';ke.style.top='';ke.style.width='';ke.style.height=''; // Absolut -> Flow (relative: eigener Kontext fuer .winner inset:0)
+      ke.style.setProperty('--_alpcw', ((k.w>0?k.w:300))+'px'); // Kartenbreite = eigene Widget-Breite des Alarms
       host.appendChild(ke);_contKids.push(k);                    // _contKids: mount + live + poll wie Container-Kinder
     }catch(e){}});
     _alpRefresh(w);

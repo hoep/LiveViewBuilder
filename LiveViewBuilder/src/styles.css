@@ -409,9 +409,9 @@
   .alp-ackall{border:0;background:none;cursor:pointer;font-size:12px;color:var(--muted);padding:2px 4px}
   .alp-ackall:hover{color:var(--text)}
   .alp-rowwrap{position:relative;flex:1 1 auto;min-height:0;display:flex}
-  .alp-row{display:grid;grid-auto-flow:column;grid-auto-columns:clamp(240px,26vw,340px);justify-content:start;gap:var(--_alpgap,12px);align-items:stretch;flex:1 1 auto;min-width:0;min-height:0;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;-ms-overflow-style:none;scroll-behavior:smooth}
+  .alp-row{display:flex;flex-wrap:nowrap;justify-content:flex-start;gap:var(--_alpgap,12px);align-items:stretch;flex:1 1 auto;min-width:0;min-height:0;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;-ms-overflow-style:none;scroll-behavior:smooth}
   .alp-row::-webkit-scrollbar{display:none}
-  .alp-row .alp-card{position:relative!important;left:auto!important;top:auto!important;width:auto!important;height:auto!important;align-self:stretch;justify-self:stretch}
+  .alp-row .alp-card{position:relative!important;left:auto!important;top:auto!important;width:auto!important;height:auto!important;flex:0 0 var(--_alpcw,300px);min-width:0;align-self:stretch}
   .alp-card>.winner{height:100%;width:100%}
   .alp-card .halarm{height:100%}
   /* Chevron rechts, wenn weitere Meldungen ausserhalb liegen (Scroll ohne sichtbare Leiste) */
