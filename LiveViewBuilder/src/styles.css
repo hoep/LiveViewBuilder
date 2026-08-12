@@ -1918,6 +1918,6 @@
   /* Alarm & Alarm-Panel: KEIN generischer .w-Rahmen (sonst doppelte Umrandung mit anderem Radius) */
   .w.t-alarm,.w.t-alarmpanel{background:transparent!important;border:0!important;border-radius:0!important;overflow:visible!important;box-shadow:none!important}
 
-  /* Region-Tabs: nur vertikal zentrieren, links ausgerichtet, Standard-Gap rechts */
+  /* Region-Tabs: nur vertikal zentrieren, links ausgerichtet, Standard-Skin-Gap links */
   .w.t-regiontabs .winner{display:flex}
-  .w.t-regiontabs .hssel{width:100%;height:100%;justify-content:flex-start;align-content:center;box-sizing:border-box;padding:0 12px 0 0}
+  .w.t-regiontabs .hssel{width:100%;height:100%;justify-content:flex-start;align-content:center;box-sizing:border-box;padding:0 0 0 12px}
