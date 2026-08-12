@@ -138,7 +138,7 @@
     else { lo=_hpVC.min; hi=_hpVC.max; tick=Math.max(1,Math.round((hi-lo)/5)); } // Position 0..100 voll zeigen, ~5 Ticks
     var uy=(_hpVC.dom==='heating')?'°':''; // y-Achsen-Suffix
     var W=960,H=300;
-    var pad=(hi-lo)*0.07; // Headroom oben, damit der Max-Wert (z.B. 100 %) nicht am Rand klebt
+    var pad=(hi-lo)*0.13; // Headroom oben, damit der Max-Wert (z.B. 100 %/Ein) samt HTML-Label (translateY -135%) nicht am oberen Rand abgeschnitten wird
     function X(m){return m/1440*W;}
     function Y(t){return H-(t-lo)/((hi+pad)-lo)*H;}
     var g='<div class="hp-curvewrap"><div class="hp-yax">';

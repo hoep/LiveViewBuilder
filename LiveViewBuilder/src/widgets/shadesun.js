@@ -15,7 +15,22 @@
     }
     function ssMg(idx){return fetch('?api=mod&op=manage&id='+idx+'&key='+encodeURIComponent(TOKEN),
       {method:'POST',cache:'no-store',headers:{'Content-Type':'text/plain'},body:JSON.stringify({op:'reconcileProbe'})}).then(function(r){return r.json();});}
-    function ssDemo(){return {inputs:{az:212,el:9,bright:2600},geoProfile:{azimuthBgn:109,azimuthEnd:289,elevation:8,brightnessMin:0},rawSun:100};}
+    function ssHub(op,args){return fetch('?api=mod&op=hubmanage&key='+encodeURIComponent(TOKEN),
+      {method:'POST',cache:'no-store',headers:{'Content-Type':'text/plain'},body:JSON.stringify({op:op,args:args||{}})}).then(function(r){return r.json();});}
+    function ssDemo(){return {inputs:{az:212,el:9,bright:2600},geoProfile:{azimuthBgn:109,azimuthEnd:289,elevation:8,brightnessMin:0,closePct:75},rawSun:75};}
+    // Schließgrad live setzen (Slider/Presets): Label + Fill + Presets + debounced setclose.
+    function ssApplyClose(w,el,v){
+      v=Math.max(0,Math.min(100,parseInt(v)||0));
+      var lbl=el.querySelector('[data-role=cpv]');if(lbl)lbl.innerHTML=v+' %';
+      var sl=el.querySelector('[data-role=cpslider]');if(sl){sl.value=v;sl.style.background='linear-gradient(90deg,var(--accent) 0 '+v+'%,var(--surface-2) '+v+'% 100%)';}
+      var ps=el.querySelector('[data-role=cppresets]');if(ps)ps.querySelectorAll('[data-cp]').forEach(function(b){b.classList.toggle('on',parseInt(b.getAttribute('data-cp'))===v);});
+      var st=ssSt(w);if(st.d&&st.d.geoProfile)st.d.geoProfile.closePct=v;
+      if(typeof DOKU!=='undefined'&&DOKU)return;
+      var idx=ssEntity(w);if(!idx)return;
+      clearTimeout(w._ccT);w._ccT=setTimeout(function(){
+        fetch('?api=shading&op=setclose&id='+idx+'&pct='+v+'&key='+encodeURIComponent(TOKEN),{cache:'no-store'}).catch(function(){});
+      },300);
+    }
 
     function inAz(az,a,b){ if(a==null||b==null)return true; return (a<=b)?(az>=a&&az<=b):(az>=a||az<=b); }
     function bar(pct){return Math.max(0,Math.min(100,pct));}
@@ -23,7 +38,7 @@
     function ssRender(w){
       var st=ssSt(w), doku=(typeof DOKU!=='undefined'&&DOKU);
       var d=doku?ssDemo():st.d, idx=ssEntity(w);
-      if(!idx && !doku) return '<div class="ssun"><div class="ssun-msg">Keine Zone gebunden</div></div>';
+      if(!idx && !doku) return '<div class="ssun"><div class="ssun-msg">Kein Rollo gebunden</div></div>';
       if(st.err) return '<div class="ssun"><div class="ssun-msg">nicht erreichbar</div></div>';
       if(!d) return '<div class="ssun"><div class="ssun-msg">Sonnenstand …</div></div>';
       if(d.driverActive===false) return '<div class="ssun"><div class="ssun-msg">Zone ohne Treiber</div></div>';
@@ -36,8 +51,8 @@
       var elMax=(w.elMax>0?+w.elMax:70); // Anzeige-Bereich Elevation (einstellbar)
       var acc=(w.accent?(_skinColor(w.accent)||w.accent):'');
       var h='<div class="ssun"'+(acc?' style="--accent:'+esc(acc)+'"':'')+'>';
-      // Status-Kopf
-      var stTxt = active ? ('Sonne im Fenster → schließt '+(d.rawSun!=null?d.rawSun:100)+' %')
+      // Status-Kopf (Schließgrad steht jetzt als eigene Karte unten)
+      var stTxt = active ? 'Sonne im Fenster'
         : (!isAz ? 'Sonne außerhalb des Fensters' : (!isEl ? 'Sonne zu tief (unter Schwelle)' : 'zu dunkel'));
       h+='<div class="ssun-head"><span class="ssun-chip '+(active?'ssun-on':'ssun-off')+'">'+(active?'☀ aktiv':'○ inaktiv')+'</span><span class="ssun-verdict">'+esc(stTxt)+'</span></div>';
 
@@ -72,6 +87,15 @@
           +'<span class="ssun-val">'+(br!=null?Math.round(br):'–')+'</span></div>';
         h+='<div class="ssun-hint">Schwelle ≥ '+Math.round(brMin)+'</div>';
       }
+      // ---- Schließgrad dieses Rollos (pro Rollo, bei DIESEM Sonnenprofil) ----
+      var cp=(gp.closePct!=null?Math.max(0,Math.min(100,+gp.closePct)):100);
+      var pn=doku?'West':(st.profName||'');
+      h+='<div class="ssun-clz">'
+        +'<div class="ssun-clz-h"><span class="ssun-clz-l">Schließgrad · dieses Rollo'+(pn?(' bei „'+esc(pn)+'"'):'')+'</span><span class="ssun-clz-val" data-role="cpv">'+cp+' %</span></div>'
+        +'<input class="ssun-clz-slider" type="range" data-role="cpslider" min="0" max="100" step="5" value="'+cp+'" style="background:linear-gradient(90deg,var(--accent) 0 '+cp+'%,var(--surface-2) '+cp+'% 100%)">'
+        +'<div class="ssun-clz-presets" data-role="cppresets">'+[50,75,100].map(function(v){return '<button type="button" data-cp="'+v+'"'+(cp===v?' class="on"':'')+'>'+v+' %</button>';}).join('')+'</div>'
+        +'<div class="ssun-clz-hint">Wie weit <b>dieses Rollo</b> schließt, wenn die Sonne im Fenster steht. Das Profil legt nur das Sonnenfenster fest.</div>'
+        +'</div>';
       h+='</div>';
       return h;
     }
@@ -79,12 +103,16 @@
     function ssPaint(w){var el=ssEl(w);if(!el)return;var host=el.querySelector('.winner')||el;host.innerHTML=ssRender(w);}
     function ssLoad(w){ if(typeof DOKU!=='undefined'&&DOKU){ssPaint(w);return;} var idx=ssEntity(w),st=ssSt(w);
       if(!idx){ssPaint(w);return;}
-      ssMg(idx).then(function(j){st.d=j;st.err="";ssPaint(w);}).catch(function(){st.err='net';ssPaint(w);}); }
+      ssMg(idx).then(function(j){st.d=j;st.err="";
+        ssHub('profileAssigned',{entityId:idx}).then(function(a){st.profName=(a&&a.assigned&&a.assigned.sun)||null;ssPaint(w);}).catch(function(){ssPaint(w);});
+      }).catch(function(){st.err='net';ssPaint(w);}); }
 
     defWidget('shadesun',{
-      label:'Sonnenstand', paletteIcon:'sun', size:[360,232],
+      label:'Besonnung', paletteIcon:'sun', size:[360,300],
       defaults:function(w){w.bind='session';w.session='shade';},
       render:function(w){return ssRender(w);},
+      input:function(w,el,e){var r=e.target.closest('[data-role=cpslider]');if(!r)return false;ssApplyClose(w,el,r.value);return true;},
+      click:function(w,el,e){var b=e.target.closest('[data-cp]');if(!b)return false;ssApplyClose(w,el,b.getAttribute('data-cp'));return true;},
       mount:function(w){var el=ssEl(w);if(!el)return;
         if(w.bind!=='fixed' && typeof hfSub==='function')hfSub(w); // an die shadex-Session koppeln
         ssLoad(w);LVB.panel.startPoll('shadesun:'+w.id,30000,function(){ssLoad(w);});},
