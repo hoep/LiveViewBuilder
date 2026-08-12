@@ -56,10 +56,10 @@
       ke.classList.toggle('alp-acked',!!acked);
     });
     var isEmpty=(mode!=='edit'&&_alpShown(w).length===0);
-    // „Alle quittieren" macht das Panel leer (shown=0), obwohl Alarme noch AKTIV sind.
-    // In dem Fall NICHT verstecken, sondern OK-Zustand zeigen (Panel bleibt sichtbar).
+    // Panel bleibt IMMER sichtbar (nie verstecken). Leer -> OK-Zustand (gruen), optional
+    // „Keine Alarme"-Zeile. Gilt auch nach „Alle quittieren" (Alarme noch aktiv, nur quittiert).
     var ackedEmpty=isEmpty&&_alpKids(w).some(_alpActive);
-    var em=ackedEmpty?'ok':(w.emptyMode||'hide');
+    var em=(!ackedEmpty&&w.emptyMode==='note')?'note':'ok';
     var okEl=$('.w[data-id="'+w.id+'"] [data-role=alpok]',canvas);
     var eyeEl=$('.w[data-id="'+w.id+'"] .alp-eye',canvas);
     var rwrap=$('.w[data-id="'+w.id+'"] .alp-rowwrap',canvas);
@@ -75,7 +75,7 @@
   }
   defWidget('alarmpanel',{
     label:'Alarm-Panel', paletteIcon:'bell', size:[900,132], noHover:true,
-    defaults:function(w){w.kids=w.kids||[];w.eyebrow='BRAUCHT AUFMERKSAMKEIT';w.eyeColor='crit';w.ackAll=true;w.ackText='Alle quittieren';w.sortSev=true;w.emptyMode='hide';w.emptyText='Keine Alarme';w.okText='Alles in Ordnung';w.okEyebrow='ALLES OK';w.gap=12;},
+    defaults:function(w){w.kids=w.kids||[];w.eyebrow='BRAUCHT AUFMERKSAMKEIT';w.eyeColor='crit';w.ackAll=true;w.ackText='Alle quittieren';w.sortSev=true;w.emptyMode='ok';w.emptyText='Keine Alarme';w.okText='Alles in Ordnung';w.okEyebrow='ALLES OK';w.gap=12;},
     render:function(w){
       var eye=_cssColorOrEmpty(w.eyeColor)||'var(--crit)';
       var head='<div class="alp-head"><div class="alp-eye" style="--_alpeye:'+eye+'">'+escL(w.eyebrow||'')+'</div>'
@@ -98,9 +98,9 @@
         +row('Kritische zuerst','<input type="checkbox" id="pAlpSort"'+(w.sortSev!==false?' checked':'')+'>')
         +row('Abstand (px)','<input id="pAlpGap" type="number" min="0" style="width:70px" value="'+(w.gap!=null?w.gap:12)+'">')
         +row('Wenn leer','<select id="pAlpEmpty">'
-           +'<option value="hide"'+((w.emptyMode||'hide')==='hide'?' selected':'')+'>Panel verstecken</option>'
-           +'<option value="note"'+(w.emptyMode==='note'?' selected':'')+'>„Keine Alarme"-Zeile</option>'
-           +'<option value="ok"'+(w.emptyMode==='ok'?' selected':'')+'>Grüner OK-Zustand</option></select>')
+           +'<option value="ok"'+(w.emptyMode!=='note'?' selected':'')+'>Grüner OK-Zustand</option>'
+           +'<option value="note"'+(w.emptyMode==='note'?' selected':'')+'>„Keine Alarme"-Zeile</option></select>'
+           +'<div style="font-size:11px;color:var(--muted);margin:2px 2px">Das Panel bleibt immer sichtbar.</div>')
         +((w.emptyMode==='note')?row('Leer-Text','<input id="pAlpEmptyT" value="'+esc(w.emptyText||'')+'">'):'')
         +((w.emptyMode==='ok')?(row('OK-Text','<input id="pAlpOkT" value="'+esc(w.okText||'Alles in Ordnung')+'">')+row('OK-Eyebrow','<input id="pAlpOkE" value="'+esc(w.okEyebrow||'ALLES OK')+'">')):'')
         +'<div style="font-size:11px;color:var(--muted);margin:6px 2px">'+((w.kids&&w.kids.length)||0)+' Alarm-Karte(n). Ein <b>Alarm</b>-Widget in dieses Panel ziehen; inaktive Karten werden im Betrieb ausgeblendet.</div>';
