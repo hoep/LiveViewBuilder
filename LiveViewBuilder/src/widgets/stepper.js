@@ -15,12 +15,24 @@
         +'<div class="stpr-row">'
           +'<button class="stpr-b" data-stp="'+(-s)+'" title="−'+_stpFmtStep(s)+'">−'+_stpFmtStep(s)+'</button>'
           +(fine?'<button class="stpr-b stpr-fine" data-stp="'+(-sf)+'" title="−'+_stpFmtStep(sf)+'">−'+_stpFmtStep(sf)+'</button>':'')
-          +'<b class="stpr-val" data-role="val">–</b>'
+          +(w.typein
+             ?'<input class="stpr-val stpr-in" data-role="val" type="text" inputmode="decimal" value="">'
+             :'<b class="stpr-val" data-role="val">–</b>')
           +(fine?'<button class="stpr-b stpr-fine" data-stp="'+sf+'" title="+'+_stpFmtStep(sf)+'">+'+_stpFmtStep(sf)+'</button>':'')
           +'<button class="stpr-b" data-stp="'+s+'" title="+'+_stpFmtStep(s)+'">+'+_stpFmtStep(s)+'</button>'
         +'</div></div>';
     },
-    live:function(w,el,id,d,base,txt,on){ if(w.varId===id){var v=$('[data-role=val]',el);if(v)v.textContent=txt;} },
+    live:function(w,el,id,d,base,txt,on){ if(w.varId!==id)return; var v=$('[data-role=val]',el); if(!v)return;
+      if(v.tagName==='INPUT'){ if(document.activeElement!==v) v.value=(d.v!=null?d.v:''); } else v.textContent=txt; },
+    mount:function(w){ if(!w.typein)return;
+      var el=document.querySelector('.w[data-id="'+w.id+'"]'); if(!el)return;
+      var inp=$('[data-role=val]',el); if(!inp||inp.tagName!=='INPUT'||inp._stpWired)return; inp._stpWired=1;
+      function commitVal(){ var nv=parseFloat(String(inp.value).replace(',','.')); if(!isFinite(nv))return;
+        if(w.min!=null&&nv<w.min)nv=w.min; if(w.max!=null&&nv>w.max)nv=w.max;
+        if(w.varId)setVar(w.varId,nv); }
+      inp.addEventListener('change',commitVal);
+      inp.addEventListener('keydown',function(e){ if(e.key==='Enter'){e.preventDefault();inp.blur();} });
+    },
     click:function(w,el,e){
       var b=e.target.closest('[data-stp]'); if(!b)return false;
       var delta=parseFloat(b.getAttribute('data-stp')); if(!isFinite(delta))return false;
@@ -32,12 +44,14 @@
       return true;
     },
     props:function(w){
-      return row('Min','<input id="pStMin" type="number" step="any" value="'+(w.min!=null?w.min:'')+'" placeholder="leer = aus">')
+      return row('Direkt eintippen','<input type="checkbox" id="pStTypein"'+(w.typein?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">Wert ist Eingabefeld</span>')
+        +row('Min','<input id="pStMin" type="number" step="any" value="'+(w.min!=null?w.min:'')+'" placeholder="leer = aus">')
         +row('Max','<input id="pStMax" type="number" step="any" value="'+(w.max!=null?w.max:'')+'" placeholder="leer = aus">')
         +row('Schritt grob','<input id="pStStep" type="number" step="any" value="'+(w.step!=null?w.step:1)+'">')
         +row('Schritt fein','<input id="pStFine" type="number" step="any" value="'+(w.stepFine!=null?w.stepFine:'')+'" placeholder="leer = aus">');
     },
     wire:function(w){
+      if($('#pStTypein'))$('#pStTypein').onchange=function(){w.typein=this.checked||undefined;render();commit();};
       if($('#pStMin'))$('#pStMin').oninput=function(){w.min=this.value===''?undefined:parseFloat(this.value);commit();};
       if($('#pStMax'))$('#pStMax').oninput=function(){w.max=this.value===''?undefined:parseFloat(this.value);commit();};
       if($('#pStStep'))$('#pStStep').oninput=function(){w.step=parseFloat(this.value)||1;render();commit();};

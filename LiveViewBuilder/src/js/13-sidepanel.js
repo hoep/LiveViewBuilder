@@ -12,14 +12,18 @@
   // 2) Das komplette rechte Panel (.side) laesst sich per Knopf schweben lassen und dann
   //    frei ueber der Canvas positionieren (Ziehen am Griff-Balken).
 
-  // dieselben 5 Keys wie _renameViewRefs - hier zentral als Nav-Zielmenge
+  // Nav-Ziele (navTo/popupTo/…) PLUS eingebettete Komponentenseiten: das component-
+  // Widget (w.comp) und alle Tab-Views eines regiontabs (w.tabs[].view, w.default).
+  // Dadurch haengen Komponentenseiten als Kinder der Seite, die die Komponente traegt
+  // (Tab-Hubs) - statt unter „Nicht verlinkt" zu landen.
   function _viewLinks(name){
     var v=store.views[name];if(!v||!v.widgets)return [];
     var out=[],seen={};
+    function add(t){if(t&&store.views[t]&&t!==name&&!seen[t]){seen[t]=1;out.push(t);}}
     v.widgets.forEach(function(w){
-      ['navTo','popupTo','longNav','longPopup','regView'].forEach(function(k){
-        var t=w[k];if(t&&store.views[t]&&t!==name&&!seen[t]){seen[t]=1;out.push(t);}
-      });
+      ['navTo','popupTo','longNav','longPopup','regView'].forEach(function(k){add(w[k]);});
+      if(w.type==='component'){add(w.comp);}
+      if(w.type==='regiontabs'&&w.tabs&&w.tabs.forEach){w.tabs.forEach(function(t){add(t&&t.view);});add(w.default);}
     });
     return out;
   }
