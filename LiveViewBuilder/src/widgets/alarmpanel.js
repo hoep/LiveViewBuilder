@@ -41,6 +41,9 @@
       host.appendChild(ke);_contKids.push(k);                    // _contKids: mount + live + poll wie Container-Kinder
     }catch(e){}});
     _alpRefresh(w);
+    // Nach dem Run-Boot wird mode erst NACH switchView auf 'preview' gesetzt; ein deferred Refresh
+    // zieht Leer-/OK-/Verstecken-Zustand auch ohne Live-Tick nach (z. B. leeres Panel, unbelegte Kinder).
+    setTimeout(function(){_alpRefresh(w);},0);
   }
   // Quittungs-Klassen + Leer-Zustand nachziehen (aus expandAlarmPanel und aus live()).
   function _alpRefresh(w){
@@ -52,16 +55,23 @@
       ke.classList.toggle('alp-acked',!!acked);
     });
     var isEmpty=(mode!=='edit'&&_alpShown(w).length===0);
-    var noteMode=(w.emptyMode==='note');
-    if(empty)empty.style.display=(isEmpty&&noteMode)?'':'none';
-    if(wel)wel.classList.toggle('alarm-off', isEmpty&&!noteMode); // hide-wenn-leer: ganzes Panel weg
+    var em=w.emptyMode||'hide';
+    var okEl=$('.w[data-id="'+w.id+'"] [data-role=alpok]',canvas);
+    var eyeEl=$('.w[data-id="'+w.id+'"] .alp-eye',canvas);
+    var rwrap=$('.w[data-id="'+w.id+'"] .alp-rowwrap',canvas);
+    if(empty)empty.style.display=(isEmpty&&em==='note')?'':'none';
+    if(okEl){okEl.style.display=(isEmpty&&em==='ok')?'':'none';var okt=$('.alp-ok-tx',okEl);if(okt)okt.textContent=(w.okText||'Alles in Ordnung');}
+    if(rwrap)rwrap.style.display=(isEmpty&&(em==='ok'||em==='note'))?'none':''; // leere Karten-Reihe wegnehmen
+    if(wel){wel.classList.toggle('alarm-off', isEmpty&&em==='hide'); wel.classList.toggle('alp-allok', isEmpty&&em==='ok');} // ok: Panel bleibt, gruen
+    if(eyeEl){var okState=(isEmpty&&em==='ok');eyeEl.textContent=okState?(w.okEyebrow||'ALLES OK'):(w.eyebrow||'');
+      eyeEl.style.setProperty('--_alpeye', okState?'var(--ok)':(_cssColorOrEmpty(w.eyeColor)||'var(--crit)'));}
     // Chevron rechts einblenden, wenn die Karten-Reihe horizontal ueberlaeuft (mehr Meldungen).
     var wrap=$('.w[data-id="'+w.id+'"] .alp-rowwrap',canvas), row=$('.w[data-id="'+w.id+'"] [data-role=alpbody]',canvas);
     if(wrap&&row)wrap.classList.toggle('has-more', (row.scrollWidth-row.clientWidth)>4);
   }
   defWidget('alarmpanel',{
     label:'Alarm-Panel', paletteIcon:'bell', size:[900,132], noHover:true,
-    defaults:function(w){w.kids=w.kids||[];w.eyebrow='BRAUCHT AUFMERKSAMKEIT';w.eyeColor='crit';w.ackAll=true;w.ackText='Alle quittieren';w.sortSev=true;w.emptyMode='hide';w.emptyText='Keine Alarme';w.gap=12;},
+    defaults:function(w){w.kids=w.kids||[];w.eyebrow='BRAUCHT AUFMERKSAMKEIT';w.eyeColor='crit';w.ackAll=true;w.ackText='Alle quittieren';w.sortSev=true;w.emptyMode='hide';w.emptyText='Keine Alarme';w.okText='Alles in Ordnung';w.okEyebrow='ALLES OK';w.gap=12;},
     render:function(w){
       var eye=_cssColorOrEmpty(w.eyeColor)||'var(--crit)';
       var head='<div class="alp-head"><div class="alp-eye" style="--_alpeye:'+eye+'">'+escL(w.eyebrow||'')+'</div>'
@@ -69,7 +79,8 @@
       return '<div class="alarmpanel" data-role="alphost">'+head
         +'<div class="alp-rowwrap"><div class="alp-row" data-role="alpbody"></div>'
         +'<div class="alp-more" data-role="alpmore"><svg viewBox="0 0 8 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1l5 5-5 5"/></svg></div></div>'
-        +'<div class="alp-empty" data-role="alpempty" style="display:none">'+escL(w.emptyText||'Keine Alarme')+'</div></div>';
+        +'<div class="alp-empty" data-role="alpempty" style="display:none">'+escL(w.emptyText||'Keine Alarme')+'</div>'
+        +'<div class="alp-ok" data-role="alpok" style="display:none"><span class="alp-ok-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></span><span class="alp-ok-tx">'+escL(w.okText||'Alles in Ordnung')+'</span></div></div>';
     },
     live:function(w,el,id,d,base,txt,on){_alpRefresh(w);return true;}, // feuert bei jeder Kind-Variablen-Aenderung (siehe widgetDataId-Kernhaken)
     click:function(w,el,e){if(e.target.closest('[data-role=ackall]')){if(mode==='edit')return true;_alpAckAll(w);_alpRefresh(w);return true;}return false;},
@@ -82,8 +93,12 @@
           +(w.ackVid?row('Quittier-Wert','<input id="pAlpAckV" type="number" step="any" value="'+(w.ackVal!=null?w.ackVal:0)+'">'):'')):'')
         +row('Kritische zuerst','<input type="checkbox" id="pAlpSort"'+(w.sortSev!==false?' checked':'')+'>')
         +row('Abstand (px)','<input id="pAlpGap" type="number" min="0" style="width:70px" value="'+(w.gap!=null?w.gap:12)+'">')
-        +row('Wenn leer','<select id="pAlpEmpty"><option value="hide"'+((w.emptyMode||'hide')!=='note'?' selected':'')+'>Panel verstecken</option><option value="note"'+(w.emptyMode==='note'?' selected':'')+'>„Keine Alarme"-Zeile</option></select>')
+        +row('Wenn leer','<select id="pAlpEmpty">'
+           +'<option value="hide"'+((w.emptyMode||'hide')==='hide'?' selected':'')+'>Panel verstecken</option>'
+           +'<option value="note"'+(w.emptyMode==='note'?' selected':'')+'>„Keine Alarme"-Zeile</option>'
+           +'<option value="ok"'+(w.emptyMode==='ok'?' selected':'')+'>Grüner OK-Zustand</option></select>')
         +((w.emptyMode==='note')?row('Leer-Text','<input id="pAlpEmptyT" value="'+esc(w.emptyText||'')+'">'):'')
+        +((w.emptyMode==='ok')?(row('OK-Text','<input id="pAlpOkT" value="'+esc(w.okText||'Alles in Ordnung')+'">')+row('OK-Eyebrow','<input id="pAlpOkE" value="'+esc(w.okEyebrow||'ALLES OK')+'">')):'')
         +'<div style="font-size:11px;color:var(--muted);margin:6px 2px">'+((w.kids&&w.kids.length)||0)+' Alarm-Karte(n). Ein <b>Alarm</b>-Widget in dieses Panel ziehen; inaktive Karten werden im Betrieb ausgeblendet.</div>';
       return s;
     },
@@ -97,5 +112,7 @@
       if($('#pAlpGap'))$('#pAlpGap').oninput=function(){w.gap=this.value===''?undefined:(parseInt(this.value)||0);render();commit();};
       if($('#pAlpEmpty'))$('#pAlpEmpty').onchange=function(){w.emptyMode=this.value;render();renderProps();commit();};
       if($('#pAlpEmptyT'))$('#pAlpEmptyT').oninput=function(){w.emptyText=this.value||undefined;render();};
+      if($('#pAlpOkT'))$('#pAlpOkT').oninput=function(){w.okText=this.value||undefined;render();};
+      if($('#pAlpOkE'))$('#pAlpOkE').oninput=function(){w.okEyebrow=this.value||undefined;render();};
     }
   });
