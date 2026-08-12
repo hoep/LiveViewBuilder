@@ -260,37 +260,78 @@
       {method:'POST',cache:'no-store',headers:{'Content-Type':'text/plain'},body:JSON.stringify(ref)})
       .then(function(r){return r.json();}).then(function(j){ if(j&&j.note)toast(j.note); else toast('▶ '+(ref.title||'')); s.radio=null; setTimeout(function(){afLoadRadio(w);},1500);})
       .catch(function(){toast('Abspielen: Verbindungsfehler');});}
+  // --- Darstellung: Spalten-Browser (linke Anbieter-/Pfad-Leiste, rechts typ-spezifische Panes) ---
+  function _alibInit(s){s=(s||'').trim();return s?s.charAt(0).toUpperCase():'#';}
+  function _alibDur(sec){sec=Math.max(0,Math.round(+sec||0));var m=Math.floor(sec/60),x=sec%60;return m+':'+(x<10?'0':'')+x;}
+  function _alibCov(it,cls){var ph='<span class="alib-ph">'+esc(_alibInit(it.title))+'</span>';
+    var img=it.cover?('<img src="'+esc(it.cover)+'" loading="lazy" onerror="this.remove()">'):'';
+    return '<span class="alib-cov '+cls+'">'+ph+img+'</span>';}
+  // Items klassifizieren: Ordner (Container o. Cover), Karten (Container m. Cover = Alben/Buecher),
+  // Plays (kein Container, keine Dauer = Playlist/Tap-to-Play), Tracks (kein Container, m. Dauer).
+  function _alibGroups(items){var g={folders:[],cards:[],plays:[],tracks:[]};
+    items.forEach(function(it,idx){var e={it:it,idx:idx};
+      if(it.isContainer){(it.cover?g.cards:g.folders).push(e);}
+      else if((it.durationSec||0)>0){g.tracks.push(e);}
+      else{g.plays.push(e);}});
+    return g;}
+  // Hoerbuecher wie Alben: quadratisches Cover-Grid, nur zusaetzlich nach Autor gebaendert.
+  function _alibTile(e){var it=e.it;return '<button class="alib-tile" data-afitem="'+e.idx+'">'+_alibCov(it,'sq')+'<div class="alib-tt">'+esc(it.title)+'</div><div class="alib-ts">'+esc(it.artist||'')+'</div></button>';}
+  function _alibBooks(cards,L){var arr=cards.slice();
+    if(L.bookSort==='title'){arr.sort(function(a,b){return (a.it.title||'').toLowerCase()<(b.it.title||'').toLowerCase()?-1:1;});
+      return '<div class="alib-grid">'+arr.map(_alibTile).join('')+'</div>';}
+    var out='',cur=null,buf=[];
+    function flush(){if(buf.length){out+='<div class="alib-grid">'+buf.join('')+'</div>';buf=[];}}
+    arr.forEach(function(e){var au=e.it.artist||'—';
+      if(au!==cur){flush();cur=au;out+='<div class="alib-band">'+esc(au)+'</div>';}
+      buf.push(_alibTile(e));});
+    flush();return out;}
+  function _alibBody(w,L){
+    if(L.loading)return '<div class="alib-empty">lädt …</div>';
+    var items=L.items||[];
+    if(!items.length)return '<div class="alib-empty">Nichts gefunden</div>';
+    var isABS=(L.provider==='audiobookshelf'),g=_alibGroups(items),html='';
+    if(g.folders.length)html+='<div class="alib-folders">'+g.folders.map(function(e){return '<button class="alib-folder" data-afitem="'+e.idx+'"><span>'+esc(e.it.title)+'</span><span class="alib-chev">›</span></button>';}).join('')+'</div>';
+    if(g.cards.length){
+      if(isABS)html+=_alibBooks(g.cards,L);
+      else html+='<div class="alib-grid">'+g.cards.map(_alibTile).join('')+'</div>';
+    }
+    if(g.plays.length)html+='<div class="alib-rows">'+g.plays.map(function(e){var it=e.it;return '<button class="alib-row" data-afitem="'+e.idx+'">'+_alibCov(it,'sm')+'<div class="alib-rmeta"><div class="alib-tt">'+esc(it.title)+'</div><div class="alib-ts">'+esc(it.artist||'Playlist')+'</div></div><span class="alib-pbtn">▶</span></button>';}).join('')+'</div>';
+    if(g.tracks.length)html+='<div class="alib-tracks">'+g.tracks.map(function(e,i){var it=e.it;return '<button class="alib-trk" data-afitem="'+e.idx+'"><span class="alib-n">'+(i+1)+'</span><div class="alib-rmeta"><div class="alib-tt">'+esc(it.title)+'</div><div class="alib-ts">'+esc(it.artist||'')+'</div></div><span class="alib-dur">'+_alibDur(it.durationSec)+'</span></button>';}).join('')+'</div>';
+    return html;}
   defWidget('audiolib',{
-    label:'Audio · Bibliothek', paletteIcon:'wlist', size:[700,420],
+    label:'Audio · Bibliothek', paletteIcon:'wlist', size:[900,560],
     defaults:function(w){w.session='audio';},
     render:function(w){var r=afReady(w);if(r.err)return afMsg(r.err);if(r.loading)return afMsg('lädt …');var s=r.s,c=afCur(s);if(!c)return afMsg('kein Raum');
       var L=afLib(w);
       if(!L.providers){afLibProviders(w,function(){afEmit(w);});return afMsg('Quellen lädt …');}
       if(!L.providers.length)return afMsg('Keine Medienquelle konfiguriert (Hub → Medienquellen)');
-      var tabs=L.providers.map(function(p){return '<button data-afprov="'+esc(p.id)+'" style="padding:7px 12px;border:0;border-bottom:2px solid '+(L.provider===p.id?'var(--accent)':'transparent')+';background:none;color:'+(L.provider===p.id?'var(--text)':'var(--muted)')+';font-weight:600;font-size:12px;cursor:pointer">'+esc(p.label)+'</button>';}).join('');
-      var crumb=(L.stack.length?('<button data-afback="1" style="border:1px solid var(--line);border-radius:7px;background:var(--tile);color:var(--text);font-size:11px;padding:4px 10px;cursor:pointer;margin:6px 0">◀ zurück</button> <span style="font-size:11px;color:var(--muted)">'+esc(L.title||'')+'</span>'):'');
-      var body='';
-      if(L.loading)body='<div style="color:var(--muted);font-size:12px;padding:10px">lädt …</div>';
-      else if(L.items&&L.items.length){
-        body='<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'+L.items.map(function(it,i){
-          var cov=it.cover?('<img src="'+esc(it.cover)+'" style="width:38px;height:38px;border-radius:6px;object-fit:cover;flex:none" onerror="this.style.visibility=\'hidden\'">'):'<span style="width:38px;height:38px;border-radius:6px;flex:none;background:var(--surface-2)"></span>';
-          return '<div data-afitem="'+i+'" style="display:flex;gap:9px;align-items:center;border:1px solid var(--line);border-radius:var(--r-s,9px);padding:7px 9px;background:var(--tile);cursor:pointer">'+cov+
-            '<div style="min-width:0;flex:1"><div style="font-size:12.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(it.title||'')+'</div>'+
-            '<div style="font-size:10.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(it.artist||it.album||'')+'</div></div>'+
-            '<span style="color:var(--faint);font-size:12px">'+(it.isContainer?'▸':'▶')+'</span></div>';}).join('')+'</div>';
-      } else if(L.provider) body='<div style="color:var(--muted);font-size:12px;padding:10px">leer</div>';
-      else body='<div style="color:var(--muted);font-size:12px;padding:10px">Quelle wählen</div>';
-      return '<div style="position:absolute;inset:0;display:flex;flex-direction:column;background:var(--surface)">'
-        +'<div style="display:flex;flex-wrap:wrap;border-bottom:1px solid var(--line);padding:0 6px">'+tabs+'</div>'
-        +'<div style="padding:0 12px">'+crumb+'</div>'
-        +'<div style="flex:1;overflow:auto;padding:6px 12px 12px">'+body+'</div></div>';},
+      if(!L.provider){if(!L._auto){L._auto=1;setTimeout(function(){afLibBrowse(w,L.providers[0].id,'','');},0);}return afMsg('lädt …');}
+      // Genau ein Ordner in der Wurzel (z. B. Audiobookshelf „Hörbücher") -> ueberspringen und direkt hinein.
+      if(!L.loading&&L.items&&!L.stack.length&&L.items.length===1&&L.items[0].isContainer&&!L.items[0].cover&&L._adProv!==L.provider){
+        var f0=L.items[0];L._adProv=L.provider;L.stack.push({id:f0.id,title:f0.title});
+        setTimeout(function(){afLibBrowse(w,L.provider,f0.id,f0.title);},0);return afMsg('lädt …');}
+      function plabel(id){for(var i=0;i<L.providers.length;i++)if(L.providers[i].id===id)return L.providers[i].label;return id;}
+      var provs=L.providers.map(function(p){return '<button class="alib-prov'+(L.provider===p.id?' on':'')+'" data-afprov="'+esc(p.id)+'"><span class="alib-pic">'+esc(_alibInit(p.label))+'</span>'+esc(p.label)+'</button>';}).join('');
+      var pths='<button class="alib-pth'+(!L.stack.length?' on':'')+'" data-afpath="-1">'+esc(plabel(L.provider))+'</button>'
+        +L.stack.map(function(st,i){return '<button class="alib-pth'+(i===L.stack.length-1?' on':'')+'" data-afpath="'+i+'">'+esc(st.title||'…')+'</button>';}).join('');
+      var rail='<aside class="alib-rail"><div class="alib-rh">Anbieter</div><div class="alib-provs">'+provs+'</div>'
+        +'<div class="alib-rh">Pfad</div><div class="alib-pths">'+pths+'</div><div class="alib-spacer"></div>'
+        +'<div class="alib-anchor"><span class="alib-dot"></span><span>Spielt auf</span><b>'+esc(c.name)+'</b></div></aside>';
+      var title=L.stack.length?(L.stack[L.stack.length-1].title||''):('Bibliothek · '+plabel(L.provider));
+      var isBooks=(L.provider==='audiobookshelf')&&(L.items||[]).some(function(it){return it.isContainer&&it.cover;});
+      var sort=isBooks?('<div class="alib-sort"><button class="alib-sg'+(L.bookSort!=='title'?' on':'')+'" data-afsort="artist">Autor</button><button class="alib-sg'+(L.bookSort==='title'?' on':'')+'" data-afsort="title">Titel</button></div>'):'';
+      var head='<div class="alib-head">'+(L.stack.length?'<button class="alib-back" data-afback="1">◀ zurück</button>':'<span></span>')+'<div class="alib-title">'+esc(title)+'</div>'+sort+'</div>';
+      var top='<div class="alib-topbar">'+(L.stack.length?'<button class="alib-back" data-afback="1">◀</button>':'')+'<div class="alib-tprovs">'+provs+'</div></div>';
+      return '<div class="alib">'+rail+'<section class="alib-main">'+top+head+'<div class="alib-scroll">'+_alibBody(w,L)+'</div></section></div>';},
     mount:afMount,
-    _bind:function(w,el){var s=afSess(w),L=afLib(w);
-      $$('[data-afprov]',el).forEach(function(b){b.onclick=function(){L.stack=[];L.title='';afLibBrowse(w,b.getAttribute('data-afprov'),'','');};});
-      var bk=$('[data-afback]',el);if(bk)bk.onclick=function(){L.stack.pop();var top=L.stack.length?L.stack[L.stack.length-1]:{id:'',title:''};L.title=top.title||'';afLibBrowse(w,L.provider,top.id||'',top.title||'');};
+    _bind:function(w,el){var L=afLib(w);
+      $$('[data-afprov]',el).forEach(function(b){b.onclick=function(){L.stack=[];afLibBrowse(w,b.getAttribute('data-afprov'),'','');};});
+      $$('[data-afpath]',el).forEach(function(b){b.onclick=function(){var i=+b.getAttribute('data-afpath');
+        if(i<0){L.stack=[];afLibBrowse(w,L.provider,'','');}else{var st=L.stack[i];L.stack=L.stack.slice(0,i+1);afLibBrowse(w,L.provider,st.id,st.title);}};});
+      $$('[data-afsort]',el).forEach(function(b){b.onclick=function(){L.bookSort=b.getAttribute('data-afsort');afEmit(w);};});
+      $$('[data-afback]',el).forEach(function(b){b.onclick=function(){L.stack.pop();var t=L.stack.length?L.stack[L.stack.length-1]:{id:'',title:''};afLibBrowse(w,L.provider,t.id||'',t.title||'');};});
       $$('[data-afitem]',el).forEach(function(d){d.onclick=function(){var it=(L.items||[])[+d.getAttribute('data-afitem')];if(!it)return;
-        if(it.isContainer){L.stack.push({id:it.id,title:it.title});L.title=it.title;afLibBrowse(w,L.provider,it.id,it.title);}
-        else afLibPlay(w,it);};});},
+        if(it.isContainer){L.stack.push({id:it.id,title:it.title});afLibBrowse(w,L.provider,it.id,it.title);}else afLibPlay(w,it);};});},
     props:function(w){return afSessRow(w);}, wire:function(w){afSessWire(w);}
   });
 

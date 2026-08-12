@@ -1812,3 +1812,65 @@
 .hsroed{display:flex;flex-direction:column;gap:3px;max-height:260px;overflow:auto}
 .hsroed-row{display:flex;align-items:center;gap:4px}
 
+
+  /* ===== audiolib — Medien-Browser (Spalten-Layout, Vorschlag C) ===== */
+  .alib{position:absolute;inset:0;display:flex;background:var(--surface);container-type:inline-size;font-size:13px;color:var(--text)}
+  .alib-rail{flex:0 0 194px;min-width:0;display:flex;flex-direction:column;gap:2px;padding:12px 10px;border-right:1px solid var(--line);background:var(--surface-2);overflow:auto}
+  .alib-rh{font-size:10px;letter-spacing:.6px;text-transform:uppercase;color:var(--faint);font-weight:700;margin:8px 4px 4px}
+  .alib-provs,.alib-pths{display:flex;flex-direction:column;gap:2px}
+  .alib-prov{display:flex;align-items:center;gap:9px;padding:8px 10px;border:0;border-radius:9px;background:none;color:var(--muted);font-size:13px;font-weight:600;cursor:pointer;text-align:left;width:100%}
+  .alib-prov:hover{background:color-mix(in oklab,var(--accent) 10%,transparent);color:var(--text)}
+  .alib-prov.on{background:var(--accent-2);color:#fff}
+  .alib-pic{width:22px;height:22px;border-radius:6px;flex:none;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;background:color-mix(in oklab,var(--muted) 22%,transparent);color:var(--text)}
+  .alib-prov.on .alib-pic{background:rgba(255,255,255,.22);color:#fff}
+  .alib-pth{border:0;background:none;color:var(--muted);text-align:left;padding:5px 8px;border-radius:7px;font-size:12px;cursor:pointer;display:flex;align-items:center;gap:7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%}
+  .alib-pth::before{content:'';width:6px;height:6px;border-radius:50%;background:color-mix(in oklab,var(--accent) 55%,transparent);flex:none}
+  .alib-pth:hover{color:var(--text)}
+  .alib-pth.on{color:var(--text);font-weight:700}
+  .alib-spacer{flex:1;min-height:8px}
+  .alib-anchor{display:flex;align-items:center;gap:8px;padding:9px 10px;border-radius:9px;background:var(--tile);border:1px solid var(--line-soft);color:var(--muted);font-size:11.5px;margin-top:8px;flex-wrap:wrap}
+  .alib-anchor b{color:var(--text);font-weight:650}
+  .alib-dot{width:8px;height:8px;border-radius:50%;background:var(--accent);flex:none;box-shadow:0 0 0 3px color-mix(in oklab,var(--accent) 22%,transparent)}
+  .alib-main{flex:1;min-width:0;display:flex;flex-direction:column}
+  .alib-topbar{display:none;align-items:center;gap:6px;padding:6px 8px;border-bottom:1px solid var(--line);overflow-x:auto}
+  .alib-tprovs{display:flex;gap:4px}
+  .alib-topbar .alib-prov{padding:6px 10px;white-space:nowrap;width:auto}
+  .alib-head{display:flex;align-items:center;gap:12px;padding:13px 16px 8px}
+  .alib-title{flex:1;min-width:0;font-size:16px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .alib-back{border:1px solid var(--line);background:var(--tile);color:var(--text);border-radius:8px;font-size:12px;padding:5px 11px;cursor:pointer;flex:none}
+  .alib-sort{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;flex:none}
+  .alib-sg{border:0;background:var(--tile);color:var(--muted);font-size:12px;padding:5px 12px;cursor:pointer}
+  .alib-sg.on{background:var(--accent-2);color:#fff;font-weight:650}
+  .alib-scroll{flex:1;overflow:auto;padding:2px 16px 16px}
+  .alib-empty{color:var(--muted);font-size:13px;padding:16px 2px}
+  .alib-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:16px;padding:10px 0 4px}
+  .alib-tile{border:0;background:none;color:var(--text);cursor:pointer;text-align:left;padding:0;display:flex;flex-direction:column;gap:7px;min-width:0}
+  .alib-tile:hover .alib-cov{border-color:color-mix(in oklab,var(--accent) 45%,var(--line));transform:translateY(-2px)}
+  .alib-cov{position:relative;display:block;border-radius:9px;overflow:hidden;background:var(--surface-2);border:1px solid var(--line);flex:none;transition:transform .12s,border-color .12s;box-shadow:0 6px 18px -12px rgba(0,0,0,.5)}
+  .alib-cov img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+  .alib-ph{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:1.5em;font-weight:800;color:color-mix(in oklab,var(--muted) 65%,transparent);background:linear-gradient(135deg,color-mix(in oklab,var(--accent) 18%,var(--surface-2)),var(--surface-2))}
+  .alib-cov.sq{width:100%;aspect-ratio:1/1}
+  .alib-cov.sm{width:46px;height:46px}
+  .alib-tt{font-size:13px;font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .alib-ts{font-size:11.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .alib-rows{display:flex;flex-direction:column;gap:8px;padding:8px 0}
+  .alib-row{display:flex;align-items:center;gap:12px;border:1px solid var(--line);border-radius:10px;background:var(--tile);padding:8px 12px;cursor:pointer;text-align:left;color:var(--text);width:100%}
+  .alib-row:hover{border-color:color-mix(in oklab,var(--accent) 40%,var(--line))}
+  .alib-rmeta{flex:1;min-width:0}
+  .alib-pbtn{width:34px;height:34px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;background:var(--accent-2);color:#fff;font-size:12px}
+  .alib-dur{font-family:var(--fm);font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums;flex:none}
+  .alib-band{font-size:14px;font-weight:700;color:var(--text);padding:16px 2px 2px;margin-top:4px;border-bottom:1px solid var(--line-soft)}
+  .alib-tracks{display:flex;flex-direction:column;padding-top:4px}
+  .alib-trk{display:flex;align-items:center;gap:14px;padding:9px 8px;border:0;border-top:1px solid var(--line-soft);background:none;color:var(--text);cursor:pointer;text-align:left;width:100%}
+  .alib-trk:first-child{border-top:0}
+  .alib-trk:hover{background:color-mix(in oklab,var(--accent) 8%,transparent)}
+  .alib-n{width:22px;text-align:center;color:var(--faint);font-family:var(--fm);font-size:12px;flex:none}
+  .alib-folders{display:flex;flex-direction:column;gap:8px;padding:8px 0}
+  .alib-folder{display:flex;align-items:center;justify-content:space-between;border:1px solid var(--line);border-radius:10px;background:var(--tile);padding:13px 15px;cursor:pointer;color:var(--text);font-size:14px;font-weight:600;width:100%}
+  .alib-folder:hover{border-color:color-mix(in oklab,var(--accent) 40%,var(--line))}
+  .alib-chev{color:var(--faint);font-size:17px}
+  @container (max-width:640px){
+    .alib-rail{display:none}
+    .alib-topbar{display:flex}
+    .alib-grid{grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:12px}
+  }
