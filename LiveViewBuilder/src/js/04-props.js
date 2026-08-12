@@ -404,8 +404,25 @@
   function _wirePitem(b){b.onclick=function(){addWidget(b.dataset.add);};b.setAttribute('draggable','true');b.addEventListener('dragstart',function(e){e.dataTransfer.setData('text/hlw',b.dataset.add);e.dataTransfer.effectAllowed='copy';});}
   $$('.pitem').forEach(_wirePitem);
   // Registry-Widgets, die (noch) nicht in der kuratierten Palette stehen, automatisch unter „Weitere" ergänzen (ausser noPalette)
+  // Palette-Suche: filtert .pitem live nach Label/Typ, blendet leere Gruppen-Header aus.
+  var _palWired=false;
+  function _palFilter(){
+    var pal=document.querySelector('.palette');var inp=document.getElementById('palq');if(!pal||!inp)return;
+    var q=(inp.value||'').trim().toLowerCase();
+    var kids=pal.children,curH=null,curAny=false;
+    for(var i=0;i<kids.length;i++){var el=kids[i];
+      if(el.classList.contains('pgh')){if(curH)curH.style.display=curAny?'':'none';curH=el;curAny=false;continue;}
+      if(el.classList.contains('pitem')){
+        var t=(el.textContent||'').toLowerCase(),d=(el.getAttribute('data-add')||'').toLowerCase();
+        var vis=(q===''||t.indexOf(q)>=0||d.indexOf(q)>=0);
+        el.style.display=vis?'':'none';if(vis)curAny=true;
+      }
+    }
+    if(curH)curH.style.display=curAny?'':'none';
+  }
   function syncPalette(){
     var pal=document.querySelector('.palette');if(!pal||typeof WIDGETS==='undefined')return;
+    if(!_palWired){var _pq=document.getElementById('palq');if(_pq){_pq.addEventListener('input',_palFilter);_palWired=true;}}
     var have={};$$('.pitem',pal).forEach(function(el){var t=el.getAttribute('data-add');if(t)have[t]=1;});
     // Alias-Registrierungen (z. B. WIDGETS.powerflow === WIDGETS.flow) dürfen keinen zweiten
     // Palette-Eintrag erzeugen - sonst taucht derselbe Baustein doppelt unter altem Namen auf.

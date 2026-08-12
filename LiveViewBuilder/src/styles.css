@@ -1903,3 +1903,8 @@
     .shl-r>*:nth-child(4),.shl-r>*:nth-child(5),.shl-r>*:nth-child(6){grid-column:span 3;padding-left:92px}
     .shl-r.shl-h>*:nth-child(n+4){display:none}
   }
+
+  /* Palette-Suche */
+  .palq{width:100%;box-sizing:border-box;margin:0 0 8px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px;font-family:var(--fu);position:sticky;top:0;z-index:3}
+  .palq::placeholder{color:var(--faint)}
+  .palq:focus{outline:none;border-color:color-mix(in oklab,var(--accent) 55%,var(--line));box-shadow:var(--ring)}
