@@ -576,6 +576,13 @@ if ($api === 'week') {
 //      ueber ?api=setvar (RequestAction auf die IPSShadowing-Steuervariablen).
 if ($api === 'shading') {
     header('Content-Type: application/json; charset=utf-8');
+    // op=log: HomeSuite-Gesamtlog (alle Raeume) ueber den Hub aggregieren (nicht das Legacy-Skript).
+    if (($_GET['op'] ?? '') === 'log') {
+        $hub = (int) (@IPS_GetInstanceListByModuleID('{A0C082B4-9E74-430E-BD97-F9CEBB364257}')[0] ?? 0);
+        if ($hub <= 0 || !function_exists('HSH_Manage')) { echo json_encode(['ok' => false, 'err' => 'hub']); return; }
+        echo HSH_Manage($hub, json_encode(['op' => 'shadeLog', 'args' => ['limit' => (int) ($_GET['limit'] ?? 300)]]));
+        return;
+    }
     $sid = (int) (@IPS_GetObjectIDByIdent('LVB_ShadingAPI', 23491) ?: 0);
     if ($sid <= 0 || !IPS_ScriptExists($sid)) { echo json_encode(['ok' => false, 'err' => 'backend']); return; }
     echo IPS_RunScriptWaitEx($sid, ['op' => (string) ($_GET['op'] ?? 'list'), 'device' => (string) ($_GET['device'] ?? ''), 'profile' => (string) ($_GET['profile'] ?? '')]);
