@@ -146,6 +146,8 @@
     _compKids=[];allWidgets().forEach(function(w){if(w.type==='component')expandComponent(w);}); // M3: Komponenten-Instanzen expandieren
     _contKids=[];state.widgets.forEach(function(w){if(w.type==='container')expandContainer(w);}); // Container-Kinder zeichnen (echte, editierbare Widgets)
     state.widgets.forEach(function(w){if(w.type==='alarmpanel'&&typeof expandAlarmPanel==='function')expandAlarmPanel(w);}); // Alarm-Panel: aktive Alarm-Karten einhaengen
+    // In einer Komponente eingebettete Container/Alarm-Panels ebenfalls auffuellen (sonst leer, z.B. Pool-CFG-Seiten im Tab-Hub).
+    if(_compKids&&_compKids.length)_compKids.slice().forEach(function(w){try{if(w.type==='container')expandContainer(w);else if(w.type==='alarmpanel'&&typeof expandAlarmPanel==='function')expandAlarmPanel(w);}catch(_e){}});
     // mount-Hooks auch für Klone (Laufband/Komponenten) + Werte aus Cache spiegeln -> Status-Bild/Wetter/cval usw. erscheinen sofort, nicht erst bei Wertänderung
     function _mountKid(w){try{var _mw=WIDGETS[w.type];if(_mw&&_mw.mount)_mw.mount(w);}catch(e){}}
     if(_compKids&&_compKids.length)_compKids.forEach(_mountKid);
