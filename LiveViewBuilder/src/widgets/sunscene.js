@@ -170,21 +170,23 @@
       var clr = (rad != null) ? LVSUN.clearness(rad, sun.elev) : null;
       var geo = ssGeo3(w, el);
       var pal0 = ssPal(el);
+      var wx = _covOn2(w, 'ssWeather', true) ? ssWx(w) : null;
 
       var key = [W, H, dpr, cam.bearing.toFixed(2), cam.pitch.toFixed(2), cam.radius.toFixed(2),
                  sun.az.toFixed(2), sun.elev.toFixed(2), clr == null ? 'x' : clr.toFixed(3),
                  geo ? geo.count : -1, Math.floor(ssNow(w) / 60000), ssStyleKey(w),
-                 pal0.tile + pal0.accent].join('|');
+                 pal0.tile + pal0.accent,
+                 wx ? [wx.cloud.toFixed(2), wx.rain.toFixed(2), wx.snow.toFixed(2), wx.fog.toFixed(2)].join(',') : 'x'
+                ].join('|');
       var st = ssSt(w);
       if (st.key !== key || !st.buf) {
-        st.buf = ssScene(w, el, W, H, dpr, cam, sun, clr, geo, K);
+        st.buf = ssScene(w, el, W, H, dpr, cam, sun, clr, geo, K, wx);
         st.key = key;
       }
       ctx.drawImage(st.buf, 0, 0, W, H);
 
-      var wx = _covOn2(w, 'ssWeather', true) ? ssWx(w) : null;
       var tW = (typeof performance !== 'undefined' ? performance.now() : ssNow(w)) / 1000;
-      if (wx) {
+      if (wx && wx.nass) {
         var dayW = Math.max(0, Math.min(1, (sun.elev + 6) / 16));
         ssWeatherDraw(ctx, W, H, K, wx, tW, pal0, dayW);
       }
@@ -216,7 +218,7 @@
     }
 
     /** Die langsame Ebene in eine eigene Flaeche malen. */
-    function ssScene(w, el, W, H, dpr, cam, sun, clr, geo, K) {
+    function ssScene(w, el, W, H, dpr, cam, sun, clr, geo, K, wx) {
       var st = ssSt(w);
       var cv = st.buf;
       if (!cv) { cv = st.buf = document.createElement('canvas'); }
@@ -230,17 +232,22 @@
       var day = Math.max(0, Math.min(1, (sun.elev + 6) / 16));   // 0 = Nacht, 1 = Tag
 
       var pal = ssPal(el);
-      ssSky(ctx, W, H, K, day, clr, w, pal);
-      if (day < 0.55 && _covOn2(w, 'ssStars', true)) ssStars(ctx, W, H, K, 1 - day / 0.55, w);
+      var cloud = wx ? wx.cloud : 0;
+      // Bedeckter Himmel heisst diffuses Licht: weiche Schatten, matte Sonne. Dafuer wird
+      // die Klarheit gedeckelt - sie steuert im ganzen Widget Halo, Dunst und Schattenhaerte.
+      var clrE = (cloud > 0) ? ((clr == null) ? (1 - cloud) : Math.min(clr, 1 - cloud)) : clr;
+      ssSky(ctx, W, H, K, day, clrE, w, pal, cloud);
+      var starA = (1 - day / 0.55) * (1 - cloud * 0.9);            // Wolken verdecken die Sterne
+      if (day < 0.55 && starA > 0.03 && _covOn2(w, 'ssStars', true)) ssStars(ctx, W, H, K, starA, w);
       ssGround(ctx, cam, W, H, K, day, w, pal);
       var track = LVSUN.dayTrack(g.lat, g.lon, ssNow(w), 6);
       ssArc(ctx, cam, K, track, sun, day, w, pal);
-      var mn = ssMoonDisc(ctx, cam, K, sun, day, w);
-      if (geo) ssNeighbours(ctx, cam, K, sun, day, clr, w, geo, pal);
-      ssHouse(ctx, cam, K, sun, day, clr, w, geo, pal);
+      var mn = ssMoonDisc(ctx, cam, K, sun, day, w, cloud);
+      if (geo) ssNeighbours(ctx, cam, K, sun, day, clrE, w, geo, pal);
+      ssHouse(ctx, cam, K, sun, day, clrE, w, geo, pal);
       if (geo) ssAttrib(ctx, W, H, K, pal, ssStripH(w, K) ? ssStripH(w, K) + Math.max(6, K / 40) * 1.6 : 0);
-      ssSunDisc(ctx, cam, K, sun, clr, w);
-      ssLabels(ctx, W, H, K, sun, ssVal(w.ssRad), clr, track, w, mn, pal);
+      ssSunDisc(ctx, cam, K, sun, clrE, w, cloud);
+      ssLabels(ctx, W, H, K, sun, ssVal(w.ssRad), clrE, track, w, mn, pal);
       ssStrip(ctx, W, H, K, w, track, pal);
       return cv;
     }
@@ -259,24 +266,30 @@
     }
 
     // Himmel: Farbe folgt der Sonnenhoehe, Dunst der gemessenen Klarheit
-    function ssSky(ctx, W, H, K, day, clr, w, pal) {
+    function ssSky(ctx, W, H, K, day, clr, w, pal, cloud) {
       var gr = ctx.createLinearGradient(0, 0, 0, H);
       var haze = (clr == null) ? 0.35 : (1 - clr) * 0.6;              // truebe Luft = flacherer Verlauf
+      // Bewoelkung nimmt dem Himmel die Farbe. Bei Regen oder Schnee ist er bedeckt -
+      // ein blauer Himmel im Regen waere der auffaelligste Fehler ueberhaupt.
+      var cc = Math.max(0, Math.min(1, cloud || 0));
+      var grau = pal.light ? ['#9aa4ad', '#b4bdc4', '#cbd2d7'] : ['#20272e', '#2b333b', '#1a2026'];
+      function mixc(base, i) { return cc > 0 ? mix(base, grau[i], cc * 0.92) : base; }
       if (day > 0.5 && pal.light) {
         // Heller Skin: Tageshimmel in Tageslichtfarben, damit die Kachel nicht als
         // dunkler Block in einer hellen Oberflaeche steht.
-        gr.addColorStop(0, mix('#7fb3d5', '#9fbdcd', haze));
-        gr.addColorStop(0.62, mix('#bcd9e6', '#cfdde4', haze));
-        gr.addColorStop(1, mix('#e3eef2', '#e8edef', haze));
+        gr.addColorStop(0, mixc(mix('#7fb3d5', '#9fbdcd', haze), 0));
+        gr.addColorStop(0.62, mixc(mix('#bcd9e6', '#cfdde4', haze), 1));
+        gr.addColorStop(1, mixc(mix('#e3eef2', '#e8edef', haze), 2));
       } else if (day > 0.5) {
-        gr.addColorStop(0, mix('#0a2233', '#16323f', haze));
-        gr.addColorStop(0.62, mix('#123b3f', '#1d4448', haze));
-        gr.addColorStop(1, mix('#0d1f24', '#141f22', haze));
+        gr.addColorStop(0, mixc(mix('#0a2233', '#16323f', haze), 0));
+        gr.addColorStop(0.62, mixc(mix('#123b3f', '#1d4448', haze), 1));
+        gr.addColorStop(1, mixc(mix('#0d1f24', '#141f22', haze), 2));
       } else {
         var t = day / 0.5;
-        gr.addColorStop(0, mix('#060a12', '#241a2e', t));
-        gr.addColorStop(0.62, mix('#080e16', '#3a2733', t));
-        gr.addColorStop(1, mix('#05080c', '#1a1620', t));
+        // Nachts nimmt die Wolkendecke das Sternenlicht und hellt den Horizont leicht auf.
+        gr.addColorStop(0, mixc(mix('#060a12', '#241a2e', t), 0));
+        gr.addColorStop(0.62, mixc(mix('#080e16', '#3a2733', t), 1));
+        gr.addColorStop(1, mixc(mix('#05080c', '#1a1620', t), 2));
       }
       ctx.fillStyle = gr; ctx.fillRect(0, 0, W, H);
     }
@@ -670,11 +683,14 @@
      * Blickgeometrie und stimmt damit auch, wenn die Sonne unter dem Horizont steht.
      * Rueckgabe: die Monddaten fuer die Beschriftung (oder null, wenn nicht sichtbar).
      */
-    function ssMoonDisc(ctx, cam, K, sun, day, w) {
+    function ssMoonDisc(ctx, cam, K, sun, day, w, cloud) {
       if (!_covOn2(w, 'ssMoon', true)) return null;
+      // Dieselbe Regel wie fuer die Sonne: hinter einer geschlossenen Decke ist er weg.
+      var mcc = Math.max(0, Math.min(1, cloud || 0));
+      if (mcc > 0.85) return null;
       var g = ssGeo(w), m = LVSUN.moon(g.lat, g.lon, ssNow(w) / 1000);
       if (m.elev < -1) return null;                            // unter dem Horizont
-      var vis = Math.max(0, Math.min(1, (0.62 - day) / 0.45));  // am hellen Tag unsichtbar
+      var vis = Math.max(0, Math.min(1, (0.62 - day) / 0.45)) * (1 - mcc * 0.9);   // Tag und Wolken
       if (vis <= 0.02) return m;
       var q = ssSky3(cam, m.az, m.elev, cam.skyR);
       var R = K / 26;
@@ -795,8 +811,13 @@
       ctx.restore();
     }
 
-    function ssSunDisc(ctx, cam, K, sun, clr, w) {
+    function ssSunDisc(ctx, cam, K, sun, clr, w, cloud) {
       if (sun.elev < -2) return;
+      // Bei geschlossener Decke steht keine scharfe Scheibe am Himmel, sondern eine matte
+      // helle Stelle. Ab etwa 85 % Bedeckung verschwindet sie ganz.
+      var cc = Math.max(0, Math.min(1, cloud || 0));
+      if (cc > 0.85) return;
+      var dim = 1 - cc * 0.9;
       var R = cam.skyR, p = ssSky3(cam, sun.az, sun.elev, R);
       var base = K / 34, halo = base * (2.2 + (clr == null ? 1 : clr * 3.4));
       var gr = ctx.createRadialGradient(p.x, p.y, base * 0.3, p.x, p.y, halo);
@@ -804,9 +825,13 @@
       gr.addColorStop(0, 'rgba(255,240,200,' + Math.min(0.98, a0 + 0.3).toFixed(2) + ')');
       gr.addColorStop(0.34, 'rgba(255,201,64,' + (a0 * 0.5).toFixed(2) + ')');
       gr.addColorStop(1, 'rgba(255,180,0,0)');
+      ctx.save();
+      ctx.globalAlpha = dim;
       ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(p.x, p.y, halo, 0, 7); ctx.fill();
+      if (cc > 0.25) { ctx.filter = 'blur(' + (K * 0.012 * cc).toFixed(1) + 'px)'; }
       ctx.fillStyle = sun.elev < 4 ? '#ffb765' : '#fff3cf';
-      ctx.beginPath(); ctx.arc(p.x, p.y, base, 0, 7); ctx.fill();
+      ctx.beginPath(); ctx.arc(p.x, p.y, base * (1 + cc * 0.5), 0, 7); ctx.fill();
+      ctx.restore();
       if (sun.elev > 0.5 && _covOn2(w, 'ssRay', true)) {
         var h = cam.project(0, 0, ssNum(w.ssHouseH, 7.5) + ssNum(w.ssRoofH, 3.5));
         ctx.save(); ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(h.x, h.y);
@@ -945,9 +970,19 @@
         if (fogRaw > 5) fog = Math.max(0, Math.min(1, 1 - fogRaw / 2000));
         else if (fogRaw > 1) fog = Math.max(0, Math.min(1, fogRaw / 100));
         else fog = Math.max(0, Math.min(1, fogRaw));
+      } else {
+        fog = ssFogEst(ssVal(w.ssTempV), ssVal(w.ssDewV), ssVal(w.ssHumV));
       }
-      var any = (rain > 0.01) || (snow > 0.01) || (fog > 0.02);
-      if (!any) return null;
+      // Bewoelkung: gebunden (Prozent oder Anteil) oder aus dem Niederschlag gefolgert -
+      // wenn es regnet oder schneit, ist der Himmel bedeckt, egal was gebunden ist.
+      var cl = ssVal(w.ssCloudV);
+      var cloud = (cl == null) ? null : Math.max(0, Math.min(1, cl > 1 ? cl / 100 : cl));
+      var min = (snow > 0.01) ? 0.92 : (rain > 0.05) ? 0.85 : (rain > 0.01) ? 0.6
+              : (fog > 0.15) ? 0.55 : 0;
+      if (min > 0) { cloud = (cloud == null) ? min : Math.max(cloud, min); }
+
+      var nass = (rain > 0.01) || (snow > 0.01) || (fog > 0.02);
+      if (!nass && cloud == null) return null;
       // Wind in m/s. Die EINHEIT entscheidet, nicht die Groesse: eine Davis-Station meldet
       // km/h und liegt meist unter 40 - eine Schwelle haette das als m/s gelesen und den
       // Regen viel zu steil geneigt.
@@ -959,7 +994,32 @@
            : (u.indexOf('mph') >= 0) ? wind * 0.447
            : wind;                                    // m/s oder ohne Einheit
       }
-      return { rain: rain || 0, snow: snow || 0, fog: fog || 0, wind: ws };
+      return { rain: rain || 0, snow: snow || 0, fog: fog || 0, wind: ws,
+               cloud: cloud == null ? 0 : cloud, nass: nass };
+    }
+
+    /**
+     * Nebel abschaetzen, wenn kein Sichtweitensensor da ist.
+     *  Grundlage ist die Taupunktdifferenz: je naeher die Lufttemperatur am Taupunkt liegt,
+     *  desto eher kondensiert die Luft. Faustregel aus der Wetterbeobachtung - unter etwa
+     *  0,5 K Abstand ist Nebel wahrscheinlich, ab rund 2,5 K nicht mehr.
+     *  Ohne Taupunkt dient die Luftfeuchte als schwaecherer Ersatz.
+     *  Das Ergebnis ist bewusst auf 0,85 gedeckelt: es ist eine Abschaetzung, kein Messwert,
+     *  und soll die Szene nie voellig zumachen.
+     */
+    function ssFogEst(t, td, rh) {
+      if (t != null && td != null) {
+        var spread = t - td;
+        if (!(spread < 2.5)) return null;
+        var f = (2.5 - spread) / 2.0;
+        if (rh != null && rh < 90) { f *= Math.max(0, (rh - 75) / 15); }   // trockene Luft daempft
+        return Math.max(0, Math.min(0.85, f));
+      }
+      if (rh != null) {
+        if (rh < 95) return null;
+        return Math.max(0, Math.min(0.85, (rh - 95) / 5 * 0.6 + 0.25));
+      }
+      return null;
     }
 
     /** Streuwert 0..1 aus einer Zahl - fuer immer gleiche Tropfenbahnen ohne Zustand. */
@@ -978,20 +1038,29 @@
       // --- Nebel ---
       if (wx.fog > 0.02) {
         var f = Math.min(1, wx.fog);
-        var col = pal.light ? '245,247,250' : '188,200,214';
-        var gr = ctx.createLinearGradient(0, H * 0.18, 0, H);
-        gr.addColorStop(0, 'rgba(' + col + ',0)');
-        gr.addColorStop(0.55, 'rgba(' + col + ',' + (0.30 * f).toFixed(3) + ')');
-        gr.addColorStop(1, 'rgba(' + col + ',' + (0.60 * f).toFixed(3) + ')');
-        ctx.save(); ctx.fillStyle = gr; ctx.fillRect(0, 0, W, H);
-        // zwei langsam ziehende Schwaden
-        for (var b = 0; b < 2; b++) {
-          var y = H * (0.52 + b * 0.18) + Math.sin(tSec * 0.06 + b) * H * 0.02;
-          var x = ((tSec * (5 + b * 3)) % (W * 2)) - W * 0.5;
-          var g2 = ctx.createRadialGradient(x, y, 0, x, y, W * 0.55);
-          g2.addColorStop(0, 'rgba(' + col + ',' + (0.18 * f).toFixed(3) + ')');
+        var col = pal.light ? '250,251,253' : '176,190,207';
+        ctx.save();
+        // Grundschleier: oben duenn, unten dicht - Nebel sammelt sich am Boden
+        var gr = ctx.createLinearGradient(0, 0, 0, H);
+        gr.addColorStop(0, 'rgba(' + col + ',' + (0.10 * f).toFixed(3) + ')');
+        gr.addColorStop(0.30, 'rgba(' + col + ',' + (0.34 * f).toFixed(3) + ')');
+        gr.addColorStop(0.68, 'rgba(' + col + ',' + (0.66 * f).toFixed(3) + ')');
+        gr.addColorStop(1, 'rgba(' + col + ',' + (0.76 * f).toFixed(3) + ')');
+        ctx.fillStyle = gr; ctx.fillRect(0, 0, W, H);
+        // Helles Band am Horizont - dort verschwindet die Sicht zuerst
+        var hz = ctx.createLinearGradient(0, H * 0.42, 0, H * 0.72);
+        hz.addColorStop(0, 'rgba(' + col + ',0)');
+        hz.addColorStop(0.5, 'rgba(' + col + ',' + (0.42 * f).toFixed(3) + ')');
+        hz.addColorStop(1, 'rgba(' + col + ',0)');
+        ctx.fillStyle = hz; ctx.fillRect(0, H * 0.42, W, H * 0.30);
+        // drei ziehende Schwaden
+        for (var b = 0; b < 3; b++) {
+          var yb = H * (0.48 + b * 0.16) + Math.sin(tSec * 0.05 + b * 2.1) * H * 0.025;
+          var xb = ((tSec * (7 + b * 4) + b * 500) % (W * 2.2)) - W * 0.6;
+          var g2 = ctx.createRadialGradient(xb, yb, 0, xb, yb, W * 0.48);
+          g2.addColorStop(0, 'rgba(' + col + ',' + (0.30 * f).toFixed(3) + ')');
           g2.addColorStop(1, 'rgba(' + col + ',0)');
-          ctx.fillStyle = g2; ctx.fillRect(0, y - H * 0.25, W, H * 0.5);
+          ctx.fillStyle = g2; ctx.fillRect(0, yb - H * 0.3, W, H * 0.6);
         }
         ctx.restore();
       }
@@ -1017,18 +1086,21 @@
 
       // --- Schnee ---
       if (wx.snow > 0.01) {
-        var m = Math.round(Math.max(20, Math.min(240, wx.snow * 45)));
-        var sps = 0.16 + Math.min(0.2, wx.snow / 20);
-        var dr = Math.max(-0.5, Math.min(0.5, wx.wind / 25));
+        var m = Math.round(Math.max(45, Math.min(420, wx.snow * 110)));
+        var sps = 0.13 + Math.min(0.16, wx.snow / 24);
+        var dr = Math.max(-0.6, Math.min(0.6, wx.wind / 22));
         ctx.save();
-        ctx.fillStyle = pal.light ? 'rgba(120,145,175,.72)' : 'rgba(240,247,255,.82)';
+        // Flocken sind IMMER weiss - auch auf hellem Himmel. Damit sie dort nicht
+        // verschwinden, bekommen sie einen weichen dunklen Saum statt einer grauen Fuellung.
+        ctx.fillStyle = '#ffffff';
+        if (pal.light) { ctx.shadowColor = 'rgba(60,80,105,.55)'; ctx.shadowBlur = K / 260; }
         for (var j = 0; j < m; j++) {
-          var p2 = ssRnd(j, 4), dp = 0.5 + ssRnd(j, 5) * 0.8;
-          var yy = (((tSec * sps * dp + p2) % 1) * (H + K * 0.06)) - K * 0.03;
-          var xx = ssRnd(j, 6) * (W * 1.3) - W * 0.15
-                 + Math.sin(tSec * 0.55 * dp + j) * K * 0.022 + dr * yy;
-          var r2 = (K / 420) * dp;
-          ctx.globalAlpha = 0.45 + dp * 0.4;
+          var p2 = ssRnd(j, 4), dp = 0.45 + ssRnd(j, 5) * 0.95;
+          var yy = (((tSec * sps * dp + p2) % 1) * (H + K * 0.08)) - K * 0.04;
+          var xx = ssRnd(j, 6) * (W * 1.35) - W * 0.18
+                 + Math.sin(tSec * 0.5 * dp + j) * K * 0.03 + dr * yy;
+          var r2 = (K / 230) * dp;
+          ctx.globalAlpha = 0.55 + dp * 0.42;
           ctx.beginPath(); ctx.arc(xx, yy, r2, 0, 7); ctx.fill();
         }
         ctx.restore();
@@ -1385,8 +1457,12 @@
         h += fieldPick(w, 'ssSnowV', 'Schnee mm/h');
         h += fieldPick(w, 'ssPtypeV', 'Niederschlagsart');
         h += fieldPick(w, 'ssFogV', 'Sicht / Nebel');
+        h += fieldPick(w, 'ssTempV', 'Temperatur (für Nebel)');
+        h += fieldPick(w, 'ssDewV', 'Taupunkt (für Nebel)');
+        h += fieldPick(w, 'ssHumV', 'Luftfeuchte (für Nebel)');
         h += fieldPick(w, 'ssWindV', 'Wind');
-        h += '<div style="font-size:11px;color:var(--muted);margin:2px 2px 6px">Alles einzeln optional — gebunden wird, was die eigene Wetterstation liefert. <b>Niederschlagsart</b>: ab Wert 2 gilt der Regenwert als Schnee (Tempest-Konvention); ohne Bindung bleibt es Regen. <b>Sicht/Nebel</b>: Werte über 5 gelten als Sichtweite in Metern (unter 2000 m zieht Nebel auf), kleinere als Anteil. <b>Regensensor</b>: meldet er Regen, während die Station noch 0,0 mm/h zeigt, erscheint Nieselregen. <b>Wind</b> neigt den Regen und treibt den Schnee; die Einheit der Variablen (km/h, kn, mph, m/s) wird berücksichtigt.</div>';
+        h += fieldPick(w, 'ssCloudV', 'Bewölkung %');
+        h += '<div style="font-size:11px;color:var(--muted);margin:2px 2px 6px">Alles einzeln optional — gebunden wird, was die eigene Wetterstation liefert. <b>Niederschlagsart</b>: ab Wert 2 gilt der Regenwert als Schnee (Tempest-Konvention); ohne Bindung bleibt es Regen. <b>Sicht/Nebel</b>: Werte über 5 gelten als Sichtweite in Metern (unter 2000 m zieht Nebel auf), kleinere als Anteil. Fehlt ein Sichtweitensensor, wird der Nebel aus <b>Temperatur und Taupunkt</b> geschätzt — je kleiner der Abstand, desto dichter (unter 0,5 K dicht, ab 2,5 K keiner); die Luftfeuchte dämpft das Ergebnis und dient ohne Taupunkt als schwächerer Ersatz. Weil es eine Schätzung ist, macht sie die Szene nie ganz zu. <b>Regensensor</b>: meldet er Regen, während die Station noch 0,0 mm/h zeigt, erscheint Nieselregen. <b>Bewölkung</b> graut den Himmel aus, dämpft die Sonne, macht die Schatten weich und verdeckt nachts die Sterne; bei Regen oder Schnee wird sie auch ohne Bindung angenommen — ein blauer Himmel im Regen wäre der auffälligste Fehler. <b>Wind</b> neigt den Regen und treibt den Schnee; die Einheit der Variablen (km/h, kn, mph, m/s) wird berücksichtigt.</div>';
         h += '<div class="pgh">Energie</div>';
         h += ssImportRow(w);
         h += listEditor(w, 'elements', 'Typ · Name · Icon · Farbe · Leistung-ID',
