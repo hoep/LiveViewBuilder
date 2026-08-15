@@ -454,6 +454,11 @@
       if(typeof state!=='undefined'&&state.widgets)allWidgets().forEach(_re);
       if(typeof _tickKids!=='undefined'&&_tickKids)_tickKids.forEach(_re);
     }catch(e){}
+    // Zusaetzlich die selbst angemeldeten Zeichenflaechen. Der Weg ueber die Widget-Liste
+    // allein genuegt NICHT: allWidgets() kennt nur state.widgets und die Leisten-Kinder -
+    // ein Widget in einem Container, Panel oder einer Komponente stand nie darin und blieb
+    // deshalb in den alten Farben. Wer sich hier anmeldet, wird immer erreicht.
+    try{ (window.LV_SKIN_HOOKS||[]).forEach(function(f){ try{ f(); }catch(e3){} }); }catch(e4){}
   }
   function updateSkinSwitches(){$$('.hskwb').forEach(function(b){b.classList.toggle('on',b.getAttribute('data-skw')===(store.theme||'dark'));});$$('[data-role=skwsel]',canvas).forEach(function(s){s.value=store.skin||'Standard';});}
   // Auto-Fork: sobald an einem eingebauten (schreibgeschuetzten) Skin etwas geaendert wird, legen wir
