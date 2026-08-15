@@ -18,10 +18,16 @@
   // Grund: der Reflow auf Mobil skaliert nebeneinanderliegende, unterschiedlich breite Blöcke
   // verschieden -> die Erklärung „sprang" je Widget in der Größe. Gleiche Breite = gleiche Skalierung.
   var DOKU_PAD  = 20;
-  var DOKU_TXTW = 700;                    // Textbreite (= Inhaltsbreite, einspaltig)
+  var DOKU_TXTW = 700;                    // Textbreite (= Inhaltsbreite, einspaltig) — wird responsiv gesetzt
   var DOKU_PREV = 320;                    // max. Breite der Vorschau-Kachel
   var DOKU_TXTX = DOKU_PAD;               // alles linksbündig, eine Spalte
   var DOKU_W    = DOKU_PAD + DOKU_TXTW + DOKU_PAD;
+  // Responsiv: Inhaltsbreite = Fensterbreite (normale Schrift, KEIN Zoom). Vor jedem Aufbau + bei Resize aufrufen.
+  function dokuFitWidth(){
+    var vw=(typeof window!=='undefined'&&window.innerWidth)||1000;
+    DOKU_TXTW=Math.max(320,Math.min(1600,vw-2*DOKU_PAD));
+    DOKU_W=DOKU_PAD+DOKU_TXTW+DOKU_PAD;
+  }
 
   // Thematische Gruppen. Jedes Widget genau einmal; was hier fehlt, landet in "Weitere" -
   // dadurch faellt ein neu angelegtes Widget auf, statt lautlos zu verschwinden.
@@ -30,11 +36,11 @@
     ['Schalten & Bedienen',     ['switch','light','button','tile','checkbox','select','slider','stepper','colorpick','textbox','cover','shadingpanel','shading','shadeprofile','thermostat','heatplan','weekedit','alarm','alarmpanel','bot','timer','eventctl']],
     ['HomeSuite – Zeitplan (Heizung/Beschattung)', ['rooms','curve','week','slots','slotedit','variantbox','transfer','save']],
     ['HomeSuite – Navigation & Sonne', ['homesuite','roomnav','zonesync','shadesun','shadeprofiles']],
-    ['Zustand & Listen',        ['assoc','statusgrid','statuslist','devlist','statusimage','table','objinfo','msglog','statelog','statetl']],
+    ['Zustand & Listen',        ['assoc','statusgrid','statuslist','devlist','statusimage','table','objinfo','msglog','battlist','statelog','statetl']],
     ['Diagramme',               ['chart','heatmap','gauge','gaugepro','multiring','doubledonut','sankey','flow','flowline','windrose','tempbar']],
     ['Chart-Typen (Beispiele)', ['chartbar','chartbarstack','chartrace','chartscatter','chartspark','chartpie','chartdonut','chartrose','chartwf']],
     ['Wetter, Sonne & Termine', ['weather','weatherpro','meteogram','sun','suncard','raincard','rainintensity','rainradar','calendar','weekplan','weekstrip','clock']],
-    ['Medien & Inhalte',        ['camera','campro','media','image','html','webview','marquee','ticker']],
+    ['Medien & Inhalte',        ['camera','campro','camarray','media','image','html','webview','marquee','ticker']],
     ['Struktur & Layout',       ['text','shape','line','blank','component','container','room','chromebar','chromesidebar','skinswitch']],
     ['System & Diagnose',       ['wsmon']]
   ];
@@ -93,10 +99,10 @@
   }
   // Zeilenzahl grob schaetzen (fuer die Blockhoehe).
   function dokuTxtLen(t){
-    var i=dokuInfo(t),n=0;
-    if(i.zweck)n+=Math.ceil(i.zweck.length/95)+1;
-    (i.funktionen||[]).forEach(function(f){n+=Math.ceil(((f.name||'').length+(f.beschreibung||'').length+4)/95)+0.3;});
-    if(i.hinweis)n+=Math.ceil(i.hinweis.length/85)+1;
+    var i=dokuInfo(t),n=0,cpl=Math.max(30,Math.round(DOKU_TXTW/7.4)),cph=Math.max(30,Math.round(DOKU_TXTW/8.2)); // Zeichen/Zeile aus der aktuellen Breite (700px ~ 95 Zeichen)
+    if(i.zweck)n+=Math.ceil(i.zweck.length/cpl)+1;
+    (i.funktionen||[]).forEach(function(f){n+=Math.ceil(((f.name||'').length+(f.beschreibung||'').length+4)/cpl)+0.3;});
+    if(i.hinweis)n+=Math.ceil(i.hinweis.length/cph)+1;
     return n+2;
   }
 
@@ -131,7 +137,7 @@
       // WIDGETS[t] = echtes Widget; ODER synthetischer Doku-Eintrag (kein eigener Typ, aber DOKU_INFO+demo, z. B. Heatmap = Chart-ctype)
       var titel = g[0], typen = g[1].filter(function(t){ return WIDGETS[t] || (dokuInfo(t) && dokuInfo(t).demo); });
       if (!typen.length) return;
-      var ws = [], n = 0, y = DOKU_PAD;
+      var ws = [], n = 0, y = (DOKU_PAD+30);
       function add(o){ n++; o.id = 'dk' + n; ws.push(o); }
 
       add({type:'text', x:DOKU_PAD, y:y, w:DOKU_W-2*DOKU_PAD, h:40, bgT:true, fsz:21,
@@ -151,8 +157,8 @@
         // 1) Überschrift (volle Breite)
         add({type:'text', x:DOKU_PAD, y:y, w:DOKU_TXTW, h:24, bgT:true, fsz:15, label:kopf});
         y += 28;
-        // 2) Vorschau-Kachel darunter — horizontal in der Textspalte zentriert (nicht linksbündig)
-        var px = DOKU_PAD + Math.max(0, Math.round((DOKU_TXTW - bw) / 2));
+        // 2) Vorschau-Kachel darunter — linksbündig (bei breitem Layout wirkt zentriert verloren)
+        var px = DOKU_PAD;
         if (DOKU_SKIP[t]) {
           var ph = Math.min(bh,120);
           add({type:'text', x:px, y:y, w:bw, h:ph, fsz:11, fg:'#7d9099',
@@ -183,7 +189,7 @@
 
     // Sonderansicht: Rechenformeln - kein Widget-Katalog, sondern Erklaerung + Live-Demo.
     (function(){
-      var ws = [], n = 0, y = DOKU_PAD, W = DOKU_W - 2 * DOKU_PAD;
+      var ws = [], n = 0, y = (DOKU_PAD+30), W = DOKU_W - 2 * DOKU_PAD;
       function add(o){ n++; o.id = 'rf' + n; ws.push(o); }
       add({type:'text', x:DOKU_PAD, y:y, w:W, h:40, bgT:true, fsz:21, label:'Rechenformeln in Variablenfeldern'}); y += 48;
       add({type:'text', x:DOKU_PAD, y:y, w:W, h:80, bgT:true, fsz:13, fg:'#7d9099',
@@ -240,7 +246,7 @@
 
     // Sonderansicht: Bedienung & Layout - Hover-Sprache und freie Positionierung (widgetuebergreifend).
     (function(){
-      var ws=[], n=0, y=DOKU_PAD, W=DOKU_W-2*DOKU_PAD;
+      var ws=[], n=0, y=(DOKU_PAD+30), W=DOKU_W-2*DOKU_PAD;
       function add(o){n++;o.id='bl'+n;ws.push(o);}
       add({type:'text', x:DOKU_PAD, y:y, w:W, h:40, bgT:true, fsz:21, label:'Hover-Sprache & freie Positionierung'}); y+=48;
       add({type:'text', x:DOKU_PAD, y:y, w:W, h:26, bgT:true, fsz:15, label:'Zwei getrennte Hover-Effekte (nur im Betrieb, nicht im Editor)'}); y+=32;
@@ -275,7 +281,7 @@
 
     // Sonderansicht: HomeSuite – Datenmodell (Objektbaum + Configurator, gebauter Ist-Stand).
     (function(){
-      var ws=[], n=0, y=DOKU_PAD, W=DOKU_W-2*DOKU_PAD;
+      var ws=[], n=0, y=(DOKU_PAD+30), W=DOKU_W-2*DOKU_PAD;
       var MUT='#7d9099', ACC='#39d08a', BLU='#4aa3df';
       function H(t,s){add({type:'text',x:DOKU_PAD,y:y,w:W,h:s?26:40,bgT:true,fsz:s?15:21,label:t}); y+=s?32:48;}
       function P(t,fg,h){add({type:'text',x:DOKU_PAD,y:y,w:W,h:h,bgT:true,fsz:13,fg:(fg||MUT),label:t}); y+=h+10;}

@@ -22,9 +22,20 @@
 
   // Vorschau/Runtime: interaktive Widgets schreiben
   var _lpTimer=null,_lpFired=false;
+  // Widget-Config zu einem angeklickten Element bestimmen. IDs koennen zwischen Seite und
+  // Popup/Hover kollidieren (z. B. Meldungsliste im Popup vs. Kachel auf der Seite, beide "w131").
+  // Fuer Interaktionen zaehlt der KONTEXT: liegt das Element im Overlay, zuerst dort aufloesen,
+  // sonst greift widget() die falsche (Seiten-)Config und der Klick landet im falschen Widget.
+  function _wForEl(el){
+    if(!el||!el.dataset)return null;var id=el.dataset.id;if(!id)return null;
+    var oc=document.getElementById('ovcanvas'),hc=document.getElementById('hovcanvas');
+    if(typeof _popup!=='undefined'&&_popup&&_popup.widgets&&oc&&oc.contains(el)){var pw=_popup.widgets.filter(function(x){return x.id===id;})[0];if(pw)return pw;}
+    if(typeof _hover!=='undefined'&&_hover&&_hover.widgets&&hc&&hc.contains(el)){var hw=_hover.widgets.filter(function(x){return x.id===id;})[0];if(hw)return hw;}
+    return widget(id);
+  }
   function _wClick(e){
     if(mode==='edit')return;if(_lpFired){_lpFired=false;return;} // O1: nach Long-Press Klick unterdrücken
-    var el=e.target.closest('.w');if(!el)return;var w=widget(el.dataset.id);if(!w)return;
+    var el=e.target.closest('.w');if(!el)return;var w=_wForEl(el);if(!w)return;
     var _wc=WIDGETS[w.type];if(_wc&&_wc.click&&_wc.click(w,el,e)===true)return; // Registry-Widget-Klick
     if(w.closePopup){closePopup();return;} // A1: Popup schließen
     if(w.popupTo){openPopup(w.popupTo,_aliasMap(w));return;} // A1/M1: Popup öffnen (mit Alias-Remapping)
@@ -52,18 +63,29 @@
   canvas.addEventListener('click',_wClick);
   // Hover-Overlay (Desktop-Maus): mouseenter zeigt die Hover-Ansicht als Flyout, Verlassen schliesst (kurzer Nachlauf; Flyout haelt offen).
   (function(){
-    var _hovT=null;
+    var _hovT=null,_liftGrp=null;
     function _sched(){if(_hovT)clearTimeout(_hovT);_hovT=setTimeout(function(){closeHover();},200);}
     function _keep(){if(_hovT){clearTimeout(_hovT);_hovT=null;}}
+    // Gruppen-Anhebung: die gehoverte Gruppe als BLOCK auf dieselbe z-Ebene heben, damit der
+    // angehobene Master (act-nav mit Popup/Seite) seine darueberliegenden Mitglieder nicht mehr verdeckt.
+    function _liftClear(){if(_liftGrp!=null){$$('.w.glift',canvas).forEach(function(x){x.classList.remove('glift');});_liftGrp=null;}}
+    function _liftGroup(g){
+      if(g===_liftGrp)return;
+      _liftClear();
+      if(g==null||g==='')return;
+      _liftGrp=g;
+      $$('.w[data-grp]',canvas).forEach(function(x){var ww=widget(x.dataset.id);if(ww&&ww.group===g)x.classList.add('glift');});
+    }
     canvas.addEventListener('mouseover',function(e){
       if(mode==='edit')return;
       var el=e.target.closest('.w[data-id]');
+      var w=el?widget(el.dataset.id):null;
+      _liftGroup(w?w.group:null);
       if(!el){_sched();return;}
-      var w=widget(el.dataset.id);
       if(!w||!w.hoverTo||!store.views[w.hoverTo]){_sched();return;}
       _keep();if(!(_hover&&_hover.anchor===el))openHover(w.hoverTo,_aliasMap(w),el);
     });
-    canvas.addEventListener('mouseleave',_sched);
+    canvas.addEventListener('mouseleave',function(){_sched();_liftClear();});
     var hl=document.getElementById('hoverlay');
     if(hl){hl.addEventListener('mouseenter',_keep);hl.addEventListener('mouseleave',_sched);}
   })();
@@ -74,7 +96,7 @@
   })();
   // O1: Long-Press an button/tile -> Popup
   document.addEventListener('pointerdown',function(e){
-    if(mode==='edit')return;var el=e.target.closest('.w');if(!el)return;var w=widget(el.dataset.id);
+    if(mode==='edit')return;var el=e.target.closest('.w');if(!el)return;var w=_wForEl(el);
     if(!w||(!w.longPopup&&!w.longNav))return; // Lang-Druck (Popup ODER Seite) für JEDES Widget
     _lpFired=false;if(_lpTimer)clearTimeout(_lpTimer);
     _lpTimer=setTimeout(function(){_lpFired=true;if(w.longNav&&store.views[w.longNav])navGo(w.longNav);else if(w.longPopup)openPopup(w.longPopup,_aliasMap(w));},550);
@@ -84,8 +106,8 @@
   function _wChange(e){
     if(mode==='edit')return;
     var ss=e.target.closest('[data-role=skwsel]');if(ss){store.skin=ss.value;applySkin();try{localStorage.setItem('lvskin',store.skin);}catch(_){}return;}
-    var _iw=e.target.closest('.w');if(_iw){var _iww=widget(_iw.dataset.id);if(_iww){var _iwr=WIDGETS[_iww.type];if(_iwr&&_iwr.input&&_iwr.input(_iww,_iw,e)===true)return;}}
-    var r=e.target.closest('[data-role=range]');if(!r)return;var el=r.closest('.w');if(!el)return;var w=widget(el.dataset.id);if(!w)return;
+    var _iw=e.target.closest('.w');if(_iw){var _iww=_wForEl(_iw);if(_iww){var _iwr=WIDGETS[_iww.type];if(_iwr&&_iwr.input&&_iwr.input(_iww,_iw,e)===true)return;}}
+    var r=e.target.closest('[data-role=range]');if(!r)return;var el=r.closest('.w');if(!el)return;var w=_wForEl(el);if(!w)return;
     if(w.type==='light'){if(w.varId2)setVar(w.varId2,r.value);}
     else if(w.type==='media'){if(w.varId3)setVar(w.varId3,r.value);}
     else if(w.varId){setVar(w.varId,r.value);}

@@ -42,6 +42,7 @@
       host.appendChild(ke);_contKids.push(k);                    // _contKids: mount + live + poll wie Container-Kinder
     }catch(e){}});
     _alpRefresh(w);
+    _alpMount(w); // Chevron-Blaettern + Mausrad-Scroll verdrahten (idempotent)
     // Nach dem Run-Boot wird mode erst NACH switchView auf 'preview' gesetzt; ein deferred Refresh
     // zieht Leer-/OK-/Verstecken-Zustand auch ohne Live-Tick nach (z. B. leeres Panel, unbelegte Kinder).
     setTimeout(function(){_alpRefresh(w);},0);
@@ -69,9 +70,30 @@
     if(wel){wel.classList.toggle('alarm-off', isEmpty&&em==='hide'); wel.classList.toggle('alp-allok', isEmpty&&em==='ok');} // ok: Panel bleibt, gruen
     if(eyeEl){var okState=(isEmpty&&em==='ok');eyeEl.textContent=okState?(w.okEyebrow||'ALLES OK'):(w.eyebrow||'');
       eyeEl.style.setProperty('--_alpeye', okState?'var(--ok)':(_cssColorOrEmpty(w.eyeColor)||'var(--crit)'));}
-    // Chevron rechts einblenden, wenn die Karten-Reihe horizontal ueberlaeuft (mehr Meldungen).
-    var wrap=$('.w[data-id="'+w.id+'"] .alp-rowwrap',canvas), row=$('.w[data-id="'+w.id+'"] [data-role=alpbody]',canvas);
-    if(wrap&&row)wrap.classList.toggle('has-more', (row.scrollWidth-row.clientWidth)>4);
+    _alpScrollSync(w); // Chevrons je nach Scrollposition
+  }
+  // Chevron links/rechts je nach horizontaler Scrollposition der Karten-Reihe ein-/ausblenden.
+  function _alpScrollSync(w){
+    var wrap=$('.w[data-id="'+w.id+'"] .alp-rowwrap',canvas); if(!wrap)return;
+    var row=$('[data-role=alpbody]',wrap); if(!row)return;
+    var more=(row.scrollWidth-row.clientWidth-row.scrollLeft)>4, prev=row.scrollLeft>4;
+    wrap.classList.toggle('has-more',more); wrap.classList.toggle('has-prev',prev);
+  }
+  // Karten-Reihe scrollbar machen: Chevrons klickbar (blaettern) + Mausrad vertikal -> horizontal.
+  function _alpMount(w){
+    var wrap=$('.w[data-id="'+w.id+'"] .alp-rowwrap',canvas); if(!wrap)return;
+    var row=$('[data-role=alpbody]',wrap); if(!row||row._alpWired)return; row._alpWired=1;
+    row.addEventListener('wheel',function(e){
+      if(mode==='edit')return; if(row.scrollWidth<=row.clientWidth+2)return;
+      var d=(Math.abs(e.deltaY)>=Math.abs(e.deltaX))?e.deltaY:e.deltaX; if(!d)return;
+      row.scrollLeft+=d; e.preventDefault();
+    },{passive:false});
+    row.addEventListener('scroll',function(){_alpScrollSync(w);});
+    var pg=function(dir){var step=Math.max(160,row.clientWidth*0.8);row.scrollBy({left:dir*step,behavior:'smooth'});};
+    var mr=$('[data-role=alpmore]',wrap),ml=$('[data-role=alpmoreL]',wrap);
+    if(mr)mr.addEventListener('click',function(){pg(1);});
+    if(ml)ml.addEventListener('click',function(){pg(-1);});
+    setTimeout(function(){_alpScrollSync(w);},0);
   }
   defWidget('alarmpanel',{
     label:'Alarm-Panel', paletteIcon:'bell', size:[900,132], noHover:true,
@@ -82,6 +104,7 @@
         +((w.ackAll!==false)?'<button class="alp-ackall" data-role="ackall">'+escL(w.ackText||'Alle quittieren')+'</button>':'')+'</div>';
       return '<div class="alarmpanel" data-role="alphost">'+head
         +'<div class="alp-rowwrap"><div class="alp-row" data-role="alpbody"></div>'
+        +'<div class="alp-more alp-more-l" data-role="alpmoreL"><svg viewBox="0 0 8 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 1L2 6l5 5"/></svg></div>'
         +'<div class="alp-more" data-role="alpmore"><svg viewBox="0 0 8 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1l5 5-5 5"/></svg></div></div>'
         +'<div class="alp-empty" data-role="alpempty" style="display:none">'+escL(w.emptyText||'Keine Alarme')+'</div>'
         +'<div class="alp-ok" data-role="alpok" style="display:none"><span class="alp-ok-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></span><span class="alp-ok-tx">'+escL(w.okText||'Alles in Ordnung')+'</span></div></div>';

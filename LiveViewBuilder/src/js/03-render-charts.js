@@ -87,10 +87,22 @@
     if(w.iconOpacity!=null)e.style.opacity=String(Math.max(0,Math.min(100,+w.iconOpacity))/100);
     if(w.iconGlow)e.style.filter='drop-shadow(0 0 6px var(--wicon,var(--accent)))';
   }
+  // Per-Element-Styling NACH dem inneren HTML — gilt fuer Seite, Container UND Komponenten,
+  // damit ein Widget ueberall gleich aussieht: valfs, Wert/Icon-Verschiebungen (valDX/valDY,
+  // icoDX/icoDY), Icon-Farbe/-Grafik, Gross-/Kleinschreibung, Typografie.
+  function _applyWidgetStyle(w,d){
+    if(w.type==='value'&&w.valfs){var v=$('.v',d);if(v)v.style.fontSize=w.valfs+'px';}
+    _applyPosOffsets(w,d); // Wert/Icon frei positionieren (valDX/valDY, icoDX/icoDY)
+    if(w.iconColor)d.style.setProperty('--wicon',_skinColor(w.iconColor)||w.iconColor); // zentrale Icon-Farbe
+    if(_hasIconGfx(w)){var _ie=d.querySelector('.iconwrap,.wvic,.swic,.htbadge,.htico,.hbicon,.hl2ic,.hchipic,.hricon,.hkbi,.hassoc-chip,.hvicon,[data-role=badge]');if(_ie)_applyIconGfx(w,_ie);} // universelle Icon-/Grafik-Gestaltung (opt-in)
+    if(w.textTransform)d.style.textTransform=w.textTransform; // universelle Groß-/Kleinschreibung (opt-in)
+    if(w.ff){d.style.setProperty('--w-ff',w.ff);d.classList.add('tw-ff');}if(w.fwt){d.style.setProperty('--w-fwt',w.fwt);d.classList.add('tw-fwt');}if(w.fsty){d.style.setProperty('--w-fsty',w.fsty);d.classList.add('tw-fsty');}if(w.fsz){d.style.setProperty('--w-fsz',w.fsz+'px');d.classList.add('tw-fsz');} // Typografie: auf innere Elemente erzwingen
+  }
   // Ein Widget-Element bauen (identisch für Seiteninhalt und Leisten-Inhalt)
   function _mkWidgetEl(w,_refSet){
       _refSet=_refSet||{};
       var d=document.createElement('div');d.className='w t-'+w.type+(sel[w.id]?' sel':'')+(w.anim?' anim-'+w.anim:'')+(w.lineMode?' wline':'');d.dataset.id=w.id;
+      if(w.group!=null&&w.group!=='')d.dataset.grp=w.group; // Gruppen-Anhebung im Run: Mitglieder ueber data-grp findbar
       d.style.left=w.x+'px';d.style.top=w.y+'px';d.style.width=w.w+'px';d.style.height=w.h+'px';
       var _frameOn=(w.frame!=null)?w.frame:!state.page.noframe;if(!_frameOn)d.classList.add('no-frame'); // Kachel-Rahmen: Widget-Override sonst Ansicht-Standard
       if(w.bgT)d.classList.add('bg-t'); // Hintergrund transparent (Rahmen bleibt davon unberuehrt)
@@ -102,13 +114,8 @@
       // Reset-Knopf im Builder: nur bei positionierbaren Widgets mit gesetztem Offset, sichtbar erst bei Auswahl (CSS)
       var _posBtn=(mode==='edit'&&POS_SEL[w.type]&&(w.valDX||w.valDY||w.icoDX||w.icoDY))?'<button class="posreset" data-posreset="1" title="Position von Wert/Icon zurücksetzen">↺</button>':'';
       d.innerHTML='<div class="winner">'+_inner+'</div>'+_posBtn+'<div class="rz rz-n" data-rz="n"></div><div class="rz rz-s" data-rz="s"></div><div class="rz rz-e" data-rz="e"></div><div class="rz rz-w" data-rz="w"></div><div class="rz rz-ne" data-rz="ne"></div><div class="rz rz-nw" data-rz="nw"></div><div class="rz rz-se" data-rz="se"></div><div class="rz rz-sw" data-rz="sw"></div>';
-      if(w.type==='value'&&w.valfs){var v=$('.v',d);if(v)v.style.fontSize=w.valfs+'px';}
-      _applyPosOffsets(w,d); // Wert/Icon frei positionieren (valDX/valDY, icoDX/icoDY)
       if(w.bg&&!w.bgT)d.style.background=w.bg;if(w.fg){var _rf=_readableFg(w.fg,(w.bgT?null:w.bg));if(_rf)d.style.color=_rf;}
-      if(w.iconColor)d.style.setProperty('--wicon',_skinColor(w.iconColor)||w.iconColor); // zentrale Icon-Farbe
-      if(_hasIconGfx(w)){var _ie=d.querySelector('.iconwrap,.wvic,.swic,.htbadge,.htico,.hbicon,.hl2ic,.hchipic,.hricon,.hkbi,.hassoc-chip,.hvicon,[data-role=badge]');if(_ie)_applyIconGfx(w,_ie);} // universelle Icon-/Grafik-Gestaltung (opt-in)
-      if(w.textTransform)d.style.textTransform=w.textTransform; // universelle Groß-/Kleinschreibung (opt-in)
-      if(w.ff){d.style.setProperty('--w-ff',w.ff);d.classList.add('tw-ff');}if(w.fwt){d.style.setProperty('--w-fwt',w.fwt);d.classList.add('tw-fwt');}if(w.fsty){d.style.setProperty('--w-fsty',w.fsty);d.classList.add('tw-fsty');}if(w.fsz){d.style.setProperty('--w-fsz',w.fsz+'px');d.classList.add('tw-fsz');} // Typografie: auf innere Elemente erzwingen
+      _applyWidgetStyle(w,d); // valfs, Wert/Icon-Offsets, Icon-Farbe/-Grafik, Groß-/Kleinschreibung, Typografie
       return d;
   }
   // Ein Widget in Betrieb nehmen: Diagramm anlegen, Kamera laden, Inhalte holen.
@@ -124,7 +131,7 @@
   function rootOfEl(el){var oc=$('#ovcanvas');return (el&&oc&&oc.contains(el))?oc:canvas;}
   function activateWidget(w,root){
     if(w.type==='gauge'||w.type==='chart'||w.type==='spark'||w.type==='sankey'||w.type==='gaugepro'||w.type==='waterfall'||w.type==='meteogram'||w.type==='multiring')initEChart(w,root);
-    if(w.type==='camera'||w.type==='campro')refreshCam(w,root);
+    if(w.type==='camera'||w.type==='campro'||w.type==='camarray')refreshCam(w,root);
     if(w.type==='html'){if(w.htmlSrc==='custom')setHtmlContent(w,w.html||'',root);else fetchHtml(w,root);}
     if(w.type==='weekplan')fetchWeekplan(w,root);
     if(w.type==='suncard')refreshSun(w,root);
@@ -317,6 +324,16 @@
     if(typeof echarts==='undefined')return;
     var el=$('.w[data-id="'+w.id+'"] [data-role=chart]',(root||canvas));if(!el)return;
     _ec[w.id]=echarts.init(el,null,{renderer:'canvas'});
+    // Zentral: JEDE Beschriftung folgt der Skin-Schrift (--fu / w.ff) und der Skin-Textfarbe.
+    // ECharts nutzt sonst seine eigene Default-Schrift. Ein Wrapper um setOption setzt textStyle
+    // als Grund-Default (einzelne Komponenten mit eigener Farbe/Groesse ueberschreiben ihn weiter).
+    (function(ec){var _so=ec.setOption.bind(ec);ec.setOption=function(opt){
+      if(opt&&typeof opt==='object'&&!Array.isArray(opt)){
+        var ts=opt.textStyle||(opt.textStyle={}),ff=_ecFF(w);
+        if(ff&&ts.fontFamily==null)ts.fontFamily=ff;
+        if(ts.color==null)ts.color=cssv('--text');
+      }
+      return _so.apply(ec,arguments);};})(_ec[w.id]);
     if(w.type==='gauge'){setGauge(w,_lastVals[w.varId]);}
     else if(w.type==='gaugepro'){setGaugePro(w,_lastVals[w.varId]);}
     else if(w.type==='sankey'){setSankey(w);}
@@ -730,13 +747,11 @@
   // Widget-Einstellung als Vorgabe, Achseneinstellung schlaegt sie.
   function _axLabY(w,ax,a){
     var o={show:ax.yLab,color:cssv('--faint'),fontSize:_axFs(w)};
-    // Nur Format und Nachkommastellen sind achsenspezifisch. Der Achsenname ist eine
-    // UEBERSCHRIFT, keine Einheit - ihn an jeden Skalenwert zu haengen ergaebe
-    // "3,0 Verbrauch (kWh)". Einheit bleibt daher Sache der Widget-Einstellung.
-    var eff=(a&&(a.fmt||(a.dec!=null&&a.dec!=='')))
-      ? {yFmt:(a.fmt||w.yFmt),yDec:((a.dec!=null&&a.dec!=='')?a.dec:w.yDec),
-         yUnitLab:w.yUnitLab,yunit:w.yunit,dec:w.dec}
-      : w;
+    // Einheit an den Skalenwerten: der NAME DIESER Achse (per-Achse editierbar) hat Vorrang,
+    // nur als Rueckfall das alte globale w.yunit. Sonst haengte ein Wasser-Chart (Achse „l")
+    // stur das veraltete, nicht mehr editierbare „kWh" an jede Zahl.
+    var unit=(a&&a.name!=null&&a.name!=='')?a.name:(w.yunit||'');
+    var eff={yFmt:((a&&a.fmt)||w.yFmt),yDec:((a&&a.dec!=null&&a.dec!=='')?a.dec:w.yDec),yUnitLab:w.yUnitLab,yunit:unit,dec:w.dec};
     if(_axHasNumFmt(eff))o.formatter=_axNumFmt(eff);
     return o;
   }
@@ -780,12 +795,20 @@
     opt.yAxis={type:'category',data:cats||[],inverse:true,
       axisLine:{show:false,lineStyle:{color:cssv('--line')}},axisTick:{show:false},
       axisLabel:{color:cssv('--muted'),fontSize:_ecF(w,'axis',9),hideOverlap:true},splitLine:{show:false}};
-    var iB=0,iT=0;
-    vArr.forEach(function(a){if(!a)return;if(a.position==='right'){a.position='top';a.offset=(iT++)*34;}else{a.position='bottom';a.offset=(iB++)*34;}});
+    var iB=0,iT=0,_hbName=false;
+    vArr.forEach(function(a){if(!a)return;if(a.name)_hbName=true;
+      // Alles WAAGRECHT (keine Drehung, Nutzerwunsch). Skalenzahlen sind waagrecht (right:28
+      // verhindert das Abschneiden). Die Einheit/den Achsentitel mittig UNTER die Achse legen
+      // (Standard-Position) statt ans Ende — sonst wird sie am rechten Rand abgeschnitten.
+      a.nameRotate=0;a.nameLocation='middle';if(a.nameGap==null||a.nameGap<18)a.nameGap=20;
+      if(a.position==='right'){a.position='top';a.offset=(iT++)*34;}else{a.position='bottom';a.offset=(iB++)*34;}});
     var lp=w.legend?(w.legPos||'top'):'';
-    opt.grid={left:6+(lp==='left'?60:0),right:8+(lp==='right'?60:0),
+    // Liegende Balken: die WERT-Achse liegt unten (x). Ihre rechteste Beschriftung (groesster Wert,
+    // z. B. „1.234") sitzt am rechten Rand und wird von containLabel horizontal nicht abgedeckt ->
+    // ohne Legende rechts hier 28px Luft reservieren, sonst uebernimmt die Legende den Rand.
+    opt.grid={left:6+(lp==='left'?60:0),right:(lp==='right'?60:28),
       top:6+_titleSpace(w)+(lp==='top'?20:0)+Math.max(0,nT-1)*34,
-      bottom:(w.zoom?34:16)+(lp==='bottom'?18:0)+Math.max(0,nB-1)*34,containLabel:true};
+      bottom:(w.zoom?34:16)+(lp==='bottom'?18:0)+Math.max(0,nB-1)*34+(_hbName?16:0),containLabel:true};
     (opt.series||[]).forEach(function(s){
       if(s.data&&s.data.length&&Array.isArray(s.data[0]))s.data=s.data.map(function(p){return p[1];}); // Kategorie = Index -> nur Wert
       if(s.yAxisIndex!=null){s.xAxisIndex=s.yAxisIndex;delete s.yAxisIndex;}
@@ -805,9 +828,27 @@
       var rt=_rt(d);if(_resolveType(rt).kind==='bar')anyBar=true;
       return _mkSer(rt,s.data,col,nm,ax,w,stacked,lbl,false,_mixed);
     });
-    // Vergleichsserie (Zeitversatz) — abgeschattet
+    // Vergleichsserie (Zeitversatz): abgeschattete Balken ODER Vorperioden-Strich (Marke)
     var cmpS=(_hist[w.id]&&_hist[w.id].cmp)||null;
-    if(cmpS){var shade=(w.cmpShade!=null?w.cmpShade:55)/100,olbl=OFFLBL[w.cmpOff||'1d'];
+    if(cmpS&&w.cmpMark&&(ct==='bar'||ct==='barstack')){
+      // Eine dünne Marke je Kategorie auf der (gestapelten) SUMME der Vorperiode, quer zum Balken.
+      // Daten als [t,total] -> in _hbLine zu reinen Werten reduziert (Kategorie=Index); die Position
+      // liest renderItem aus den Closures mTs/mTot, die Werte dienen der Achsenskalierung.
+      var mD=(hs[0]&&hs[0].data)||[];
+      var mTs=mD.map(function(p){return Array.isArray(p)?p[0]:null;});
+      var mTot=mD.map(function(p,j){var sum=0,any=false;cmpS.forEach(function(s){if(s&&s.data&&s.data[j]&&s.data[j][1]!=null){sum+=+s.data[j][1];any=true;}});return any?sum:null;});
+      var mSpan=(mTs.length>1&&mTs[0]!=null&&mTs[1]!=null)?Math.abs(mTs[1]-mTs[0]):3600000;
+      var mCol=_skinToCss(w.cmpMarkColor)||cssv('--muted');
+      series.push({type:'custom',name:(OFFLBL[w.cmpOff||'1d']||'Vorperiode')+' (Marke)',silent:true,z:5,
+        data:mTs.map(function(t,j){return [t,(mTot[j]==null?0:mTot[j])];}),
+        renderItem:function(params,api){
+          var i=params.dataIndex,v=mTot[i];if(v==null)return;
+          if(w.barHoriz){var ch=api.coord([v,i]),hh=api.size([0,1])[1]*0.42;   // liegend -> senkrechter Strich
+            return {type:'line',shape:{x1:ch[0],y1:ch[1]-hh,x2:ch[0],y2:ch[1]+hh},style:{stroke:mCol,lineWidth:2}};}
+          var cv=api.coord([mTs[i],v]),hw=api.size([mSpan,0])[0]*0.42;          // stehend -> waagrechter Strich
+          return {type:'line',shape:{x1:cv[0]-hw,y1:cv[1],x2:cv[0]+hw,y2:cv[1]},style:{stroke:mCol,lineWidth:2}};
+        }});
+    } else if(cmpS){var shade=(w.cmpShade!=null?w.cmpShade:55)/100,olbl=OFFLBL[w.cmpOff||'1d'];
       cmpS.forEach(function(s,i){if(!s)return;var d=defs[i]||{},base=_chColor(d.color,i),col=darken(base,shade),ax=Math.min(Math.max(parseInt(d.axis)||0,0),yaxes.length-1);
         var nm=(d.name||(i===0?(w.label||'Serie 1'):'Serie '+(i+1)))+' · '+olbl,rt=_rt(d);
         series.push(_mkSer(rt,s.data,col,nm,ax,w,stacked,null,true,_mixed));
@@ -848,8 +889,21 @@
     var unit=(w.yunit||''),br=parseFloat(w.barRadius!=null?w.barRadius:3);
     var lbl=w.labels?{show:true,fontSize:_ecF(w,'label',8),color:cssv('--muted'),position:'top',formatter:function(p){return (p.value==null)?'':_chNum(w,p.value,false);}}:{show:false};
     var showLeg=(w.legend!==false),series=[];
-    if(w.cmpOn)series.push({type:'bar',name:String(m.prevY||'Vorjahr'),itemStyle:{color:prevCol,borderRadius:br},data:m.prev,label:lbl});
+    // Vorperiode wahlweise als abgeschatteter Balken ODER als duenner Strich (Marke) — analog setLine.
+    // Der Strich liegt liegende Balken nicht (barHoriz) sinnvoll ab, dort bleibt der Balken.
+    var markMode=(w.cmpOn&&w.cmpMark&&!w.barHoriz);
+    if(w.cmpOn&&!markMode)series.push({type:'bar',name:String(m.prevY||'Vorjahr'),itemStyle:{color:prevCol,borderRadius:br},data:m.prev,label:lbl});
     series.push({type:'bar',name:String(m.curY||'Jahr'),itemStyle:{color:acc,borderRadius:br},data:m.cur,label:lbl});
+    if(markMode){
+      var mCol=_skinToCss(w.cmpMarkColor)||cssv('--muted');
+      series.push({type:'custom',name:String(m.prevY||'Vorjahr')+' (Marke)',silent:true,z:5,
+        data:m.prev.map(function(v,i){return [i,(v==null?0:v)];}),   // Werte fuer die Achsenskalierung; Position aus m.prev
+        renderItem:function(params,api){
+          var i=params.dataIndex,v=m.prev[i];if(v==null)return;
+          var pt=api.coord([i,v]),hw=api.size([1,0])[0]*0.42;         // halbe Kategoriebreite -> waagrechter Strich
+          return {type:'line',shape:{x1:pt[0]-hw,y1:pt[1],x2:pt[0]+hw,y2:pt[1]},style:{stroke:mCol,lineWidth:2}};
+        }});
+    }
     var lp=showLeg?(w.legPos||'top'):'',axc=_axShow(w);
     _annApply(w,series);   // Kalenderjahr-Balken: Marken gelten hier genauso
     var opt={backgroundColor:'transparent',animation:!!bcfg().chartAnim,grid:{left:8+(lp==='left'?60:0),right:10+(lp==='right'?60:0),top:6+_titleSpace(w)+(lp==='top'?20:0),bottom:4+(lp==='bottom'?18:0),containLabel:true},
@@ -1237,6 +1291,13 @@
   // und neu verbinden lassen (sichtbares Ruckeln, unnoetige Last auf der Kamera).
   function _camMode(w){return w.camSrc||'media';}
   function refreshCam(w,root){
+    if(w.type==='camarray'){                                // nur die AKTIVE Kamera versorgen, und nur wenn Media
+      var cams=w.cams||[],ci=Math.min(Math.max(parseInt(w._ci)||0,0),Math.max(0,cams.length-1)),c=cams[ci];
+      if(!c||(c.type||'media')!=='media'||!c.src)return;
+      var ea=$('.w[data-id="'+w.id+'"] [data-role=cam]',(root||canvas));
+      if(ea)ea.src='?api=media&id='+c.src+'&t='+Date.now();
+      return;
+    }
     if(_camMode(w)!=='media')return;                       // Stream selbst versorgt sich
     var el=$('.w[data-id="'+w.id+'"] [data-role=cam]',(root||canvas));
     if(el&&w.mediaId)el.src='?api=media&id='+w.mediaId+'&t='+Date.now();
@@ -1387,7 +1448,7 @@
     }
   }
   setInterval(function(){allWidgets().forEach(function(w){if((w.type==='chart'||w.type==='spark')&&w.ctype!=='waterfall'&&w.ctype!=='barrace'&&!(_wsOK&&bcfg().noSafetyPoll))fetchHist(w);if(w.type==='html'&&w.htmlSrc!=='custom')fetchHtml(w);if(w.type==='weekplan')fetchWeekplan(w);if(w.type==='calendar')fetchCalEvents(w);if(w.type==='eventctl')fetchEvent(w);if(w.type==='objinfo')fetchObjInfo(w);if(w.type==='statetl')_stlFetch(w);if(w.type==='statelog')_slogFetch(w);if(w.type==='table')_tblLoad(w);});},60000);
-  setInterval(function(){var now=Date.now();allWidgets().forEach(function(w){if(w.type==='camera'||w.type==='campro'){var iv=((w.refresh>0)?w.refresh:15)*1000;if(!w._lastCam||now-w._lastCam>=iv){w._lastCam=now;refreshCam(w);}}});},1000);
+  setInterval(function(){var now=Date.now();allWidgets().forEach(function(w){if(w.type==='camera'||w.type==='campro'||w.type==='camarray'){var iv=((w.refresh>0)?w.refresh:15)*1000;if(!w._lastCam||now-w._lastCam>=iv){w._lastCam=now;refreshCam(w);}}});},1000);
 
   // ---------- Auswahl & Eigenschaften ----------
   var sel={},clip=[];
@@ -1538,11 +1599,16 @@
     var src=store.views[srcName],sw=(src.page&&src.page.w)||400,sh=(src.page&&src.page.h)||300,sc=Math.min(w.w/sw,w.h/sh);
     var map={};(w.alias||[]).forEach(function(a){var f=parseInt(a.from),t=parseInt(a.to);if(f&&t)map[f]=t;});
     function mp(id){return (id&&map[id]!=null)?map[id]:id;}
-    var inner='<div class="compinner" style="position:absolute;left:0;top:0;width:'+sw+'px;height:'+sh+'px;transform-origin:top left;transform:scale('+sc+');pointer-events:'+(mode==='edit'?'none':'auto')+'">';
+    host.innerHTML='';
+    var inner=document.createElement('div');inner.className='compinner';
+    inner.style.cssText='position:absolute;left:0;top:0;width:'+sw+'px;height:'+sh+'px;transform-origin:top left;transform:scale('+sc+');pointer-events:'+(mode==='edit'?'none':'auto');
+    host.appendChild(inner);
+    // Kinder über _mkWidgetEl bauen — IDENTISCH zum Container. Dadurch gelten in Komponenten
+    // GENAUSO wie auf der Seite: Rahmen (frame/no-frame), Hintergrund/Deckung (bgT), Wert/Icon-
+    // Verschiebungen, Icon-Farbe/-Grafik, Typografie, Groß-/Kleinschreibung, Animation, Sichtbarkeit.
     (src.widgets||[]).forEach(function(mw){var c={};for(var k in mw)c[k]=mw[k];c.id=w.id+'__'+mw.id;c.varId=mp(c.varId);c.varId2=mp(c.varId2);c.varId3=mp(c.varId3);if(c.visVar)c.visVar=mp(c.visVar);
-      inner+='<div class="w t-'+c.type+(c.lineMode?' wline':'')+(c.bgT?' bg-t':'')+(c.lblWrap?' lbl-wrap':'')+'" data-id="'+c.id+'" style="position:absolute;left:'+c.x+'px;top:'+c.y+'px;width:'+c.w+'px;height:'+c.h+'px'+((c.bg&&!c.bgT)?';background:'+c.bg:'')+(c.fg?(function(){var r=_readableFg(c.fg,(c.bgT?null:c.bg));return r?';color:'+r:'';})():'')+'"><div class="winner">'+widgetInner(c)+'</div></div>';
-      _compKids.push(c);});
-    host.innerHTML=inner+'</div>';}
+      try{var ke=_mkWidgetEl(c);ke.classList.add('compkid');inner.appendChild(ke);}catch(e){}
+      _compKids.push(c);});}
   // ---- Container: Kinder (w.kids) einbetten; Kinder sind echte, editierbare Widgets ----
   //  Design-Fläche = Hüllbox aller Kinder. EDIT: 1:1 (kein störendes Auto-Resize; nur wenn der Inhalt die Box
   //  sprengt, schrumpft er soweit, dass alle Kinder sichtbar/editierbar bleiben). BETRIEB/Mobil/Webview:
