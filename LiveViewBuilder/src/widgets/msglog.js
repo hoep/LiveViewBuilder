@@ -14,10 +14,28 @@
   // im Frontend per Umschalter (localStorage) uebersteuerbar, sonst der Builder-Standard w.msgSrc.
   function _msgSrc(w){
     if(!w.hmIP)return 'symcon';
-    try{var o=localStorage.getItem('lvmsgsrc_'+w.id);if(o==='symcon'||o==='homematic')return o;}catch(e){}
+    // localStorage-Override NUR im Live-Betrieb (RUN). Im Builder gilt der konfigurierte Standard,
+    // sonst haengt das Widget nach einem frueheren Umschalt-Klick dauerhaft auf der falschen Quelle.
+    if(typeof RUN!=='undefined'&&RUN){try{var o=localStorage.getItem('lvmsgsrc_'+w.id);if(o==='symcon'||o==='homematic')return o;}catch(e){}}
     return (w.msgSrc==='homematic')?'homematic':'symcon';
   }
   function _chips(w){var f=_msgFilter(w);return _SEVS.map(function(s){return '<span class="hmsgchip'+(f[s]?'':' off')+'" data-sevchip="'+s+'" style="--cc:'+_SEVCLR[s]+'">'+s+'</span>';}).join('');}
+  // Homematic-Interface-Auswahl: BidCos-RF (klassisch HM) und HmIP-RF getrennt an/abwaehlbar.
+  // Builder-Standard w.hmIf ({bidcos,hmip}, beide an), im Frontend per Chip live uebersteuerbar.
+  function _hmIf(w){
+    var d={bidcos:(w.hmIf?w.hmIf.bidcos!==0:true),hmip:(w.hmIf?w.hmIf.hmip!==0:true)};
+    if(typeof RUN!=='undefined'&&RUN){try{var o=localStorage.getItem('lvmsgif_'+w.id);if(o){var j=JSON.parse(o);if(j&&typeof j==='object'){if('bidcos' in j)d.bidcos=!!j.bidcos;if('hmip' in j)d.hmip=!!j.hmip;}}}catch(e){}}
+    if(!d.bidcos&&!d.hmip){d.bidcos=true;d.hmip=true;} // nie beide aus -> waere immer leer
+    return d;
+  }
+  function _ifParam(w){var f=_hmIf(w),a=[];if(f.bidcos)a.push('bidcos');if(f.hmip)a.push('hmip');return a.join(',');}
+  function _msgIfOk(w,m){var f=_hmIf(w);return (m.iface==='HmIP-RF')?f.hmip:(m.iface==='BidCos-RF'?f.bidcos:true);}
+  function _ifChips(w){ // nur bei Homematic-Quelle (Liste) — HM/IP live filtern
+    if(_msgSrc(w)!=='homematic')return '';
+    var f=_hmIf(w);
+    return '<span class="hmsgifs"><span class="hmsgifc'+(f.bidcos?'':' off')+'" data-ifchip="bidcos" title="Homematic BidCos-RF">HM</span>'
+      +'<span class="hmsgifc'+(f.hmip?'':' off')+'" data-ifchip="hmip" title="Homematic IP (HmIP-RF)">IP</span></span>';
+  }
   function _srcSwitch(w){ // Live-Umschalter Symcon/Homematic (nur mit CCU-IP)
     if(!w.hmIP)return '';
     var s=_msgSrc(w);
@@ -61,8 +79,15 @@
     if(wEl)wEl.style.background=bgCss?bgCss:((w.bg&&!w.bgT)?w.bg:''); // Kachel nach Bereich, sonst Basis-Hintergrund
   }
   function fetchMsgs(w){
-    var el=$('.w[data-id="'+w.id+'"]',canvas);if(!el){var oc=document.getElementById('ovcanvas');if(oc)el=$('.w[data-id="'+w.id+'"]',oc);}
-    if(!el)return;var box=$('[data-role=msgl]',el);if(!box)return;
+    // IDs können kollidieren: die Popup-Liste trägt u. U. dieselbe ID wie eine Seiten-Kachel.
+    // Ein reines canvas-zuerst würde die falsche (Seiten-)Kachel greifen und die Popup-Liste nie
+    // füllen. Daher ALLE Elemente mit dieser ID sammeln (Popup/ovcanvas zuerst = aktiver Kontext)
+    // und das nehmen, das wirklich eine Meldungsliste [data-role=msgl] enthält.
+    var el=null,box=null,cands=[],oc=document.getElementById('ovcanvas');
+    if(oc)cands=cands.concat([].slice.call(oc.querySelectorAll('.w[data-id="'+w.id+'"]')));
+    cands=cands.concat([].slice.call(canvas.querySelectorAll('.w[data-id="'+w.id+'"]')));
+    for(var _i=0;_i<cands.length;_i++){var _b=cands[_i].querySelector('[data-role=msgl]');if(_b){el=cands[_i];box=_b;break;}}
+    if(!el||!box)return;
     var isCount=(w.view==='count');
     // Kompakt hat keine Chips -> immer den Builder-Filter (w.sev) nehmen, nicht den localStorage-Chip-Override (sonst zaehlt evtl. CUSTOM mit und schlaegt an die 200-Grenze)
     var f=isCount?(function(){var o={};_SEVS.forEach(function(s){o[s]=_sevDef(w,s)?1:0;});return o;})():_msgFilter(w);
@@ -70,11 +95,11 @@
     var src=_msgSrc(w);
     if(!isCount)box.classList.remove('is-count');
     if(!sevOn.length){box.classList.remove('is-count');box.innerHTML='<div class="hmsge">Keine Kategorie aktiv</div>';box._sig='none';return;}
-    var url=(src==='homematic')?('?api=hmmsg&ip='+encodeURIComponent(w.hmIP))
+    var url=(src==='homematic')?('?api=hmmsg&ip='+encodeURIComponent(w.hmIP)+'&if='+encodeURIComponent(_ifParam(w)))
                               :('?api=messages&n='+(w.max||25)+'&sev='+encodeURIComponent(sevOn.join(',')));   // Kompakt zaehlt bis „Max. Eintraege" (max 500)
     fetch(url,{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
       if(j&&j.error){box.classList.remove('is-count');box.innerHTML='<div class="hmsge" style="color:var(--crit)">CCU nicht erreichbar</div>';box._sig='err';return;}
-      var all=((j&&j.messages)||[]).filter(function(m){return f[m.sev];});
+      var all=((j&&j.messages)||[]).filter(function(m){return f[m.sev]&&(src!=='homematic'||_msgIfOk(w,m));});
       var data=_ackData(w),hist=_msgHist(w);
       var open=(src==='symcon'&&!hist)?all.filter(function(m){return !_msgIsAcked(w,src,data,m);}):all; // bestaetigte (Cutoff ODER einzeln, nur Symcon) ausblenden
       if(isCount){var sigC=src+'|count|'+open.length+'|'+data.cutoff+'|'+Object.keys(data.keys).length+'|'+w.cntGreen+'|'+w.cntYellow;if(box._sig===sigC)return;box._sig=sigC;_renderCount(box,w,open,sevOn);return;} // Anzahl der OFFENEN gefilterten Liste der aktiven Quelle
@@ -113,13 +138,14 @@
         ?('<span class="hmsgackw"><button class="hmsgackb" data-msgack="1" title="Alle als bestätigt ausblenden">Bestätigen</button><button class="hmsgackb ghost'+(_msgHist(w)?' on':'')+'" data-msghist="1" title="Verlauf (bestätigte zeigen)">Verlauf</button></span>')
         :'';
       var ackC=(compact&&symAck)?('<button class="hmsgackx" data-msgack="1" title="Alle bestätigen"><svg class="i"><use href="#ic-check"/></svg></button>'):''; // Kompakt: kleiner Haken oben rechts
-      return '<div class="hmsg'+(compact?' is-count':'')+'"><div class="hmsgtop"><span class="hmsgt">'+escL(w.label||'Meldungen')+'</span>'+(compact?ackC:(_srcSwitch(w)+'<span class="hmsgchips">'+_chips(w)+'</span>'+ackUI))+'</div><div class="hmsgl'+(compact?' is-count':'')+'" data-role="msgl"><div class="hmsge">…</div></div></div>';},
+      return '<div class="hmsg'+(compact?' is-count':'')+'"><div class="hmsgtop"><span class="hmsgt">'+escL(w.label||'Meldungen')+'</span>'+(compact?ackC:(_srcSwitch(w)+_ifChips(w)+'<span class="hmsgchips">'+_chips(w)+'</span>'+ackUI))+'</div><div class="hmsgl'+(compact?' is-count':'')+'" data-role="msgl"><div class="hmsge">…</div></div></div>';},
     props:function(w){return '<div class="pgh">Quelle</div>'
       +row('Typ','<select id="pMsgSrc"><option value="symcon"'+(w.msgSrc!=='homematic'?' selected':'')+'>Symcon-Log</option><option value="homematic"'+(w.msgSrc==='homematic'?' selected':'')+'>Homematic-CCU</option></select>')
       +(w.msgSrc==='homematic'?(
          row('CCU-IP','<input id="pMsgHmIP" value="'+esc(w.hmIP||'')+'" placeholder="z. B. 10.10.20.240">')
         +row('Bestätigen erlauben','<input type="checkbox" id="pMsgHmAck"'+(w.hmAck?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">Haken je Meldung → CCU-Servicemeldung quittieren</span>')
-        +'<div style="font-size:11px;color:var(--muted);margin:2px 2px 6px">Liest die Servicemeldungen (BidCos + HmIP) direkt von der CCU. Ist eine IP gesetzt, kann man im Live-Betrieb per Kopf-Umschalter zwischen Symcon und Homematic wechseln.</div>'
+        +row('Interfaces','<label style="font-size:12px"><input type="checkbox" id="pMsgIfB"'+((w.hmIf?w.hmIf.bidcos!==0:true)?' checked':'')+'> BidCos-RF (HM)</label> &nbsp; <label style="font-size:12px"><input type="checkbox" id="pMsgIfI"'+((w.hmIf?w.hmIf.hmip!==0:true)?' checked':'')+'> HmIP-RF</label>')
+        +'<div style="font-size:11px;color:var(--muted);margin:2px 2px 6px">Liest die Servicemeldungen direkt von der CCU. BidCos-RF (klassisch HM) und HmIP-RF sind hier als Standard und im Live-Betrieb per Chip (HM / IP) getrennt an- und abwählbar. Ist eine IP gesetzt, wechselt der Kopf-Umschalter zwischen Symcon und Homematic.</div>'
       ):'')
       +'<div class="pgh">Ansicht</div>'
       +row('Darstellung','<select id="pMsgView"><option value="list"'+(w.view!=='count'?' selected':'')+'>Liste</option><option value="count"'+(w.view==='count'?' selected':'')+'>Kompakt (nur Anzahl)</option></select>')
@@ -143,6 +169,9 @@
       if($('#pMsgSrc'))$('#pMsgSrc').onchange=function(){w.msgSrc=(this.value==='homematic')?'homematic':undefined;render();renderProps();fetchMsgs(w);commit();};
       if($('#pMsgHmIP'))$('#pMsgHmIP').onchange=function(){w.hmIP=this.value.trim()||undefined;render();fetchMsgs(w);commit();};
       if($('#pMsgHmAck'))$('#pMsgHmAck').onchange=function(){w.hmAck=this.checked?1:undefined;fetchMsgs(w);commit();};
+      function _setIf(k,v){if(!w.hmIf)w.hmIf={bidcos:1,hmip:1};w.hmIf[k]=v?1:0;if(!w.hmIf.bidcos&&!w.hmIf.hmip)w.hmIf[k]=1;try{localStorage.removeItem('lvmsgif_'+w.id);}catch(_){}render();fetchMsgs(w);commit();}
+      if($('#pMsgIfB'))$('#pMsgIfB').onchange=function(){_setIf('bidcos',this.checked);};
+      if($('#pMsgIfI'))$('#pMsgIfI').onchange=function(){_setIf('hmip',this.checked);};
       if($('#pMsgView'))$('#pMsgView').onchange=function(){w.view=(this.value==='count')?'count':undefined;render();renderProps();fetchMsgs(w);commit();};
       if($('#pMsgCg'))$('#pMsgCg').oninput=function(){w.cntGreen=this.value===''?undefined:Math.max(0,parseInt(this.value)||0);render();fetchMsgs(w);commit();};
       if($('#pMsgCy'))$('#pMsgCy').oninput=function(){w.cntYellow=this.value===''?undefined:Math.max(0,parseInt(this.value)||0);render();fetchMsgs(w);commit();};
@@ -155,11 +184,17 @@
     },
     mount:function(w){fetchMsgs(w);},
     click:function(w,el,e){
-      var sw=e.target.closest('[data-msgsw]'); // Quelle live umschalten (in-place, KEIN globales render -> kein Flackern)
+      var sw=e.target.closest('[data-msgsw]'); // Quelle live umschalten
       if(sw){var cur=_msgSrc(w),nx=(cur==='homematic')?'symcon':'homematic';try{localStorage.setItem('lvmsgsrc_'+w.id,nx);}catch(_){}
-        var sp=sw.querySelectorAll('span');if(sp[0])sp[0].classList.toggle('on',nx==='symcon');if(sp[1])sp[1].classList.toggle('on',nx==='homematic');
-        var b0=$('[data-role=msgl]',el);if(b0){b0._sig=undefined;b0.innerHTML='<div class="hmsge">…</div>';b0.classList.remove('is-count');}
+        // Widget IN PLACE neu aufbauen (RUN-sicher, kein globales render()): Kopf (Umschalter-Zustand
+        // + HM/IP-Chips erscheinen/verschwinden) und Liste bleiben konsistent. widgetInner ruft render().
+        var root=(el.closest?el.closest('.w[data-id="'+w.id+'"]'):null)||el,win=root.querySelector('.winner');
+        if(win)win.innerHTML=widgetInner(w);
         fetchMsgs(w);return true;}
+      var ic=e.target.closest('[data-ifchip]'); // Homematic-Interface live filtern (HM/IP)
+      if(ic){var k=ic.getAttribute('data-ifchip'),ff=_hmIf(w);ff[k]=!ff[k];if(!ff.bidcos&&!ff.hmip)ff[k]=true;
+        try{localStorage.setItem('lvmsgif_'+w.id,JSON.stringify({bidcos:ff.bidcos,hmip:ff.hmip}));}catch(_){}
+        ic.classList.toggle('off',!ff[k]);var bi=$('[data-role=msgl]',el);if(bi)bi._sig=undefined;fetchMsgs(w);return true;}
       var ab=e.target.closest('[data-hmack]'); // Homematic-Meldung bestätigen
       if(ab){var addr=ab.getAttribute('data-haddr'),type=ab.getAttribute('data-htype'),box=$('[data-role=msgl]',el);ab.disabled=true;
         fetch('?api=hmack&ip='+encodeURIComponent(w.hmIP||'')+'&addr='+encodeURIComponent(addr)+'&type='+encodeURIComponent(type)+'&key='+encodeURIComponent(TOKEN),{cache:'no-store'})

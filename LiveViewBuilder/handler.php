@@ -175,8 +175,15 @@ if ($api === 'hmmsg') {
         'UNREACH' => 'WARNING', 'STICKY_UNREACH' => 'WARNING', 'LOWBAT' => 'WARNING', 'LOW_BAT' => 'WARNING',
         'DUTYCYCLE' => 'WARNING', 'DUTY_CYCLE' => 'WARNING', 'CONFIG_PENDING' => 'NOTIFY', 'UPDATE_PENDING' => 'NOTIFY'];
     $names = LVB_HmNameMap($ip, (string) $DATADIR);
+    // Optionaler Interface-Filter (?if=bidcos,hmip). Leer/fehlt = beide. So kann das Widget
+    // BidCos-RF (klassisch HM) und HmIP-RF getrennt an- und abwaehlen.
+    $ifsel = strtolower((string) ($_GET['if'] ?? ''));
+    $ports = [];
+    if ($ifsel === '' || strpos($ifsel, 'bidcos') !== false) $ports[2001] = 'BidCos-RF';
+    if ($ifsel === '' || strpos($ifsel, 'hmip')   !== false) $ports[2010] = 'HmIP-RF';
+    if (!$ports) $ports = [2001 => 'BidCos-RF', 2010 => 'HmIP-RF'];
     $seen = []; $out = [];
-    foreach ([2001 => 'BidCos-RF', 2010 => 'HmIP-RF'] as $port => $iface) {
+    foreach ($ports as $port => $iface) {
         $xml = LVB_HmXmlRpc($ip, $port, 'getServiceMessages');
         foreach (LVB_HmParseServiceMessages($xml) as $m) {
             $addr = $m['addr']; $type = $m['type'];
@@ -455,6 +462,23 @@ if ($api === 'runscript') {
     return;
 }
 
+// ---- BatteryManager-Scan auslösen (harmlos, ohne Token):  ?api=batscan&vid=<Register-VarID> ----
+//      Ermittelt die Instanz über den Parent der Register-Variable und ruft BM_Update NUR,
+//      wenn es wirklich eine BatteryManager-Instanz ist (kein beliebiger Aufruf).
+if ($api === 'batscan') {
+    header('Content-Type: application/json; charset=utf-8');
+    $vid  = (int) ($_GET['vid'] ?? 0);
+    $inst = ($vid > 0 && @IPS_ObjectExists($vid)) ? (int) IPS_GetObject($vid)['ParentID'] : 0;
+    $guid = ($inst > 0 && @IPS_InstanceExists($inst)) ? (IPS_GetInstance($inst)['ModuleInfo']['ModuleID'] ?? '') : '';
+    if ($guid === '{E1F670B8-2C59-493E-BE02-6C53779193CB}' && function_exists('BM_Update')) {
+        BM_Update($inst);
+        echo json_encode(['ok' => true, 'inst' => $inst]);
+    } else {
+        echo json_encode(['ok' => false, 'err' => 'keine BatteryManager-Instanz']);
+    }
+    return;
+}
+
 // ---- Heizung (heatplan-Widget): op=list|get frei lesen, op=save token-geschützt ----
 //      Dünner Proxy auf das Backend-Skript "HM_Heizung_LVB" (Ident LVB_HeatAPI unter #23491),
 //      das die serialisierten HomeMatic-Wochenprofile liest/prüft/schreibt und JSON zurückgibt.
@@ -596,6 +620,154 @@ if ($api === 'shading') {
     $sid = (int) (@IPS_GetObjectIDByIdent('LVB_ShadingAPI', 23491) ?: 0);
     if ($sid <= 0 || !IPS_ScriptExists($sid)) { echo json_encode(['ok' => false, 'err' => 'backend']); return; }
     echo IPS_RunScriptWaitEx($sid, ['op' => (string) ($_GET['op'] ?? 'list'), 'device' => (string) ($_GET['device'] ?? ''), 'profile' => (string) ($_GET['profile'] ?? '')]);
+    return;
+}
+
+// ---- Maeher (MowerDevice HSMW): op=list|getall frei lesen ----
+//      Liest ueber die HomeSuite-RPC (HSMW_GetState). Steuern laeuft ueber ?api=setvar
+//      auf die Kommando-/Setpoint-Controls (Start/Park/Pause/Resume/ConfirmError/
+//      CuttingHeight/Headlight) -> RequestAction -> armed-Gate im Modul.
+if ($api === 'mower') {
+    $HSMW = '{D1FB2D11-21F3-4B22-8341-E88D512A9B61}';
+    $op   = (string) ($_GET['op'] ?? 'getall');
+    $list = array_map('intval', @IPS_GetInstanceListByModuleID($HSMW) ?: []);
+
+    // Echte Live-Karte (Leaflet/Esri-Satellit + Bewegungspfad + Geofence) — SELF-CONTAINED
+    // (kein automower.class.maps.php mehr). Positionen/Geofence/Aktivitaet ueber HSMW_Manage.
+    if ($op === 'map') {
+        $iid = (int) ($_GET['id'] ?? 0);
+        if (!in_array($iid, $list, true)) { http_response_code(404); echo 'unknown mower'; return; }
+        header('Content-Type: text/html; charset=utf-8');
+        try {
+            $md = function_exists('HSMW_Manage')
+                ? json_decode((string) @HSMW_Manage($iid, json_encode(['op' => 'mapData'])), true)
+                : null;
+            $positions = (is_array($md) && !empty($md['positions'])) ? $md['positions'] : [];
+            $geofence  = (is_array($md) && !empty($md['geofence']))  ? $md['geofence']  : null;
+            $act       =  is_array($md) ? (int) ($md['activity'] ?? 0) : 0;
+            // Aktivitaetsfarbe wie das HSMW.Activity-Profil.
+            $colors = [0 => '#9AA5AD', 1 => '#9AA5AD', 2 => '#2ECC71', 3 => '#1ABC9C',
+                       4 => '#3498DB', 5 => '#1ABC9C', 6 => '#9AA5AD', 7 => '#E67E22'];
+            $color  = $colors[$act] ?? '#2ECC71';
+            require_once '/var/lib/symcon/modules/HomeSuite/MowerDevice/mapRenderer.php';
+            echo renderPositionMap($positions, $geofence, $color, (int) ($_GET['w'] ?? 900), (int) ($_GET['h'] ?? 600));
+        } catch (\Throwable $e) {
+            echo '<!doctype html><body style="margin:0;font:13px system-ui;color:#8a9098;display:flex;align-items:center;justify-content:center;height:100vh">Karte nicht verfuegbar</body>';
+        }
+        return;
+    }
+
+    header('Content-Type: application/json; charset=utf-8');
+
+    // Direkt aus den Statusvariablen lesen (zuverlaessiger als der GetState-Snapshot,
+    // der anders schluesselt) — Wert + formatierter Profil-Text.
+    $val = function ($iid, $ident) {
+        $vid = @IPS_GetObjectIDByIdent($ident, $iid);
+        return $vid ? @GetValue($vid) : null;
+    };
+    $fmt = function ($iid, $ident) {
+        $vid = @IPS_GetObjectIDByIdent($ident, $iid);
+        return $vid ? (string) @GetValueFormatted($vid) : '';
+    };
+    $armedOf = function ($iid) {
+        if (!function_exists('HSMW_Manage')) return false;
+        $d = json_decode((string) @HSMW_Manage($iid, json_encode(['op' => 'getConfig'])), true);
+        return (bool) ($d['config']['armed'] ?? false);
+    };
+
+    if ($op === 'list') {
+        $out = [];
+        foreach ($list as $iid) {
+            $out[] = ['id' => $iid, 'name' => IPS_GetName($iid), 'activity' => $fmt($iid, 'Activity')];
+        }
+        echo json_encode(['ok' => true, 'mowers' => $out]);
+        return;
+    }
+
+    if ($op === 'getall') {
+        $out = [];
+        foreach ($list as $iid) {
+            $out[] = [
+                'id' => $iid, 'name' => IPS_GetName($iid),
+                'activity' => (int) $val($iid, 'Activity'), 'activityText' => $fmt($iid, 'Activity'),
+                'state' => (int) $val($iid, 'State'), 'stateText' => $fmt($iid, 'State'),
+                'mode' => (string) $val($iid, 'Mode'),
+                'battery' => (int) $val($iid, 'Battery'),
+                'online' => (bool) $val($iid, 'Online'),
+                'inChargingStation' => (bool) $val($iid, 'InChargingStation'),
+                'errorText' => (string) $val($iid, 'ErrorText'),
+                'nextStart' => (int) $val($iid, 'NextStart'),
+                'nextStartText' => $fmt($iid, 'NextStart'),
+                'runningTime' => (int) $val($iid, 'RunningTime'),
+                'collisions' => (int) $val($iid, 'Collisions'),
+                'lat' => (float) $val($iid, 'Lat'), 'lng' => (float) $val($iid, 'Lng'),
+                'cuttingHeight' => (int) $val($iid, 'CuttingHeight'),
+                'headlight' => (int) $val($iid, 'Headlight'), 'headlightText' => $fmt($iid, 'Headlight'),
+                'autoMode' => (int) $val($iid, 'AutoMode'),
+                'recMow' => (bool) @GetValue(57646), 'recText' => (string) @GetValueFormatted(57646), // Regen-Empfehlung (global)
+                'mission' => (string) $val($iid, 'Mission'),
+                'chargingCycles' => (int) $val($iid, 'ChargingCycles'),
+                'bladeHours' => (int) $val($iid, 'BladeHours'),
+                'searchHours' => (int) $val($iid, 'SearchHours'),
+                'cuttingTime' => (int) $val($iid, 'CuttingTime'),
+                'chargingTime' => (int) $val($iid, 'ChargingTime'),
+                'searchTime' => (int) $val($iid, 'SearchTime'),
+                'efficiency' => (float) $val($iid, 'Efficiency'),
+                'bladeUsagePct' => (float) $val($iid, 'BladeUsagePct'),
+                'errorCode' => (int) $val($iid, 'ErrorCode'),
+                'model' => (string) $val($iid, 'Model'), 'firmware' => (string) $val($iid, 'Firmware'),
+                'updateRequired' => (bool) $val($iid, 'UpdateRequired'),
+                'armed' => $armedOf($iid),
+                // Steuern via ?api=setvar (billige Ident-Aufloesung).
+                'vars' => [
+                    'Start'         => (int) (@IPS_GetObjectIDByIdent('Start', $iid) ?: 0),
+                    'Park'          => (int) (@IPS_GetObjectIDByIdent('Park', $iid) ?: 0),
+                    'Pause'         => (int) (@IPS_GetObjectIDByIdent('Pause', $iid) ?: 0),
+                    'Resume'        => (int) (@IPS_GetObjectIDByIdent('Resume', $iid) ?: 0),
+                    'ConfirmError'  => (int) (@IPS_GetObjectIDByIdent('ConfirmError', $iid) ?: 0),
+                    'CuttingHeight' => (int) (@IPS_GetObjectIDByIdent('CuttingHeight', $iid) ?: 0),
+                    'Headlight'     => (int) (@IPS_GetObjectIDByIdent('Headlight', $iid) ?: 0),
+                    'AutoMode'      => (int) (@IPS_GetObjectIDByIdent('AutoMode', $iid) ?: 0),
+                ],
+            ];
+        }
+        echo json_encode(['ok' => true, 'mowers' => $out]);
+        return;
+    }
+
+    // Mähplan lesen (frei): {ok,timers:[{start,duration,days{},missionId}],workAreas:[]}
+    if ($op === 'timers') {
+        $iid = (int) ($_GET['id'] ?? 0);
+        if (!in_array($iid, $list, true)) { echo json_encode(['ok' => false, 'err' => 'unknown mower']); return; }
+        if (!function_exists('HSMW_Manage')) { echo json_encode(['ok' => false, 'err' => 'no module']); return; }
+        echo (string) @HSMW_Manage($iid, json_encode(['op' => 'getTimers']));
+        return;
+    }
+
+    // Fehlerhistorie lesen (frei): {ok,messages:[{time,code,text}]}
+    if ($op === 'messages') {
+        $iid = (int) ($_GET['id'] ?? 0);
+        if (!in_array($iid, $list, true)) { echo json_encode(['ok' => false, 'err' => 'unknown mower']); return; }
+        if (!function_exists('HSMW_Manage')) { echo json_encode(['ok' => false, 'err' => 'no module']); return; }
+        echo (string) @HSMW_Manage($iid, json_encode(['op' => 'getMessages']));
+        return;
+    }
+
+    // Mähplan schreiben (token; nur wirksam wenn Instanz scharf, sonst shadow):
+    // POST JSON {timers:[...]} ODER [...] an ?api=mower&op=settimers&id=<id>&key=TOKEN
+    if ($op === 'settimers') {
+        if (!hash_equals($TOKEN, (string) ($_GET['key'] ?? ''))) { http_response_code(403); echo json_encode(['ok' => false, 'err' => 'forbidden']); return; }
+        $iid = (int) ($_GET['id'] ?? 0);
+        if (!in_array($iid, $list, true)) { echo json_encode(['ok' => false, 'err' => 'unknown mower']); return; }
+        if (!function_exists('HSMW_Manage')) { echo json_encode(['ok' => false, 'err' => 'no module']); return; }
+        $body   = json_decode((string) @file_get_contents('php://input'), true);
+        $timers = (is_array($body) && isset($body['timers']) && is_array($body['timers']))
+            ? $body['timers'] : (is_array($body) ? $body : []);
+        echo (string) @HSMW_Manage($iid, json_encode(['op' => 'setTimers', 'args' => ['timers' => $timers]]));
+        return;
+    }
+
+    echo json_encode(['ok' => false, 'err' => 'op']);
     return;
 }
 
@@ -1471,9 +1643,48 @@ if ($api === 'media') {
         echo 'not image';
         return;
     }
-    header('Content-Type: image/jpeg');
+    $raw = @base64_decode((string) IPS_GetMediaContent($id));
+    // Echten Bildtyp aus den Bytes bestimmen — Media-Objekte sind oft PNG,
+    // ein hart gesetztes image/jpeg lieferte dann je nach Browser ein leeres <img>.
+    $mime = 'image/jpeg';
+    $info = @getimagesizefromstring($raw);
+    if ($info && !empty($info['mime'])) {
+        $mime = $info['mime'];
+    } elseif (strncmp($raw, "\x89PNG", 4) === 0) {
+        $mime = 'image/png';
+    } elseif (strncmp($raw, 'GIF8', 4) === 0) {
+        $mime = 'image/gif';
+    } elseif (substr($raw, 0, 4) === 'RIFF' && substr($raw, 8, 4) === 'WEBP') {
+        $mime = 'image/webp';
+    }
+    // Der Symcon-WebHook kappt die Antwort bei 1 MB ("Output-Buffer exceeds Limit"). Grosse
+    // Kamerabilder (z. B. Pool 2688x1512, 1,28 MB) kamen dadurch gar nicht an. Solche Bilder
+    // werden hier serverseitig verkleinert und mit sinkender Qualitaet rekomprimiert, bis sie
+    // unter dem Limit liegen — fuer eine Widget-Kachel voellig ausreichend.
+    $LIMIT = 1000000;
+    if (strlen($raw) > $LIMIT && function_exists('imagecreatefromstring')) {
+        $img = @imagecreatefromstring($raw);
+        if ($img) {
+            $w0 = imagesx($img); $h0 = imagesy($img); $maxDim = 1600;
+            $scale = min(1.0, $maxDim / max(1, max($w0, $h0)));
+            if ($scale < 1.0) {
+                $nw = max(1, (int) round($w0 * $scale)); $nh = max(1, (int) round($h0 * $scale));
+                $dst = imagecreatetruecolor($nw, $nh);
+                imagecopyresampled($dst, $img, 0, 0, 0, 0, $nw, $nh, $w0, $h0);
+                imagedestroy($img); $img = $dst;
+            }
+            $q = 85; $out = '';
+            do {
+                ob_start(); imagejpeg($img, null, $q); $out = ob_get_clean();
+                $q -= 12;
+            } while (strlen($out) > $LIMIT && $q >= 35);
+            imagedestroy($img);
+            if ($out !== '' && strlen($out) <= $LIMIT) { $raw = $out; $mime = 'image/jpeg'; }
+        }
+    }
+    header('Content-Type: ' . $mime);
     header('Cache-Control: no-store');
-    echo @base64_decode(IPS_GetMediaContent($id));
+    echo $raw;
     return;
 }
 

@@ -114,8 +114,8 @@
       :'<div class="hint">Kein Element ausgewählt.</div>';return;}
     try{
     var typeOpts=Object.keys(TYPES).map(function(t){return '<option value="'+t+'">'+TYPES[t]+'</option>';}).join('');
-    var lbl2={doubledonut:'Unterer Wert',thermostat:'Ziel-Var',light:'Helligkeit',cover:'Befehls-Var',weather:'Vorhersage (JSON)',weatherpro:'Vorhersage (JSON)',sun:'Untergang',suncard:'Untergang',media:'Zustand',room:'Metrik 2',bot:'Batterie',valuecard:'Toggle/Akzent-Var'}[w.type];
-    var lbl3={doubledonut:'Mittelwert',cover:'Status-Text',media:'Lautstärke',room:'Metrik 3',bot:'Start/Stop',thermostat:'Modus/Profil-Var',valuecard:'Balken-Var'}[w.type];
+    var lbl2={doubledonut:'Unterer Wert',thermostat:'Ziel-Var',light:'Helligkeit',cover:'Kommando (Auf/Halb/Stop/Zu)',weather:'Vorhersage (JSON)',weatherpro:'Vorhersage (JSON)',sun:'Untergang',suncard:'Untergang',media:'Zustand',room:'Metrik 2',bot:'Batterie',valuecard:'Toggle/Akzent-Var'}[w.type];
+    var lbl3={doubledonut:'Mittelwert',cover:'Modus / Status',media:'Lautstärke',room:'Metrik 3',bot:'Start/Stop',thermostat:'Modus/Profil-Var',valuecard:'Balken-Var'}[w.type];
     var _inBar=(typeof chromeOwnerOf==='function')?chromeOwnerOf(w.id):null;
     p.innerHTML=_dkh+(Object.keys(sel).length>=2?alignSection():'')
       +(_inBar?('<div class="prop" style="border-color:var(--accent)"><div style="font-size:11px;color:var(--muted);margin-bottom:5px">Liegt in der Leiste <b>'+esc(_inBar.name||'Leiste')+'</b> — erscheint damit auf allen Seiten.</div>'
@@ -209,6 +209,8 @@
     if($('#pCmpOn'))$('#pCmpOn').onchange=function(){w.cmpOn=this.checked;delete _hist[w.id];delete _cmpData[w.id];renderProps();if(w.type==='chart'||w.type==='spark'){if(w.cmpOn)fetchHist(w);else if(_ec[w.id])renderChartData(w);commit();}else{refreshCompare(w);commit();}};
     if($('#pCmpOff'))$('#pCmpOff').onchange=function(){w.cmpOff=this.value;delete _hist[w.id];delete _cmpData[w.id];if(w.type==='chart'||w.type==='spark')fetchHist(w);else refreshCompare(w);commit();};
     if($('#pCmpShade'))$('#pCmpShade').oninput=function(){w.cmpShade=Math.max(0,Math.min(90,parseInt(this.value)||0));if(_ec[w.id])renderChartData(w);commit();};
+    if($('#pCmpMark'))$('#pCmpMark').onchange=function(){w.cmpMark=this.checked||undefined;renderProps();if(_ec[w.id])renderChartData(w);commit();};
+    if($('#pCmpMarkColor'))$('#pCmpMarkColor').onchange=function(){w.cmpMarkColor=this.value||undefined;if(_ec[w.id])renderChartData(w);commit();};
     if($('#pCmpMode'))$('#pCmpMode').onchange=function(){w.cmpMode=this.value;refreshCompare(w);commit();};
     if($('#pCmpInv'))$('#pCmpInv').onchange=function(){w.cmpInvert=this.checked;computeCompare(w);commit();};
     if($('#pCmpStage'))$('#pCmpStage').onchange=function(){w.cmpStage=this.value;delete _cmpData[w.id];refreshCompare(w);commit();};
@@ -236,7 +238,11 @@
     if($('#pPick2'))$('#pPick2').onclick=function(){showTab('vars');toast('Variable im Baum anklicken');_bindTarget2=w.id;};
     if($('#pVar3'))$('#pVar3').onchange=function(){var _v=(this.value||'').trim();w.varId3=(_v.charAt(0)==='=')?_v:(parseInt(_v)||0);delete _hist[w.id];render();};
     if($('#pPick3'))$('#pPick3').onclick=function(){showTab('vars');toast('Untergang-Variable im Baum anklicken');_bindTarget3=w.id;};
-    ['pX','pY','pW','pH'].forEach(function(k){var el=$('#'+k);el.oninput=function(){var v=parseInt(el.value)||0;if(k==='pX')w.x=v;if(k==='pY')w.y=v;if(k==='pW')w.w=Math.max(40,v);if(k==='pH')w.h=Math.max(28,v);render();};});
+    ['pX','pY','pW','pH'].forEach(function(k){var el=$('#'+k);el.oninput=function(){var v=parseInt(el.value)||0;
+      function setOne(t){if(k==='pX')t.x=v;if(k==='pY')t.y=v;if(k==='pW')t.w=Math.max(40,v);if(k==='pH')t.h=Math.max(28,v);}
+      // Breite/Höhe bei Mehrfachauswahl auf ALLE selektierten Widgets anwenden (X/Y bleiben pro Element – dafür gibt es Ausrichten)
+      if((k==='pW'||k==='pH')&&sel[w.id]&&Object.keys(sel).length>1)selWidgets().forEach(setOne);else setOne(w);
+      render();};});
     $('#pDel').onclick=function(){var ids=Object.keys(sel).length?Object.keys(sel):[w.id];var _s={};ids.forEach(function(id){_s[id]=1;});state.widgets=state.widgets.filter(function(x){return ids.indexOf(x.id)<0;});if(typeof chromeList==='function')chromeList().forEach(function(_b){if(_b.widgets)_b.widgets=_b.widgets.filter(function(x){return ids.indexOf(x.id)<0;});});delFromContainers(_s);selClear();render();renderProps();};
     $$('[data-al]',p).forEach(function(bt){bt.onclick=function(){var a=bt.dataset.al;if(a==='disth')distributeSel('h');else if(a==='distv')distributeSel('v');else if(a==='even')distributeEven(false);else if(a==='evensize')distributeEven(true);else if(a==='group')groupSel();else if(a==='ungroup')ungroupSel();else alignSel(a);};});
     $$('[data-fc]',p).forEach(function(inp){inp.oninput=inp.onchange=function(){var pr=inp.dataset.fc.split('.'),i=+pr[0],k=pr[1];if(!w.fc||!w.fc[i])return;w.fc[i][k]=(k==='hi'||k==='lo'||k==='pq')?(parseInt(inp.value)||0):inp.value;render();};});
@@ -722,6 +728,12 @@
         state.widgets.push(_kid);clearGuides();drag=null;selClear();sel[_kid.id]=true;selId=_kid.id;render();renderProps();commit();
         if(typeof toast==='function')toast('Kind aus Container gelöst');return;}
       clearGuides();drag=null;render();renderProps();commit();return; // drin bleiben (auf die Fläche geklemmt)
+    }
+    // Reiner Klick/Aktivieren (kaum bewegt): NICHT in Container/Leiste saugen. Nur ein echtes
+    // Ziehen (> Schwelle) soll ein Widget in einen Container legen. Position bleibt unveraendert.
+    if(drag&&drag.mode==='mv'&&!drag.kid&&drag.items&&drag.items.length){
+      var _mvd=Math.abs(e.clientX-drag.sx)+Math.abs(e.clientY-drag.sy);
+      if(_mvd<=5){drag.items.forEach(function(it){it.w.x=it.ox;it.w.y=it.oy;applyGeom(it.w);});clearGuides();drag=null;render();renderProps();return;}
     }
     // Seiten-Widget ueber einem Container loslassen -> hineinlegen (Koordinaten in die Design-Flaeche umgerechnet)
     if(drag&&drag.mode==='mv'&&!drag.kid&&drag.items&&drag.items.length&&typeof containerHitTest==='function'){
