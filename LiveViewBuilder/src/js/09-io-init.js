@@ -343,28 +343,40 @@
   }
   function sfPick(vw,vh,p){var c=sfCfg(p),ad=p.w/p.h,av=vw/vh,lo=c.reflowLo+(_scMode==='reflow'?0.08:0),r=(av/ad<lo)||vw<c.phoneW;_scMode=r?'reflow':'anchor';return _scMode;}
 
+  // gapFit v2 — robuste Per-Widget-Berechnung (kein fragiles Track-Cell-Matching):
+  // EIN Faktor s haelt jedes Seitenverhaeltnis absolut (Box = w*s x h*s). Der Ueberschuss je Achse
+  // (view - D*s) wird gleichmaessig NUR in die inneren Zwischenraeume (Luecken zwischen belegten
+  // Bereichen) eingefuegt; jedes Widget rueckt um die Summe der links/oben davor eingefuegten Luecken.
+  // Gruppen zaehlen als eine Bounding-Box (bleiben zusammen), voll-spannende Widgets zaehlen NICHT als
+  // Belegung (Header/Hintergrund toeten die Luecken der anderen Zeilen nicht).
+  function _gapAxis(D,view,s,pos,sz){
+    var tol=0.055*Math.min(state.page.w,state.page.h),ext=D,iv=[],gb={};
+    state.widgets.forEach(function(w){
+      var a=w[pos],b=a+w[sz];
+      if(a<=tol&&ext-b<=tol)return;                 // volle Achse -> keine Belegung
+      if(w.group){var g=gb[w.group]||(gb[w.group]=[1e9,-1e9]);if(a<g[0])g[0]=a;if(b>g[1])g[1]=b;}
+      else iv.push([a,b]);
+    });
+    Object.keys(gb).forEach(function(k){var g=gb[k];if(!(g[0]<=tol&&ext-g[1]<=tol))iv.push(g);});
+    iv.sort(function(A,B){return A[0]-B[0];});
+    var occ=[];iv.forEach(function(r){var L=occ.length;if(L&&r[0]<=occ[L-1][1]+0.5){if(r[1]>occ[L-1][1])occ[L-1][1]=r[1];}else occ.push([r[0],r[1]]);});
+    var gaps=[];for(var i=1;i<occ.length;i++){if(occ[i][0]-occ[i-1][1]>0.5)gaps.push(occ[i-1][1]);} // Startkoordinate jeder inneren Luecke
+    var spare=Math.max(0,view-D*s),extra=gaps.length?spare/gaps.length:0,lead=gaps.length?0:spare/2;
+    return {gaps:gaps,extra:extra,lead:lead};
+  }
+  function _gapOff(ax,coord){var n=0;for(var i=0;i<ax.gaps.length;i++){if(ax.gaps[i]<=coord+0.5)n++;}return ax.lead+n*ax.extra;}
   function smartFit(vw,vh){
-    var p=state.page,S=sfStructure(p),c=sfCfg(p),s0=Math.min(vw/p.w,vh/p.h),W=p.w,H=p.h,tol=0.055*Math.min(W,H),stretched=[];
-    sfDistribute(S.col,vw,s0,c);sfDistribute(S.row,vh,s0,c);
+    var p=state.page,W=p.w,H=p.h,s=Math.min(vw/W,vh/H),tol=0.055*Math.min(W,H),stretched=[];
+    var AX=_gapAxis(W,vw,s,'x','w'),AY=_gapAxis(H,vh,s,'y','h');
     state.widgets.forEach(function(w){
       var el=sfEl(w);if(!el)return;var win=el.firstElementChild;if(!win)return;
-      var cx=sfCell(S.col,sfSnap(w.x),sfSnap(w.x+w.w)),cy=sfCell(S.row,sfSnap(w.y),sfSnap(w.y+w.h)),cell={x:cx[0],y:cy[0],w:cx[1]-cx[0],h:cy[1]-cy[0]};
       var spanX=(w.x<=tol&&W-(w.x+w.w)<=tol),spanY=(w.y<=tol&&H-(w.y+w.h)<=tol);
-      if(sfClass(w)==='s'){
-        var g=c.gap,bw=Math.max(w.minW||30,cell.w-2*g),bh=Math.max(w.minH||24,cell.h-2*g),bx=cell.x+g,by=cell.y+g;
-        if(w.type==='gauge'||w.type==='gaugepro'){var side=Math.min(bw,bh*1.4);if(side<bh){by+=(bh-side)/2;bh=side;}if(side<bw){bx+=(bw-side)/2;bw=side;}}
-        bx=Math.max(0,Math.min(bx,vw-bw));by=Math.max(0,Math.min(by,vh-bh)); // Sicherung: nie aus dem sichtbaren Bereich schieben
-        win.style.transform='';win.style.width='';win.style.height='';el.style.transform='none';
-        el.style.left=bx+'px';el.style.top=by+'px';el.style.width=bw+'px';el.style.height=bh+'px';stretched.push(w);
-      }else{
-        var kB=SF_NOGROW[w.type]?s0:sfClamp(Math.min(cell.w/w.w,cell.h/w.h),s0*c.kMin,s0*c.kMax);
-        var cw=w.w*kB,ch=w.h*kB,anc=w.anchor||'',bw2=spanX?cell.w:cw,bh2=spanY?cell.h:ch;
-        var bx2=cell.x+(spanX?0:sfAlignOff(cell.w,bw2,anc,'x')),by2=cell.y+(spanY?0:sfAlignOff(cell.h,bh2,anc,'y'));
-        bx2=Math.max(0,Math.min(bx2,vw-bw2));by2=Math.max(0,Math.min(by2,vh-bh2)); // Sicherung: im sichtbaren Bereich halten
-        el.style.transform='none';el.style.left=bx2+'px';el.style.top=by2+'px';el.style.width=bw2+'px';el.style.height=bh2+'px';
-        win.style.width=w.w+'px';win.style.height=w.h+'px';
-        win.style.transform='translate('+sfAlignOff(bw2,cw,anc,'x')+'px,'+sfAlignOff(bh2,ch,anc,'y')+'px) scale('+kB+')';
-      }
+      var bw=spanX?vw:w.w*s,bh=spanY?vh:w.h*s;
+      var bx=spanX?0:(w.x*s+_gapOff(AX,w.x)),by=spanY?0:(w.y*s+_gapOff(AY,w.y));
+      bx=Math.max(0,Math.min(bx,vw-bw));by=Math.max(0,Math.min(by,vh-bh));
+      el.style.transform='none';el.style.left=bx+'px';el.style.top=by+'px';el.style.width=bw+'px';el.style.height=bh+'px';
+      if(sfClass(w)==='s'){win.style.transform='';win.style.width='';win.style.height='';stretched.push(w);}
+      else{win.style.width=w.w+'px';win.style.height=w.h+'px';win.style.transformOrigin='top left';win.style.transform='scale('+s+')';}
     });
     sfPropagate(stretched);
   }

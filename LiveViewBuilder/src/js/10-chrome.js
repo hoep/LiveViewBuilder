@@ -209,14 +209,23 @@
   function chromeById(id){return chromeList().filter(function(b){return b.id===id;})[0]||null;}
 
   /** Widget in eine Leiste einfuegen (Koordinaten relativ zur Leiste). */
+  // Ein Widget in die Leisten-Masse einpassen, damit es nicht von overflow:hidden verschluckt wird:
+  // Bar (horizontal) begrenzt die HÖHE auf die Barhöhe, Sidebar (vertikal) die BREITE. Position nachziehen.
+  function chromeFitWidget(w,b,g){
+    if(!g)return;
+    if(b.kind==='bar'){var mh=Math.max(16,g.h-4);if(w.h>mh)w.h=mh;if(w.w>g.w)w.w=g.w;}
+    else{var mw=Math.max(16,g.w-4);if(w.w>mw)w.w=mw;if(w.h>g.h)w.h=g.h;}
+    w.x=Math.max(0,Math.min(w.x||0,Math.max(0,g.w-w.w)));
+    w.y=Math.max(0,Math.min(w.y||0,Math.max(0,g.h-w.h)));
+  }
   function chromeAddWidget(barId,type,px,py){
     var b=chromeById(barId);if(!b)return;
     var reg=WIDGETS[type],sz=(reg&&reg.size)||[140,80];
     var g=(_chromeGeo?_chromeGeo.bars.filter(function(x){return x.def.id===barId;})[0]:null);
-    var maxX=g?Math.max(0,g.w-sz[0]):0,maxY=g?Math.max(0,g.h-sz[1]):0;
-    var w={id:chromeUid(),type:type,x:Math.max(0,Math.min(snap(px||0),maxX)),y:Math.max(0,Math.min(snap(py||0),maxY)),
+    var w={id:chromeUid(),type:type,x:snap(px||0),y:snap(py||0),
       w:sz[0],h:sz[1],label:(type==='switch'?'Schalter':(type==='text'?'Text':'Label'))};
     if(reg&&reg.defaults)reg.defaults(w);
+    chromeFitWidget(w,b,g); // auf Leisten-Masse begrenzen (sonst in flacher Bar unsichtbar)
     if(!b.widgets)b.widgets=[];
     b.widgets.push(w);render();select(w.id);commit();
   }
@@ -270,6 +279,7 @@
         w.x=Math.max(0,Math.min(Math.round(w.x+co.x-g.x),Math.max(0,g.w-w.w)));
         w.y=Math.max(0,Math.min(Math.round(w.y+co.y-g.y),Math.max(0,g.h-w.h)));
       }else{w.x=0;w.y=0;}
+      chromeFitWidget(w,b,g); // auf Leisten-Masse begrenzen (sonst in flacher Bar unsichtbar)
       b.widgets.push(w);moved++;
     });
     if(moved){selClear();render();chromeUI();renderProps();commit();}
