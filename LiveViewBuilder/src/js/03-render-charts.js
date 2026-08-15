@@ -1455,11 +1455,12 @@
   // ---------- Undo/Redo (History der aktuellen Ansicht) ----------
   var hist=[],hpos=-1,restoring=false;
   function commit(){if(restoring)return;invalidateSC();var s=JSON.stringify(_snap());if(hist[hpos]===s)return;hist=hist.slice(0,hpos+1);hist.push(s);hpos=hist.length-1;if(hist.length>80){hist.shift();hpos--;}updateUndo();invalidateAllIds();markDirty();scheduleSave();}
-  function _snap(){return {v:state,c:store.chrome||[]};}   // Verlauf umfasst Seite UND Leisten
+  function _snap(){return {v:state,c:store.chrome||[],s:store.skins||{},k:store.skin||''};}   // Verlauf/Save umfasst Seite, Leisten UND Skins (sonst speichert commit() reine Skin-Aenderungen nicht)
   function resetHist(){hist=[JSON.stringify(_snap())];hpos=0;updateUndo();}
   function updateUndo(){var u=$('#undoBtn'),r=$('#redoBtn');if(u)u.disabled=(hpos<=0);if(r)r.disabled=(hpos>=hist.length-1);}
   function applyHist(){restoring=true;var o=JSON.parse(hist[hpos]);var v=(o&&o.v)?o.v:o;   // aeltere Eintraege enthalten nur die Seite
     store.views[store.current]=v;state=v;if(o&&o.c)store.chrome=o.c;
+    if(o&&o.s)store.skins=o.s;if(o&&o.k)store.skin=o.k;if(typeof applySkin==='function')applySkin();if(typeof buildSkins==='function')buildSkins(); // Skins beim Undo/Redo mitfuehren
     selClear();render();renderProps();if(typeof chromeUI==='function')chromeUI();restoring=false;updateUndo();}
   function undo(){if(hpos>0){hpos--;applyHist();}}
   function redo(){if(hpos<hist.length-1){hpos++;applyHist();}}

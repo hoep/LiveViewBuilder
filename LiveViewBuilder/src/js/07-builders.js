@@ -1,19 +1,35 @@
   function buildSkins(){
     var box=$('#skinpanel');if(!box)return;var skins=allSkins(),active=store.skin||'Standard',th=(store.theme==='light'?'light':'dark');
-    var sk=skins[active]||BUILTIN['Standard'],toks=sk[th]||sk.dark,ed=!BUILTIN[active];
+    var sk=skins[active]||BUILTIN['Standard'],toks=sk[th]||sk.dark,isBuiltin=!!BUILTIN[active];
     var opt=Object.keys(skins).map(function(n){return '<option'+(n===active?' selected':'')+'>'+esc(n)+'</option>';}).join('');
-    var tg=SKIN_TOKENS.map(function(k){return '<label class="skrow"><span>'+k+'</span><input type="color" data-sktok="'+k+'" value="'+(toks[k]||'#000000')+'"'+(ed?'':' disabled')+'></label>';}).join('');
+    // Basis-Farben: IMMER editierbar. Aenderung an einem eingebauten Skin legt automatisch eine Kopie an (Auto-Fork).
+    var tg=SKIN_TOKENS.map(function(k){return '<label class="skrow"><span>'+k+'</span><input type="color" data-sktok="'+k+'" value="'+(toks[k]||'#000000')+'"></label>';}).join('');
+    // Eigene, benannte Farben (pro Skin): Name + Farbe + Loeschen.
+    var extra=(sk.extra||[]);
+    var xg=extra.map(function(e){var v=toks[e.key]||'#00cdab';
+      return '<label class="skrow" style="gap:6px"><input data-skxname="'+e.key+'" value="'+esc(e.name)+'" title="Name" style="flex:1;min-width:0"><input type="color" data-sktok="'+e.key+'" value="'+v+'"><button class="btn danger" data-skxdel="'+e.key+'" title="Farbe löschen" style="padding:2px 7px">✕</button></label>';
+    }).join('');
     box.innerHTML='<div class="skhead">Skin <select id="skSel" class="btn" style="flex:1">'+opt+'</select></div>'
       +'<div class="skthemes"><button class="btn'+(th==='dark'?' on':'')+'" data-sktheme="dark">Dunkel</button><button class="btn'+(th==='light'?' on':'')+'" data-sktheme="light">Hell</button></div>'
-      +'<div class="skbtns"><button class="btn" id="skNew">Neu</button><button class="btn" id="skDup">Duplizieren</button><button class="btn danger" id="skDel"'+(ed?'':' disabled')+'>Löschen</button></div>'
-      +(ed?'<div class="hint" style="margin:6px 2px">Eingebaut (schreibgeschützt). „Duplizieren" für eine editierbare Kopie.</div>':'')
+      +'<div class="skbtns"><button class="btn" id="skNew">Neu</button><button class="btn" id="skDup">Duplizieren</button><button class="btn danger" id="skDel"'+(isBuiltin?' disabled':'')+'>Löschen</button></div>'
+      +(isBuiltin?'<div class="hint" style="margin:6px 2px">Eingebaut: die erste Farbänderung legt automatisch eine editierbare Kopie an.</div>':'')
+      +'<div class="pgh" style="margin-top:8px">Farben — du bearbeitest: <b style="color:var(--accent)">'+(th==='dark'?'DUNKEL':'HELL')+'</b></div>'
+      +'<label class="skrow2" style="gap:7px;margin:2px 2px 6px"><input type="checkbox" id="skBoth"'+((store.cfg&&store.cfg.skinBoth)?' checked':'')+'><span style="font-size:11.5px;color:var(--muted)">Änderungen für <b>beide</b> Themes übernehmen</span></label>'
       +'<div class="skgrid">'+tg+'</div>'
-      +'<div class="skfonts"><label class="skrow2"><span>UI-Schrift</span><input data-skfont="fu" value="'+esc(sk.fu||'')+'"'+(ed?'':' disabled')+'></label><label class="skrow2"><span>Mono-Schrift</span><input data-skfont="fm" value="'+esc(sk.fm||'')+'"'+(ed?'':' disabled')+'></label></div>';
+      +'<div class="pgh" style="margin-top:8px">Eigene Farben</div>'
+      +'<div style="display:flex;flex-direction:column;gap:4px">'+(xg||'<div class="hint" style="padding:2px">Noch keine eigene Farbe.</div>')+'</div>'
+      +'<div class="skbtns"><button class="btn" id="skAddColor">+ Farbe hinzufügen</button></div>'
+      +'<div class="skfonts"><label class="skrow2"><span>UI-Schrift</span><input data-skfont="fu" value="'+esc(sk.fu||'')+'"></label><label class="skrow2"><span>Mono-Schrift</span><input data-skfont="fm" value="'+esc(sk.fm||'')+'"></label></div>';
     $('#skSel').onchange=function(){store.skin=this.value;applySkin();buildSkins();commit();};
+    var _sb=$('#skBoth');if(_sb)_sb.onchange=function(){store.cfg=store.cfg||{};store.cfg.skinBoth=this.checked||undefined;commit();};
     $$('#skinpanel [data-sktheme]').forEach(function(b){b.onclick=function(){store.theme=b.getAttribute('data-sktheme');applySkin();buildSkins();commit();};});
-    $$('#skinpanel [data-sktok]').forEach(function(i){i.oninput=function(){editSkinToken(i.getAttribute('data-sktok'),i.value);};});
+    // oninput = Live-Vorschau (+ Auto-Fork bei eingebautem Skin); onchange (Picker zu) = Panel neu aufbauen (zeigt die Kopie/aktualisiert).
+    $$('#skinpanel [data-sktok]').forEach(function(i){i.oninput=function(){editSkinToken(i.getAttribute('data-sktok'),i.value);};i.onchange=function(){buildSkins();};});
+    $$('#skinpanel [data-skxname]').forEach(function(i){i.onchange=function(){renameSkinColor(i.getAttribute('data-skxname'),i.value);};});
+    $$('#skinpanel [data-skxdel]').forEach(function(b){b.onclick=function(){deleteSkinColor(b.getAttribute('data-skxdel'));};});
     $$('#skinpanel [data-skfont]').forEach(function(i){i.oninput=function(){editSkinFont(i.getAttribute('data-skfont'),i.value);};});
     $('#skNew').onclick=function(){newSkin(false);};$('#skDup').onclick=function(){newSkin(true);};
+    var _ac=$('#skAddColor');if(_ac)_ac.onclick=function(){var nm=prompt('Name der neuen Farbe:','Meine Farbe');if(nm)addSkinColor(nm);};
     var dl=$('#skDel');if(dl&&!dl.disabled)dl.onclick=deleteSkin;
   }
   // ---------- Einstellungen (Builder-Konfigurator) ----------
@@ -46,6 +62,7 @@
       +'<label class="skrow2" style="flex-direction:row;align-items:center;gap:8px"><input type="checkbox" id="stZoom"'+(c.allowZoom?' checked':'')+'><span>Zoom am Gerät erlauben (Pinch/Doppeltipp; wirkt nach Reload)</span></label>'
       +'<label class="skrow2" style="flex-direction:row;align-items:center;gap:8px"><input type="checkbox" id="stNoPoll"'+(c.noSafetyPoll?' checked':'')+'><span>Sicherheits-Poll abschalten (nur WebSocket)</span></label>'
       +'<label class="skrow2" style="flex-direction:row;align-items:center;gap:8px"><input type="checkbox" id="stChartAnim"'+(c.chartAnim?' checked':'')+'><span>Chart-Animationen (Standard aus)</span></label>'
+      +'<label class="skrow2" style="flex-direction:row;align-items:center;gap:8px"><input type="checkbox" id="stGlow"'+(c.wglow?' checked':'')+'><span>Leucht-Effekt um Widgets (Glow)</span></label>'
       +'<div class="hint" style="margin:2px 2px 0">Poll läuft ohnehin nur bei WS-Stille (&gt;5 s). Aus = reiner WebSocket; bei WS-Abbruch wird automatisch wieder gepollt.</div>'
       +'<label class="skrow2"><span>Standard-Aktualisierung Widgets (Sek.)</span><input id="stRefresh" type="number" min="1" max="600" value="'+(c.refreshSec||15)+'"></label>'
       +'<div class="hint" style="margin:2px 2px 0">Vorgabe für periodisch nachladende Widgets (z. B. Meldungen). Pro Widget überschreibbar. Minimum 1 s.</div>'
@@ -63,6 +80,8 @@
     if($('#stZoom'))$('#stZoom').onchange=function(){bcfg().allowZoom=this.checked||undefined;commit();toast('Geräte-Zoom '+(this.checked?'erlaubt':'gesperrt')+' (wirkt nach Reload)');};
     if($('#stNoPoll'))$('#stNoPoll').onchange=function(){bcfg().noSafetyPoll=this.checked||undefined;commit();toast('Sicherheits-Poll '+(this.checked?'aus':'an')+' (wirkt nach Reload)');};
     if($('#stChartAnim'))$('#stChartAnim').onchange=function(){bcfg().chartAnim=this.checked||undefined;commit();render();toast('Chart-Animationen '+(this.checked?'an':'aus'));};
+    // Glow ist reine Optik: Klasse direkt umschalten (applySkin setzt sie ebenfalls).
+    if($('#stGlow'))$('#stGlow').onchange=function(){bcfg().wglow=this.checked||undefined;document.body.classList.toggle('wglow',this.checked);commit();toast('Widget-Glow '+(this.checked?'an':'aus'));};
     if($('#stRefresh'))$('#stRefresh').oninput=function(){bcfg().refreshSec=Math.max(1,Math.min(600,parseInt(this.value)||15));commit();};
     if($('#stMob'))$('#stMob').onchange=function(){bcfg().mobileOpt=this.checked;commit();};
     if($('#stMobW'))$('#stMobW').oninput=function(){bcfg().mobileW=Math.max(320,parseInt(this.value)||640);commit();};

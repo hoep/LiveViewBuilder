@@ -109,23 +109,39 @@
 
   function hpRoomsBar(w,st){
     var rooms=hpCfgRooms(w); // bereits geordnet + gefiltert (hsOrderHide)
+    var lvls=(typeof hsLevels==='function')?hsLevels(w):((w&&w.floorTabs)?'both':'rooms');
+    // --- Ebene 2 (Raeume): eigener Stil/Typografie + eigener Beschriftungstext ---
     var roomBtn=function(r){var on=(r.idx==st.roomIdx);
-      return '<button class="hsroom hp-room'+(on?' on':'')+'" data-hproom="'+r.idx+'">'+esc(hsStripDomain(hpRoomName(r.idx)))+'</button>';};
-    // Geschoss-Tabs (eine Seite, 3 Tabs): Etagen als Reiter, darunter nur die Zonen der gewaehlten Etage.
-    if(w&&w.floorTabs){
+      var nm=hsStripDomain(hpRoomName(r.idx));
+      if(typeof hsLabel==='function')nm=hsLabel(w,'r',r.idx,nm);
+      return '<button class="'+hsLvlBtn(w,'r')+' hp-room'+(on?' on':'')+'" data-hproom="'+r.idx+'">'+esc(nm)+'</button>';};
+    var roomBar=function(list){return '<div class="'+hsLvlClass(w,'r')+'"'+hsFontStyle(w,'r')+'>'+list.map(roomBtn).join('')+'</div>';};
+    // --- Ebene 1 (Geschosse): Gruppen der Raumliste, eigene Reihenfolge/Anzeige/Texte ---
+    function floorData(){
       var byG={}, order=[]; function bucket(g){ if(!(g in byG)){byG[g]=[];order.push(g);} return byG[g]; }
       ((_hpGroupOrder&&_hpGroupOrder.length)?_hpGroupOrder:HP_GROUPS).forEach(bucket);
       rooms.forEach(function(r){ bucket(r.group||'').push(r); }); bucket('');
-      var groups=order.filter(function(g){return byG[g]&&byG[g].length;});
-      if(groups.length>1){
-        var sel=st.floorSel; if(groups.indexOf(sel)<0){sel=st.floorSel=groups[0];}
-        var ht='<div class="hp-rooms hp-hastabs"><div class="hp-ftabs">'+groups.map(function(g){return '<button class="hp-ftab'+(g===sel?' on':'')+'" data-hpfloor="'+esc(g)+'">'+esc(g||'Sonstige')+'</button>';}).join('')+'</div>';
-        ht+='<div class="'+hsSelClass(w)+'">'+(byG[sel]||[]).map(roomBtn).join('')+'</div></div>';
-        return ht;
-      }
+      var items=order.filter(function(g){return byG[g]&&byG[g].length;}).map(function(g){return {key:g,name:g||'Sonstige'};});
+      if(typeof hsOrderHideBy==='function')items=hsOrderHideBy(w,'f',items,function(x){return x.key;});
+      return {byG:byG,items:items};
     }
-    // Standard: eine einheitliche, geordnete Leiste im gewaehlten Stil (Buttons/Pills/Underline).
-    return '<div class="'+hsSelClass(w)+'">'+rooms.map(roomBtn).join('')+'</div>';
+    function floorBar(items,sel){
+      return '<div class="'+hsLvlClass(w,'f')+'"'+hsFontStyle(w,'f')+'>'+items.map(function(it){
+        var nm=(typeof hsLabel==='function')?hsLabel(w,'f',it.key,it.name):it.name;
+        return '<button class="'+hsLvlBtn(w,'f')+(it.key===sel?' on':'')+'" data-hpfloor="'+esc(it.key)+'">'+esc(nm)+'</button>';
+      }).join('')+'</div>';
+    }
+    if(lvls==='floors'||lvls==='both'){
+      var fd=floorData();
+      if(fd.items.length){
+        var sel=st.floorSel;
+        if(!fd.items.some(function(x){return x.key===sel;})){sel=st.floorSel=fd.items[0].key;}
+        if(lvls==='floors')return '<div class="hp-rooms">'+floorBar(fd.items,sel)+'</div>';
+        return '<div class="hp-rooms hp-hastabs">'+floorBar(fd.items,sel)+roomBar(fd.byG[sel]||[])+'</div>';
+      }
+      if(lvls==='floors')return '<div class="hp-rooms"></div>';
+    }
+    return roomBar(rooms);   // nur Raeume
   }
 
   // ---- SVG-Sollkurve ----
@@ -338,7 +354,11 @@
       function grp(g){ if(g&&!seen[g]){seen[g]=1;order.push(g);} }
       // Tab-Label = RAUMNAME; nur wenn ein Raum mehrere Entitaeten derselben Domaene hat,
       // wird die Ausrichtung angehaengt (aus dem Entitaetsnamen, Praefix Heizung/Beschattung + Raumname entfernt).
-      function pushRoom(rm,g){ var dents=(rm.entities||[]).filter(function(e){return (e.domain||'')===dom;});
+      // NUR echte HomeSuite-Entitaeten (kind!=='link'): die Topologie listet zusaetzlich
+      // die sichtbaren Bindungs-/Rohgeraete-LINKS eines Raums und raet ihnen eine Domaene
+      // an. Dadurch tauchte z. B. der Link „HM-Gerät" der Markise als ZWEITES Beschattungs-
+      // geraet auf (und „Level" sogar als Licht).
+      function pushRoom(rm,g){ var dents=(rm.entities||[]).filter(function(e){return (e.domain||'')===dom&&(e.kind||'')!=='link';});
         dents.forEach(function(e){ var lbl=rm.name||('#'+e.iid);
           if(dents.length>1){ var suf=String(e.name||'').replace(/^\s*(Heizung|Beschattung)\s*/i,'').replace(rm.name||'','').replace(/\s+/g,' ').trim(); if(suf)lbl+=' '+suf; }
           rooms.push({idx:e.iid,name:lbl,ent:e.name||'',room:rm.name||'',type:'',group:g}); }); }

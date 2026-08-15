@@ -287,12 +287,27 @@
   /* ===== Rollo (cover) — Fenster-Slider + Steuerung + Sonne ===== */
   .hc2{position:absolute;inset:0;container-type:size}
   .hc2in{position:absolute;inset:0;display:flex;font-size:clamp(9px,3.15cqmin,17px);color:var(--text)}
+  /* ===== Sonnenszene (sunscene): fuellt die Kachel, Canvas folgt der Groesse ===== */
+  .ssc{position:absolute;inset:0;overflow:hidden;border-radius:inherit;touch-action:pan-y;cursor:grab}
+  .ssc:active{cursor:grabbing}
+  .ssc canvas{display:block;width:100%;height:100%}
+  .stage.edit .ssc{cursor:inherit}
   .hc2win{position:relative;flex:0 0 40%;min-width:0;overflow:hidden;border-right:1px solid var(--line);background:linear-gradient(180deg,#0d131d,#0b1017)}
   .hc2win.open{background:radial-gradient(130% 85% at 50% 125%, color-mix(in oklab,var(--accent) 26%, transparent) 0%, transparent 62%),linear-gradient(180deg,#10202a 0%,#122a2c 55%,#0e1a1e 100%)}
   .hc2sky{position:absolute;inset:0}
   .hc2win.open .hc2sky{background:linear-gradient(180deg,#2b6f6a 0%,#2f8f7d 35%,#6fae7e 70%,#244035 100%);opacity:.55}
-  .hc2sun{position:absolute;width:2.6em;height:2.6em;border-radius:50%;transform:translate(-50%,-50%);z-index:2;pointer-events:none;background:radial-gradient(circle at 50% 45%,#fff7d6 0%,#ffd23f 42%,#f7b500 70%,rgba(247,181,0,0) 72%);box-shadow:0 0 2.2em .3em rgba(255,201,64,.55),0 0 4em .6em rgba(255,180,0,.25)}
-  .hc2shut{position:absolute;left:0;right:0;top:0;z-index:1;background:repeating-linear-gradient(180deg,#2c3444 0 .30em,#232b39 .30em .42em);box-shadow:inset 0 -0.4em .5em rgba(0,0,0,.3)}
+  /* Sonne LIEGT HINTER dem Rollo (z-index 1 < 2): faehrt das Rollo herunter, verdeckt es
+     die Sonne wie in echt. Vorher lag sie darueber und konnte nie verdeckt werden. */
+  .hc2sun{position:absolute;width:2.6em;height:2.6em;border-radius:50%;transform:translate(-50%,-50%);z-index:1;pointer-events:none;background:radial-gradient(circle at 50% 45%,#fff7d6 0%,#ffd23f 42%,#f7b500 70%,rgba(247,181,0,0) 72%);box-shadow:0 0 2.2em .3em rgba(255,201,64,.55),0 0 4em .6em rgba(255,180,0,.25)}
+    /* --- Markise: Kassette oben, Tuch faellt heraus (statt Rollopanzer) --- */
+  .hc2mkcase{position:absolute;left:6%;right:6%;top:7%;height:9%;border-radius:3px;z-index:3;
+             background:linear-gradient(#6b7794,#4e5972);box-shadow:0 .15em .4em rgba(0,0,0,.45)}
+  .hc2mkfab{position:absolute;left:6%;right:6%;top:15%;z-index:2;overflow:hidden}
+  .hc2mkfab i{position:absolute;inset:0;background:linear-gradient(180deg,#0f7a68,var(--accent-2,#00b294))}
+  .hc2mkfab b{position:absolute;inset:0;background:repeating-linear-gradient(90deg,rgba(255,255,255,.08) 0 12%,transparent 12% 25%)}
+  .hc2mkfab u{position:absolute;left:0;right:0;bottom:0;height:.5em;
+              background:radial-gradient(circle at 12.5% 0,transparent 62%,var(--accent,#00cdab) 63%) 0 0/25% 100% repeat-x}
+  .hc2shut{position:absolute;left:0;right:0;top:0;z-index:2;background:repeating-linear-gradient(180deg,#2c3444 0 .30em,#232b39 .30em .42em);box-shadow:inset 0 -0.4em .5em rgba(0,0,0,.3)}
   .hc2shut::after{content:"";position:absolute;left:0;right:0;bottom:0;height:.30em;background:linear-gradient(#5a6784,#454f66);box-shadow:0 .12em .35em rgba(0,0,0,.55)}
   .hc2roll{position:absolute;top:.3em;left:38%;right:38%;height:.28em;border-radius:.2em;background:#3a4459;opacity:.9;z-index:3;pointer-events:none}
   .hc2tick{position:absolute;left:.45em;top:50%;transform:translateY(-50%);font-size:var(--cov-tickfs,.72em);color:var(--faint);letter-spacing:.02em;z-index:3;white-space:nowrap;pointer-events:none}
@@ -1337,7 +1352,11 @@
   .hp-spin{color:var(--muted);font-size:13px}
   /* Kopf */
   .hp-head{display:flex;flex-direction:column;gap:7px;flex:0 0 auto}
-  .hp-rooms{display:flex;flex-wrap:wrap;gap:10px}
+  /* Jede Entitaets-Ebene bekommt eine EIGENE Zeile (Geschosse oben, Raeume darunter).
+     Vorher war das ein Zeilen-Flex: die beiden Leisten sind nebeneinander gerutscht. */
+  .hp-rooms{display:flex;flex-direction:column;align-items:stretch;flex-wrap:nowrap;gap:8px}
+  .hp-rooms>*{min-width:0}
+  .hsroed-lbl{width:88px;flex:0 0 auto;background:var(--surface-2);border:1px solid var(--line);border-radius:5px;padding:2px 6px;color:var(--text);font-size:11px}
   .hp-rgrp{display:flex;align-items:center;gap:4px;background:var(--surface-2);border:1px solid var(--line-soft);border-radius:9px;padding:3px 5px}
   .hp-glab{font-size:10px;font-weight:700;letter-spacing:.06em;color:var(--muted);padding:0 4px}
   .hp-room{border:1px solid transparent;background:transparent;color:var(--muted);font:inherit;font-size:12px;padding:4px 9px;border-radius:7px;cursor:pointer;white-space:nowrap}
@@ -1949,8 +1968,8 @@
 
 /* Geschoss-Tabs der Zonen-Leiste (rooms floorTabs) */
 .hp-ftabs{display:flex;gap:6px;margin-bottom:7px;flex-wrap:wrap}
-.hp-ftab{font-size:12px;font-weight:600;padding:4px 16px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--muted);cursor:pointer}
-.hp-ftab.on{background:color-mix(in srgb,var(--accent) 16%,transparent);border-color:var(--accent);color:var(--text);font-weight:700}
+.hp-ftab{font-size:var(--hssz,12px);font-weight:var(--hswt,600);font-family:var(--hsff,inherit);text-transform:var(--hstt,none);letter-spacing:var(--hsls,normal);padding:4px 16px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--hsfg,var(--muted));cursor:pointer}
+.hp-ftab.on{background:color-mix(in srgb,var(--hsacc,var(--accent)) 16%,transparent);border-color:var(--hsacc,var(--accent));color:var(--text);font-weight:700}
 
 /* Beschattungs-Profil-Verwaltung (shadeprofiles) */
 .spf{padding:10px 12px;font-size:12px;color:var(--text);height:100%;box-sizing:border-box;display:flex;flex-direction:column;gap:8px}
@@ -1974,15 +1993,15 @@
 
 /* ===== Gemeinsamer Raum-Selektor (Heizung/Beschattung/Bewässerung/Audio) ===== */
 .hssel{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
-.hssel .hsroom{cursor:pointer;border:0;background:none;font-size:12px;font-weight:600;color:var(--muted);white-space:nowrap;display:inline-flex;align-items:center;gap:6px}
+.hssel .hsroom{cursor:pointer;border:0;background:none;font-size:var(--hssz,12px);font-weight:var(--hswt,600);font-family:var(--hsff,inherit);text-transform:var(--hstt,none);letter-spacing:var(--hsls,normal);color:var(--hsfg,var(--muted));white-space:nowrap;display:inline-flex;align-items:center;gap:6px}
 .hssel .hsglab{font-size:9px;letter-spacing:.6px;text-transform:uppercase;color:var(--faint);padding:0 4px;align-self:center}
 .hssel-buttons .hsroom{padding:6px 12px;border-radius:8px;background:var(--surface-2);border:1px solid var(--line)}
-.hssel-buttons .hsroom.on{background:var(--accent-2);border-color:var(--accent-2);color:#fff}
+.hssel-buttons .hsroom.on{background:var(--hsacc,var(--accent-2));border-color:var(--hsacc,var(--accent-2));color:#fff}
 .hssel-pills .hsroom{padding:5px 14px;border-radius:999px;background:var(--surface-2);border:1px solid var(--line)}
-.hssel-pills .hsroom.on{background:var(--accent-2);border-color:var(--accent-2);color:#fff}
+.hssel-pills .hsroom.on{background:var(--hsacc,var(--accent-2));border-color:var(--hsacc,var(--accent-2));color:#fff}
 .hssel-underline{gap:2px 0;flex-wrap:wrap}
 .hssel-underline .hsroom{padding:8px 13px;border-bottom:2px solid var(--line)}
-.hssel-underline .hsroom.on{color:var(--text);border-bottom-color:var(--accent)}
+.hssel-underline .hsroom.on{color:var(--text);border-bottom-color:var(--hsacc,var(--accent))}
 .hsroed{display:flex;flex-direction:column;gap:3px;max-height:260px;overflow:auto}
 .hsroed-row{display:flex;align-items:center;gap:4px}
 
@@ -2244,3 +2263,36 @@
 
   .hc2mode-btn{cursor:pointer}
   .hc2mode-btn:hover{opacity:.75}
+  /* ===== Rollo-Kalibrierung (shadecal) — geführter Stepper ===== */
+  .scal{position:absolute;inset:0;display:flex;flex-direction:column;gap:.5em;padding:.7em .8em;font-size:clamp(10px,3.0cqmin,15px);container-type:size}
+  .scal-msg{margin:auto;color:var(--muted)}
+  .scal-hd{display:flex;align-items:baseline;justify-content:space-between;gap:.5em}
+  .scal-tit{font-weight:700;font-size:1.02em}
+  .scal-dev{color:var(--muted);font-size:.85em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:55%}
+  .scal-steps{display:flex;align-items:center}
+  .scal-st{display:flex;align-items:center;gap:.35em;font-size:.72em;font-weight:600;color:var(--faint);white-space:nowrap}
+  .scal-st .scal-n{width:1.55em;height:1.55em;border-radius:50%;border:1.5px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:.9em}
+  .scal-st.on{color:var(--text)} .scal-st.on .scal-n{background:var(--accent-2);border-color:transparent;color:#fff}
+  .scal-st.done{color:var(--accent)} .scal-st.done .scal-n{border-color:var(--accent);color:var(--accent)}
+  .scal-n .sck{width:.85em;height:.85em}
+  .scal-ln{flex:1;height:1.5px;background:var(--line);margin:0 .4em} .scal-ln.done{background:var(--accent)}
+  .scal-body{display:flex;align-items:center;gap:.55em;margin-top:.1em}
+  .scal-seg{display:flex;border:1px solid var(--line);border-radius:.6em;overflow:hidden;flex:0 0 auto}
+  .scal-seg button{padding:.45em .7em;background:var(--surface-2);color:var(--muted);border:0;font:inherit;font-size:.88em;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:.3em}
+  .scal-seg button.on{background:var(--accent-2);color:#fff}
+  .scal-seg button+button{border-left:1px solid var(--line)}
+  .scal-act{flex:1;min-width:0;padding:.6em;border-radius:.6em;border:0;font:inherit;font-size:.95em;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:.4em;color:#fff}
+  .scal-act.start{background:var(--accent-2)} .scal-act.stop{background:var(--crit)}
+  .scal-act[disabled]{opacity:.6;cursor:default}
+  .scal-run{gap:.6em}
+  .scal-tmr{font-family:var(--fm);font-size:1.7em;font-weight:800;line-height:1;flex:0 0 auto;min-width:3.2em}
+  .scal-tmr .u{font-size:.5em;color:var(--muted);font-weight:600;margin-left:.12em}
+  .scal-tmr.done{color:var(--accent)}
+  .scal-take{flex:1;padding:.55em;border-radius:.6em;border:0;background:var(--accent-2);color:#fff;font:inherit;font-size:.9em;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:.35em}
+  .scal-take[disabled]{opacity:.6;cursor:default}
+  .scal-x{flex:0 0 auto;width:2.2em;height:2.2em;border-radius:.5em;border:1px solid var(--line);background:var(--surface-2);color:var(--muted);cursor:pointer;display:flex;align-items:center;justify-content:center}
+  /* Abbrechen: gleichwertiger zweiter Abschluss neben Speichern (beide geben die Automatik frei) */
+  .scal-cancel{flex:1;padding:.55em;border-radius:.6em;border:1px solid var(--line);background:var(--surface-2);color:var(--fg);font:inherit;font-size:.9em;font-weight:650;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:.35em}
+  .scal-cancel[disabled]{opacity:.6;cursor:default}
+  .scal-cur{margin-top:auto;font-size:.8em;color:var(--muted)} .scal-cur b{font-weight:600;color:var(--text)} .scal-cur b.hl{color:var(--accent)}
+  .scal .sci{width:1.05em;height:1.05em;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;flex:none}

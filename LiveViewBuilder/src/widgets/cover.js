@@ -57,8 +57,10 @@
     open=Math.max(0,Math.min(100,Math.round(open)));
     var win=$('[data-role=win]',el);
     if(win){win.classList.toggle('open',open>8);
+      var mk=_covIsMk(w), shown=mk?_covMkOut(open):open;
       var sh=$('.hc2shut',win);if(sh)sh.style.height=(100-open)+'%';
-      var pc=$('.hc2pct',win);if(pc)pc.innerHTML=open+'<span>%</span>';
+      var fb=$('.hc2mkfab',win);if(fb)fb.style.height=(_covMkOut(open)*0.66)+'%';   // Tuch waechst mit dem Ausfahrgrad
+      var pc=$('.hc2pct',win);if(pc)pc.innerHTML=shown+'<span>%</span>';
       _covSun(w,win,open);
     }
     // Slider (Fenster-Overlay + optionaler unterer) nachziehen, wenn nicht in Bearbeitung
@@ -68,22 +70,66 @@
       b.classList.toggle('on',(pv===100&&open>=95)||(pv===50&&open>5&&open<95));
       b.classList.toggle('onc',pv===0&&open<=5);});
   }
-  // Sonne setzen/ausblenden: nur bei Tag (Hoehe>Schwelle bzw. Helligkeit) UND Rollo offen genug.
+  // ===== Geraeteart: Rollo (Standard) oder Markise =====
+  // Eine Markise wird umgekehrt gedacht: sie faehrt AUS statt ZU. Intern bleibt alles
+  // gleich (open% = Oeffnungsgrad); fuer die Anzeige rechnen wir den AUSFAHRGRAD
+  // (100-open) und tauschen Grafik + Beschriftungen.
+  function _covIsMk(w){ return (w&&w.cvKind==='markise'); }
+  function _covMkOut(open){ return Math.max(0,Math.min(100,100-open)); }   // Ausfahrgrad
+  function _covLbl(w,k){
+    var mk=_covIsMk(w);
+    return ({open:mk?'Ein':'Auf', close:mk?'Aus':'Zu', half:'Halb',
+             sOpen:mk?'eingefahren':'offen', sClose:mk?'ganz ausgefahren':'geschlossen'})[k];
+  }
+  function _covStateTxt(w,open){
+    if(_covIsMk(w)){var o=_covMkOut(open);return o<=2?'eingefahren':(o>=98?'ganz ausgefahren':(o+' % ausgefahren'));}
+    return open<=2?'geschlossen':(open>=98?'offen':(open+' % offen'));
+  }
+  // Live-Wert einer gebundenen Variable als Zahl (oder null, wenn nicht gebunden/leer).
+  function _covNum(vid){ if(!vid)return null; var e=_lastVals[vid]; if(!e)return null;
+    var n=parseFloat(e.v); return isNaN(n)?null:n; }
+  // Sonne am ECHTEN Sonnenstand platzieren — Blick des Betrachters durchs Fenster nach draussen.
+  // Die Sonne steht FEST an ihrer Himmelsposition (Hoehe = oben/unten, Azimut = links/rechts);
+  // das herabfahrende Rollo VERDECKT sie (Stapelreihenfolge im CSS: Rollo ueber der Sonne).
+  // Frueher war die Sonne auf den sichtbaren Glasbereich geklemmt -> sie ist mit dem Rollo
+  // mitgewandert statt dahinter zu verschwinden.
   function _covSun(w,win,open){
     var sun=$('.hc2sun',win);if(!sun)return;
-    if(!_covOn(w,'covSun',true)||open<=8){sun.style.display='none';return;}
+    if(!_covOn(w,'covSun',true)){sun.style.display='none';return;}
     var g=_covGeo(w), p=_covSunPos(g.lat,g.lon,Date.now()/1000);
     var elMin=(w.covElMin!=null&&w.covElMin!=='')?+w.covElMin:2;
     var brOk=true; if(w.covBrightVid&&_lastVals[w.covBrightVid]){var bv=parseFloat(_lastVals[w.covBrightVid].v);var bMin=(w.covBrightMin!=null&&w.covBrightMin!=='')?+w.covBrightMin:0;if(!isNaN(bv))brOk=bv>=bMin;}
-    if(p.elev<elMin||!brOk){sun.style.display='none';return;}
-    // vertikal: Hoehe 0..elMax -> unten..oben; im sichtbaren Glas (unter den Lamellen) clampen
+    // --- Sonnenfenster DIESES Rollos (aus dem HomeSuite-Sonnenprofil, je Instanz) ---
+    // azBgn..azEnd beschreibt, aus welcher Richtung dieses Fenster ueberhaupt Sonne
+    // bekommt (mit 360°-Umschlag, z. B. Nord = 300..60). Steht die Sonne ausserhalb,
+    // kann sie das Fenster physisch nicht treffen -> gar nicht darstellen. Vorher wurde
+    // der Azimut hart auf +-1 geklemmt, dadurch klebte die Sonne selbst bei Nord-/Ost-
+    // fenstern am Rand, obwohl dort nie Sonne hinkommt.
+    var azB=_covNum(w.cvAzB), azE=_covNum(w.cvAzE), elP=_covNum(w.cvElv);
+    if(elP!=null)elMin=Math.max(elMin,elP);                       // Schwelle aus dem Profil
+    if(p.elev<elMin||!brOk){sun.style.display='none';return;}      // Nacht / zu tief / zu dunkel
+    var hl;
+    // Ist ein Sonnenfenster GEBUNDEN, aber der Wert noch nicht eingetroffen (Poll liefert
+    // unveraenderte Werte nur beim ersten Durchlauf), NICHT auf die Pauschal-Ausrichtung
+    // zurueckfallen - sonst zeigt z. B. ein Nordfenster faelschlich Sonne. Lieber nichts
+    // zeigen, bis die echten Werte da sind (_covKick zeichnet zyklisch nach).
+    if((w.cvAzB||w.cvAzE)&&(azB==null||azE==null)){sun.style.display='none';return;}
+    if(azB!=null&&azE!=null){
+      var width=((azE-azB)+360)%360; if(width<=0)width=360;
+      var rel=((p.az-azB)+360)%360;
+      if(rel>width){sun.style.display='none';return;}              // Sonne hinter der Fassade
+      hl=10+(rel/width)*80;                                        // Fensterdurchlauf: links -> rechts
+    } else {
+      // Fallback ohne Profil: Ausrichtung aus den Widget-Einstellungen, +-90° Sichtfeld
+      var face=(w.covFace!=null&&w.covFace!=='')?+w.covFace:180, dl=((p.az-face+540)%360)-180;
+      if(Math.abs(dl)>=90){sun.style.display='none';return;}
+      hl=50+(dl/90)*34;
+    }
+    // vertikal: Sonnenhoehe 0..elMax -> Horizont(unten) .. Zenit(oben). Nur auf den
+    // Fensterrahmen begrenzen (Rand-Marge), NICHT auf den freien Glasausschnitt.
     var elMax=(w.covElMax>0?+w.covElMax:60);
-    var vt=100-Math.max(0,Math.min(1,p.elev/elMax))*100;          // 0%=oben(Zenit) .. 100%=unten(Horizont)
-    var shutBottom=(100-open), glassTop=shutBottom+8, glassBot=92;  // sichtbarer Glasbereich
-    vt=Math.max(glassTop,Math.min(glassBot,vt));
-    // horizontal: Azimut vs. Fensterrichtung -> Mitte +- Versatz
-    var face=(w.covFace!=null&&w.covFace!=='')?+w.covFace:180, dl=((p.az-face+540)%360)-180;
-    var hl=50+Math.max(-1,Math.min(1,dl/90))*30;
+    var vt=100-Math.max(0,Math.min(1,p.elev/elMax))*100;
+    vt=Math.max(7,Math.min(93,vt));
     sun.style.display='';sun.style.top=vt+'%';sun.style.left=hl+'%';
     sun.style.opacity=String(0.55+Math.min(0.45,p.elev/elMax*0.6));
   }
@@ -110,20 +156,22 @@
     render:function(w){
       var viz=_covOn(w,'covViz',true), slider=_covOn(w,'covSlider',false);
       var icU=w.icUp||'chevup', icS=w.icStop||'stop', icD=w.icDn||'chevdn';
+      var _mk=_covIsMk(w);
       var win = viz ? ('<div class="hc2win" data-role="win">'
-          +'<div class="hc2sky"></div><div class="hc2roll"></div>'
+          +'<div class="hc2sky"></div>'+(_mk?'':'<div class="hc2roll"></div>')
           +(_covOn(w,'covSun',true)?'<div class="hc2sun"></div>':'')
-          +'<div class="hc2shut" style="height:100%"></div>'
+          +(_mk?('<div class="hc2mkcase"></div><div class="hc2mkfab" style="height:0"><i></i><b></b><u></u></div>')
+               :'<div class="hc2shut" style="height:100%"></div>')
           +'<div class="hc2tick">50</div>'
           +'<div class="hc2pct">–<span></span></div>'
           +'<input class="hc2winr" type="range" data-role="range" min="0" max="100" step="1" value="0" title="Rollo ziehen">'
           +'</div>') : '';
       var pre='<div class="hc2pre" data-role="cpre">'
-          +'<button data-cpre="0">Zu</button><button data-cpre="50">Halb</button><button data-cpre="100">Auf</button></div>';
+          +'<button data-cpre="0">'+_covLbl(w,'close')+'</button><button data-cpre="50">'+_covLbl(w,'half')+'</button><button data-cpre="100">'+_covLbl(w,'open')+'</button></div>';
       var btns='<div class="hc2btns">'
-          +'<button data-role="cup" title="Auf"><svg><use href="#ic-'+esc(icU)+'"/></svg><span class="lb">Auf</span></button>'
+          +'<button data-role="cup" title="'+_covLbl(w,'open')+'"><svg><use href="#ic-'+esc(icU)+'"/></svg><span class="lb">'+_covLbl(w,'open')+'</span></button>'
           +'<button data-role="cstop" title="Stop"><svg><use href="#ic-'+esc(icS)+'"/></svg><span class="lb">Stop</span></button>'
-          +'<button data-role="cdn" title="Zu"><svg><use href="#ic-'+esc(icD)+'"/></svg><span class="lb">Zu</span></button></div>';
+          +'<button data-role="cdn" title="'+_covLbl(w,'close')+'"><svg><use href="#ic-'+esc(icD)+'"/></svg><span class="lb">'+_covLbl(w,'close')+'</span></button></div>';
       var sld = slider ? ('<div class="hc2sldwrap"><input class="hc2sl2" type="range" data-role="range" min="0" max="100" step="1" value="0">'
           +'<div class="hc2sc"><span class="t" style="left:0%"></span><span class="t" style="left:25%"></span><span class="t" style="left:50%"></span><span class="t" style="left:75%"></span><span class="t" style="left:100%"></span>'
           +'<span class="l a">0%</span><span class="l" style="left:50%">50%</span><span class="l b">100%</span></div></div>') : '';
@@ -176,13 +224,20 @@
         var mtxt=(txt!=null&&txt!==''&&!/^-?\d+([.,]\d+)?$/.test(String(txt).trim()))?txt:null;
         if(mtxt){var cs2=$('[data-role=ctext]',el);if(cs2){cs2.textContent=mtxt;el._covMtxt=mtxt;}}
         return;}
-      if(w.covBrightVid&&id===w.covBrightVid){var win=$('[data-role=win]',el);if(win){var pc=$('.hc2pct',win);var op0=pc?parseInt(pc.textContent)||0:0;_covSun(w,win,op0);}return;}
-      if(id!==w.varId)return;
+      // Helligkeit ODER Sonnenfenster-Werte (Azimut-Grenzen/Hoehenschwelle) -> nur Sonne neu setzen
+      if((w.covBrightVid&&id===w.covBrightVid)||id===w.cvAzB||id===w.cvAzE||id===w.cvElv){
+        var win=$('[data-role=win]',el);if(win){var pc=$('.hc2pct',win);var op0=pc?parseInt(pc.textContent)||0:0;_covSun(w,win,op0);}return;}
+      // Anzeige folgt der IST-Position (cvActId), Befehle gehen auf das schaltbare
+      // Soll-Control (varId). Ohne cvActId bleibt es beim alten Verhalten (varId=Anzeige).
+      // Sonst wuerde die Kachel den kommandierten Wert zeigen statt der echten Lage
+      // (Somfy rampt zeitbasiert und meldet den Fortschritt ueber ActualPosition).
+      if(w.cvActId){ if(id!==w.cvActId)return; }
+      else if(id!==w.varId)return;
       var op=_covOpen(w,d.v);
       _covPaint(w,el,op);
       // Statuszeile aus der Position (offen / geschlossen / X % offen) — sofern kein echter Statustext gesetzt ist
       var cs=$('[data-role=ctext]',el),st2=$('[data-role=cstate]',el);
-      if(cs&&!el._covMtxt)cs.textContent=op<=2?'geschlossen':(op>=98?'offen':(op+' % offen'));
+      if(cs&&!el._covMtxt)cs.textContent=_covStateTxt(w,op);
       if(st2)st2.classList.toggle('closed',op<=2);
     },
     props:function(w){
@@ -191,6 +246,8 @@
         +row('Fenster-Visualisierung','<input type="checkbox" id="pCovViz"'+(_covOn(w,'covViz',true)?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">Rollo/Glas links (Rollo = Slider)</span>')
         +row('Sonne anzeigen','<input type="checkbox" id="pCovSun"'+(_covOn(w,'covSun',true)?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">nur bei Tag &amp; offenem Rollo</span>')
         +row('Slider unter Tasten','<input type="checkbox" id="pCovSlider"'+(_covOn(w,'covSlider',false)?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">zusätzlicher horizontaler Slider mit Skala</span>')
+        +row('Art','<select id="pCvKind"><option value=""'+(!_covIsMk(w)?' selected':'')+'>Rollo</option><option value="markise"'+(_covIsMk(w)?' selected':'')+'>Markise</option></select>')
+        +'<div style="font-size:11px;color:var(--muted);margin:2px 2px 4px">Markise: Tuch statt Rollopanzer, Beschriftung „Ein/Aus" und Anzeige des <b>Ausfahrgrads</b>.</div>'
         +row('Anzeige gespiegelt','<input type="checkbox" id="pCvInv"'+(w.cvInv?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">Gerät zählt Schließgrad (0=offen)</span>')
         +'<div class="pgh">Kommando-Werte (optional)</div>'
         +'<div style="font-size:11px;color:var(--muted);margin:-2px 2px 6px">Leer = über die Position fahren (Auf/Zu/Halb schreiben 100/0/50). Mit Befehlsvariable eigene Werte, z. B. IPSShadowing 14 / 13 / 11.</div>'
@@ -219,7 +276,8 @@
     wire:function(w){
       function tog(id,key,def){var e=$('#'+id);if(e)e.onchange=function(){w[key]=(this.checked===def)?undefined:this.checked;render();commit();};}
       tog('pCovViz','covViz',true); tog('pCovSun','covSun',true); tog('pCovSlider','covSlider',false);
-      if($('#pCvInv'))$('#pCvInv').onchange=function(){w.cvInv=this.checked||undefined;render();commit();};
+          if($('#pCvKind'))$('#pCvKind').onchange=function(){w.cvKind=this.value||undefined;render();commit();};
+if($('#pCvInv'))$('#pCvInv').onchange=function(){w.cvInv=this.checked||undefined;render();commit();};
       [['pCvUp','cvUp'],['pCvHalf','cvHalf'],['pCvStop','cvStop'],['pCvDn','cvDn'],['pCovLat','covLat'],['pCovLon','covLon']].forEach(function(p){
         var e=$('#'+p[0]);if(!e)return;e.onchange=function(){var v=this.value.trim();w[p[1]]=(v===''?undefined:v);render();commit();};});
       if($('#pCovFace'))$('#pCovFace').onchange=function(){w.covFace=this.value===''?undefined:parseFloat(this.value);render();commit();};

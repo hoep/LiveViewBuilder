@@ -1,7 +1,7 @@
 <?php
 // Baut builder.html aus src/. NICHT builder.html direkt editieren.
 $d=__DIR__."/src";
-$core=["00-registry.js", "01-boot-icons.js", "02-zoom-core.js", "03-render-charts.js", "04-props.js", "05-interaction.js", "06-live.js", "06-panel.js", "07-builders.js", "08-assoc.js", "08-roomsel.js", "09-io-init.js", "10-chrome.js", "11-migrate.js", "12-doku-demo.js", "12-doku.js", "13-sidepanel.js"];
+$core=["00-registry.js", "01-boot-icons.js", "02-zoom-core.js", "03-render-charts.js", "04-props.js", "05-interaction.js", "06-live.js", "06-panel.js", "07-builders.js", "08-assoc.js", "08-roomsel.js", "08-sun.js", "09-io-init.js", "10-chrome.js", "11-migrate.js", "12-doku-demo.js", "12-doku.js", "13-sidepanel.js"];
 $js="";
 foreach($core as $f){$c=@file_get_contents("$d/js/$f");if($c===false){fwrite(STDERR,"missing $f\n");exit(1);}$js.=$c;}
 $wf=glob("$d/widgets/*.js");sort($wf);

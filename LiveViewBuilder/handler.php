@@ -75,6 +75,29 @@ if ($api === 'font') {
     return;
 }
 
+// ---- Gebaeude der Umgebung (OpenStreetMap) fuer das Widget "sunscene" ----
+// Das Widget fragt selbst an; der Server liefert aus dem Cache und holt nur beim
+// allerersten Mal je Standort bei Overpass nach (danach 60 Tage aus der Datei).
+// Kartendaten: (c) OpenStreetMap-Mitwirkende (ODbL).
+if ($api === 'geo') {
+    header('Content-Type: application/json; charset=utf-8');
+    require_once $DIR . '/geo.php';
+    $lat = (float) ($_GET['lat'] ?? 0);
+    $lon = (float) ($_GET['lon'] ?? 0);
+    $rad = max(50, min(1000, (int) ($_GET['r'] ?? 250)));
+    if ($lat === 0.0 && $lon === 0.0) { echo json_encode(['ok' => false, 'err' => 'coords']); return; }
+
+    $c = geo_read($DATADIR, $lat, $lon, $rad);
+    if ($c !== null && empty($c['stale'])) { echo json_encode($c); return; }
+    // Noch kein Cache: einmalig holen. Kurze Frist, damit ein ausgefallener
+    // Overpass-Server nicht den Hook-Thread blockiert - dann liefern wir lieber
+    // den alten Stand bzw. eine leere Antwort, und der naechste Aufruf versucht es neu.
+    $fresh = geo_build($DATADIR, $lat, $lon, $rad, true, 12);
+    if (!empty($fresh['ok'])) { echo json_encode($fresh); return; }
+    echo json_encode($c !== null ? $c : ['ok' => false, 'err' => $fresh['err'] ?? 'fetch']);
+    return;
+}
+
 // ---- Live-Objektbaum (lazy + Suche nach Name/Pfad/ID) ----
 if ($api === 'tree') {
     header('Content-Type: application/json; charset=utf-8');
@@ -600,11 +623,37 @@ if ($api === 'week') {
 //      ueber ?api=setvar (RequestAction auf die IPSShadowing-Steuervariablen).
 if ($api === 'shading') {
     header('Content-Type: application/json; charset=utf-8');
+    // Rollo-Kalibrierung adressiert das Rollo ueber seine POSITIONS-Variable (posVid aus op=list),
+    // weil op=list die IPSShadowing-ID liefert, nicht die HSSH-Instanz. Hier posVid -> HSSH-Instanz.
+    // Rollo adressieren: bevorzugt direkt ueber die HSSH-Instanz-ID (id, wie shadesun/setclose es
+    // aus der Session bekommt), sonst ueber die Positions-Variable (pos = posVid aus op=list).
+    $hsshList  = array_map('intval', @IPS_GetInstanceListByModuleID('{A9645ED8-CB55-43B8-869B-BFF6ACFC8DC1}') ?: []);
+    $hsshByPos = function (int $pos) use ($hsshList): int {
+        if ($pos <= 0) { return 0; }
+        foreach ($hsshList as $iid) {
+            if ((int) @IPS_GetProperty($iid, 'PositionId') === $pos) { return (int) $iid; }
+        }
+        return 0;
+    };
+    $calTarget = function () use ($hsshList, $hsshByPos): int {
+        $id = (int) ($_GET['id'] ?? 0);
+        if ($id > 0 && in_array($id, $hsshList, true)) { return $id; }   // direkte HSSH-Instanz (Session)
+        return $hsshByPos((int) ($_GET['pos'] ?? 0));                    // sonst ueber Positions-Variable
+    };
     // op=log: HomeSuite-Gesamtlog (alle Raeume) ueber den Hub aggregieren (nicht das Legacy-Skript).
     if (($_GET['op'] ?? '') === 'log') {
         $hub = (int) (@IPS_GetInstanceListByModuleID('{A0C082B4-9E74-430E-BD97-F9CEBB364257}')[0] ?? 0);
         if ($hub <= 0 || !function_exists('HSH_Manage')) { echo json_encode(['ok' => false, 'err' => 'hub']); return; }
         echo HSH_Manage($hub, json_encode(['op' => 'shadeLog', 'args' => ['limit' => (int) ($_GET['limit'] ?? 300)]]));
+        return;
+    }
+    // op=caltimes: aktuell in HomeSuite (ShadingDevice) gespeicherte Fahrzeiten lesen (frei) — Kalibrier-Widget.
+    // Adressiert das Rollo ueber seine Positions-Variable (pos = posVid aus op=list) -> HSSH-Instanz.
+    if (($_GET['op'] ?? '') === 'caltimes') {
+        $iid = $calTarget();
+        echo json_encode(['ok' => ($iid > 0),
+            'timeOpening' => (int) @IPS_GetProperty($iid, 'TimeOpening'),
+            'timeClosing' => (int) @IPS_GetProperty($iid, 'TimeClosing')]);
         return;
     }
     // op=setclose: per-Rollo Sonnen-Schliessgrad (SunClose %) setzen (Token, schreibend – reiner Config-Wert, kein Geraetebefehl).
@@ -615,6 +664,22 @@ if ($api === 'shading') {
         if ($iid <= 0 || !function_exists('HSSH_SetControl')) { echo json_encode(['ok' => false, 'err' => 'inst']); return; }
         $ok = @HSSH_SetControl($iid, 'SunClose', (string) $pct);
         echo json_encode(['ok' => (bool) $ok, 'pct' => $pct]);
+        return;
+    }
+    // op=calmove|calstop|calsettime: Rollo-Kalibrierung (Token, schreibend/Geraetebefehl) -> ShadingDevice-RPC.
+    // Adressiert das Rollo ueber die Positions-Variable (pos = posVid aus op=list) -> HSSH-Instanz.
+    if (in_array(($_GET['op'] ?? ''), ['calmove', 'calstop', 'calsettime', 'calabort'], true)) {
+        if (!hash_equals($TOKEN, (string) ($_GET['key'] ?? ''))) { echo json_encode(['ok' => false, 'err' => 'forbidden']); return; }
+        $iid = $calTarget();
+        if ($iid <= 0 || !function_exists('HSSH_Manage')) { echo json_encode(['ok' => false, 'err' => 'inst']); return; }
+        // calabort = "Verwerfen": gibt den Kalibrier-Lock im Modul wieder frei (sonst
+        // bliebe die Automatik bis zum Timeout gesperrt).
+        $map  = ['calmove' => 'calMove', 'calstop' => 'calStop', 'calsettime' => 'calSetTime', 'calabort' => 'calAbort'];
+        $op   = (string) $_GET['op'];
+        $args = [];
+        if ($op === 'calmove')    { $args = ['dir' => (string) ($_GET['dir'] ?? '')]; }
+        if ($op === 'calsettime') { $args = ['dir' => (string) ($_GET['dir'] ?? ''), 'seconds' => (int) ($_GET['sec'] ?? 0)]; }
+        echo @HSSH_Manage($iid, json_encode(['op' => $map[$op], 'args' => $args]));
         return;
     }
     $sid = (int) (@IPS_GetObjectIDByIdent('LVB_ShadingAPI', 23491) ?: 0);
