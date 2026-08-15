@@ -2296,3 +2296,100 @@
   .scal-cancel[disabled]{opacity:.6;cursor:default}
   .scal-cur{margin-top:auto;font-size:.8em;color:var(--muted)} .scal-cur b{font-weight:600;color:var(--text)} .scal-cur b.hl{color:var(--accent)}
   .scal .sci{width:1.05em;height:1.05em;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;flex:none}
+
+  /* ---- Audio-Widgets: Groessen folgen der KACHEL, nicht festen Pixeln ----
+     container-type:size macht die Kachel zum Bezug; cqmin ist die kleinere ihrer
+     beiden Seiten. clamp() haelt das Ergebnis in lesbaren Grenzen - so bleibt eine
+     schmale Kachel am Handy bedienbar und eine grosse am Wandtablet nicht albern. */
+  .afw{position:absolute;inset:0;box-sizing:border-box;background:var(--surface);
+       container-type:size;display:flex;flex-direction:column;justify-content:center;
+       gap:clamp(5px,3.2cqmin,12px);padding:clamp(7px,4cqmin,14px);overflow:hidden}
+  .afw.afw-scroll{overflow:auto;justify-content:center}
+  /* Transportleiste */
+  .aftrans{display:flex;border:1px solid var(--line);border-radius:999px;
+           background:var(--surface-2);overflow:hidden;flex:none}
+  .aftrans button{flex:1;display:flex;align-items:center;justify-content:center;
+           height:clamp(30px,15cqmin,50px);background:transparent;color:var(--text);
+           border:0;cursor:pointer;padding:0}
+  .aftrans button.on{background:linear-gradient(135deg,var(--accent),var(--accent-2));color:#fff}
+  .aftrans svg{width:clamp(15px,7.5cqmin,26px);height:clamp(15px,7.5cqmin,26px)}
+  /* breite Schalter (Shuffle/Repeat) */
+  .afwide{display:flex;gap:clamp(5px,3cqmin,12px);flex:none}
+  .afwide button{flex:1;display:flex;align-items:center;justify-content:center;
+           gap:clamp(4px,2cqmin,8px);height:clamp(28px,13cqmin,46px);
+           border:1px solid var(--line);border-radius:var(--r-s,9px);background:var(--tile);
+           color:var(--text);font-size:clamp(10px,4.4cqmin,14px);cursor:pointer;min-width:0;padding:0 6px}
+  .afwide button.on{border-color:var(--accent);color:var(--accent);
+           background:color-mix(in oklab,var(--accent) 14%,transparent)}
+  .afwide svg{width:clamp(13px,6cqmin,20px);height:clamp(13px,6cqmin,20px);flex:none}
+  .afwide span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  /* Lautstaerkezeile */
+  .afvolrow{display:flex;align-items:center;gap:clamp(5px,3cqmin,12px);flex:none}
+  .afibtn{width:clamp(28px,13cqmin,46px);height:clamp(28px,13cqmin,46px);flex:none;
+           border:1px solid var(--line);border-radius:var(--r-s,9px);background:var(--tile);
+           color:var(--muted);display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0}
+  .afibtn.on{border-color:var(--accent);color:var(--accent);
+           background:color-mix(in oklab,var(--accent) 14%,transparent)}
+  .afibtn svg{width:clamp(13px,6cqmin,22px);height:clamp(13px,6cqmin,22px)}
+  .afbar{position:relative;flex:1;height:clamp(6px,2.6cqmin,11px);border-radius:999px;
+           background:var(--surface-2);border:1px solid var(--line);cursor:pointer;min-width:0}
+  .afbar>i{position:absolute;left:0;top:0;bottom:0;border-radius:999px;background:var(--accent);display:block}
+  .afvolnum{font-family:var(--fm);width:clamp(24px,10cqmin,40px);text-align:right;
+           font-size:clamp(9px,3.6cqmin,13px);flex:none}
+  /* Sleep-Zeile */
+  .afsleep{display:flex;align-items:center;gap:clamp(3px,2cqmin,7px);flex:none}
+  .afsleep>span.lbl{width:clamp(28px,12cqmin,50px);font-size:clamp(8px,3.2cqmin,12px);
+           color:var(--faint);flex:none}
+  .afsleep button{flex:1;height:clamp(22px,9cqmin,34px);border:1px solid var(--line);border-radius:7px;
+           background:var(--tile);color:var(--muted);font-size:clamp(8px,3.2cqmin,12px);cursor:pointer;
+           min-width:0;padding:0}
+  .afsleep button.arm{flex:none;padding:0 clamp(6px,3cqmin,12px)}
+  .afsleep button.arm.on{border-color:var(--accent);color:var(--accent);
+           background:color-mix(in oklab,var(--accent) 14%,transparent)}
+  /* Now-Playing */
+  .afnow{flex-direction:row;align-items:center;gap:clamp(7px,4cqmin,16px)}
+  .afnow .cov{width:min(40%,42cqmin);aspect-ratio:1;flex:none;border-radius:var(--r-s,9px);overflow:hidden}
+  .afnow .txt{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:clamp(1px,.8cqmin,4px)}
+  .afnow .tag{font-size:clamp(7px,2.6cqmin,11px);letter-spacing:.7px;text-transform:uppercase;
+           font-weight:700;color:var(--faint);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .afnow .l1{font-size:clamp(12px,6.5cqmin,24px);font-weight:700;line-height:1.15}
+  .afnow .l2{font-size:clamp(9px,4.2cqmin,16px);color:var(--muted)}
+  .afnow .l3{font-size:clamp(8px,3.4cqmin,13px);color:var(--faint)}
+  .afnow .l1,.afnow .l2,.afnow .l3{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .afnow .tm{display:flex;justify-content:space-between;font-family:var(--fm);
+           font-size:clamp(8px,3.2cqmin,12px);color:var(--muted)}
+  /* Zeilen mit Stepper (Quelle) */
+  .afsrow{display:flex;align-items:center;gap:clamp(4px,2.6cqmin,10px);min-width:0}
+  .afsrow>span.lbl{width:clamp(42px,18cqmin,86px);font-size:clamp(9px,3.6cqmin,13px);
+           color:var(--muted);flex:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .afsrow button{width:clamp(24px,10cqmin,38px);height:clamp(22px,9cqmin,34px);border:1px solid var(--line);
+           border-radius:7px;background:var(--tile);color:var(--text);cursor:pointer;flex:none;padding:0;
+           font-size:clamp(11px,4.4cqmin,16px)}
+  .afsrow .num{font-family:var(--fm);min-width:clamp(26px,11cqmin,44px);text-align:center;
+           font-size:clamp(9px,3.8cqmin,14px);flex:none}
+  .afsrow .nm{flex:1;min-width:0;font-size:clamp(9px,3.6cqmin,13px);overflow:hidden;
+           text-overflow:ellipsis;white-space:nowrap}
+  /* Raumleiste vertikal mittig */
+  .afrooms{align-items:center;justify-content:center;overflow:auto}
+  /* Radio-Chips + gemeinsame Kopfzeile der Audio-Kacheln */
+  .aftag{font-size:clamp(7px,2.8cqmin,11px);letter-spacing:.7px;text-transform:uppercase;
+         font-weight:700;color:var(--faint);flex:none}
+  .afchips{display:flex;flex-wrap:wrap;gap:clamp(4px,2.6cqmin,10px);align-content:flex-start}
+  .afchip{border:1px solid var(--line);border-radius:999px;background:var(--tile);color:var(--text);
+         font-size:clamp(9px,3.6cqmin,13px);padding:clamp(4px,2cqmin,8px) clamp(8px,4cqmin,15px);cursor:pointer}
+  .afchip.on{border-color:var(--accent);color:var(--accent);
+         background:color-mix(in oklab,var(--accent) 14%,transparent)}
+  /* Multiroom */
+  .afmr .hd{display:flex;justify-content:space-between;align-items:center;gap:8px;flex:none}
+  .afmr .hd button{font-size:clamp(9px,3.4cqmin,12px);color:var(--accent);background:none;border:0;cursor:pointer;padding:0}
+  .afmr .rows{flex:1;min-height:0;overflow:auto}
+  .afmr .r{display:flex;align-items:center;gap:clamp(5px,3cqmin,12px);
+         padding:clamp(4px,2.4cqmin,10px) 2px;border-top:1px solid var(--line-soft)}
+  .afmr .sw{width:clamp(16px,7cqmin,26px);height:clamp(16px,7cqmin,26px);border-radius:6px;flex:none}
+  .afmr .nm{flex:1;min-width:0;font-size:clamp(9px,3.8cqmin,14px);overflow:hidden;
+         text-overflow:ellipsis;white-space:nowrap}
+  /* Bibliothek: Groessen an die Kachel koppeln */
+  .alib{container-type:size}
+  .alib .alib-rail{width:clamp(96px,24cqmin,220px)}
+  .alib .alib-title{font-size:clamp(11px,4cqmin,19px)}
+  .alib .alib-prov,.alib .alib-pth{font-size:clamp(9px,3cqmin,13px)}

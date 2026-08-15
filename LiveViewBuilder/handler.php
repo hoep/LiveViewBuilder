@@ -955,7 +955,7 @@ if ($api === 'audio') {
         return;
     }
 
-    if ($op === 'playdirect') {                          // Radio: werbefreien HQ-Stream spielen (token)
+    if ($op === 'playdirect') {                          // Radio: HQ-Direktstream spielen (token)
         if (!hash_equals($TOKEN, (string) ($_GET['key'] ?? ''))) {
             http_response_code(403);
             echo json_encode(['ok' => false, 'err' => 'forbidden']);
