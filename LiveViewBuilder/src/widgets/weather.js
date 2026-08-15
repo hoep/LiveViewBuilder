@@ -280,6 +280,6 @@
     }
   }
   // Ein Wetter-Widget mit Stil-Umschaltung (Standard/Erweitert)
-  defWidget('weather',{label:'Wetter', paletteIcon:'cloudsun', size:[240,130], defaults:function(w){w.label='';w.wfmt='auto';}, render:wRenderFn, props:wPropsFn, wire:wWireFn, mount:_wMount, live:_wLive});
+  defWidget('weather',{label:'Wetter', cat:'Wetter & Zeit', paletteIcon:'cloudsun', size:[240,130], defaults:function(w){w.label='';w.wfmt='auto';}, render:wRenderFn, props:wPropsFn, wire:wWireFn, mount:_wMount, live:_wLive});
   // Alt-Typ (bestehende „Wetter+"-Widgets weiterhin gültig; nicht mehr in der Palette)
-  defWidget('weatherpro',{label:'Wetter+', noPalette:true, paletteIcon:'cloudsun', size:[340,220], defaults:function(w){w.label='';w.wfmt='auto';wEnsureExt(w);}, render:wRenderFn, props:wPropsFn, wire:wWireFn, mount:_wMount, live:_wLive});
+  defWidget('weatherpro',{label:'Wetter+', cat:'Wetter & Zeit', noPalette:true, paletteIcon:'cloudsun', size:[340,220], defaults:function(w){w.label='';w.wfmt='auto';wEnsureExt(w);}, render:wRenderFn, props:wPropsFn, wire:wWireFn, mount:_wMount, live:_wLive});

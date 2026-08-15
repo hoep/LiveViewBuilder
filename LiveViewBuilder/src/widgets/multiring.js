@@ -12,7 +12,14 @@
     var start=(w.mrStart!=null&&w.mrStart!=='')?parseFloat(w.mrStart):(donut?90:225);
     var end  =(w.mrEnd  !=null&&w.mrEnd  !=='')?parseFloat(w.mrEnd)  :(donut?-270:-45);
     var n=rings.length, outerR=94, innerLimit=(w.mrCenter&&w.mrCenter!=='off')?40:24;
-    var band=(outerR-innerLimit)/n, rw=Math.max(4,band*(w.mrWidth>0?(w.mrWidth/100):0.62));
+    // ECharts erwartet die Strichbreite in Pixeln, die Radien stehen aber in Prozent.
+    // Deshalb das Ringband erst in Pixel umrechnen (S/2 = halbe kuerzere Kachelkante = 100%),
+    // sonst waere die Ringdicke auf jeder Kachelgroesse gleich dick und das Verhaeltnis
+    // Dicke zu Abstand kippt. mrWidth bleibt „Anteil des Ringbands".
+    var band=(outerR-innerLimit)/n;
+    var S=Math.min((w.w||240),(w.h||240));
+    var bandPx=(band/100)*(S/2);
+    var rw=Math.max(3,bandPx*(w.mrWidth>0?(w.mrWidth/100):0.62));
     var track='rgba(127,127,127,0.16)', series=[];
     rings.forEach(function(r,i){
       var rad=outerR - i*band;
@@ -45,7 +52,7 @@
     }
   }
   defWidget('multiring',{
-    label:'Ring-Gauge', paletteIcon:'wchart', size:[240,240], noHover:true,
+    label:'Ring-Gauge', cat:'Diagramme', paletteIcon:'wchart', size:[240,240], noHover:true,
     defaults:function(w){w.mrMode='gauge';w.rings=[{vid:0,label:'Ring 1',min:0,max:100,color:'accent'}];},
     render:function(w){return '<div class="mr" style="position:absolute;inset:0"><div data-role="chart" style="position:absolute;inset:0"></div><div data-role="mrleg" class="mrleg"></div></div>';},
     props:function(w){

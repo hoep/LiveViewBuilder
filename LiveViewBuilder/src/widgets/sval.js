@@ -1,9 +1,20 @@
   // ===== Widget: Statistikwert (sval) — Min/Max/Ø einer geloggten Standardvariable ueber eine Periode =====
   defWidget('sval',{
-    label:'Statistik', paletteIcon:'wkpi', size:[200,96],
+    label:'Statistik', cat:'Anzeige', paletteIcon:'wkpi', size:[200,96],
     defaults:function(w){w.label='Ø Wert';w.cmpStage='day';w.statAvg=true;},
-    render:function(w){var al=w.align?(';text-align:'+w.align):'';var cnt=aggParts(w).length;var fs=w.valfs||(cnt>=2?15:26);
-      return '<div class="wv"><div class="wvbody" style="min-width:0'+al+'"><div class="l">'+escL(w.label||'')+(STAGECUR[cmpStage(w)]?' · '+STAGECUR[cmpStage(w)]:'')+'</div><div class="v" data-role="val" style="font-size:'+(w.valfs?w.valfs+'px':(cnt>=2?'var(--wf-txt)':'var(--wf-val)'))+';line-height:1.15">–</div></div></div>';},
+    // Benutzer-Groesse (w.valfs) bleibt dieselbe gespeicherte Zahl, wird aber als
+    // clamp(min, cqmin, max) umgesetzt: auf kleinen Kacheln lesbar, auf grossen mitwachsend.
+    render:function(w){var al=w.align?(';text-align:'+w.align):'';var cnt=aggParts(w).length;
+      // Mehrere Werte (Min/Ø/Max) passen auf schmalen Kacheln nicht in EINE Zeile. Frueher
+      // wurde die Zeile mit Ellipse gekappt und der letzte Wert fehlte einfach. Jetzt zwei
+      // Massnahmen zugleich: Klasse .vstats laesst die Zeile umbrechen (CSS), und die
+      // Schrift richtet sich zusaetzlich nach der KACHELBREITE (cqi) statt nur nach der
+      // Hoehe — je mehr Werte, desto schmaler das Budget je Wert.
+      var mul=(cnt>=3?5:6.5);
+      var fsz=w.valfs?('clamp('+Math.max(10,Math.round(w.valfs*0.62))+'px,'+(w.valfs*0.16).toFixed(1)+'cqmin,'+Math.round(w.valfs*1.5)+'px)')
+                     :(cnt>=2?('clamp(10px,min(15cqh,'+mul+'cqi),16px)'):'var(--wf-val)');
+      var lh=(cnt>=2?'':';line-height:1.15');  // mehrzeilig regelt .vstats die Zeilenhoehe
+      return '<div class="wv"><div class="wvbody" style="min-width:0'+al+'"><div class="l">'+escL(w.label||'')+(STAGECUR[cmpStage(w)]?' · '+STAGECUR[cmpStage(w)]:'')+'</div><div class="v'+(cnt>=2?' vstats':'')+'" data-role="val" style="font-size:'+fsz+lh+'">–</div></div></div>';},
     props:function(w){return row('Aggregationsstufe',stageSel('pSvStage',cmpStage(w)))
       +row('Werte','<label style="margin-right:10px"><input type="checkbox" id="pSvMin"'+(w.statMin?' checked':'')+'> Min</label>'
                    +'<label style="margin-right:10px"><input type="checkbox" id="pSvAvg"'+((w.statAvg||(!w.statMin&&!w.statMax&&!w.statAvg))?' checked':'')+'> Ø</label>'

@@ -74,14 +74,19 @@
     });
   }
   function cpRenderWheel(w){
-    var lbl=w.label?'<div style="font-size:11px;color:var(--muted);flex:none">'+escL(w.label)+'</div>':'';
-    var wheel='<div data-role="cwWheel" style="position:relative;flex:none;width:118px;height:118px;border-radius:50%;background:radial-gradient(circle at center,#fff,rgba(255,255,255,0) 72%),conic-gradient(from 0deg,hsl(0,100%,50%),hsl(60,100%,50%),hsl(120,100%,50%),hsl(180,100%,50%),hsl(240,100%,50%),hsl(300,100%,50%),hsl(360,100%,50%));box-shadow:inset 0 0 0 1px var(--line);cursor:crosshair;touch-action:none">'
-      +'<div data-role="cwHandle" style="position:absolute;left:50%;top:50%;width:15px;height:15px;margin:-7.5px 0 0 -7.5px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.45);background:#000;pointer-events:none"></div></div>';
-    var slider='<div style="display:flex;align-items:center;gap:8px;width:100%;flex:none">'
-      +'<div data-role="cwPrev" style="flex:none;width:26px;height:26px;border-radius:7px;border:1px solid var(--line);background:#000"></div>'
-      +'<div data-role="cwBar" style="position:relative;flex:1;height:16px;border-radius:8px;background:linear-gradient(90deg,#000,#fff);box-shadow:inset 0 0 0 1px var(--line);cursor:pointer;touch-action:none">'
-      +'<div data-role="cwBarH" style="position:absolute;top:50%;left:0%;width:15px;height:15px;margin:-7.5px 0 0 -7.5px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.45);background:#000;pointer-events:none"></div></div></div>';
-    return '<div style="height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:12px;box-sizing:border-box">'+lbl+wheel+slider+'</div>';
+    // Alle Masse aus der Kachelgroesse (die Kachel ist ein Groessen-Container). Die Griffe sitzen
+    // jetzt ueber transform:translate(-50%,-50%) mittig statt ueber einen festen Negativ-Margin —
+    // nur so bleibt die Positionierung bei variabler Griffgroesse richtig. cwPaint setzt weiterhin
+    // ausschliesslich left/top in Prozent, also aendert sich am Verhalten nichts.
+    var HS='clamp(12px,7cqmin,22px)'; // Griffdurchmesser (Kreis und Helligkeitsleiste)
+    var lbl=w.label?'<div style="font-size:clamp(10px,4.2cqmin,15px);color:var(--muted);flex:none">'+escL(w.label)+'</div>':'';
+    var wheel='<div data-role="cwWheel" style="position:relative;flex:none;width:min(100%,clamp(90px,62cqmin,260px));aspect-ratio:1;border-radius:50%;background:radial-gradient(circle at center,#fff,rgba(255,255,255,0) 72%),conic-gradient(from 0deg,hsl(0,100%,50%),hsl(60,100%,50%),hsl(120,100%,50%),hsl(180,100%,50%),hsl(240,100%,50%),hsl(300,100%,50%),hsl(360,100%,50%));box-shadow:inset 0 0 0 1px var(--line);cursor:crosshair;touch-action:none">'
+      +'<div data-role="cwHandle" style="position:absolute;left:50%;top:50%;width:'+HS+';height:'+HS+';transform:translate(-50%,-50%);border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.45);background:#000;pointer-events:none"></div></div>';
+    var slider='<div style="display:flex;align-items:center;gap:clamp(6px,4cqmin,14px);width:100%;flex:none">'
+      +'<div data-role="cwPrev" style="flex:none;width:clamp(20px,13cqmin,36px);height:clamp(20px,13cqmin,36px);border-radius:7px;border:1px solid var(--line);background:#000"></div>'
+      +'<div data-role="cwBar" style="position:relative;flex:1;height:'+HS+';border-radius:999px;background:linear-gradient(90deg,#000,#fff);box-shadow:inset 0 0 0 1px var(--line);cursor:pointer;touch-action:none">'
+      +'<div data-role="cwBarH" style="position:absolute;top:50%;left:0%;width:'+HS+';height:'+HS+';transform:translate(-50%,-50%);border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.45);background:#000;pointer-events:none"></div></div></div>';
+    return '<div style="height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:clamp(6px,4cqmin,14px);padding:clamp(8px,5cqmin,16px);box-sizing:border-box">'+lbl+wheel+slider+'</div>';
   }
   function cpLiveWheel(w,el,id,d,base,txt,on){
     if(w.varId!==id)return;cwArm(w,el);if(el.__cwDrag)return;
@@ -113,7 +118,8 @@
       if(rgb){dd[i]=rgb[0];dd[i+1]=rgb[1];dd[i+2]=rgb[2];dd[i+3]=255;}else{dd[i]=17;dd[i+1]=23;dd[i+2]=25;dd[i+3]=255;}}
     ctx.putImageData(img,0,0);
     if(root)cpLiveCie(w,root);} // Marker nachziehen (direkt lokal, nicht über WIDGETS[...])
-  function cpRenderCie(w){return '<div style="position:absolute;inset:0;padding:6px;box-sizing:border-box"><div style="position:relative;width:100%;height:100%"><canvas data-role="ciecanvas" style="width:100%;height:100%;border-radius:6px;display:block;cursor:crosshair"></canvas><div data-role="ciemk" style="position:absolute;width:12px;height:12px;border:2px solid #fff;border-radius:50%;transform:translate(-50%,-50%);box-shadow:0 0 3px #000;pointer-events:none;left:50%;top:50%"></div></div></div>';}
+  // Das Zahlenraster von drawCie bleibt bewusst bei 110x110 (Rechenaufwand) — das Canvas wird per CSS skaliert.
+  function cpRenderCie(w){return '<div style="position:absolute;inset:0;padding:clamp(4px,3cqmin,10px);box-sizing:border-box"><div style="position:relative;width:100%;height:100%"><canvas data-role="ciecanvas" style="width:100%;height:100%;border-radius:6px;display:block;cursor:crosshair"></canvas><div data-role="ciemk" style="position:absolute;width:clamp(10px,6cqmin,20px);height:clamp(10px,6cqmin,20px);border:2px solid #fff;border-radius:50%;transform:translate(-50%,-50%);box-shadow:0 0 3px #000;pointer-events:none;left:50%;top:50%"></div></div></div>';}
   function cpLiveCie(w,el,id,d,base,txt,on){var lx=w.varId&&_lastVals[w.varId],ly=w.varId2&&_lastVals[w.varId2],mk=$('[data-role=ciemk]',el);if(!mk)return;var x=lx?parseFloat(String(lx.v).replace(',','.')):NaN,y=ly?parseFloat(String(ly.v).replace(',','.')):NaN;if(!isNaN(x))mk.style.left=Math.max(0,Math.min(100,x/0.75*100))+'%';if(!isNaN(y))mk.style.top=Math.max(0,Math.min(100,(1-y/0.85)*100))+'%';}
   function cpClickCie(w,el,e){var cv=$('[data-role=ciecanvas]',el);if(!cv)return false;var rb=cv.getBoundingClientRect();var fx=Math.max(0,Math.min(1,(e.clientX-rb.left)/rb.width)),fy=Math.max(0,Math.min(1,(e.clientY-rb.top)/rb.height));var x=fx*0.75,y=(1-fy)*0.85;if(w.varId)setVar(w.varId,Math.round(x*1000)/1000);if(w.varId2)setVar(w.varId2,Math.round(y*1000)/1000);var mk=$('[data-role=ciemk]',el);if(mk){mk.style.left=(fx*100)+'%';mk.style.top=(fy*100)+'%';}return true;}
 
@@ -146,17 +152,17 @@
     var chs=[['r','R','#f2685a'],['g','G','#39d08a'],['b','B','#5ab6ff']];
     var rows=chs.map(function(c){
       // data-role MUSS 'ch' bleiben — [data-role=range] wuerde in _wChange zusaetzlich den Rohwert 0..255 schreiben
-      return '<div style="display:flex;align-items:center;gap:8px">'
-        +'<span style="width:12px;text-align:center;font-size:12px;font-weight:700;color:'+c[2]+';flex:none">'+c[1]+'</span>'
+      return '<div style="display:flex;align-items:center;gap:clamp(6px,4cqmin,12px)">'
+        +'<span style="width:clamp(12px,5cqmin,18px);text-align:center;font-size:clamp(10px,4cqmin,14px);font-weight:700;color:'+c[2]+';flex:none">'+c[1]+'</span>'
         +'<input class="hsrange" type="range" data-role="ch" data-ch="'+c[0]+'" data-col="'+c[2]+'" min="0" max="255" step="1" value="0" oninput="_rgbInput(this)" style="flex:1;min-width:0;background:linear-gradient(90deg,'+c[2]+' 0%,'+c[2]+' 0%,var(--surface-2) 0%,var(--surface-2) 100%)">'
-        +'<span data-num="'+c[0]+'" style="width:30px;text-align:right;font-family:var(--fm);font-size:12px;color:var(--muted);flex:none">0</span>'
+        +'<span data-num="'+c[0]+'" style="width:clamp(28px,10cqmin,42px);text-align:right;font-family:var(--fm);font-size:clamp(10px,4cqmin,14px);color:var(--muted);flex:none">0</span>'
       +'</div>';
     }).join('');
-    return '<div style="height:100%;display:flex;flex-direction:column;justify-content:center;gap:7px;padding:10px 12px;box-sizing:border-box">'
-      +'<div style="display:flex;align-items:center;gap:8px">'
-        +'<span data-role="sw" style="width:22px;height:22px;border-radius:6px;border:1px solid var(--line);background:#000;flex:none"></span>'
-        +(w.label?'<span style="font-size:12px;color:var(--muted);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+escL(w.label)+'</span>':'<span style="flex:1"></span>')
-        +'<span data-role="hex" style="font-family:var(--fm);font-size:11px;color:var(--muted);flex:none">#000000</span>'
+    return '<div style="height:100%;display:flex;flex-direction:column;justify-content:center;gap:clamp(5px,3cqmin,11px);padding:clamp(7px,4cqmin,14px) clamp(9px,5cqmin,16px);box-sizing:border-box">'
+      +'<div style="display:flex;align-items:center;gap:clamp(6px,4cqmin,12px)">'
+        +'<span data-role="sw" style="width:clamp(18px,11cqmin,30px);height:clamp(18px,11cqmin,30px);border-radius:6px;border:1px solid var(--line);background:#000;flex:none"></span>'
+        +(w.label?'<span style="font-size:clamp(10px,4cqmin,14px);color:var(--muted);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+escL(w.label)+'</span>':'<span style="flex:1"></span>')
+        +'<span data-role="hex" style="font-family:var(--fm);font-size:clamp(9px,3.4cqmin,13px);color:var(--muted);flex:none">#000000</span>'
       +'</div>'+rows+'</div>';
   }
   function cpLiveSlider(w,el,id,d,base,txt,on){
@@ -177,8 +183,8 @@
     var mine=parseInt(String(col).replace('#',''),16);if(isNaN(mine))mine=0;
     var cur=w.varId&&_lastVals[w.varId];
     var active=!!(cur&&parseInt(String(cur.v).replace(',','.'),10)===mine);
-    var chk='<svg data-role="chk" class="i" style="display:'+(active?'block':'none')+';position:absolute;top:5px;right:5px;width:16px;height:16px;fill:none;stroke:#fff;stroke-width:3;stroke-linecap:round;stroke-linejoin:round;filter:drop-shadow(0 0 2px rgba(0,0,0,.65))"><use href="#ic-check"/></svg>';
-    var lbl=w.label?'<div style="position:absolute;left:4px;right:4px;bottom:5px;text-align:center;font-size:11px;line-height:1.1;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.7);pointer-events:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+escL(w.label)+'</div>':'';
+    var chk='<svg data-role="chk" class="i" style="display:'+(active?'block':'none')+';position:absolute;top:5px;right:5px;width:clamp(12px,14cqmin,26px);height:clamp(12px,14cqmin,26px);fill:none;stroke:#fff;stroke-width:3;stroke-linecap:round;stroke-linejoin:round;filter:drop-shadow(0 0 2px rgba(0,0,0,.65))"><use href="#ic-check"/></svg>';
+    var lbl=w.label?'<div style="position:absolute;left:4px;right:4px;bottom:5px;text-align:center;font-size:clamp(9px,4.5cqmin,15px);line-height:1.1;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.7);pointer-events:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+escL(w.label)+'</div>':'';
     return '<div data-role="swatch" style="position:absolute;inset:6px;border-radius:12px;background:'+esc(col)+';border:1px solid var(--line);box-shadow:'+(active?'0 0 0 3px var(--accent)':'none')+';cursor:pointer">'+chk+lbl+'</div>';
   }
   function cpLiveButton(w,el,id,d,base,txt,on){
@@ -194,12 +200,12 @@
   }
 
   // ---------------------------------------------------------------- Variante „box" (reine Anzeige)
-  function cpRenderBox(w){return '<div style="position:absolute;inset:0;padding:8px;box-sizing:border-box;display:flex;flex-direction:column;gap:6px"><div data-role="sw" style="flex:1;border-radius:9px;border:1px solid var(--line);background:#333;min-height:20px;cursor:pointer"></div>'+(w.label?'<div style="font-size:11px;color:var(--muted);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escL(w.label)+'</div>':'')+'</div>';}
+  function cpRenderBox(w){return '<div style="position:absolute;inset:0;padding:clamp(6px,4cqmin,14px);box-sizing:border-box;display:flex;flex-direction:column;gap:clamp(4px,3cqmin,10px)"><div data-role="sw" style="flex:1;border-radius:9px;border:1px solid var(--line);background:#333;min-height:20px;cursor:pointer"></div>'+(w.label?'<div style="font-size:clamp(10px,4.2cqmin,15px);color:var(--muted);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escL(w.label)+'</div>':'')+'</div>';}
   function cpLiveBox(w,el,id,d,base,txt,on){var sw=$('[data-role=sw]',el);if(sw){var n=parseInt(d.v)||0;sw.style.background='#'+('000000'+(n&0xFFFFFF).toString(16)).slice(-6);}}
 
   // ---------------------------------------------------------------- Registry
   defWidget('colorpick',{
-    label:'Farbwähler', paletteIcon:'wdial', size:CP_SIZE.wheel,
+    label:'Farbwähler', cat:'Steuerung', paletteIcon:'wdial', size:CP_SIZE.wheel,
     defaults:function(w){w.cmode='wheel';w.label='Farbe';w.color='#ff8800';}, // Standard = Farbkreis; w.color ist die Preset-Farbe der Tasten-Variante
     mount:function(w){if(cpMode(w)==='cie')drawCie(w);},
     render:function(w){

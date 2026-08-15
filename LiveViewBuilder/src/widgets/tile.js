@@ -1,6 +1,6 @@
   // ===== Widget: Kachel (Tile) — Icon-Badge mit Name/Status, Zustands-Styling =====
   defWidget('tile',{
-    label:'Kachel', paletteIcon:'wtile', size:[190,64],
+    label:'Kachel', cat:'Grundelemente', paletteIcon:'wtile', size:[190,64],
     render:function(w){
       if(w.iconOnly)return '<div class="htile htile-icon"><div class="htico" data-role="badge">'+iconSVG(w.icon||'bulb')+'</div></div>'; // nur Icon, füllt die Kachel
       return '<div class="htile"><div class="htbadge" data-role="badge">'+iconSVG(w.icon||'bulb')+'</div><div class="httext"><div class="htname">'+escL(w.label||'')+'</div><div class="htstate" data-role="val">–</div></div></div>';},

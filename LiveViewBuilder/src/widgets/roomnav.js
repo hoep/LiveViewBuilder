@@ -97,7 +97,7 @@
     }
 
     defWidget('roomnav',{
-      label:'Raum-Navigation', paletteIcon:'home', size:[720,56],
+      label:'Raum-Navigation', cat:'Leisten (alle Seiten)', paletteIcon:'home', size:[720,56],
       defaults:function(w){w.orient='horz';w.tabStyle='ind';w.showAbbr=false;w.icons=true;},
       render:function(w){return rnRender(w);},
       props:function(w){return rnProps(w);},

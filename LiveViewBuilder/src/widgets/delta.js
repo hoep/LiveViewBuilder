@@ -1,6 +1,6 @@
   // ===== Widget: Delta — Trend-Chip mit Pfeil, Text und Kennung =====
   defWidget('delta',{
-    label:'Delta', paletteIcon:'wdelta', size:[160,88],
+    label:'Delta', cat:'Anzeige', paletteIcon:'wdelta', size:[160,88],
     defaults:function(w){w.tone='ok';w.dir='up';w.text='+6 %';w.label='Autarkie';},
     render:function(w){return '<div class="hdelta t-'+(w.tone||'ok')+'" data-role="delroot"><div class="hdmain"><span data-role="arrow">'+(w.dir==='dn'?'▼':(w.dir==='flat'?'→':'▲'))+'</span> <span data-role="val">'+esc(w.text||'')+'</span></div>'+((w.label||w.cmpOn)?'<div class="hdcap" data-role="cap">'+escL(w.label||'')+'</div>':'')+'</div>';},
     props:function(w){return (w.type==='delta'?(row('Text','<input id="pText" value="'+esc(w.text||'')+'" placeholder="+6 %"'+(w.cmpOn?' disabled':'')+'>')+(w.cmpOn?'':row('Richtung',dirSel('pDir',w.dir))+row('Farbe','<select id="pTone">'+[['ok','OK'],['crit','Fehler'],['warn','Warnung'],['muted','Neutral']].map(function(o){return '<option value="'+o[0]+'"'+((w.tone||'ok')===o[0]?' selected':'')+'>'+o[1]+'</option>';}).join('')+'</select>'))):'');},

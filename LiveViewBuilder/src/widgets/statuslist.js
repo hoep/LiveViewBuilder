@@ -1,6 +1,7 @@
 // statuslist widget
 defWidget('statuslist',{
   label:'Status-Liste',
+  cat:'Anzeige',
   paletteIcon:'wlist',
   size:[220,160],
   defaults:function(w){w.rows=[{label:'Dienst 1',vid:0},{label:'Dienst 2',vid:0}];},

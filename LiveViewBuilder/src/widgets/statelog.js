@@ -23,7 +23,7 @@
   }
   var _slogT={};
   defWidget('statelog',{
-    label:'Zustands-Verlauf', paletteIcon:'wchart', size:[300,240],
+    label:'Zustands-Verlauf', cat:'Anzeige', paletteIcon:'wchart', size:[300,240],
     defaults:function(w){w.hours=24;w.count=20;w.states=[{v:'1',color:'warm',label:'Erkannt'},{v:'0',color:'muted',label:'Frei'}];},
     render:function(w){return '<div class="wslog">'+(w.label?'<div class="slog-head">'+escL(w.label)+'</div>':'')+'<div data-role="slog" class="slog-list"></div></div>';},
     mount:function(w){_slogFetch(w);},

@@ -86,7 +86,7 @@
   }
   var _battT={};
   defWidget('battlist',{
-    label:'Batterie-Übersicht', paletteIcon:'battery', size:[300,220], noHover:true,
+    label:'Batterie-Übersicht', cat:'Anzeige', paletteIcon:'battery', size:[300,220], noHover:true,
     defaults:function(w){w.label='Batterien';w.max=60;},
     render:function(w){
       var fv='';

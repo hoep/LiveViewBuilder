@@ -156,7 +156,7 @@
       scMg(idx).then(function(j){st.d=j;st.err='';scPaint(w);}).catch(function(){st.err='net';scPaint(w);}); }
 
     defWidget('suncompass',{
-      label:'Sonnenstandsdiagramm', paletteIcon:'sun', size:[360,470],
+      label:'Sonnenstandsdiagramm', cat:'HomeSuite · Beschattung', paletteIcon:'sun', size:[360,470],
       defaults:function(w){w.bind='session';w.session='shade';},
       render:function(w){return scRender(w);},
       mount:function(w){var el=scEl(w);if(!el)return;

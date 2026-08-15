@@ -53,7 +53,7 @@
     }
 
     defWidget('zonesync',{
-      label:'Zonen-Sync', paletteIcon:'thermostat', size:[320,44],
+      label:'Zonen-Sync', cat:'HomeSuite · Zeitplan (Heizung/Beschattung)', paletteIcon:'thermostat', size:[320,44],
       defaults:function(w){w.bind='session';w.session='heat';},
       render:function(w){return zsRender(w);},
       mount:function(w){var el=zsEl(w);if(!el)return;zsLoad(w);

@@ -10,12 +10,14 @@
   //  die Power/Brightness-Variablen; Farbe/CT ueber ?api=light&op=manage (Token).
   (function(){
     if(!document.getElementById('lxfamCss')){var _s=document.createElement('style');_s.id='lxfamCss';_s.textContent=
-      '.lxc-cct{margin-top:6px;display:flex;align-items:center;gap:6px}'
-      +'.lxc-cct input[type=range]{flex:1;height:6px;border-radius:6px;background:linear-gradient(90deg,#ff9d3b,#fff,#9dc4ff)}'
-      +'.lxc-col{margin-top:6px;display:flex;align-items:center;gap:6px}'
-      +'.lxc-col label{font-size:11px;color:var(--muted)}'
-      +'.lxc-col input[type=color]{width:34px;height:22px;padding:0;border:1px solid var(--line,rgba(128,128,128,.35));border-radius:6px;background:none;cursor:pointer}'
-      +'.lxr-arm{margin-left:6px;font-size:11px;padding:2px 8px;border-radius:12px;border:1px solid var(--line,rgba(128,128,128,.35));background:none;color:var(--muted);cursor:pointer}'
+      // Masse aus der Kachelgroesse (die Kachel ist ein Groessen-Container); Untergrenzen so,
+      // dass Farbfeld und Scharf-Taste am Handy noch bedienbar bleiben (Tippziel >= 22px).
+      '.lxc-cct{margin-top:clamp(4px,2cqmin,9px);display:flex;align-items:center;gap:clamp(4px,2cqmin,9px)}'
+      +'.lxc-cct input[type=range]{flex:1;height:clamp(6px,2.5cqmin,10px);border-radius:6px;background:linear-gradient(90deg,#ff9d3b,#fff,#9dc4ff)}'
+      +'.lxc-col{margin-top:clamp(4px,2cqmin,9px);display:flex;align-items:center;gap:clamp(4px,2cqmin,9px)}'
+      +'.lxc-col label{font-size:clamp(10px,3.6cqmin,13px);color:var(--muted)}'
+      +'.lxc-col input[type=color]{width:clamp(30px,9cqmin,44px);height:clamp(22px,6.5cqmin,30px);padding:0;border:1px solid var(--line,rgba(128,128,128,.35));border-radius:6px;background:none;cursor:pointer}'
+      +'.lxr-arm{margin-left:6px;font-size:clamp(10px,3.4cqmin,13px);padding:clamp(4px,1.6cqmin,7px) clamp(8px,3cqmin,13px);min-height:22px;border-radius:12px;border:1px solid var(--line,rgba(128,128,128,.35));background:none;color:var(--muted);cursor:pointer}'
       +'.lxr-arm.armed{background:var(--accent);border-color:var(--accent);color:#fff}';
       document.head.appendChild(_s);}
     var _lxData=null, _lxErr='';
@@ -183,7 +185,7 @@
 
     function lxDef(kind,label,defSize){
       defWidget(kind,{
-        label:label, paletteIcon:'bulb', size:defSize,
+        label:label, cat:'HomeSuite · Licht', paletteIcon:'bulb', size:defSize,
         defaults:function(w){w._kind=(kind==='lightroom')?'room':'grid';if(kind==='lightroom'){w.bind='session';w.session='light';}},
         render:function(w){w._kind=(kind==='lightroom')?'room':'grid';return lxRender(w);},
         mount:function(w){w._kind=(kind==='lightroom')?'room':'grid';var el=lxEl(w);if(!el)return;

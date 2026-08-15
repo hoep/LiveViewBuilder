@@ -1,6 +1,6 @@
   // ===== Widget: Linie (line) — Richtung, Breite, optionale Pfeilspitzen =====
   defWidget('line',{
-    label:'Linie', paletteIcon:'wline', size:[160,60],
+    label:'Linie', cat:'Grundelemente', paletteIcon:'wline', size:[160,60],
     render:function(w){var dir=w.ldir||'h',c=(w.color||'#00cdab'),lw=(w.lw||3);
       var pts={h:[4,50,96,50],v:[50,4,50,96],d:[4,4,96,96]}[dir]||[4,50,96,50];
       var mid='lm'+w.id,defs='',m1='',m2='';

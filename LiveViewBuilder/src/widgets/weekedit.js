@@ -51,7 +51,7 @@
     h+='<div class="wep-head"><div class="wep-title">'+esc(st.name)+(st.active?'':' <span class="wep-off">inaktiv</span>')+(st.dirty?' <b class="wep-unsaved">· ungespeichert</b>':'')+'</div>';
     // Gut sichtbarer Slot-Hinzufügen-Knopf in der Kopfzeile (zusätzlich zum Editor-Kasten).
     h+='<div class="wep-hact" style="margin-left:auto;display:flex;gap:6px;align-items:center">'
-      +'<button class="wep-hadd" data-weadd="1"'+(_atMax?' disabled title="Max. '+_mw+' Ein-Fenster/Tag (Controller-Limit)"':' title="Schaltpunkt einfügen"')+' style="background:var(--accent-2,var(--accent));color:#fff;border:0;border-radius:6px;padding:4px 12px;font-weight:600;cursor:'+(_atMax?'not-allowed;opacity:.4':'pointer')+'">+ Slot</button>'
+      +'<button class="wep-hadd" data-weadd="1"'+(_atMax?' disabled title="Max. '+_mw+' Ein-Fenster/Tag (Controller-Limit)"':' title="Schaltpunkt einfügen"')+' style="background:var(--accent-2,var(--accent));color:#fff;border:0;border-radius:6px;padding:clamp(3px,1.4cqmin,7px) clamp(8px,3.4cqmin,16px);min-height:clamp(24px,7cqmin,34px);font-size:clamp(10px,3.2cqmin,13px);font-weight:600;cursor:'+(_atMax?'not-allowed;opacity:.4':'pointer')+'">+ Slot</button>'
       +'<div class="wep-now">'+(st.now!=null?('jetzt: <b style="color:'+weAct(st,st.now).color+'">'+esc(weAct(st,st.now).name)+'</b>'):'')+'</div></div></div>';
     // Wochentage
     h+='<div class="wep-days">'+WE_DAYS.map(function(d,i){var gg=weGroupForDay(st,i);return '<button class="wep-day'+(i==st.day?' on':'')+(gg?'':' empty')+'" data-weday="'+i+'">'+d+'</button>';}).join('')+'</div>';
@@ -174,7 +174,7 @@
 
   // ============================ WIDGET ============================
   defWidget('weekedit',{
-    label:'Wochenplan-Editor', paletteIcon:'calendar', size:[720,460],
+    label:'Wochenplan-Editor', cat:'Steuerung', paletteIcon:'calendar', size:[720,460],
     defaults:function(w){w.label='Wochenplan';},
     render:function(w){return weRender(w);},
     mount:function(w){var el=weElOf(w);if(!el)el=weElOf(w,$('#ovcanvas'));if(!el)return;var st=weSt(w);

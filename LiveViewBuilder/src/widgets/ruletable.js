@@ -30,14 +30,18 @@
   function _rtValOf(vid){var d=_lastVals[vid];if(!d)return null;return d;}
 
   defWidget('ruletable',{
-    label:'Regel-Tabelle', paletteIcon:'wselect', size:[900,300],
+    label:'Regel-Tabelle', cat:'Steuerung', paletteIcon:'wselect', size:[900,300],
     defaults:function(w){w.cols=[];w.rowLabels=[];w.items=[];},
     render:function(w){
       var cols=w.cols||[], rows=w.rowLabels||[], map=_rtItemMap(w);
       var actC=-1; cols.forEach(function(c,i){ if(actC<0 && c.type==='bool' && /aktiv|anwenden|enable|ein/i.test(c.label||'')) actC=i; });
-      var h='<div class="rt" data-actc="'+actC+'">';
+      // Grundschrift der Tabelle waechst mit der Kachel; die Zellen (.rtv/.rtsel) erben sie,
+      // weil styles.css dort keine eigene Groesse setzt. --rt-fs steht zusaetzlich am Wurzel-div
+      // bereit, damit spaetere Regeln daran anknuepfen koennen.
+      var rtfs='clamp(11px,2.4cqmin,15px)';
+      var h='<div class="rt" data-actc="'+actC+'" style="--rt-fs:'+rtfs+'">';
       h+='<div class="rthead"><span class="rth-eyebrow">'+escL(w.label||'Regeln')+'</span><span class="rth-meta">'+rows.length+' Regeln · '+cols.length+' Felder</span></div>';
-      h+='<div class="rtscroll"><table class="rtt"><thead><tr><th class="rtrl">Regel</th>';
+      h+='<div class="rtscroll"><table class="rtt" style="font-size:'+rtfs+'"><thead><tr><th class="rtrl">Regel</th>';
       cols.forEach(function(c){
         var cl=(c.type==='num')?' class="rt-num"':'';
         var u =(c.type==='num'&&c.unit)?'<small>'+esc(c.unit)+'</small>':'';

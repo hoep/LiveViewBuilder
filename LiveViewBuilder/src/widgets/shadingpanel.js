@@ -15,7 +15,9 @@
   var SPAN_CARDLIST=['','N','NO','O','SO','S','SW','W','NW'];
   // Vorbelegung Fenster-Ausrichtung je Geräte-ID (aus User-Angaben; im Editor überschreibbar)
   var SPAN_ORIENT0={28117:'N',24100:'W',17932:'S',57271:'S',49885:'S',39715:'W',30490:'W',22196:'S',11288:'S',50655:'S',39848:'S',22145:'N',58077:'O',31918:'O',20571:'N',31153:'S',56448:'S'};
-  var SPAN_SUNSVG='<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2v2.2M12 19.8V22M4.2 4.2l1.6 1.6M18.2 18.2l1.6 1.6M2 12h2.2M19.8 12H22M4.2 19.8l1.6-1.6M18.2 5.8l1.6-1.6"/></svg>';
+  // Sonnen-Glyphe in 1em: die Groesse folgt damit der Schrift der Zeile (zentral ueber .rlg-sun
+  // steuerbar) statt bei 15px festzukleben.
+  var SPAN_SUNSVG='<svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2v2.2M12 19.8V22M4.2 4.2l1.6 1.6M18.2 18.2l1.6 1.6M2 12h2.2M19.8 12H22M4.2 19.8l1.6-1.6M18.2 5.8l1.6-1.6"/></svg>';
   function spanNorthDev(w){return (w&&w.northDev!=null)?(+w.northDev||0):19;}
   function spanAcc(w){return (w&&w.sunAcc!=null)?(+w.sunAcc||90):90;}
   function spanOri(w,id){var o=w&&w.orient&&w.orient[id];if(o===undefined||o===null)o=SPAN_ORIENT0[id];return o||'';}
@@ -404,7 +406,7 @@
     // Bleibt registriert, damit die noch nicht migrierte Rollos-Seite rendert; aus der Palette
     // genommen, damit keine neuen mehr platziert werden.
     noPalette:true,
-    label:'Beschattungs-Panel (alt/Monolith)', paletteIcon:'cover', size:[980,600],
+    label:'Beschattungs-Panel (alt/Monolith)', cat:'HomeSuite · Beschattung', paletteIcon:'cover', size:[980,600],
     defaults:function(w){w.label='Beschattung';},
     render:function(w){return spanRender(w);},
     mount:function(w){var el=spanElOf(w);if(!el)el=spanElOf(w,$('#ovcanvas'));if(!el)return;spanStartTimer();spanFetch(w,el);},

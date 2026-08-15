@@ -1,9 +1,11 @@
   // ===== Widget: Zählerwert (cval) — Verbrauch einer Periode aus einer Zählervariable =====
   defWidget('cval',{
-    label:'Zählerwert', paletteIcon:'wkpi', size:[190,96],
+    label:'Zählerwert', cat:'Anzeige', paletteIcon:'wkpi', size:[190,96],
     defaults:function(w){w.label='Verbrauch';w.cmpStage='day';},
+    // Die eingestellte Wert-Groesse bleibt die Obergrenze (bestehende Seiten springen nicht um),
+    // auf einer kleinen Kachel schrumpft der Wert aber mit, statt ueberzulaufen.
     render:function(w){var al=w.align?(';text-align:'+w.align):'';var fs=w.valfs||26;
-      return '<div class="wv"><div class="wvbody" style="min-width:0'+al+'"><div class="l">'+escL(w.label||'')+(STAGECUR[cmpStage(w)]?' · '+STAGECUR[cmpStage(w)]:'')+'</div><div class="v" data-role="val" style="font-size:'+(w.valfs?w.valfs+'px':'var(--wf-val)')+'">–</div></div></div>';},
+      return '<div class="wv"><div class="wvbody" style="min-width:0'+al+'"><div class="l">'+escL(w.label||'')+(STAGECUR[cmpStage(w)]?' · '+STAGECUR[cmpStage(w)]:'')+'</div><div class="v" data-role="val" style="font-size:'+(w.valfs?'min('+w.valfs+'px,26cqmin)':'var(--wf-val)')+'">–</div></div></div>';},
     props:function(w){return row('Aggregationsstufe',stageSel('pCvStage',cmpStage(w)))
       +row('Einheit','<input id="pCvUnit" value="'+esc(w.unit||'')+'">')
       +row('Wert-Größe','<input id="pCvFs" type="number" value="'+(w.valfs||26)+'">')

@@ -35,7 +35,8 @@
     else if(period==='year'){for(var m=0;m<12;m++)push((m+0.5)/12,_MN[m]);}
     else if(period==='hour'){var sh=new Date(from*1000).getHours();[0,15,30,45,60].forEach(function(mm){push(mm/60,(sh<10?'0':'')+sh+':'+(mm===60?'00':(mm<10?'0'+mm:mm)));});}
     else{function tl(f){var d=new Date((from+span*f)*1000);return ('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2);}push(0,tl(0));push(.5,tl(.5));push(1,tl(1));}
-    return '<div class="stl-axis" style="position:relative;height:13px;font-size:9px;color:var(--faint);margin-top:2px">'+out.join('')+'</div>';
+    // Achsenhoehe/-schrift aus der Kachel ableiten, sonst frisst die Achse auf flachen Kacheln den Balken.
+    return '<div class="stl-axis" style="position:relative;height:clamp(10px,9cqh,16px);font-size:clamp(7px,2.8cqmin,11px);color:var(--faint);margin-top:2px">'+out.join('')+'</div>';
   }
   var _STL_HATCH='repeating-linear-gradient(45deg,var(--line-soft) 0 5px,transparent 5px 10px)';
   function _stlFetch(w){
@@ -101,12 +102,15 @@
   }
   var _stlT={};
   defWidget('statetl',{
-    label:'Zustands-Timeline', paletteIcon:'wchart', size:[360,160], noHover:true, // reine Anzeige; nur interne Perioden-Pills sind klickbar -> kein Ganz-Widget-Hover
+    label:'Zustands-Timeline', cat:'Diagramme', paletteIcon:'wchart', size:[360,160], noHover:true, // reine Anzeige; nur interne Perioden-Pills sind klickbar -> kein Ganz-Widget-Hover
     defaults:function(w){w.range={mode:'period',unit:'day'};w.orient='h';w.items=[{vid:0,label:'Signal 1'}];w.states=[{v:'1',color:'ok',label:'Ein'},{v:'0',color:'crit',label:'Aus'}];},
     render:function(w){
-      var head=_stlHead(w),top=head?34:6;
-      if(w.showLog)return '<div class="wstatetl wstatetl-log" style="position:absolute;inset:0;padding:8px 10px;box-sizing:border-box">'+head+'<div class="stl-barbox"><div data-role="stl" style="position:absolute;inset:0"></div></div><div data-role="slog" class="slog-list"></div></div>';
-      return '<div class="wstatetl" style="position:absolute;inset:0;padding:8px 10px;box-sizing:border-box">'+head+'<div data-role="stl" style="position:absolute;inset:'+top+'px 10px 6px 10px"></div></div>';
+      // Kopf vorhanden -> mehr Platz oben freilassen. Werte als clamp, damit der Balkenbereich
+      // auf flachen Kacheln nicht vom festen 34px-Offset aufgefressen wird.
+      var head=_stlHead(w),pad='clamp(5px,3cqmin,10px) clamp(6px,3.4cqmin,12px)';
+      var inset=(head?'clamp(22px,14cqh,38px)':'clamp(4px,2cqmin,8px)')+' clamp(6px,3cqmin,12px) clamp(4px,2.4cqmin,8px)';
+      if(w.showLog)return '<div class="wstatetl wstatetl-log" style="position:absolute;inset:0;padding:'+pad+';box-sizing:border-box">'+head+'<div class="stl-barbox"><div data-role="stl" style="position:absolute;inset:0"></div></div><div data-role="slog" class="slog-list"></div></div>';
+      return '<div class="wstatetl" style="position:absolute;inset:0;padding:'+pad+';box-sizing:border-box">'+head+'<div data-role="stl" style="position:absolute;inset:'+inset+'"></div></div>';
     },
     mount:function(w){_stlFetch(w);},
     click:function(w,el,e){

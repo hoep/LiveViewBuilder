@@ -9,7 +9,7 @@
     if(typeof state==='undefined'||!state.widgets)return;var now=new Date();
     allWidgets().forEach(function(w){if(w.type==='clock'&&(w.showSec||w.h12))_clkUpd(w,now);});},1000);}
   defWidget('clock',{
-    label:'Uhr', paletteIcon:'clock', size:[170,84],
+    label:'Uhr', cat:'Wetter & Zeit', paletteIcon:'clock', size:[170,84],
     defaults:function(w){w.clkShow='both';},
     render:function(w){var s=w.clkShow||'both';var tr=(w.showSec||w.h12)?'ctime':'time';return '<div class="hclock">'+((s!=='date')?'<div class="hctime" data-role="'+tr+'">–</div>':'')+((s!=='time')?'<div class="hcdate" data-role="date"></div>':'')+'</div>';},
     props:function(w){return row('Anzeige','<select id="pClk"><option value="both"'+((w.clkShow||'both')==='both'?' selected':'')+'>Uhrzeit + Datum</option><option value="time"'+(w.clkShow==='time'?' selected':'')+'>nur Uhrzeit</option><option value="date"'+(w.clkShow==='date'?' selected':'')+'>nur Datum</option></select>')

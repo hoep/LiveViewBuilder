@@ -33,13 +33,18 @@
   }
   defWidget('chart',{
     label:'Chart',
+    cat:'Diagramme',
     paletteIcon:'wchart',
     size:[340,190],
     noHover:true, // interner Perioden-Klick (‹ ›) soll KEINEN Ganz-Widget-Hover erzeugen; Hover nur bei Seite/Popup-Verknuepfung
 
     // Perioden-Knoepfe nur bei Zeitreihen — Sparkline hat keinen Platz, Wasserfall keine Zeitachse
     render:function(w){var ct=w.ctype||'area',nav=(w.pnav&&ct!=='spark'&&ct!=='waterfall'&&ct!=='barrace');
-      return '<div data-role="chart" style="position:absolute;inset:0"></div>'+(nav?'<div style="position:absolute;left:6px;bottom:4px;display:flex;gap:4px;align-items:center;z-index:2"><button data-role="pprev" style="width:22px;height:20px;border:1px solid var(--line);background:var(--surface-2);color:var(--text);border-radius:5px;cursor:pointer;font-size:12px;line-height:1">‹</button><span data-role="plabel" style="font-size:10px;color:var(--muted);min-width:30px;text-align:center">jetzt</span><button data-role="pnext" style="width:22px;height:20px;border:1px solid var(--line);background:var(--surface-2);color:var(--text);border-radius:5px;cursor:pointer;font-size:12px;line-height:1">›</button></div>':'');},
+      // Perioden-Navigation an der Kachelgroesse ausrichten (.w ist Groessen-Container):
+      // Untergrenze haelt die Knoepfe am Handy tippbar, Obergrenze verhindert alberne
+      // Riesenknoepfe auf grossen Kacheln. 1px-Rahmen und Radius bleiben bewusst fest.
+      var pbs='width:clamp(22px,9cqmin,34px);height:clamp(20px,8cqmin,30px);border:1px solid var(--line);background:var(--surface-2);color:var(--text);border-radius:5px;cursor:pointer;font-size:clamp(12px,5cqmin,17px);line-height:1';
+      return '<div data-role="chart" style="position:absolute;inset:0"></div>'+(nav?'<div style="position:absolute;left:clamp(6px,2.5cqmin,12px);bottom:clamp(4px,2cqmin,10px);display:flex;gap:clamp(4px,2cqmin,8px);align-items:center;z-index:2"><button data-role="pprev" style="'+pbs+'">‹</button><span data-role="plabel" style="font-size:clamp(10px,3.6cqmin,13px);color:var(--muted);min-width:clamp(30px,12cqmin,48px);text-align:center">jetzt</span><button data-role="pnext" style="'+pbs+'">›</button></div>':'');},
     click:function(w,el,e){var ct=w.ctype||'area';if(ct==='spark'||ct==='waterfall'||ct==='barrace')return false; // keine Perioden-Navigation (falsche Datenquelle)
       var pp=e.target.closest('[data-role=pprev]'),pn=e.target.closest('[data-role=pnext]');if(!pp&&!pn)return false;w._pOff=Math.max(0,(w._pOff||0)+(pp?1:-1));fetchHist(w);return true;},
     props:function(w){

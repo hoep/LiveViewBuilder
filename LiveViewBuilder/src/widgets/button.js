@@ -1,6 +1,6 @@
   // ===== Widget: Button — Icon-Badge, Zustands-Styling (Ein/Aus) =====
   defWidget('button',{
-    label:'Button', paletteIcon:'power', size:[110,110],
+    label:'Button', cat:'Steuerung', paletteIcon:'power', size:[110,110],
     render:function(w){return '<div class="hbtn"><div class="hbicon" data-role="badge">'+iconSVG(w.icon||'power')+'</div>'+(w.label?'<div class="hblabel">'+escL(w.label)+'</div>':'')+'</div>';},
     // Kommando-/Aktions-Button: ist "Bei Klick Wert" gesetzt, schreibt ein Klick diesen festen
     // Wert an die gebundene Variable (momentanes Kommando, z. B. Mäher Start/Park). Sonst

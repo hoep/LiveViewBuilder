@@ -1,8 +1,9 @@
   // ===== Widget: Ereignis (eventctl) — Wochenplan/Timer aktiv schalten + Status =====
   defWidget('eventctl',{
-    label:'Ereignis', paletteIcon:'clock', size:[230,72],
-    render:function(w){return '<div style="height:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px">'
-      +'<div style="min-width:0"><div data-role="evname" style="font-size:13px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escL(w.label||'Ereignis')+'</div><div data-role="evsub" style="font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">–</div></div>'
+    label:'Ereignis', cat:'Steuerung', paletteIcon:'clock', size:[230,72],
+    // Die Rollen evname/evsub/evsw bleiben unveraendert - fetchEvent haengt daran.
+    render:function(w){return '<div style="height:100%;display:flex;align-items:center;justify-content:space-between;gap:clamp(6px,4cqmin,14px);padding:clamp(7px,4cqmin,15px) clamp(9px,5cqmin,18px)">'
+      +'<div style="min-width:0"><div data-role="evname" style="font-size:clamp(11px,17cqmin,18px);color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escL(w.label||'Ereignis')+'</div><div data-role="evsub" style="font-size:clamp(9px,13cqmin,14px);color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">–</div></div>'
       +'<span class="sw" data-role="evsw"><i class="swk"></i></span></div>';},
     props:function(w){return row('Ereignis-ID','<input id="pEvId" value="'+(w.eventId||'')+'" placeholder="Event-ID (Wochenplan/Timer)">');},
     wire:function(w){if($('#pEvId'))$('#pEvId').onchange=function(){w.eventId=parseInt(this.value)||0;render();fetchEvent(w);};},

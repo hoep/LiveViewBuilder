@@ -1,6 +1,6 @@
   // ===== Widget: Wert (value) — Präfix/Suffix/Ausrichtung + Schwellwert-Textfarbe =====
   defWidget('value',{
-    label:'Wert', paletteIcon:'meter', size:[180,88],
+    label:'Wert', cat:'Grundelemente', paletteIcon:'meter', size:[180,88],
     render:function(w){var ic=w.icon?('<div class="wvic">'+iconSVG(w.icon)+'</div>'):'';var al=w.align?(';text-align:'+w.align):''; // Icon-Farbe zentral über --wicon (w.iconColor)
       var rowMode=!!(w.icon||w.oneline),jc=(w.align==='center'?'center':(w.align==='right'?'flex-end':'flex-start')); // Block-Ausrichtung im Zeilen-Modus (behebt Zwangs-Zentrierung)
       var sty=[];if(w.icx!=null&&w.icx!=='')sty.push('padding-left:'+(parseInt(w.icx)||0)+'px'); // Icon-X relativ zum linken Widget-Rand

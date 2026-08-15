@@ -33,11 +33,14 @@
     if(wasBottom)box.scrollTop=box.scrollHeight;
   }
   defWidget('wsmon',{
-    label:'Live-Monitor', paletteIcon:'wlist', size:[300,200],
+    label:'Live-Monitor', cat:'Anzeige', paletteIcon:'wlist', size:[300,200],
     defaults:function(w){w.label='Live-Updates';w.max=40;w.wsSrc='both';},
     render:function(w){
       if(w.simple)return '<div class="hws hws-sim" title="'+esc(w.label||'Live')+'"><span class="hwsd hwsdlg ws idle" data-role="dws" title="WebSocket"></span><span class="hwsd hwsdlg poll idle" data-role="dpoll" title="Poll"></span></div>';
-      return '<div class="hws">'+(w.label?('<div class="hwshd"><span>'+escL(w.label)+'</span><span class="hwslg"><span class="hwsd ws"></span>WS<span class="hwsd poll" style="margin-left:6px"></span>Poll</span></div>'):'')
+      // Abstand vor dem Poll-Punkt in em statt fest 6px: er folgt damit der Schriftgroesse der
+      // Legende (--wf-lbl) und bleibt auf halber wie doppelter Kachel im gleichen Verhaeltnis.
+      // Fuer diese Stelle gibt es keine eigene CSS-Regel, es entsteht also keine zweite Quelle.
+      return '<div class="hws">'+(w.label?('<div class="hwshd"><span>'+escL(w.label)+'</span><span class="hwslg"><span class="hwsd ws"></span>WS<span class="hwsd poll" style="margin-left:.5em"></span>Poll</span></div>'):'')
       +'<div class="hwsl" data-role="wsl"><div class="hwse">warte auf Updates …</div></div></div>';},
     props:function(w){return row('Darstellung','<select id="pWsMode"><option value=""'+(!w.simple?' selected':'')+'>Standard (Fenster)</option><option value="1"'+(w.simple?' selected':'')+'>Simple (nur 2 Punkte)</option></select>')
       +(w.simple?'':row('Max Zeilen','<input id="pWsMax" type="number" min="5" max="200" value="'+(w.max||40)+'">'))

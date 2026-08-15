@@ -1,6 +1,6 @@
   // ===== Widget: Sankey — Flussdiagramm (ECharts) =====
   defWidget('sankey',{
-    label:'Sankey', paletteIcon:'wsankey', size:[360,220],
+    label:'Sankey', cat:'Diagramme', paletteIcon:'wsankey', size:[360,220],
     defaults:function(w){w.links=[{from:'PV',to:'Haus',vid:0},{from:'Netz',to:'Haus',vid:0},{from:'Haus',to:'EG',vid:0},{from:'Haus',to:'Einspeisung',vid:0}];},
     render:function(w){return '<div data-role="chart"></div>';},
     props:function(w){return row('Knoten-Farbe',skinSel(w.snNode||'accent','id="pSnNode"'))

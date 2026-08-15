@@ -38,7 +38,10 @@
     kids.forEach(function(k){try{
       var ke=_mkWidgetEl(k);ke.classList.add('alp-card');ke.dataset.alp=w.id;
       ke.style.position='relative';ke.style.left='';ke.style.top='';ke.style.width='';ke.style.height=''; // Absolut -> Flow (relative: eigener Kontext fuer .winner inset:0)
-      ke.style.setProperty('--_alpcw', ((k.w>0?k.w:300))+'px'); // Kartenbreite = eigene Widget-Breite des Alarms
+      // Kartenbreite = eigene Widget-Breite des Alarms, aber nach oben an der Panelbreite gedeckelt:
+      // sonst ragt auf einer schmalen Kachel (Handy) schon die erste Karte ueber den Rand hinaus
+      // und man sieht nie eine vollstaendige Karte. 92cqi laesst den Chevron rechts noch Platz.
+      ke.style.setProperty('--_alpcw', 'min('+((k.w>0?k.w:300))+'px,92cqi)');
       host.appendChild(ke);_contKids.push(k);                    // _contKids: mount + live + poll wie Container-Kinder
     }catch(e){}});
     _alpRefresh(w);
@@ -89,14 +92,16 @@
       row.scrollLeft+=d; e.preventDefault();
     },{passive:false});
     row.addEventListener('scroll',function(){_alpScrollSync(w);});
-    var pg=function(dir){var step=Math.max(160,row.clientWidth*0.8);row.scrollBy({left:dir*step,behavior:'smooth'});};
+    // Blaetterweite nie ueber die sichtbare Breite hinaus: auf sehr schmalen Kacheln wuerde die
+    // feste Untergrenze von 160 px sonst weiter springen, als ueberhaupt zu sehen ist.
+    var pg=function(dir){var vis=row.clientWidth,step=Math.max(Math.min(160,vis),vis*0.8);row.scrollBy({left:dir*step,behavior:'smooth'});};
     var mr=$('[data-role=alpmore]',wrap),ml=$('[data-role=alpmoreL]',wrap);
     if(mr)mr.addEventListener('click',function(){pg(1);});
     if(ml)ml.addEventListener('click',function(){pg(-1);});
     setTimeout(function(){_alpScrollSync(w);},0);
   }
   defWidget('alarmpanel',{
-    label:'Alarm-Panel', paletteIcon:'bell', size:[900,132], noHover:true,
+    label:'Alarm-Panel', cat:'Anzeige', paletteIcon:'bell', size:[900,132], noHover:true,
     defaults:function(w){w.kids=w.kids||[];w.eyebrow='BRAUCHT AUFMERKSAMKEIT';w.eyeColor='crit';w.ackAll=true;w.ackText='Alle quittieren';w.sortSev=true;w.emptyMode='ok';w.emptyText='Keine Alarme';w.okText='Alles in Ordnung';w.okEyebrow='ALLES OK';w.gap=12;},
     render:function(w){
       var eye=_cssColorOrEmpty(w.eyeColor)||'var(--crit)';
