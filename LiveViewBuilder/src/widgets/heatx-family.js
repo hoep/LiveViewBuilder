@@ -53,8 +53,13 @@
   // Ganze Woche eines anderen Raums/Praesenz in die aktuelle Sitzung uebernehmen (Session-basiert).
   function hfTakeOver(w,idx,pres,cb){var sess=hfSess(w);
     if(typeof DOKU!=='undefined'&&DOKU){hpApplyWeek(sess,hpDemo(),pres);cb&&cb();return;}
-    if(hfHS(w)){ hpHSManage(idx,{op:'getSchedule',args:{variant:HP_PRES[pres]}}).then(function(j){
-      if(j&&j.week){var prof={};prof[HP_PRES[pres]]=hsWeekToProf(j.week);if(!hpApplyWeek(sess,prof,pres))toast('Quelle leer');}else toast('Quelle nicht lesbar');cb&&cb();
+    // Variantenname MUSS aus der geladenen Liste kommen (wie beim Speichern, hfSaveHS).
+    // Vorher stand hier die fest verdrahtete Heizungs-Liste HP_PRES ('Normal'/'Erweitert'/
+    // 'Abgesenkt'); die Beschattung heisst aber 'Anwesend · Sommer' usw. -> das Modul fand
+    // die Variante nicht und "Woche uebernehmen von" tat schlicht nichts.
+    if(hfHS(w)){ var vname=hpVars(sess)[pres]; if(vname==null)vname=pres;
+      hpHSManage(idx,{op:'getSchedule',args:{variant:vname}}).then(function(j){
+      if(j&&j.week){var prof={};prof[vname]=hsWeekToProf(j.week);if(!hpApplyWeek(sess,prof,pres))toast('Quelle leer');else toast('Woche übernommen');}else toast('Quelle nicht lesbar');cb&&cb();
     }).catch(function(){toast('Übernehmen: Verbindungsfehler');cb&&cb();}); return; }
     fetch('?api=heat&op=get&room='+idx+hfRootP(w),{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
       if(j&&j.ok){if(!hpApplyWeek(sess,j.profiles,pres))toast('Quelle leer');}else toast('Quelle nicht lesbar');cb&&cb();
@@ -136,28 +141,40 @@
       h+='<div class="pgh">'+(w.hsMode?'Zonen (HeatingZone)':'Räume &amp; Etage')+'</div>';
       if(!_hpRooms){hpLoadRooms(w,function(){if(typeof renderProps==='function')renderProps();});return h+'<div style="color:var(--muted);font-size:12px;padding:4px 2px">'+(w.hsMode?'Zonen laden …':'Raumliste lädt …')+'</div>';}
       if(w.hsMode){ var floors=(_hpGroupOrder&&_hpGroupOrder.length)?_hpGroupOrder:['EG','OG','DG'];
-        h+=row('Geschoss (Filter)','<select id="hfFloor"'+(w.floorTabs?' disabled':'')+'><option value="">Alle Geschosse</option>'+floors.map(function(g){return '<option value="'+esc(g)+'"'+(w.floor===g?' selected':'')+'>'+esc(g)+'</option>';}).join('')+'</select>');
-        h+=row('Geschoss-Tabs','<label style="display:inline-flex;align-items:center;gap:6px;font-size:12px"><input type="checkbox" id="hfFtabs"'+(w.floorTabs?' checked':'')+'> eine Seite, Etagen als Tabs</label>'); }
+        h+=hsLevelRow(w);                                  // Ebenen: Geschosse / Raeume / beide
+        h+=row('Geschoss (Filter)','<select id="hfFloor"'+(hsLevels(w)!=='rooms'?' disabled':'')+'><option value="">Alle Geschosse</option>'+floors.map(function(g){return '<option value="'+esc(g)+'"'+(w.floor===g?' selected':'')+'>'+esc(g)+'</option>';}).join('')+'</select>'); }
       h+=listEditor(w,'rooms',w.hsMode?'Zone · Etage':'Raum · Gruppe',[{k:'idx',type:'select',options:(_hpRooms||[]).map(function(r){return [String(r.idx),r.name];})},{k:'group',type:'select',options:[['','–'],['EG','EG'],['OG','OG'],['DG','DG']]}]);
       if(w.hsMode)h+='<div style="font-size:11px;color:var(--muted);margin:4px 2px">Geschoss-Filter = nur dieses Geschoss. Leer bei Zonen = alle.</div>';
       // Einheitlicher Selektor: Stil + Haus/Wohnung + Reihenfolge/Ausblenden.
       var _allR=(_hpRooms||[]).filter(function(r){return !w.floor||(r.group||'')===w.floor;}).map(function(r){return {idx:r.idx,name:r.name||hpRoomName(r.idx)};});
-      h+=hsStyleRow(w);
       h+=hsHouseRow(w,_hpHouses);
-      h+=hsRoomOrderEditor(w,_allR);
+      // Zwei unabhaengige Ebenen-Bloecke: je Reihenfolge/Anzeige/Beschriftung + Stil + Typografie.
+      var _lv=hsLevels(w);
+      if(_lv!=='rooms'){
+        var _fl=(_hpGroupOrder&&_hpGroupOrder.length)?_hpGroupOrder:['EG','OG','DG'];
+        var _seen={},_fItems=[];
+        (_hpRooms||[]).forEach(function(r){var g=r.group||'';if(!_seen[g]){_seen[g]=1;}});
+        _fl.forEach(function(g){if(_seen[g]&&!_fItems.some(function(x){return x.key===g;}))_fItems.push({key:g,name:g});});
+        Object.keys(_seen).forEach(function(g){if(!_fItems.some(function(x){return x.key===g;}))_fItems.push({key:g,name:g||'Sonstige'});});
+        h+=hsLevelBlock(w,'f','Geschosse · Reihenfolge, Anzeige, Text',_fItems);
+        w._fItems=_fItems;
+      }
+      if(_lv!=='floors'){
+        h+=hsLevelBlock(w,'r','Räume · Reihenfolge, Anzeige, Text',_allR.map(function(r){return {key:r.idx,name:hsStripDomain(r.name)};}));
+      }
       h+=hfColorScaleRows(w);
       return h;},
     wire:function(w){hfSessWire(w);
       if($('#hfDom'))$('#hfDom').onchange=function(){w.domain=this.value;if(w.domain==='shading'||w.domain==='irrigation')w.hsMode=true;w.rooms=[];_hpRooms=null;_hpRoomsRoot=null;var s=hfSess(w);s.domain=w.domain;s.hsMode=!!w.hsMode;s.loaded=false;s.loading=false;s.roomIdx=0;s.variant=0;s.variants=null;commit();renderProps();var el=$('.w[data-id="'+w.id+'"]',canvas);if(el)hfEnsure(w,el);hfEmit(w);};
       if($('#hfHs'))$('#hfHs').onchange=function(){w.hsMode=this.checked||undefined;w.rooms=[];_hpRooms=null;_hpRoomsRoot=null;var s=hfSess(w);s.hsMode=!!w.hsMode;s.loaded=false;s.loading=false;s.roomIdx=0;commit();renderProps();var el=$('.w[data-id="'+w.id+'"]',canvas);if(el)hfEnsure(w,el);hfEmit(w);};
       if($('#hfFloor'))$('#hfFloor').onchange=function(){w.floor=this.value||undefined;var s=hfSess(w);s.loaded=false;s.loading=false;s.roomIdx=0;commit();renderProps();var el=$('.w[data-id="'+w.id+'"]',canvas);if(el)hfEnsure(w,el);hfEmit(w);};
-      if($('#hfFtabs'))$('#hfFtabs').onchange=function(){w.floorTabs=this.checked||undefined;if(w.floorTabs)w.floor=undefined;var s=hfSess(w);s.floorSel=null;s.loaded=false;s.loading=false;s.roomIdx=0;commit();renderProps();var el=$('.w[data-id="'+w.id+'"]',canvas);if(el)hfEnsure(w,el);hfEmit(w);};
+      var _rr=function(){var s=hfSess(w);s.floorSel=null;render();hfEmit(w);};
+      hsLevelModeWire(w,_rr);
+      if(hsLevels(w)!=='rooms'&&w._fItems)hsLevelWire(w,'f',w._fItems,_rr);
+      if(hsLevels(w)!=='floors'){var _ar=(_hpRooms||[]).filter(function(r){return !w.floor||(r.group||'')===w.floor;}).map(function(r){return {key:r.idx,name:hsStripDomain(r.name||hpRoomName(r.idx))};});hsLevelWire(w,'r',_ar,_rr);}
       if($('#hfRoot'))$('#hfRoot').onchange=function(){w.rootId=parseInt(this.value)||undefined;var s=hfSess(w);s.root=w.rootId||0;s.loaded=false;s.loading=false;commit();var el=$('.w[data-id="'+w.id+'"]',canvas);if(el)hfEnsure(w,el);};
-      // Einheitlicher Selektor: Stil / Haus / Reihenfolge+Ausblenden.
-      hsStyleWire(w,function(){hfEmit(w);});
+      // Haus/Wohnung-Filter (Stil/Reihenfolge/Anzeige liegen jetzt in den Ebenen-Bloecken).
       hsHouseWire(w,function(){w.rooms=[];_hpRooms=null;_hpRoomsRoot=null;var s=hfSess(w);s.loaded=false;s.loading=false;s.roomIdx=0;commit();renderProps();var el=$('.w[data-id="'+w.id+'"]',canvas);if(el)hfEnsure(w,el);hfEmit(w);});
-      var _allRw=(_hpRooms||[]).filter(function(r){return !w.floor||(r.group||'')===w.floor;}).map(function(r){return {idx:r.idx,name:r.name||''};});
-      hsRoomOrderWire(w,_allRw,function(){hfEmit(w);});
       hfColorScaleWire(w);}
   });
 

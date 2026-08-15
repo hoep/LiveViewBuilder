@@ -1,6 +1,6 @@
   // C1: nutzt das Widget diese Variablen-ID als Daten-Bindung? (spiegelt pollVals, ohne visVar)
   function widgetDataId(w,id){
-    if(w.varId===id||w.varId2===id||w.varId3===id||w.cmpVid===id||w.ackVid===id||w.condVar===id||w.vTemp===id||w.vCond===id||w.vHum===id||w.vWind===id||w.vRain===id)return true;
+    if(w.varId===id||w.varId2===id||w.varId3===id||w.cvActId===id||w.cvAzB===id||w.cvAzE===id||w.cvElv===id||w.cmpVid===id||w.ackVid===id||w.condVar===id||w.vTemp===id||w.vCond===id||w.vHum===id||w.vWind===id||w.vRain===id)return true;
     var A=['items','links','rows','src','snk','fc','elements','stages','steps','series'],i,j,o;
     for(i=0;i<A.length;i++){var a=w[A[i]];if(a)for(j=0;j<a.length;j++){o=a[j];if(o&&(o.vid===id||o.subvid===id||o.hi===id||o.lo===id||o.pq===id||o.cond===id||o.speedVid===id||o.socVid===id))return true;}}
     // Alarm-Karte: nur im Text (title/sub/notify) referenzierte Formel-IDs treiben live() ebenfalls
@@ -112,7 +112,7 @@
   var _vidx=null;
   function _vidxAdd(id,w,root){if(!id)return;(_vidx[id]=_vidx[id]||[]).push({w:w,root:root});}
   function _collectIds(w,add){ // alle Variablen-IDs eines Widgets an add() geben
-    add(w.varId);add(w.varId2);add(w.varId3);add(w.cmpVid);add(w.ackVid);add(w.visVar);add(w.condVar);add(w.vTemp);add(w.vCond);add(w.vHum);add(w.vWind);add(w.vRain);
+    add(w.varId);add(w.varId2);add(w.varId3);add(w.cvActId);add(w.cvAzB);add(w.cvAzE);add(w.cvElv);add(w.cmpVid);add(w.ackVid);add(w.visVar);add(w.condVar);add(w.vTemp);add(w.vCond);add(w.vHum);add(w.vWind);add(w.vRain);
     if(w.fc)w.fc.forEach(function(r){add(r.hi);add(r.lo);add(r.pq);add(r.cond);});
     ['links','src','snk','items','rows','steps','series'].forEach(function(k){if(w[k])w[k].forEach(function(o){if(o)add(o.vid);});});
     if(w.stages)w.stages.forEach(function(o){if(o){add(o.vid);add(o.subvid);add(o.sv);}}); // Pipeline-Stationen (Wert + Zusatzwert + Status-Var fuer bedingten Fluss)
@@ -430,6 +430,7 @@
   function applySkin(){
     var sk=activeSkin(),th=(store.theme==='light'?'light':'dark'),toks=sk[th]||sk.dark,rs=document.documentElement.style;
     SKIN_TOKENS.forEach(function(k){if(toks[k]!=null)rs.setProperty('--'+k,toks[k]);});
+    (sk.extra||[]).forEach(function(e){if(e&&e.key&&toks[e.key]!=null)rs.setProperty('--'+e.key,toks[e.key]);}); // eigene benannte Skin-Farben
     if(sk.fu)rs.setProperty('--fu',sk.fu);if(sk.fm)rs.setProperty('--fm',sk.fm);
     rs.setProperty('--ring','0 0 0 3px color-mix(in oklab,'+(toks.accent||'#00cdab')+' 38%,transparent)');
     document.documentElement.setAttribute('data-theme',th);rs.colorScheme=th;
@@ -439,7 +440,40 @@
     try{var _re=function(w){if(w&&w.type==='html'){if(w.htmlSrc==='custom')setHtmlContent(w,w.html||'');else fetchHtml(w);}};if(typeof state!=='undefined'&&state.widgets)allWidgets().forEach(_re);if(typeof _tickKids!=='undefined'&&_tickKids)_tickKids.forEach(_re);}catch(e){}
   }
   function updateSkinSwitches(){$$('.hskwb').forEach(function(b){b.classList.toggle('on',b.getAttribute('data-skw')===(store.theme||'dark'));});$$('[data-role=skwsel]',canvas).forEach(function(s){s.value=store.skin||'Standard';});}
-  function editSkinToken(k,val){var a=store.skin;if(BUILTIN[a]||!store.skins||!store.skins[a])return;var th=(store.theme==='light'?'light':'dark');store.skins[a][th]=store.skins[a][th]||{};store.skins[a][th][k]=val;applySkin();commit();}
-  function editSkinFont(k,val){var a=store.skin;if(BUILTIN[a]||!store.skins||!store.skins[a])return;store.skins[a][k]=val;applySkin();commit();}
+  // Auto-Fork: sobald an einem eingebauten (schreibgeschuetzten) Skin etwas geaendert wird, legen wir
+  // automatisch eine editierbare Kopie „<Name> (eigen)" an und aktivieren sie. Gibt den aktiven Skin-Namen zurueck.
+  function _ensureEditableSkin(){
+    var a=store.skin;
+    if(!BUILTIN[a]&&store.skins&&store.skins[a])return a;   // schon eigener Skin
+    var base=activeSkin(),nm=a+' (eigen)',i=2;while(allSkins()[nm]){nm=a+' (eigen '+i+')';i++;}
+    store.skins=store.skins||{};store.skins[nm]=JSON.parse(JSON.stringify(base));store.skin=nm;
+    if(typeof toast==='function')toast('Editierbare Kopie „'+nm+'" angelegt');
+    return nm;
+  }
+  // Farbe setzen. Standardmaessig NUR im gerade aktiven Theme — mit store.cfg.skinBoth
+  // in BEIDEN. Ohne diese Option ist die haeufigste Falle: man aendert im Hellmodus,
+  // schaut im Run aber Dunkel an und sieht die Aenderung nicht (das Theme merkt sich
+  // der Browser zusaetzlich in localStorage 'lvtheme').
+  function editSkinToken(k,val){var a=_ensureEditableSkin();
+    var both=!!(store.cfg&&store.cfg.skinBoth);
+    var ths=both?['dark','light']:[(store.theme==='light'?'light':'dark')];
+    ths.forEach(function(th){store.skins[a][th]=store.skins[a][th]||{};store.skins[a][th][k]=val;});
+    applySkin();commit();}
+  function editSkinFont(k,val){var a=_ensureEditableSkin();store.skins[a][k]=val;applySkin();commit();}
+  // ---- Eigene, benannte Skin-Farben (pro Skin; erscheinen ueberall in den Farbwaehlern) ----
+  function _colorSlug(name){var s=(''+name).toLowerCase().replace(/ä/g,'ae').replace(/ö/g,'oe').replace(/ü/g,'ue').replace(/ß/g,'ss').replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');return 'u-'+(s||'farbe');}
+  function skinExtras(){var s=activeSkin();return (s&&s.extra)||[];}
+  function addSkinColor(name,hex){
+    name=(''+(name||'')).trim();if(!name)return;
+    var a=_ensureEditableSkin(),sk=store.skins[a];sk.extra=sk.extra||[];
+    var key=_colorSlug(name),base=key,n=2;while(sk.extra.some(function(e){return e.key===key;})){key=base+'-'+n;n++;}
+    sk.extra.push({key:key,name:name});
+    sk.dark=sk.dark||{};sk.light=sk.light||{};
+    var d=hex||'#00cdab';sk.dark[key]=sk.dark[key]||d;sk.light[key]=sk.light[key]||d; // Startwert fuer beide Themes
+    applySkin();commit();if(typeof buildSkins==='function')buildSkins();
+    if(typeof toast==='function')toast('Farbe „'+name+'" angelegt');
+  }
+  function renameSkinColor(key,name){name=(''+(name||'')).trim();if(!name)return;var a=_ensureEditableSkin(),sk=store.skins[a];(sk.extra||[]).forEach(function(e){if(e.key===key)e.name=name;});commit();if(typeof buildSkins==='function')buildSkins();}
+  function deleteSkinColor(key){var a=_ensureEditableSkin(),sk=store.skins[a];sk.extra=(sk.extra||[]).filter(function(e){return e.key!==key;});if(sk.dark)delete sk.dark[key];if(sk.light)delete sk.light[key];applySkin();commit();if(typeof buildSkins==='function')buildSkins();}
   function newSkin(dup){var base=dup?activeSkin():BUILTIN['Standard'];var nm=prompt('Name des Skins:',dup?((store.skin||'Standard')+' Kopie'):'Mein Skin');if(!nm)return;if(allSkins()[nm]){toast('Name existiert bereits');return;}store.skins=store.skins||{};store.skins[nm]=JSON.parse(JSON.stringify(base));store.skin=nm;applySkin();buildSkins();commit();toast('Skin „'+nm+'" angelegt');}
   function deleteSkin(){var a=store.skin;if(BUILTIN[a])return;if(!confirm('Skin „'+a+'" löschen?'))return;delete store.skins[a];store.skin='Standard';applySkin();buildSkins();commit();}

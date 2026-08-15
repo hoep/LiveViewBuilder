@@ -341,12 +341,15 @@
   // Skin-Farben GENERISCH aus SKIN_TOKENS ableiten (ohne Struktur-/Hintergrundfarben) — neue Skin-Farben erscheinen automatisch
   var _SKIN_STRUCT={bg:1,surface:1,'surface-2':1,tile:1,line:1,'line-soft':1};
   var _SKIN_LBL={text:'Neutral',muted:'Gedämpft',faint:'Blass',accent:'Akzent','accent-2':'Akzent 2',ok:'OK',warn:'Warnung',crit:'Kritisch',info:'Info',warm:'Warm',sun:'Sonne',moon:'Mond'};
-  function skinColorKeys(){var t=(typeof SKIN_TOKENS!=='undefined'&&SKIN_TOKENS)?SKIN_TOKENS:['accent','ok','warn','crit','info','warm','muted'];return t.filter(function(k){return !_SKIN_STRUCT[k];});}
+  // Eigene, benannte Skin-Farben des aktiven Skins (skinExtras aus 06-live) mit anhaengen -> erscheinen ueberall.
+  function _skinExtraKeys(){try{return (typeof skinExtras==='function'?skinExtras():[]).map(function(e){return e.key;});}catch(_){return [];}}
+  function _skinLbl(k){if(_SKIN_LBL[k])return _SKIN_LBL[k];try{var e=(typeof skinExtras==='function'?skinExtras():[]).filter(function(x){return x.key===k;})[0];if(e)return e.name;}catch(_){}return k;}
+  function skinColorKeys(){var t=(typeof SKIN_TOKENS!=='undefined'&&SKIN_TOKENS)?SKIN_TOKENS:['accent','ok','warn','crit','info','warm','muted'];return t.filter(function(k){return !_SKIN_STRUCT[k];}).concat(_skinExtraKeys());}
   function skinSel(cur,attrs){cur=cur||'';var keys=skinColorKeys(),known=(cur===''||keys.indexOf(cur)>=0);
-    var op='<option value=""'+(cur===''?' selected':'')+'>Auto</option>'+keys.map(function(k){return '<option value="'+k+'"'+(cur===k?' selected':'')+' style="background:var(--'+k+');color:#08201c">'+(_SKIN_LBL[k]||k)+'</option>';}).join('');
+    var op='<option value=""'+(cur===''?' selected':'')+'>Auto</option>'+keys.map(function(k){return '<option value="'+k+'"'+(cur===k?' selected':'')+' style="background:var(--'+k+');color:#08201c">'+_skinLbl(k)+'</option>';}).join('');
     if(cur&&!known)op='<option value="'+esc(cur)+'" selected style="background:'+esc(cur)+';color:#08201c">Eigene</option>'+op;
     return '<select '+(attrs||'')+' style="'+(cur?(known?('background:var(--'+cur+');color:#08201c'):('background:'+esc(cur)+';color:#08201c')):'')+'">'+op+'</select>';}
-  function gaugeColorSel(cur){cur=cur||'accent';var op=skinColorKeys().map(function(k){return '<option value="'+k+'"'+(cur===k?' selected':'')+' style="background:var(--'+k+');color:#08201c">'+(_SKIN_LBL[k]||k)+'</option>';}).join('');op+='<option value="graded"'+(cur==='graded'?' selected':'')+'>Abstufung</option><option value="assoc"'+(cur==='assoc'?' selected':'')+'>Assoziation</option>';return '<select id="pGColor" style="'+((cur&&cur!=='graded'&&cur!=='assoc')?('background:var(--'+cur+');color:#08201c'):'')+'">'+op+'</select>';}
+  function gaugeColorSel(cur){cur=cur||'accent';var op=skinColorKeys().map(function(k){return '<option value="'+k+'"'+(cur===k?' selected':'')+' style="background:var(--'+k+');color:#08201c">'+_skinLbl(k)+'</option>';}).join('');op+='<option value="graded"'+(cur==='graded'?' selected':'')+'>Abstufung</option><option value="assoc"'+(cur==='assoc'?' selected':'')+'>Assoziation</option>';return '<select id="pGColor" style="'+((cur&&cur!=='graded'&&cur!=='assoc')?('background:var(--'+cur+');color:#08201c'):'')+'">'+op+'</select>';}
   // Einheitliches Zeitfenster-Control (Anzahl x Einheit) fuer Nicht-Aggregat-Widgets (statetl/statelog)
   var _WINU=[['hour','Stunden'],['day','Tage'],['week','Wochen'],['month','Monate'],['year','Jahre']];
   var _WINUP=[['hour','Stunde'],['day','Tag'],['week','Woche'],['month','Monat'],['year','Jahr']]; // Singular fuer Kalender-Modus
@@ -741,7 +744,7 @@
       drag.items.forEach(function(it){_exc[it.w.id]=1;});
       var _cont=containerHitTest(_px3,_py3,_exc);
       var _movers=drag.items.map(function(it){return it.w;}).filter(function(x){return x.type!=='container'&&x.type!=='alarmpanel'&&state.widgets.indexOf(x)>=0;});
-      if(_cont&&_cont.type==='alarmpanel'){var _am=_movers.filter(function(x){return x.type==='alarm';});if(!_am.length){if(typeof toast==='function')toast('In das Alarm-Panel gehören Alarm-Widgets');clearGuides();drag=null;render();return;}_movers=_am;} // Alarm-Panel nimmt nur Alarm-Karten
+      if(_cont&&_cont.type==='alarmpanel'){var _am=_movers.filter(function(x){return x.type==='alarm';});if(!_am.length){_cont=null;}else{_movers=_am;}} // Alarm-Panel nimmt nur Alarm-Karten; Nicht-Alarm NICHT verschlucken -> faellt unten zum Bar-/Seiten-Handler durch (Alarmpanel in einer Bar hat sonst die Bar blockiert)
       if(_cont&&_movers.length){var _ir=containerInnerRect(_cont.id),_sc=containerScreenScale(_cont.id);
         _movers.forEach(function(mw){var _wel=$('.w[data-id="'+mw.id+'"]',canvas),_wr=_wel?_wel.getBoundingClientRect():null,_dx=8,_dy=8;
           if(_wr&&_ir){_dx=Math.round((_wr.left-_ir.left)/(zoom*_sc));_dy=Math.round((_wr.top-_ir.top)/(zoom*_sc));}
