@@ -437,7 +437,23 @@
     document.body.classList.toggle('wglow',!!(store.cfg&&store.cfg.wglow)); // optionaler Widget-Glow (Akzentfarbe)
     updateSkinSwitches();
     // HTML-Inhalte neu rendern -> Skin-Enforcer zieht Schrift/Farben ans neue Theme nach (Shadow/iframe rechnen Farben beim Rendern)
-    try{var _re=function(w){if(w&&w.type==='html'){if(w.htmlSrc==='custom')setHtmlContent(w,w.html||'');else fetchHtml(w);}};if(typeof state!=='undefined'&&state.widgets)allWidgets().forEach(_re);if(typeof _tickKids!=='undefined'&&_tickKids)_tickKids.forEach(_re);}catch(e){}
+    // Widgets nachziehen, die den Skin nicht ueber CSS bekommen:
+    //  - html: Inhalt neu rendern (Shadow/iframe rechnen Farben beim Rendern aus)
+    //  - Zeichenflaechen: eigener skin()-Haken, sonst blieben sie bis zum naechsten
+    //    Datentakt in den alten Farben stehen (Canvas erbt keine CSS-Variablen)
+    try{
+      var _re=function(w){
+        if(!w)return;
+        if(w.type==='html'){if(w.htmlSrc==='custom')setHtmlContent(w,w.html||'');else fetchHtml(w);return;}
+        var d=WIDGETS[w.type];
+        if(d&&typeof d.skin==='function'){
+          var el=document.querySelector('.w[data-id="'+w.id+'"]');
+          if(el)try{d.skin(w,el);}catch(e2){}
+        }
+      };
+      if(typeof state!=='undefined'&&state.widgets)allWidgets().forEach(_re);
+      if(typeof _tickKids!=='undefined'&&_tickKids)_tickKids.forEach(_re);
+    }catch(e){}
   }
   function updateSkinSwitches(){$$('.hskwb').forEach(function(b){b.classList.toggle('on',b.getAttribute('data-skw')===(store.theme||'dark'));});$$('[data-role=skwsel]',canvas).forEach(function(s){s.value=store.skin||'Standard';});}
   // Auto-Fork: sobald an einem eingebauten (schreibgeschuetzten) Skin etwas geaendert wird, legen wir

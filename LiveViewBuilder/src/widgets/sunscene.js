@@ -1474,6 +1474,10 @@
         }
       },
       live: function (w, el) { ssDraw(w, el); },
+      // Skinwechsel: die Szene liegt zwischengespeichert vor und wuerde sonst bis zum
+      // naechsten Takt in den alten Farben stehen bleiben. Zwischenspeicher verwerfen
+      // und sofort neu zeichnen.
+      skin: function (w, el) { ssSt(w).key = null; ssDraw(w, el); },
       _bind: function (w, el) { ssDraw(w, el); },
       props: function (w) {
         var h = '<div class="pgh">Standort &amp; Sonne</div>';
