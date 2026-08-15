@@ -44,6 +44,44 @@
      * dunkel oder eigene Farben. Der Himmel bleibt physikalisch (nachts ist es nachts),
      * bekommt im hellen Skin aber einen helleren Tag.
      */
+    // Textgruppen der Szene. Jede laesst sich einzeln einstellen; ohne eigene Wahl gilt
+    // die Schrift des Skins und das hier hinterlegte Gewicht.
+    var SS_TEXT = [
+      ['Hd', 'Kopfzeile', '600'],
+      ['Sb', 'Unterzeile', ''],
+      ['Rs', 'Auf-/Untergang', ''],
+      ['Cv', 'Marke: Wert', '600'],
+      ['Cn', 'Marke: Name', ''],
+      ['Tl', 'Zeitleiste', ''],
+      ['At', 'Namensnennung', '']
+    ];
+    var SS_FAMS = [['', 'Standard (Skin)'], ['"Inter",system-ui,sans-serif', 'Inter (Sans)'],
+      ['"Lora",Georgia,serif', 'Lora (Serif)'], ['"Fraunces",Georgia,serif', 'Fraunces (Display)'],
+      ['"JetBrains Mono",ui-monospace,monospace', 'JetBrains Mono'],
+      ['system-ui,-apple-system,sans-serif', 'System-Sans'], ['Georgia,"Times New Roman",serif', 'System-Serif']];
+    var SS_WTS = [['', 'Standard'], ['300', 'Leicht'], ['400', 'Normal'], ['500', 'Mittel'],
+      ['600', 'Halbfett'], ['700', 'Fett'], ['800', 'Extrafett']];
+
+    /**
+     * Schriftangabe fuer eine Textgruppe. px ist die aus der Kachelgroesse errechnete
+     * Grundgroesse; die Einstellung skaliert sie in Prozent, damit die Szene responsiv
+     * bleibt - eine feste Pixelzahl wuerde auf dem Handy zu gross und am Wandtablet zu
+     * klein wirken.
+     */
+    function ssFont(w, key, px, pal, wtOverride) {
+      var i, defWt = '';
+      for (i = 0; i < SS_TEXT.length; i++) { if (SS_TEXT[i][0] === key) { defWt = SS_TEXT[i][2]; break; } }
+      var fam = w['ssF' + key + 'Fam'] || pal.ff || 'system-ui';
+      var wt = w['ssF' + key + 'Wt'] || wtOverride || defWt;
+      var sc = Math.max(40, Math.min(250, ssNum(w['ssF' + key + 'Sz'], 100))) / 100;
+      var st = w['ssF' + key + 'It'] ? 'italic ' : '';
+      return st + (wt ? wt + ' ' : '') + (px * sc).toFixed(1) + 'px ' + fam;
+    }
+    /** Wirksame Groesse einer Textgruppe - fuer Abstaende und Platzberechnung. */
+    function ssFsz(w, key, px) {
+      return px * Math.max(40, Math.min(250, ssNum(w['ssF' + key + 'Sz'], 100))) / 100;
+    }
+
     function ssPal(el) {
       var cs = getComputedStyle(el && el.closest ? (el.closest('.stage') || document.documentElement) : document.documentElement);
       function v(n, d) { var x = (cs.getPropertyValue(n) || '').trim(); return x || d; }
@@ -164,8 +202,12 @@
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.clearRect(0, 0, W, H);
 
-      var K = Math.min(W, H);                    // Bezugsgroesse fuer ALLE Masse (responsiv)
-      var cam = ssCam(w, W, H), sun = ssSun(w);
+      // Die Zeitleiste bekommt ein eigenes Band UNTER der Szene - sie liegt nicht mehr
+      // im Bild. Alles Raeumliche rechnet daher mit der verbleibenden Hoehe Hs.
+      var sh = ssStripH(w, Math.min(W, H));
+      var Hs = Math.max(40, H - sh);
+      var K = Math.min(W, Hs);                   // Bezugsgroesse fuer ALLE Masse (responsiv)
+      var cam = ssCam(w, W, Hs), sun = ssSun(w);
       var rad = ssVal(w.ssRad);                  // gemessene Globalstrahlung W/m2
       var clr = (rad != null) ? LVSUN.clearness(rad, sun.elev) : null;
       var geo = ssGeo3(w, el);
@@ -180,7 +222,7 @@
                 ].join('|');
       var st = ssSt(w);
       if (st.key !== key || !st.buf) {
-        st.buf = ssScene(w, el, W, H, dpr, cam, sun, clr, geo, K, wx);
+        st.buf = ssScene(w, el, W, H, Hs, dpr, cam, sun, clr, geo, K, wx);
         st.key = key;
       }
       ctx.drawImage(st.buf, 0, 0, W, H);
@@ -188,13 +230,13 @@
       var tW = (typeof performance !== 'undefined' ? performance.now() : ssNow(w)) / 1000;
       if (wx && wx.nass) {
         var dayW = Math.max(0, Math.min(1, (sun.elev + 6) / 16));
-        ssWeatherDraw(ctx, W, H, K, wx, tW, pal0, dayW);
+        ssWeatherDraw(ctx, W, Hs, K, wx, tW, pal0, dayW);
       }
 
       var els = ssEnergy(w, pal0);
       if (els) {
         var t = (typeof performance !== 'undefined' ? performance.now() : ssNow(w)) / 1000;
-        ssEnergyDraw(ctx, cam, K, W, H, w, els, t,
+        ssEnergyDraw(ctx, cam, K, W, Hs, w, els, t,
           function () { var e2 = ssEl(w); if (e2) { ssSt(w).key = null; ssDraw(w, e2); } }, pal0);
         var lebt = _covOn2(w, 'ssEnAnim', true) && els.some(function (e) { return e.watt != null && e.watt > 1; });
         if (lebt) { ssAnim(w, el); }
@@ -218,7 +260,7 @@
     }
 
     /** Die langsame Ebene in eine eigene Flaeche malen. */
-    function ssScene(w, el, W, H, dpr, cam, sun, clr, geo, K, wx) {
+    function ssScene(w, el, W, H, Hs, dpr, cam, sun, clr, geo, K, wx) {
       var st = ssSt(w);
       var cv = st.buf;
       if (!cv) { cv = st.buf = document.createElement('canvas'); }
@@ -236,19 +278,19 @@
       // Bedeckter Himmel heisst diffuses Licht: weiche Schatten, matte Sonne. Dafuer wird
       // die Klarheit gedeckelt - sie steuert im ganzen Widget Halo, Dunst und Schattenhaerte.
       var clrE = (cloud > 0) ? ((clr == null) ? (1 - cloud) : Math.min(clr, 1 - cloud)) : clr;
-      ssSky(ctx, W, H, K, day, clrE, w, pal, cloud);
+      ssSky(ctx, W, Hs, K, day, clrE, w, pal, cloud);
       var starA = (1 - day / 0.55) * (1 - cloud * 0.9);            // Wolken verdecken die Sterne
-      if (day < 0.55 && starA > 0.03 && _covOn2(w, 'ssStars', true)) ssStars(ctx, W, H, K, starA, w);
-      ssGround(ctx, cam, W, H, K, day, w, pal);
+      if (day < 0.55 && starA > 0.03 && _covOn2(w, 'ssStars', true)) ssStars(ctx, W, Hs, K, starA, w);
+      ssGround(ctx, cam, W, Hs, K, day, w, pal);
       var track = LVSUN.dayTrack(g.lat, g.lon, ssNow(w), 6);
       ssArc(ctx, cam, K, track, sun, day, w, pal);
       var mn = ssMoonDisc(ctx, cam, K, sun, day, w, cloud);
       if (geo) ssNeighbours(ctx, cam, K, sun, day, clrE, w, geo, pal);
       ssHouse(ctx, cam, K, sun, day, clrE, w, geo, pal);
-      if (geo) ssAttrib(ctx, W, H, K, pal, ssStripH(w, K) ? ssStripH(w, K) + Math.max(6, K / 40) * 1.6 : 0);
+      if (geo) ssAttrib(ctx, W, Hs, K, pal, 0, w);
       ssSunDisc(ctx, cam, K, sun, clrE, w, cloud);
-      ssLabels(ctx, W, H, K, sun, ssVal(w.ssRad), clrE, track, w, mn, pal);
-      ssStrip(ctx, W, H, K, w, track, pal);
+      ssLabels(ctx, W, Hs, K, sun, ssVal(w.ssRad), clrE, track, w, mn, pal);
+      ssStrip(ctx, W, H, Hs, K, w, track, pal);
       return cv;
     }
 
@@ -736,10 +778,11 @@
      * liegt gedaempft dahinter; der Griff steht auf dem dargestellten Zeitpunkt. Ziehen
      * verschiebt die Zeit, Doppeltippen kehrt zu "jetzt" zurueck.
      */
-    function ssStrip(ctx, W, H, K, w, track, pal) {
-      var sh = ssStripH(w, K); if (!sh) return;
-      var pad = Math.max(6, K / 40), x0 = pad, x1 = W - pad;
-      var y1 = H - pad, y0 = y1 - sh, bw = x1 - x0;
+    function ssStrip(ctx, W, H, Hs, K, w, track, pal) {
+      var sh = H - Hs; if (sh <= 2) return;
+      var pad = Math.max(5, K / 46), x0 = pad, x1 = W - pad;
+      var y0 = Hs + pad * 0.5, y1 = H - pad * 0.5, bw = x1 - x0;
+      sh = y1 - y0;
       var fs = Math.max(8, K / 40);
       var maxE = 1; track.forEach(function (p) { if (p.elev > maxE) maxE = p.elev; });
 
@@ -768,7 +811,7 @@
 
       // Auf- und Untergang
       var rs = LVSUN.riseSet(track);
-      ctx.font = fs.toFixed(1) + 'px ' + pal.ff;
+      ctx.font = ssFont(w, 'Tl', fs, pal);
       ctx.fillStyle = ssA(pal.muted, 0.95); ctx.textBaseline = 'bottom';
       var curM = (ssNow(w) - ssMidnight(w)) / 60000;
       [[rs.rise, '↑'], [rs.set, '↓']].forEach(function (o) {
@@ -789,7 +832,7 @@
       ctx.beginPath(); ctx.arc(hx, y1 - sh * 0.12, Math.max(2.6, K / 150), 0, 7);
       ctx.fillStyle = pal.accent; ctx.fill();
       var lab = ssHM(cur) + ((_ssState[w.id] && _ssState[w.id].now) ? '' : '  jetzt');
-      ctx.font = '600 ' + (fs * 1.12).toFixed(1) + 'px ' + pal.ff;
+      ctx.font = ssFont(w, 'Tl', fs * 1.12, pal, '600');
       var lw = ctx.measureText(lab).width;
       ctx.textAlign = (hx + lw / 2 + 6 > x1) ? 'right' : (hx - lw / 2 - 6 < x0 ? 'left' : 'center');
       ctx.fillStyle = pal.accent;
@@ -802,9 +845,9 @@
     }
 
     /** Namensnennung - bei Nutzung von OSM-Daten rechtlich vorgeschrieben (ODbL). */
-    function ssAttrib(ctx, W, H, K, pal, inset) {
+    function ssAttrib(ctx, W, H, K, pal, inset, w) {
       ctx.save();
-      ctx.font = Math.max(8, K / 62) + 'px ' + pal.ff;
+      ctx.font = ssFont(w, 'At', Math.max(8, K / 62), pal);
       ctx.textAlign = 'right'; ctx.textBaseline = 'bottom';
       ctx.fillStyle = ssA(pal.muted, 0.7);
       ctx.fillText('Gebäude © OpenStreetMap-Mitwirkende', W - K / 42, H - K / 60 - (inset || 0));
@@ -844,14 +887,14 @@
       if (!_covOn2(w, 'ssInfo', true)) return;
       var f = Math.max(9, K / 22), pad = K / 26;
       ctx.save();
-      ctx.font = '600 ' + f.toFixed(1) + 'px ' + pal.ff;
+      ctx.font = ssFont(w, 'Hd', f, pal);
       ctx.fillStyle = ssA(pal.text, 0.94); ctx.textBaseline = 'top';
       // Steht die Sonne unter dem Horizont, uebernimmt der Mond die Kopfzeile.
       var nacht = (sun.elev < -1 && mn && mn.elev > -1);
       var t1 = nacht ? ('Mond ' + mn.elev.toFixed(0) + '°')
                      : ((sun.elev >= 0 ? 'Sonne ' + sun.elev.toFixed(0) + '°' : 'unter dem Horizont'));
       ctx.fillText(t1, pad, pad);
-      ctx.font = (f * 0.72).toFixed(1) + 'px ' + pal.ff;
+      ctx.font = ssFont(w, 'Sb', f * 0.72, pal);
       ctx.fillStyle = ssA(pal.muted, 0.95);
       var t2;
       if (nacht) {
@@ -864,6 +907,7 @@
       ctx.fillText(t2, pad, pad + f * 1.15);
       var rs = LVSUN.riseSet(track);
       if (rs.rise != null && rs.set != null) {
+        ctx.font = ssFont(w, 'Rs', f * 0.72, pal);
         var hm = function (m) { return String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(Math.round(m % 60)).padStart(2, '0'); };
         var t3 = '↑ ' + hm(rs.rise) + '   ↓ ' + hm(rs.set);
         ctx.textAlign = 'right'; ctx.fillText(t3, W - pad, pad);
@@ -891,7 +935,7 @@
         if (typeof editing !== 'undefined' && editing) return;
         var r = box.getBoundingClientRect(), K = Math.min(r.width, r.height);
         var sh = ssStripH(w, K);
-        if (sh && (e.clientY - r.top) > r.height - sh - Math.max(6, K / 40) * 2) {
+        if (sh && (e.clientY - r.top) > r.height - sh) {
           st.drag = { time: true, rect: r };                    // Zug auf der Zeitleiste
           ssSetTime(w, el, e.clientX, r, K);
           try { box.setPointerCapture(e.pointerId); } catch (_) {}
@@ -1220,24 +1264,25 @@
       var ref = Math.max(50, ssNum(w.ssEnRef, 3000));
       var showChip = _covOn2(w, 'ssEnChip', true);
       var hp = cam.project(0, 0, 3);                                  // Anschluss am Haus
-      var fs = Math.max(9, K / 31), ns = fs * 0.60, ico = fs * 1.30, gap = fs * 0.46;
+      var fs0 = Math.max(9, K / 31);
+      var fs = ssFsz(w, 'Cv', fs0), ns = ssFsz(w, 'Cn', fs0 * 0.60);
+      var ico = fs0 * 1.30, gap = fs0 * 0.46;
       var pad = fs * 0.6;
       // Platzbedarf der Beschriftung MESSEN - sie steht nach aussen, also muss der Ring
       // genau um diese Breite kleiner werden, sonst laeuft der laengste Wert aus dem Bild.
       var labW = 0;
       ctx.save();
       els.forEach(function (e) {
-        ctx.font = '600 ' + fs.toFixed(1) + 'px ' + pal.ff;
+        ctx.font = ssFont(w, 'Cv', fs0, pal);
         var a = ctx.measureText(e.watt != null ? ssFmtW(e.watt) : '–').width;
-        ctx.font = ns.toFixed(1) + 'px ' + pal.ff;
+        ctx.font = ssFont(w, 'Cn', fs0 * 0.60, pal);
         var b = e.name ? ctx.measureText(e.name.toUpperCase()).width : 0;
         var t = ico + gap + Math.max(a, b);
         if (t > labW) labW = t;
       });
       ctx.restore();
       var labH = ico + gap + fs + ns * 1.7;
-      // Untere Grenze: die Zeitleiste bleibt frei, sonst decken Marken sie zu.
-      var HB = H - ssStripH(w, K) - (ssStripH(w, K) ? Math.max(6, K / 40) * 1.6 : 0);
+      var HB = H;                                  // H ist bereits die Szenenhoehe
       // Der Ring sitzt MITTIG in der freien Flaeche, nicht am Hausanker: haengte er am Haus,
       // wurde er flach gedrueckt, sobald das Haus tief im Bild liegt. Die raeumliche
       // Zuordnung tragen die Leitungen, die zum Haus zeigen.
@@ -1284,14 +1329,14 @@
             ctx.restore();
           }
         }
-        if (showChip) ssLabel(ctx, K, p.x, p.y, p.dx, p.dy, e, redraw, pal, false);
+        if (showChip) ssLabel(ctx, K, p.x, p.y, p.dx, p.dy, e, redraw, pal, false, w);
       });
 
       if (showChip) {
         ssLabel(ctx, K, hp.x, hp.y - K / 6.5, 0, -1, { name: w.homeName || 'Haus',
           icon: w.homeIcon || 'housepower',
           col: pal.col(w.homeColor, pal.col(w.ssHouseColor, pal.accent)),
-          watt: ssEnergyHome(els), dir: 1 }, redraw, pal, true);
+          watt: ssEnergyHome(els), dir: 1 }, redraw, pal, true, w);
       }
     }
 
@@ -1303,11 +1348,11 @@
      *  Schein statt ueber eine Flaeche. Farbe bleibt dort, wo sie etwas bedeutet.
      *  dirX/dirY zeigen vom Ringmittelpunkt nach aussen und bestimmen die Textrichtung.
      */
-    function ssLabel(ctx, K, x, y, dirX, dirY, e, redraw, pal, big) {
-      var fs = Math.max(9, K / (big ? 24 : 31));
-      var ns = fs * 0.60;
-      var ico = fs * (big ? 1.45 : 1.30);
-      var gap = fs * 0.46;
+    function ssLabel(ctx, K, x, y, dirX, dirY, e, redraw, pal, big, w) {
+      var fs0 = Math.max(9, K / (big ? 24 : 31));
+      var fs = ssFsz(w, 'Cv', fs0), ns = ssFsz(w, 'Cn', fs0 * 0.60);
+      var ico = fs0 * (big ? 1.45 : 1.30);
+      var gap = fs0 * 0.46;
       var act = e.watt != null && e.watt > 1;
       var val = (e.watt != null) ? ssFmtW(e.watt) : '–';
       var waag = Math.abs(dirX) >= Math.abs(dirY) * 0.9;      // seitlich oder ueber/unter
@@ -1338,14 +1383,14 @@
       ctx.shadowColor = ssA(pal.tile, pal.light ? 0.95 : 0.85);
       ctx.shadowBlur = fs * 0.9;
 
-      ctx.font = '600 ' + fs.toFixed(1) + 'px ' + pal.ff;
+      ctx.font = ssFont(w, 'Cv', fs0, pal);
       ctx.fillStyle = big ? e.col : ssA(pal.text, act ? 0.96 : 0.72);
       ctx.fillText(val, tx, ty);
       ctx.fillText(val, tx, ty);                              // zweimal = dichterer Schein
 
       if (e.name) {
         if ('letterSpacing' in ctx) ctx.letterSpacing = (ns * 0.08).toFixed(2) + 'px';
-        ctx.font = ns.toFixed(1) + 'px ' + pal.ff;
+        ctx.font = ssFont(w, 'Cn', fs0 * 0.60, pal);
         ctx.fillStyle = ssA(pal.muted, 0.95);
         ctx.fillText(e.name.toUpperCase(), tx, ty + ns * 1.55);
         ctx.fillText(e.name.toUpperCase(), tx, ty + ns * 1.55);
@@ -1477,6 +1522,22 @@
         h += row('Referenz-Leistung (W)', '<input id="ssEnRef" type="number" min="50" step="100" value="' + ssNum(w.ssEnRef, 3000) + '" style="width:96px"> <span style="font-size:11px;color:var(--muted)">volles Tempo</span>');
         h += row('Marken zeigen', '<input type="checkbox" id="ssEnChip"' + (_covOn2(w, 'ssEnChip', true) ? ' checked' : '') + '>');
         h += row('Bewegung', '<input type="checkbox" id="ssEnAnim"' + (_covOn2(w, 'ssEnAnim', true) ? ' checked' : '') + '>');
+        h += '<div class="pgh">Schriften</div>';
+        h += '<div style="font-size:11px;color:var(--muted);margin:2px 2px 6px">Je Textgruppe eigene Schrift, Stärke und Größe. Die Größe ist ein Prozentwert der automatisch berechneten Größe — so bleibt die Szene auf jedem Bildschirm stimmig. Ohne eigene Wahl gilt die Schrift der Ansicht.</div>';
+        SS_TEXT.forEach(function (g) {
+          var k = g[0];
+          var fam = '<select id="ssF' + k + 'Fam" style="max-width:118px">' + SS_FAMS.map(function (o) {
+            return '<option value="' + esc(o[0]) + '"' + ((w['ssF' + k + 'Fam'] || '') === o[0] ? ' selected' : '') + '>' + o[1] + '</option>';
+          }).join('') + '</select>';
+          var wt = '<select id="ssF' + k + 'Wt" style="max-width:78px">' + SS_WTS.map(function (o) {
+            return '<option value="' + esc(o[0]) + '"' + ((w['ssF' + k + 'Wt'] || '') === o[0] ? ' selected' : '') + '>' + o[1] + '</option>';
+          }).join('') + '</select>';
+          var sz = '<input id="ssF' + k + 'Sz" type="number" min="40" max="250" step="5" value="'
+                 + ssNum(w['ssF' + k + 'Sz'], 100) + '" style="width:56px" title="Prozent">';
+          var it = '<label style="font-size:11px;color:var(--muted)"><input type="checkbox" id="ssF' + k + 'It"'
+                 + (w['ssF' + k + 'It'] ? ' checked' : '') + '> kursiv</label>';
+          h += row(g[1], fam + ' ' + wt + ' ' + sz + ' % ' + it);
+        });
         h += '<div class="pgh">Ansicht</div>';
         h += row('Neigung (°)', '<input id="ssP" type="number" min="0" max="70" value="' + ssNum(w.ssPitch, 52) + '" style="width:64px">');
         h += row('Blickrichtung (°)', '<input id="ssB" type="number" min="0" max="359" value="' + ssNum(w.ssBearing, 20) + '" style="width:64px">');
@@ -1494,6 +1555,20 @@
       wire: function (w) {
         function up() { var e = ssEl(w); if (e) { ssSt(w).key = null; ssDraw(w, e); } commit(); }
         ssImportWire(w, up);
+        SS_TEXT.forEach(function (g) {
+          var k = g[0];
+          ['Fam', 'Wt'].forEach(function (suf) {
+            var e = $('#ssF' + k + suf);
+            if (e) e.onchange = function () { w['ssF' + k + suf] = this.value || undefined; up(); };
+          });
+          var sz = $('#ssF' + k + 'Sz');
+          if (sz) sz.onchange = function () {
+            var v = parseFloat(this.value);
+            w['ssF' + k + 'Sz'] = (isNaN(v) || v === 100) ? undefined : v; up();
+          };
+          var it = $('#ssF' + k + 'It');
+          if (it) it.onchange = function () { w['ssF' + k + 'It'] = this.checked || undefined; up(); };
+        });
         [['ssHN', 'homeName'], ['ssHI', 'homeIcon']].forEach(function (o) {
           var e = $('#' + o[0]); if (e) e.onchange = function () { w[o[1]] = this.value || undefined; up(); };
         });
