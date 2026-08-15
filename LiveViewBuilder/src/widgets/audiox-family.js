@@ -46,7 +46,7 @@
       if(j&&j.ok){ j.roomId=c.id; s.radio=j; afEmit(w); }
     }).catch(function(){});
   }
-  // Sender fuer die werbefreie Direktwiedergabe laden (einmal).
+  // Sender fuer die Direktwiedergabe laden (einmal).
   function afLoadStations(w,cb){var s=afSess(w);if(s.stations){cb&&cb();return;}
     if(typeof DOKU!=='undefined'&&DOKU){ s.stations=[{key:'oe3',title:'Hitradio Ö3'},{key:'fm4',title:'FM4'},{key:'kronehit',title:'Kronehit'},{key:'oe1',title:'Österreich 1'},{key:'ooe',title:'Radio Oberösterreich'}]; cb&&cb(); return; }
     fetch('?api=audio&op=radiostations',{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){ s.stations=(j&&j.stations)||[]; cb&&cb(); }).catch(function(){s.stations=[];cb&&cb();});
@@ -92,24 +92,30 @@
   function afMount(w){var el=$('.w[data-id="'+w.id+'"]',canvas)||$('.w[data-id="'+w.id+'"]',$('#ovcanvas'));if(!el)return;afSub(w);afEnsure(w,el);}
 
   // ---------- audioroom (Controller): Raum-Tabs (einheitlicher Selektor) ----------
+  // Raumleiste. Nutzt denselben Baukasten wie die uebrigen Gewerke (Ebene 'r'): eigener
+  // Beschriftungstext je Raum, vollstaendige Typografie, Stil, Reihenfolge und Ausblenden.
   function afRoomBar(w,s){
-    var items=hsOrderHide(w,(s.rooms||[]).map(function(r,i){return {idx:i,r:r};})); // Reihenfolge + Ausblenden (Index-stabil)
-    return '<div class="'+hsSelClass(w)+'">'+items.map(function(it){var r=it.r,i=it.idx;
+    var items=hsOrderHideBy(w,'r',(s.rooms||[]).map(function(r,i){return {idx:i,key:i,r:r};}),function(x){return x.key;});
+    var btn=hsLvlBtn(w,'r');
+    return '<div class="'+hsLvlClass(w,'r')+'"'+hsFontStyle(w,'r')+'>'+items.map(function(it){var r=it.r,i=it.idx;
       var dot=r.role==='member'?'var(--info)':(r.playing?'var(--accent)':'var(--faint)');
-      return '<button class="hsroom'+(i===s.roomIdx?' on':'')+'" data-afroom="'+i+'">'+
-        '<span style="width:7px;height:7px;border-radius:50%;background:'+dot+'"></span>'+esc(hsStripDomain(r.name))+
-        (r.role==='member'?' <span style="font-family:var(--fm);font-size:8.5px;color:var(--info);border:1px solid color-mix(in oklab,var(--info) 45%,transparent);border-radius:999px;padding:0 5px">GRP</span>':'')+'</button>';}).join('')+'</div>';}
+      return '<button class="'+btn+(i===s.roomIdx?' on':'')+'" data-afroom="'+i+'">'+
+        '<span style="width:.55em;height:.55em;border-radius:50%;background:'+dot+';flex:none"></span>'+
+        esc(hsLabel(w,'r',i,hsStripDomain(r.name)))+
+        (r.role==='member'?' <span style="font-family:var(--fm);font-size:.72em;color:var(--info);border:1px solid color-mix(in oklab,var(--info) 45%,transparent);border-radius:999px;padding:0 .42em">GRP</span>':'')+'</button>';}).join('')+'</div>';}
   defWidget('audioroom',{
     label:'Audio · Räume', paletteIcon:'wselect', size:[720,52],
     defaults:function(w){w.session='audio';},
     render:function(w){var r=afReady(w);if(r.err)return afMsg(r.err);if(r.loading)return afMsg('Audio lädt …');
-      return '<div style="position:absolute;inset:0;overflow:auto;background:var(--surface)">'+afRoomBar(w,r.s)+'</div>';},
+      return '<div class="afw afrooms">'+afRoomBar(w,r.s)+'</div>';},
     mount:afMount,
     _bind:function(w,el){var s=afSess(w);$$('[data-afroom]',el).forEach(function(b){b.onclick=function(){s.roomIdx=+b.getAttribute('data-afroom');s.radio=null;afEmit(w);afLoadRadio(w);};});},
-    props:function(w){var h=afSessRow(w)+hsStyleRow(w);var s=afSess(w);
-      h+=hsRoomOrderEditor(w,((s&&s.rooms)||[]).map(function(r,i){return {idx:i,name:r.name};}));return h;},
-    wire:function(w){afSessWire(w);hsStyleWire(w,function(){afEmit(w);});
-      var s=afSess(w);hsRoomOrderWire(w,((s&&s.rooms)||[]).map(function(r,i){return {idx:i,name:r.name};}),function(){afEmit(w);});}
+    props:function(w){var s=afSess(w);
+      var items=((s&&s.rooms)||[]).map(function(r,i){return {key:i,name:hsStripDomain(r.name)};});
+      return afSessRow(w)+hsLevelBlock(w,'r','Räume',items);},
+    wire:function(w){afSessWire(w);var s=afSess(w);
+      var items=((s&&s.rooms)||[]).map(function(r,i){return {key:i,name:hsStripDomain(r.name)};});
+      hsLevelWire(w,'r',items,function(){afEmit(w);});}
   });
 
   // ---------- audionow: Cover + Titel + Interpret + Fortschritt ----------
@@ -130,16 +136,16 @@
       // Seek nur bei echter Dauer (nicht bei Live-Radio ohne Position).
       var seekable=!rad && !!c.duration;
       var posPct=Math.max(0,Math.min(100,c.positionPct||0));
-      var barSeek='<div'+(seekable?' data-afseek':'')+' style="position:relative;height:8px;border-radius:999px;background:var(--surface-2);border:1px solid var(--line);margin:8px 0 3px;cursor:'+(seekable?'pointer':'default')+'"><div data-afseekfill style="position:absolute;left:0;top:0;bottom:0;border-radius:999px;background:var(--accent);width:'+posPct+'%;pointer-events:none"></div></div>';
-      return '<div style="position:absolute;inset:0;display:flex;gap:13px;padding:12px;box-sizing:border-box;background:var(--surface);align-items:center">'
-        +'<div style="width:40%;max-width:170px;aspect-ratio:1;align-self:center;border-radius:var(--r-s,9px);overflow:hidden;flex:none;background:'+bg+'">'+cov+'</div>'
-        +'<div style="flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:3px">'
-        +'<div style="font-size:9px;letter-spacing:.7px;text-transform:uppercase;font-weight:700;color:var(--faint)">'+tag+'</div>'
-        +'<div style="font-size:19px;font-weight:700;line-height:1.15;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(line1||'—')+'</div>'
-        +'<div style="font-size:13px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(line2||'')+'</div>'
-        +'<div style="font-size:11px;color:var(--faint);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(line3||'')+'</div>'
+      var barSeek='<div class="afbar"'+(seekable?' data-afseek':'')+' style="margin:.5em 0 .2em;cursor:'+(seekable?'pointer':'default')+'"><i data-afseekfill style="width:'+posPct+'%;pointer-events:none"></i></div>';
+      return '<div class="afw afnow">'
+        +'<div class="cov" style="background:'+bg+'">'+cov+'</div>'
+        +'<div class="txt">'
+        +'<div class="tag">'+tag+'</div>'
+        +'<div class="l1">'+esc(line1||'—')+'</div>'
+        +'<div class="l2">'+esc(line2||'')+'</div>'
+        +'<div class="l3">'+esc(line3||'')+'</div>'
         +barSeek
-        +'<div style="display:flex;justify-content:space-between;font-family:var(--fm);font-size:11px;color:var(--muted)"><span>'+esc(c.position||'0:00')+'</span><span>'+esc(c.duration||'')+'</span></div>'
+        +'<div class="tm"><span>'+esc(c.position||'0:00')+'</span><span>'+esc(c.duration||'')+'</span></div>'
         +'</div></div>';},
     mount:afMount,
     _bind:function(w,el){var s=afSess(w);var sb=$('[data-afseek]',el);if(!sb)return;var fill=$('[data-afseekfill]',sb);
@@ -163,26 +169,27 @@
     label:'Audio · Steuerung', paletteIcon:'wselect', size:[420,150],
     defaults:function(w){w.session='audio';},
     render:function(w){var r=afReady(w);if(r.err)return afMsg(r.err);if(r.loading)return afMsg('lädt …');var c=afCur(r.s);if(!c)return afMsg('kein Raum');
-      function seg(ic,cmd,on){return '<button data-afcmd="'+cmd+'" style="flex:1;display:flex;align-items:center;justify-content:center;height:42px;background:'+(on?'linear-gradient(135deg,var(--accent),var(--accent-2))':'transparent')+';color:'+(on?'#fff':'var(--text)')+';border:0;cursor:pointer">'+ic+'</button>';}
+      // Transport: Zurueck · Start/Pause · Stop · Vor. Der mittlere Knopf zeigt IMMER die
+      // Aktion, die als naechstes moeglich ist - spielt gerade nichts, steht dort Start.
+      function seg(ic,cmd,on,ttl){return '<button data-afcmd="'+cmd+'" title="'+ttl+'"'+(on?' class="on"':'')+'>'+ic+'</button>';}
       var playing=!!c.playing;
-      var bar='<div style="display:flex;border:1px solid var(--line);border-radius:999px;background:var(--surface-2);overflow:hidden;margin-bottom:10px">'
-        +seg(afSvg(AF_IC.prev,18),'5',false)+seg(afSvg(playing?AF_IC.pause:AF_IC.play,20),playing?'2':'1',true)
-        +seg(afSvg(AF_IC.stop,16),'3',false)+seg(afSvg(AF_IC.next,18),'4',false)+'</div>';
-      // Shuffle/Repeat als breite Buttons (Design A)
-      function wide(ic,lbl,cmd,on){return '<button data-afcmd="'+cmd+'" style="flex:1;display:flex;align-items:center;justify-content:center;gap:7px;height:40px;border:1px solid '+(on?'var(--accent)':'var(--line)')+';border-radius:var(--r-s,9px);background:'+(on?'color-mix(in oklab,var(--accent) 14%,transparent)':'var(--tile)')+';color:'+(on?'var(--accent)':'var(--text)')+';font-size:13px;cursor:pointer">'+ic+lbl+'</button>';}
-      // Repeat dreistufig: 0=aus, 1=Titel (one), 2=alle
+      var bar='<div class="aftrans">'
+        +seg(afSvg(AF_IC.prev,18),'5',false,'Zurück')
+        +seg(afSvg(playing?AF_IC.pause:AF_IC.play,20),playing?'2':'1',true,playing?'Pause':'Start')
+        +seg(afSvg(AF_IC.stop,16),'3',false,'Stop')
+        +seg(afSvg(AF_IC.next,18),'4',false,'Vor')+'</div>';
+      function wide(ic,lbl,cmd,on){return '<button data-afcmd="'+cmd+'"'+(on?' class="on"':'')+'>'+ic+'<span>'+lbl+'</span></button>';}
       var rep=(c.repeat||0)%3;var repLbl=rep===1?'Titel':(rep===2?'Alle':'Repeat');
-      var sr='<div style="display:flex;gap:10px;margin-bottom:10px">'+wide(afSvg(AF_IC.shuffle,16),'Shuffle','shuffle',!!c.shuffle)+wide(afSvg(AF_IC.repeat,16),repLbl,'repeat',rep>0)+'</div>';
-      // Volume-Zeile mit Mute-Icon links + Power-Icon rechts (Design A)
-      function ibtn(ic,cmd,on){return '<button data-afcmd="'+cmd+'" style="width:40px;height:40px;flex:none;border:1px solid '+(on?'var(--accent)':'var(--line)')+';border-radius:var(--r-s,9px);background:'+(on?'color-mix(in oklab,var(--accent) 14%,transparent)':'var(--tile)')+';color:'+(on?'var(--accent)':'var(--muted)')+';display:flex;align-items:center;justify-content:center;cursor:pointer">'+ic+'</button>';}
-      var vol='<div style="display:flex;align-items:center;gap:10px">'+ibtn(afSvg(c.mute?AF_IC.mute:AF_IC.vol,17),'mute',!!c.mute)
-        +'<div data-afvol style="position:relative;flex:1;height:8px;border-radius:999px;background:var(--surface-2);border:1px solid var(--line);cursor:pointer"><div style="position:absolute;left:0;top:0;bottom:0;border-radius:999px;background:var(--accent);width:'+Math.max(0,Math.min(100,c.volume||0))+'%"></div></div>'
-        +'<span style="font-family:var(--fm);width:30px;text-align:right;font-size:12px">'+(c.volume||0)+'</span>'+ibtn(afSvg(AF_IC.power,16),'power',!!c.power)+'</div>';
-      // Sleep-Timer: 15/30/60 min + Aus. (Aktueller Reststand ist im getall nicht enthalten -> keine Aktiv-Markierung.)
-      function sbtn(m,lbl){return '<button data-afsleep="'+m+'" style="flex:1;height:30px;border:1px solid var(--line);border-radius:7px;background:var(--tile);color:var(--muted);font-size:11px;cursor:pointer">'+lbl+'</button>';}
-      var arm='<button data-afarm="1" title="'+(c.armed?'Scharf – klick für Schatten-Modus':'Schatten-Modus – klick zum Scharfschalten')+'" style="flex:none;height:30px;padding:0 11px;border:1px solid '+(c.armed?'var(--accent)':'var(--line)')+';border-radius:7px;background:'+(c.armed?'color-mix(in oklab,var(--accent) 14%,transparent)':'var(--tile)')+';color:'+(c.armed?'var(--accent)':'var(--muted)')+';font-size:11px;cursor:pointer">'+(c.armed?'Scharf':'Schatten')+'</button>';
-      var sleep='<div style="display:flex;align-items:center;gap:6px;margin-top:10px"><span style="width:44px;font-size:11px;color:var(--faint);flex:none">Sleep</span>'+sbtn(15,'15m')+sbtn(30,'30m')+sbtn(60,'60m')+sbtn(0,'Aus')+arm+'</div>';
-      return '<div style="position:absolute;inset:0;padding:12px;box-sizing:border-box;background:var(--surface);display:flex;flex-direction:column;justify-content:center">'+bar+sr+vol+sleep+'</div>';},
+      var sr='<div class="afwide">'+wide(afSvg(AF_IC.shuffle,16),'Shuffle','shuffle',!!c.shuffle)
+        +wide(afSvg(AF_IC.repeat,16),repLbl,'repeat',rep>0)+'</div>';
+      function ibtn(ic,cmd,on){return '<button class="afibtn'+(on?' on':'')+'" data-afcmd="'+cmd+'">'+ic+'</button>';}
+      var vol='<div class="afvolrow">'+ibtn(afSvg(c.mute?AF_IC.mute:AF_IC.vol,17),'mute',!!c.mute)
+        +'<div class="afbar" data-afvol><i style="width:'+Math.max(0,Math.min(100,c.volume||0))+'%"></i></div>'
+        +'<span class="afvolnum">'+(c.volume||0)+'</span>'+ibtn(afSvg(AF_IC.power,16),'power',!!c.power)+'</div>';
+      function sbtn(m,lbl){return '<button data-afsleep="'+m+'">'+lbl+'</button>';}
+      var arm='<button class="arm'+(c.armed?' on':'')+'" data-afarm="1" title="'+(c.armed?'Scharf – klick für Schatten-Modus':'Schatten-Modus – klick zum Scharfschalten')+'">'+(c.armed?'Scharf':'Schatten')+'</button>';
+      var sleep='<div class="afsleep"><span class="lbl">Sleep</span>'+sbtn(15,'15m')+sbtn(30,'30m')+sbtn(60,'60m')+sbtn(0,'Aus')+arm+'</div>';
+      return '<div class="afw">'+bar+sr+vol+sleep+'</div>';},
     mount:afMount,
     _bind:function(w,el){var s=afSess(w);
       $$('[data-afcmd]',el).forEach(function(b){b.onclick=function(){var cmd=b.getAttribute('data-afcmd');var c=afCur(s);if(!c)return;
@@ -190,10 +197,9 @@
         else if(cmd==='power')afSet(w,'Power',!c.power);
         else if(cmd==='shuffle')afSet(w,'Shuffle',!c.shuffle);
         else if(cmd==='repeat')afSet(w,'Repeat',((c.repeat||0)+1)%3); // 0=aus,1=Titel,2=alle
-        else afSet(w,'Transport',cmd); // 1..5
+        else afSet(w,'Transport',cmd); // 1=Start 2=Pause 3=Stop 4=Vor 5=Zurueck
       };});
       var vb=$('[data-afvol]',el);if(vb)vb.onclick=function(e){var box=vb.getBoundingClientRect();var pct=Math.round((e.clientX-box.left)/box.width*100);afSet(w,'Volume',Math.max(0,Math.min(100,pct)));};
-      // Sleep-Timer -> ?api=audio&op=manage {setSleep|cancelSleep} an die Zone-Instanz
       $$('[data-afsleep]',el).forEach(function(b){b.onclick=function(){var m=+b.getAttribute('data-afsleep');var c=afCur(s);if(!c)return;
         if(typeof DOKU!=='undefined'&&DOKU){toast(m?('Demo: Sleep '+m+' min'):'Demo: Sleep aus');return;}
         if(m>0)afManage(w,c.id,{op:'setSleep',args:{minutes:m}}); else afManage(w,c.id,{op:'cancelSleep'});
@@ -210,12 +216,12 @@
     label:'Audio · Quelle', paletteIcon:'wlist', size:[420,120],
     defaults:function(w){w.session='audio';},
     render:function(w){var r=afReady(w);if(r.err)return afMsg(r.err);if(r.loading)return afMsg('lädt …');var c=afCur(r.s);if(!c)return afMsg('kein Raum');
-      function rowSrc(lbl,ident,val){return '<div style="display:flex;align-items:center;gap:8px;margin:5px 0"><span style="width:74px;font-size:12px;color:var(--muted)">'+lbl+'</span>'
-        +'<button data-afsrc="'+ident+'" data-afd="-1" style="width:30px;height:28px;border:1px solid var(--line);border-radius:7px;background:var(--tile);color:var(--text);cursor:pointer">−</button>'
-        +'<span style="font-family:var(--fm);min-width:34px;text-align:center;font-size:13px">#'+(val||0)+'</span>'
-        +'<button data-afsrc="'+ident+'" data-afd="1" style="width:30px;height:28px;border:1px solid var(--line);border-radius:7px;background:var(--tile);color:var(--text);cursor:pointer">+</button></div>';}
-      return '<div style="position:absolute;inset:0;padding:11px 13px;box-sizing:border-box;background:var(--surface);display:flex;flex-direction:column;justify-content:center">'
-        +'<div style="font-size:9px;letter-spacing:.7px;text-transform:uppercase;font-weight:700;color:var(--faint);margin-bottom:2px">Quelle</div>'
+      function rowSrc(lbl,ident,val){return '<div class="afsrow"><span class="lbl">'+lbl+'</span>'
+        +'<button data-afsrc="'+ident+'" data-afd="-1">−</button>'
+        +'<span class="num">#'+(val||0)+'</span>'
+        +'<button data-afsrc="'+ident+'" data-afd="1">+</button></div>';}
+      return '<div class="afw">'
+        +'<div class="afnow"><div class="tag" style="flex:1">Quelle</div></div>'
         +rowSrc('Favorit','SourceFavorite',c.fav)+rowSrc('Radio','SourceRadio',c.radio)+rowSrc('Playlist','SourcePlaylist',c.playlist)+'</div>';},
     mount:afMount,
     _bind:function(w,el){var s=afSess(w);$$('[data-afsrc]',el).forEach(function(b){b.onclick=function(){var ident=b.getAttribute('data-afsrc'),d=+b.getAttribute('data-afd');var c=afCur(s);if(!c)return;
@@ -223,18 +229,18 @@
     props:function(w){return afSessRow(w);}, wire:function(w){afSessWire(w);}
   });
 
-  // ---------- audioradio: Sender werbefrei direkt spielen (HQ-Stream statt TuneIn) ----------
+  // ---------- audioradio: Sender  direkt spielen (HQ-Stream statt TuneIn) ----------
   defWidget('audioradio',{
-    label:'Audio · Radio (werbefrei)', paletteIcon:'wlist', size:[420,150],
+    label:'Audio · Radio (Direktstream)', paletteIcon:'wlist', size:[420,150],
     defaults:function(w){w.session='audio';},
     render:function(w){var r=afReady(w);if(r.err)return afMsg(r.err);if(r.loading)return afMsg('lädt …');var s=r.s,c=afCur(s);if(!c)return afMsg('kein Raum');
       if(!s.stations){afLoadStations(w,function(){afEmit(w);});return afMsg('Sender lädt …');}
       var curKey=(s.radio&&s.radio.roomId===c.id)?(s.radio.key||''):'';
       var chips=s.stations.map(function(st){var on=(curKey&&curKey===st.key);
-        return '<button data-afstation="'+esc(st.key)+'" style="border:1px solid '+(on?'var(--accent)':'var(--line)')+';border-radius:999px;background:'+(on?'color-mix(in oklab,var(--accent) 14%,transparent)':'var(--tile)')+';color:'+(on?'var(--accent)':'var(--text)')+';font-size:12px;padding:6px 12px;cursor:pointer">'+esc(st.title)+'</button>';}).join('');
-      return '<div style="position:absolute;inset:0;padding:11px 13px;box-sizing:border-box;background:var(--surface);overflow:auto">'
-        +'<div style="font-size:9px;letter-spacing:.7px;text-transform:uppercase;font-weight:700;color:var(--faint);margin-bottom:8px">Radio · werbefrei direkt ('+esc(c.name)+')</div>'
-        +'<div style="display:flex;flex-wrap:wrap;gap:8px">'+chips+'</div></div>';},
+        return '<button class="afchip'+(on?' on':'')+'" data-afstation="'+esc(st.key)+'">'+esc(st.title)+'</button>';}).join('');
+      return '<div class="afw afw-scroll">'
+        +'<div class="aftag">Radio · Direktstream ('+esc(c.name)+')</div>'
+        +'<div class="afchips">'+chips+'</div></div>';},
     mount:afMount,
     _bind:function(w,el){var s=afSess(w);$$('[data-afstation]',el).forEach(function(b){b.onclick=function(){var key=b.getAttribute('data-afstation');var c=afCur(s);if(!c)return;
       if(typeof DOKU!=='undefined'&&DOKU){toast('Demo: '+key);return;}
@@ -341,20 +347,20 @@
     defaults:function(w){w.session='audio';},
     render:function(w){var r=afReady(w);if(r.err)return afMsg(r.err);if(r.loading)return afMsg('lädt …');var s=r.s,cur=afCur(s);if(!cur)return afMsg('kein Raum');
       var master=cur.coordinator||'';
-      var head='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><span style="font-size:9px;letter-spacing:.7px;text-transform:uppercase;font-weight:700;color:var(--faint)">Multiroom · Master: '+esc(cur.name)+'</span>'
-        +'<button data-afungroup="1" style="font-size:11px;color:var(--accent);background:none;border:0;cursor:pointer">Gruppe trennen</button></div>';
+      var head='<div class="hd"><span class="aftag">Multiroom · Master: '+esc(cur.name)+'</span>'
+        +'<button data-afungroup="1">Gruppe trennen</button></div>';
       // Gruppen-Lautstaerke: ein Regler an den Koordinator (Anzeige naeherungsweise = Master-Volume).
-      var gvol='<div style="display:flex;align-items:center;gap:10px;margin:2px 0 12px"><span style="width:44px;font-size:11px;color:var(--faint);flex:none">Gruppe</span>'
-        +'<div data-afgvol style="position:relative;flex:1;height:8px;border-radius:999px;background:var(--surface-2);border:1px solid var(--line);cursor:pointer"><div data-afgvolfill style="position:absolute;left:0;top:0;bottom:0;border-radius:999px;background:var(--accent);width:'+Math.max(0,Math.min(100,cur.volume||0))+'%;pointer-events:none"></div></div>'
-        +'<span style="font-family:var(--fm);width:30px;text-align:right;font-size:12px">'+(cur.volume||0)+'</span></div>';
+      var gvol='<div class="afvolrow"><span class="lbl" style="width:clamp(30px,13cqmin,54px);font-size:clamp(8px,3.2cqmin,12px);color:var(--faint);flex:none">Gruppe</span>'
+        +'<div class="afbar" data-afgvol><i data-afgvolfill style="width:'+Math.max(0,Math.min(100,cur.volume||0))+'%;pointer-events:none"></i></div>'
+        +'<span class="afvolnum">'+(cur.volume||0)+'</span></div>';
       var rows=s.rooms.map(function(rr){ if(rr.id===cur.id)return '';
         var inGrp=(rr.role==='member'&&rr.coordinator===master&&master!=='');
-        return '<div style="display:flex;align-items:center;gap:10px;padding:8px 2px;border-top:1px solid var(--line-soft)">'
-          +'<span style="width:22px;height:22px;border-radius:6px;flex:none;background:'+(rr.playing?'linear-gradient(135deg,var(--accent),var(--accent-2))':'var(--surface-2)')+'"></span>'
-          +'<span style="flex:1;font-size:13px;font-weight:600">'+esc(rr.name)+'</span>'
-          +'<span style="font-size:10.5px;color:var(--muted)">'+(inGrp?'synchron':(rr.role==='member'?'andere Gruppe':(rr.playing?'spielt eigenes':'frei')))+'</span>'
-          +'<button data-afgrp="'+rr.id+'" data-afin="'+(inGrp?1:0)+'" style="width:42px;height:24px;border-radius:999px;border:1px solid '+(inGrp?'var(--accent)':'var(--line)')+';background:'+(inGrp?'var(--accent)':'var(--surface-2)')+';position:relative;cursor:pointer"><span style="position:absolute;top:2px;left:'+(inGrp?'20px':'2px')+';width:18px;height:18px;border-radius:50%;background:'+(inGrp?'#fff':'var(--muted)')+';transition:.15s"></span></button></div>';}).join('');
-      return '<div style="position:absolute;inset:0;overflow:auto;padding:11px 13px;box-sizing:border-box;background:var(--surface)">'+head+gvol+rows+'</div>';},
+        return '<div class="r">'
+          +'<span class="sw" style="background:'+(rr.playing?'linear-gradient(135deg,var(--accent),var(--accent-2))':'var(--surface-2)')+'"></span>'
+          +'<span class="nm" style="font-weight:600">'+esc(hsStripDomain(rr.name))+'</span>'
+          +'<span style="font-size:clamp(8px,3cqmin,12px);color:var(--muted);flex:none">'+(inGrp?'synchron':(rr.role==='member'?'andere Gruppe':(rr.playing?'spielt eigenes':'frei')))+'</span>'
+          +'<button data-afgrp="'+rr.id+'" data-afin="'+(inGrp?1:0)+'" style="width:clamp(32px,14cqmin,52px);height:clamp(19px,8cqmin,30px);border-radius:999px;border:1px solid '+(inGrp?'var(--accent)':'var(--line)')+';background:'+(inGrp?'var(--accent)':'var(--surface-2)')+';position:relative;cursor:pointer;flex:none;padding:0"><span style="position:absolute;top:12%;'+(inGrp?'right:9%':'left:9%')+';width:min(42%,1.1em);aspect-ratio:1;border-radius:50%;background:'+(inGrp?'#fff':'var(--muted)')+';transition:.15s"></span></button></div>';}).join('');
+      return '<div class="afw afmr">'+head+gvol+'<div class="rows">'+rows+'</div></div>';},
     mount:afMount,
     _bind:function(w,el){var s=afSess(w);var cur=afCur(s);if(!cur)return;
       // Gruppen-Lautstaerke -> ?api=audio&op=manage {setGroupVolume} an den Koordinator (=aktuelle Zone).
