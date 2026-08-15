@@ -227,6 +227,8 @@
     lawnrobot:['Garten','<path d="M6 11h5.38a1 1 0 0 1 .9 .55l.72 1.45h5a1 1 0 0 1 1 1v2" /> <path d="M3 4h1.13a1 1 0 0 1 1 .86l1.59 11.14" /> <path d="M17 18h-8" /> <path d="M9 18a2 2 0 1 1 -4 0a2 2 0 0 1 4 0" /> <path d="M21 18a2 2 0 1 1 -4 0a2 2 0 0 1 4 0" />'],
     automower:['Garten','<path d="M3 14c0 -3.6 3.6 -6 9 -6s9 2.4 9 6"/> <path d="M3 14h18"/> <path d="M14.5 10.5h.01"/> <path d="M10 17.5h4"/> <path d="M9.5 17.5a2 2 0 1 1 -4 0a2 2 0 0 1 4 0"/> <path d="M18.5 17.5a2 2 0 1 1 -4 0a2 2 0 0 1 4 0"/>'],
     automower2:['Garten','<path d="M4 8a4 3 0 0 1 4 -3h8a4 3 0 0 1 4 3v6a4 3 0 0 1 -4 3h-8a4 3 0 0 1 -4 -3z"/> <path d="M9 11a3 3 0 1 0 6 0a3 3 0 0 0 -6 0"/> <path d="M12 11h.01M10.5 9.5h.01M13.5 9.5h.01"/> <path d="M4 20h4M16 20h4"/>'],
+    mowerbot:['Garten','<path d="M3 14c0 -3.6 3.6 -6 9 -6s9 2.4 9 6"/> <path d="M3 14h18"/> <path d="M14.5 10.5h.01"/> <path d="M10 17.5h4"/> <path d="M9.5 17.5a2 2 0 1 1 -4 0a2 2 0 0 1 4 0"/> <path d="M18.5 17.5a2 2 0 1 1 -4 0a2 2 0 0 1 4 0"/>'],
+    mowercharge:['Garten','<path d="M3 20h18"/> <path d="M5 20v-2.5a7 7 0 0 1 14 0v2.5"/> <path d="M12.6 7.5l-2.2 3.4h3l-2.2 3.4"/>'],
     pelletstove:['Geräte','<path d="M12 10.941c2.333 -3.308 .167 -7.823 -1 -8.941c0 3.395 -2.235 5.299 -3.667 6.706c-1.43 1.408 -2.333 3.294 -2.333 5.588c0 3.704 3.134 6.706 7 6.706c3.866 0 7 -3.002 7 -6.706c0 -1.712 -1.232 -4.403 -2.333 -5.588c-2.084 3.353 -3.257 3.353 -4.667 2.235" />'],
     watersoftener:['Geräte','<path d="M18.421 11.56a6.702 6.702 0 0 0 -.357 -.683l-4.89 -7.26c-.42 -.625 -1.287 -.803 -1.936 -.397a1.376 1.376 0 0 0 -.41 .397l-4.893 7.26c-1.695 2.838 -1.035 6.441 1.567 8.546a7.144 7.144 0 0 0 4.518 1.58" /> <path d="M17.001 19a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /> <path d="M19.001 15.5v1.5" /> <path d="M19.001 21v1.5" /> <path d="M22.032 17.25l-1.299 .75" /> <path d="M17.27 20l-1.3 .75" /> <path d="M15.97 17.25l1.3 .75" /> <path d="M20.733 20l1.3 .75" />'],
     gasboiler:['Geräte','<path d="M12 10.941c2.333 -3.308 .167 -7.823 -1 -8.941c0 3.395 -2.235 5.299 -3.667 6.706c-1.43 1.408 -2.333 3.294 -2.333 5.588c0 3.704 3.134 6.706 7 6.706c3.866 0 7 -3.002 7 -6.706c0 -1.712 -1.232 -4.403 -2.333 -5.588c-2.084 3.353 -3.257 3.353 -4.667 2.235" />'],
@@ -281,7 +283,7 @@
     bot:'mower',media:'music',skinswitch:'moon',chip:'star',gauge:'gauge',gaugepro:'gauge',bar:'wbars',room:'home',
     statuslist:'wlist',devlist:'wlist',ticker:'wticker',tempbar:'temperature',statusgrid:'wgrid',meterlist:'wbars',
     infolist:'wlist',kpi:'wkpi',delta:'wdelta',statusimage:'wimage',chart:'wchart',spark:'wchart',sankey:'wsankey',
-    calendar:'calendar',weekplan:'calendar',camera:'camera',campro:'camera',html:'wcode',image:'wimage',webview:'wifi',shape:'wshape'
+    calendar:'calendar',weekplan:'calendar',camera:'camera',campro:'camera',camarray:'camera',html:'wcode',image:'wimage',webview:'wifi',shape:'wshape'
   };
   function decoratePalette(){$$('.pitem').forEach(function(el){var t=el.getAttribute('data-add');if(!t||el.querySelector('.pisvg'))return;el.insertAdjacentHTML('afterbegin','<span class="pisvg">'+iconSVG(PAL_ICON[t]||'sensor')+'</span>');});}
   // Adaptive Icons: verändern ihr Aussehen anhand eines gebundenen Wertes (0–100 % bzw. Zustand).

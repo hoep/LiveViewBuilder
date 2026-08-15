@@ -200,6 +200,7 @@
       var _dfin=function(){
         if(typeof dokuSeed==='function')dokuSeed();
         if(typeof dokuInstallFetch==='function')dokuInstallFetch();
+        if(typeof dokuFitWidth==='function')dokuFitWidth(); // Inhaltsbreite = Fensterbreite (normale Schrift, kein Zoom)
         store=buildDokuStore();
         var _dv=(location.search.match(/[?&]dokuview=([^&]*)/)||[])[1];
         if(_dv){_dv=decodeURIComponent(_dv).toLowerCase();
@@ -207,7 +208,9 @@
         applySkin();GS=bcfg().gs;
         switchView(store.current);buildSwatches();buildIconLib();buildBlocks();buildSkins();buildSettings();
         buildLayoutList();syncPalette();decoratePalette();chromeUI();
-        if(RUN){enterRun();} // /hook/doku?run=1 (oder /hook/run/…?doku=1): Doku ohne Builder-Hülle, Seiten über das Run-Menü
+        // Doku standardmaessig als Voll-Reader (Run: volle Fensterbreite, normale Schrift, vertikal scrollend,
+        // Seiten ueber das ☰-Menue). Editierbare Builder-Doku nur noch mit ?edit=1.
+        if(RUN||!/[?&]edit=1/.test(location.search)){enterRun();}
         else{mode='preview';stage.classList.remove('edit');stage.classList.add('preview');
           toast('Dokumentation: '+Object.keys(WIDGETS).length+' Widgets auf '+Object.keys(store.views).length+' Seiten');}
       };
@@ -252,10 +255,10 @@
   // w.type mehr, sondern die Variante rmode='dial' des Widgets 'slider'. _sfKey() unten übersetzt
   // dafür auf den Schlüssel 'dial', damit dieser Eintrag weiterhin greift (Dial soll wie zuvor
   // strecken/rund bleiben, nicht wie ein normaler Regler frei skalieren).
-  var SF_STRETCH={chart:1,sankey:1,camera:1,campro:1,calendar:1,devlist:1,statuslist:1,ticker:1,tempbar:1,statusgrid:1,meterlist:1,infolist:1,kpi:1,image:1,statusimage:1,select:1,shape:1,dial:1,webview:1,weekplan:1,skinswitch:1,weatherpro:1,suncard:1,media:1,html:1,bar:1,line:1,gauge:1,gaugepro:1,valuecard:1,flow:1};
-  var SF_LOCK={chart:1,camera:1,campro:1,media:1,sankey:1,html:1,calendar:1,devlist:1,statuslist:1};
+  var SF_STRETCH={chart:1,sankey:1,camera:1,campro:1,camarray:1,calendar:1,devlist:1,statuslist:1,ticker:1,tempbar:1,statusgrid:1,meterlist:1,infolist:1,kpi:1,image:1,statusimage:1,select:1,shape:1,dial:1,webview:1,weekplan:1,skinswitch:1,weatherpro:1,suncard:1,media:1,html:1,bar:1,line:1,gauge:1,gaugepro:1,valuecard:1,flow:1};
+  var SF_LOCK={chart:1,camera:1,campro:1,camarray:1,media:1,sankey:1,html:1,calendar:1,devlist:1,statuslist:1};
   var SF_NOGROW={chip:1,button:1,icon:1,clock:1,switch:1,sun:1};
-  var SF_PRIO={chart:3,camera:3,campro:3,flow:3,sankey:3,gaugepro:3,html:3,chip:1,button:1,icon:1,clock:1,switch:1,sun:1};
+  var SF_PRIO={chart:3,camera:3,campro:3,camarray:3,flow:3,sankey:3,gaugepro:3,html:3,chip:1,button:1,icon:1,clock:1,switch:1,sun:1};
   var _scCache=null,_scView=null,_scMode='';
   function invalidateSC(){_scCache=null;}
   function sfCfg(p){var c=(p&&p.smart)||{},o={},k;for(k in SMART_DEF)o[k]=(c[k]!=null?c[k]:SMART_DEF[k]);return o;}
@@ -494,4 +497,9 @@
     // (sonst springt das Layout beim ersten Tipp). Breiten-/Orientierungswechsel skaliert weiter normal.
     var vw=window.innerWidth,vh=window.innerHeight;
     if(document.body.classList.contains('run')&&isMobile()&&bcfg().kioskStable!==false&&vw===_fitVP.w&&Math.abs(vh-_fitVP.h)<170)return;
+    // Doku: bei geaenderter Zielbreite Katalog neu aufbauen (Textblöcke füllen die neue Breite, kein Zoom)
+    if((typeof DOKU!=='undefined'&&DOKU)&&typeof dokuFitWidth==='function'&&typeof buildDokuStore==='function'){
+      var _tw=Math.max(320,Math.min(1600,vw-2*DOKU_PAD));
+      if(_tw!==DOKU_TXTW){var _cur=store&&store.current;dokuFitWidth();store=buildDokuStore();if(_cur&&store.views[_cur])store.current=_cur;switchView(store.current);}
+    }
     fitCanvas();});});
