@@ -182,6 +182,13 @@
       }
       ctx.drawImage(st.buf, 0, 0, W, H);
 
+      var wx = _covOn2(w, 'ssWeather', true) ? ssWx(w) : null;
+      var tW = (typeof performance !== 'undefined' ? performance.now() : ssNow(w)) / 1000;
+      if (wx) {
+        var dayW = Math.max(0, Math.min(1, (sun.elev + 6) / 16));
+        ssWeatherDraw(ctx, W, H, K, wx, tW, pal0, dayW);
+      }
+
       var els = ssEnergy(w, pal0);
       if (els) {
         var t = (typeof performance !== 'undefined' ? performance.now() : ssNow(w)) / 1000;
@@ -190,6 +197,10 @@
         var lebt = _covOn2(w, 'ssEnAnim', true) && els.some(function (e) { return e.watt != null && e.watt > 1; });
         if (lebt) { ssAnim(w, el); }
       }
+      // Niederschlag und ziehender Nebel brauchen ebenfalls Bilder - derselbe Schalter
+      // haelt sie an, sonst liesse sich die Kachel nicht wirklich ruhigstellen.
+      if (wx && _covOn2(w, 'ssEnAnim', true)
+          && (wx.rain > 0.01 || wx.snow > 0.01 || wx.fog > 0.05)) { ssAnim(w, el); }
     }
 
     /** Alle Einstellungen als Zeichenkette - aendert sich eine, wird die Szene neu gemalt. */
@@ -903,6 +914,127 @@
     }
 
 
+
+    // ===================== Wetter =====================
+    //  Regen, Schnee und Nebel liegen ueber der Szene. Gebunden werden EINZELNE Variablen -
+    //  so laeuft es mit jeder Wetterquelle (Tempest, Davis, Open-Meteo, eigener Sensor) und
+    //  haengt nicht an einem bestimmten JSON-Format.
+
+    /** Zahlenwert samt Einheit der Variablen - die Einheit entscheidet die Umrechnung. */
+    function ssUnit(vid) {
+      var d = vid && _lastVals[vid]; if (!d) return '';
+      return (d.u != null ? String(d.u) : '').trim().toLowerCase();
+    }
+    /** Wetterlage aus den gebundenen Variablen. Alles einzeln optional. */
+    function ssWx(w) {
+      var rain = ssVal(w.ssRainV), snow = ssVal(w.ssSnowV);
+      // Ein Regensensor spricht frueher an als das Wippen-Messwerk der Station: bei
+      // Nieselregen meldet er "es regnet", waehrend die Intensitaet noch 0,0 mm/h zeigt.
+      // Dann wird ein leichter Niesel dargestellt statt gar nichts.
+      var sens = ssVal(w.ssRainSensV);
+      if (sens != null && sens > 0 && !(rain > 0.05) && !(snow > 0.05)) { rain = 0.25; }
+      var fogRaw = ssVal(w.ssFogV), wind = ssVal(w.ssWindV);
+      var typ = ssVal(w.ssPtypeV);
+      // Ein Niederschlagswert plus Typkennung: 2 = Schnee (Tempest-Konvention), sonst Regen.
+      if (typ != null && rain != null && snow == null) {
+        if (typ >= 2) { snow = rain; rain = 0; }
+      }
+      var fog = null;
+      if (fogRaw != null) {
+        // Sichtweite in Metern (grosse Zahl) oder ein Anteil 0..1 bzw. 0..100.
+        if (fogRaw > 5) fog = Math.max(0, Math.min(1, 1 - fogRaw / 2000));
+        else if (fogRaw > 1) fog = Math.max(0, Math.min(1, fogRaw / 100));
+        else fog = Math.max(0, Math.min(1, fogRaw));
+      }
+      var any = (rain > 0.01) || (snow > 0.01) || (fog > 0.02);
+      if (!any) return null;
+      // Wind in m/s. Die EINHEIT entscheidet, nicht die Groesse: eine Davis-Station meldet
+      // km/h und liegt meist unter 40 - eine Schwelle haette das als m/s gelesen und den
+      // Regen viel zu steil geneigt.
+      var ws = 0;
+      if (wind != null) {
+        var u = ssUnit(w.ssWindV);
+        ws = (u.indexOf('km') >= 0) ? wind / 3.6
+           : (u.indexOf('kn') >= 0) ? wind * 0.5144
+           : (u.indexOf('mph') >= 0) ? wind * 0.447
+           : wind;                                    // m/s oder ohne Einheit
+      }
+      return { rain: rain || 0, snow: snow || 0, fog: fog || 0, wind: ws };
+    }
+
+    /** Streuwert 0..1 aus einer Zahl - fuer immer gleiche Tropfenbahnen ohne Zustand. */
+    function ssRnd(i, k) {
+      var x = Math.sin(i * 12.9898 + k * 78.233) * 43758.5453;
+      return x - Math.floor(x);
+    }
+
+    /**
+     * Niederschlag und Nebel zeichnen.
+     *  Der Nebel liegt als Schleier ueber dem Bild, unten dichter - so wie er sich am Boden
+     *  sammelt. Regen und Schnee sind Bahnen aus einem festen Streumuster, ihre Lage ergibt
+     *  sich allein aus der Zeit; damit braucht es keinen Teilchenspeicher.
+     */
+    function ssWeatherDraw(ctx, W, H, K, wx, tSec, pal, day) {
+      // --- Nebel ---
+      if (wx.fog > 0.02) {
+        var f = Math.min(1, wx.fog);
+        var col = pal.light ? '245,247,250' : '188,200,214';
+        var gr = ctx.createLinearGradient(0, H * 0.18, 0, H);
+        gr.addColorStop(0, 'rgba(' + col + ',0)');
+        gr.addColorStop(0.55, 'rgba(' + col + ',' + (0.30 * f).toFixed(3) + ')');
+        gr.addColorStop(1, 'rgba(' + col + ',' + (0.60 * f).toFixed(3) + ')');
+        ctx.save(); ctx.fillStyle = gr; ctx.fillRect(0, 0, W, H);
+        // zwei langsam ziehende Schwaden
+        for (var b = 0; b < 2; b++) {
+          var y = H * (0.52 + b * 0.18) + Math.sin(tSec * 0.06 + b) * H * 0.02;
+          var x = ((tSec * (5 + b * 3)) % (W * 2)) - W * 0.5;
+          var g2 = ctx.createRadialGradient(x, y, 0, x, y, W * 0.55);
+          g2.addColorStop(0, 'rgba(' + col + ',' + (0.18 * f).toFixed(3) + ')');
+          g2.addColorStop(1, 'rgba(' + col + ',0)');
+          ctx.fillStyle = g2; ctx.fillRect(0, y - H * 0.25, W, H * 0.5);
+        }
+        ctx.restore();
+      }
+
+      // --- Regen ---
+      if (wx.rain > 0.01) {
+        var n = Math.round(Math.max(24, Math.min(320, wx.rain * 55)));
+        var len = K * 0.075, sp = 1.35 + Math.min(1.2, wx.rain / 8);
+        var tilt = Math.max(-0.55, Math.min(0.55, wx.wind / 22));
+        ctx.save();
+        ctx.strokeStyle = pal.light ? 'rgba(90,120,150,.42)' : 'rgba(190,215,240,.42)';
+        ctx.lineWidth = Math.max(0.7, K / 700); ctx.lineCap = 'round';
+        ctx.beginPath();
+        for (var i = 0; i < n; i++) {
+          var ph = ssRnd(i, 1), dep = 0.55 + ssRnd(i, 2) * 0.75;
+          var x0 = ssRnd(i, 3) * (W * 1.4) - W * 0.2;
+          var y0 = (((tSec * sp * dep + ph) % 1) * (H + len)) - len;
+          x0 += tilt * y0;
+          ctx.moveTo(x0, y0); ctx.lineTo(x0 + tilt * len, y0 + len * dep);
+        }
+        ctx.stroke(); ctx.restore();
+      }
+
+      // --- Schnee ---
+      if (wx.snow > 0.01) {
+        var m = Math.round(Math.max(20, Math.min(240, wx.snow * 45)));
+        var sps = 0.16 + Math.min(0.2, wx.snow / 20);
+        var dr = Math.max(-0.5, Math.min(0.5, wx.wind / 25));
+        ctx.save();
+        ctx.fillStyle = pal.light ? 'rgba(120,145,175,.72)' : 'rgba(240,247,255,.82)';
+        for (var j = 0; j < m; j++) {
+          var p2 = ssRnd(j, 4), dp = 0.5 + ssRnd(j, 5) * 0.8;
+          var yy = (((tSec * sps * dp + p2) % 1) * (H + K * 0.06)) - K * 0.03;
+          var xx = ssRnd(j, 6) * (W * 1.3) - W * 0.15
+                 + Math.sin(tSec * 0.55 * dp + j) * K * 0.022 + dr * yy;
+          var r2 = (K / 420) * dp;
+          ctx.globalAlpha = 0.45 + dp * 0.4;
+          ctx.beginPath(); ctx.arc(xx, yy, r2, 0, 7); ctx.fill();
+        }
+        ctx.restore();
+      }
+    }
+
     // ===================== Energieketten =====================
     //  Bewusst dieselbe Struktur wie im Widget "flow" (Modus Energie): w.elements mit
     //  {type,name,icon,color,vid}. Dadurch laesst sich eine fertige Konfiguration
@@ -1246,6 +1378,15 @@
         h += row('Satteldächer', '<input type="checkbox" id="ssBldRoof"' + (_covOn2(w, 'ssBldRoof', true) ? ' checked' : '') + '>');
         h += row('Gebäudefarbe', skinSel(w.ssBldColor || '', 'id="ssBldColor"'));
         h += '<div style="font-size:11px;color:var(--muted);margin:2px 2px 6px">Grundrisse stammen aus OpenStreetMap und werden einmalig je Standort geholt. Fehlt die Höhenangabe, wird nach Gebäudeart geschätzt (Garage 2,8 m, Wohnhaus 7 m). Die Satteldächer sind eine Annahme für die Ortsüblichkeit — OSM kennt die Dachformen hier nicht. Ist das eigene Haus dort erfasst, wird sein echter Grundriss verwendet — die Maße oben gelten dann nur noch als Rückfall.</div>';
+        h += '<div class="pgh">Wetter</div>';
+        h += row('Wetter zeigen', '<input type="checkbox" id="ssWeather"' + (_covOn2(w, 'ssWeather', true) ? ' checked' : '') + '>');
+        h += fieldPick(w, 'ssRainV', 'Regen mm/h');
+        h += fieldPick(w, 'ssRainSensV', 'Regensensor (an/aus)');
+        h += fieldPick(w, 'ssSnowV', 'Schnee mm/h');
+        h += fieldPick(w, 'ssPtypeV', 'Niederschlagsart');
+        h += fieldPick(w, 'ssFogV', 'Sicht / Nebel');
+        h += fieldPick(w, 'ssWindV', 'Wind');
+        h += '<div style="font-size:11px;color:var(--muted);margin:2px 2px 6px">Alles einzeln optional — gebunden wird, was die eigene Wetterstation liefert. <b>Niederschlagsart</b>: ab Wert 2 gilt der Regenwert als Schnee (Tempest-Konvention); ohne Bindung bleibt es Regen. <b>Sicht/Nebel</b>: Werte über 5 gelten als Sichtweite in Metern (unter 2000 m zieht Nebel auf), kleinere als Anteil. <b>Regensensor</b>: meldet er Regen, während die Station noch 0,0 mm/h zeigt, erscheint Nieselregen. <b>Wind</b> neigt den Regen und treibt den Schnee; die Einheit der Variablen (km/h, kn, mph, m/s) wird berücksichtigt.</div>';
         h += '<div class="pgh">Energie</div>';
         h += ssImportRow(w);
         h += listEditor(w, 'elements', 'Typ · Name · Icon · Farbe · Leistung-ID',
@@ -1259,7 +1400,7 @@
         h += row('Startwinkel (°)', '<input id="ssEnA0" type="number" min="0" max="359" value="' + ssNum(w.ssEnA0, 0) + '" style="width:64px">');
         h += row('Referenz-Leistung (W)', '<input id="ssEnRef" type="number" min="50" step="100" value="' + ssNum(w.ssEnRef, 3000) + '" style="width:96px"> <span style="font-size:11px;color:var(--muted)">volles Tempo</span>');
         h += row('Marken zeigen', '<input type="checkbox" id="ssEnChip"' + (_covOn2(w, 'ssEnChip', true) ? ' checked' : '') + '>');
-        h += row('Fluss bewegen', '<input type="checkbox" id="ssEnAnim"' + (_covOn2(w, 'ssEnAnim', true) ? ' checked' : '') + '>');
+        h += row('Bewegung', '<input type="checkbox" id="ssEnAnim"' + (_covOn2(w, 'ssEnAnim', true) ? ' checked' : '') + '>');
         h += '<div class="pgh">Ansicht</div>';
         h += row('Neigung (°)', '<input id="ssP" type="number" min="0" max="70" value="' + ssNum(w.ssPitch, 52) + '" style="width:64px">');
         h += row('Blickrichtung (°)', '<input id="ssB" type="number" min="0" max="359" value="' + ssNum(w.ssBearing, 20) + '" style="width:64px">');
@@ -1290,7 +1431,7 @@
         });
         [['ssRay', 'ssRay'], ['ssInfo', 'ssInfo'], ['ssPlot', 'ssPlot'],
          ['ssBuildings', 'ssBuildings'], ['ssOwnFromOsm', 'ssOwnFromOsm'], ['ssBldRoof', 'ssBldRoof'],
-         ['ssMoon', 'ssMoon'], ['ssStars', 'ssStars'], ['ssStrip', 'ssStrip'], ['ssEnChip', 'ssEnChip'], ['ssEnAnim', 'ssEnAnim']].forEach(function (o) {
+         ['ssMoon', 'ssMoon'], ['ssStars', 'ssStars'], ['ssStrip', 'ssStrip'], ['ssEnChip', 'ssEnChip'], ['ssEnAnim', 'ssEnAnim'], ['ssWeather', 'ssWeather']].forEach(function (o) {
           var e = $('#' + o[0]); if (e) e.onchange = function () { w[o[1]] = this.checked; up(); };
         });
         if ($('#ssHouseColor')) $('#ssHouseColor').onchange = function () { w.ssHouseColor = this.value || undefined; up(); };
