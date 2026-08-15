@@ -121,6 +121,28 @@
     /** Farbe mit Deckung als rgba-Zeichenkette. */
     function ssA(c, a) { var r = hex2rgb(c); return 'rgba(' + r[0] + ',' + r[1] + ',' + r[2] + ',' + a + ')'; }
 
+    /**
+     * Beim Skinwechsel alle lebenden Sonnenszenen neu zeichnen.
+     *  Die Anmeldung laeuft ueber eine globale Liste statt ueber die Widget-Liste des
+     *  Builders: dort stehen Widgets in Containern, Panels und Komponenten gar nicht drin.
+     *  Ueber _ssState sind dagegen ALLE gemounteten Kacheln erreichbar.
+     */
+    function ssRedrawAll() {
+      Object.keys(_ssState).forEach(function (id) {
+        var st = _ssState[id], w = st && st.w;
+        if (!w) return;
+        var el = ssEl(w);
+        if (!el || !document.body.contains(el)) { delete _ssState[id]; return; }
+        st.key = null;
+        ssDraw(w, el);
+      });
+    }
+    (function () {                                   // nur einmal anmelden
+      if (typeof window === 'undefined') return;
+      window.LV_SKIN_HOOKS = window.LV_SKIN_HOOKS || [];
+      if (window.LV_SKIN_HOOKS.indexOf(ssRedrawAll) < 0) { window.LV_SKIN_HOOKS.push(ssRedrawAll); }
+    })();
+
     function ssEl(w) { return $('.w[data-id="' + w.id + '"]', canvas) || $('.w[data-id="' + w.id + '"]', $('#ovcanvas')); }
     function ssSt(w) { return _ssState[w.id] || (_ssState[w.id] = { bearing: null, pitch: null, drag: null, raf: 0, spin: 0 }); }
     function ssNum(v, d) { var n = parseFloat(v); return isNaN(n) ? d : n; }
@@ -1455,6 +1477,7 @@
       },
       mount: function (w) {
         var el = ssEl(w); if (!el) return;
+        ssSt(w).w = w;                            // fuer den Skinwechsel erreichbar machen
         ssBind(w, el); ssDraw(w, el);
         // Groessenaenderung -> neu zeichnen (Kachel skaliert, Fenster, Reflow, Zoom)
         var box = $('[data-role=ssbox]', el);
@@ -1474,10 +1497,10 @@
         }
       },
       live: function (w, el) { ssDraw(w, el); },
-      // Skinwechsel: die Szene liegt zwischengespeichert vor und wuerde sonst bis zum
-      // naechsten Takt in den alten Farben stehen bleiben. Zwischenspeicher verwerfen
-      // und sofort neu zeichnen.
-      skin: function (w, el) { ssSt(w).key = null; ssDraw(w, el); },
+      // Kein skin()-Haken hier: der laeuft ueber die Widget-Liste, und die kennt keine
+      // Widgets in Containern, Panels oder Komponenten. Die Sonnenszene meldet sich
+      // stattdessen oben in LV_SKIN_HOOKS an - so wird jede Kachel erreicht, egal wo sie
+      // haengt, und es wird nicht doppelt gezeichnet.
       _bind: function (w, el) { ssDraw(w, el); },
       props: function (w) {
         var h = '<div class="pgh">Standort &amp; Sonne</div>';
