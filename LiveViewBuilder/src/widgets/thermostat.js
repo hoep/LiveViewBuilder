@@ -1,6 +1,6 @@
   // ===== Widget: Thermostat — Heizung mit Ist/Soll, Balken, Modi und +/− Steller =====
   defWidget('thermostat',{
-    label:'Thermostat', paletteIcon:'thermostat', size:[240,196],
+    label:'Thermostat', cat:'Steuerung', paletteIcon:'thermostat', size:[240,196],
     defaults:function(w){w.min=14;w.max=28;w.step=0.5;w.label='Thermostat';},
     render:function(w){var tShowState=(w.showState!==false),tShowBar=(w.showBar!==false),tShowModes=(w.showModes!==false),tShowSet=(w.showSet!==false);
       return '<div class="htc tone-idle">'

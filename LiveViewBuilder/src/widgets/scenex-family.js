@@ -53,16 +53,18 @@
     function edCss(){
       if(document.getElementById('lvb-scenex-ext-css'))return;
       var s=document.createElement('style');s.id='lvb-scenex-ext-css';
+      // Groessen aus der Kachel: Breiten ueber cqi (Kachelbreite), Schrift/Tippziele ueber cqmin.
+      // clamp haelt die Icon-Buttons am Handy bedienbar (>=26px) und auf grossen Kacheln in Form.
       s.textContent=
-        '.sced-scopesel{font:inherit;font-size:11.5px;padding:5px 7px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--text);cursor:pointer}'
-       +'.sced-trans{width:74px;font:inherit;font-size:11.5px;padding:5px 7px;border-radius:8px;border:1px solid var(--line);background:var(--tile);color:var(--text)}'
-       +'.sced-translbl{display:inline-flex;align-items:center;gap:6px;font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--faint)}'
+        '.sced-scopesel{font:inherit;font-size:clamp(10px,3cqmin,13px);padding:clamp(3px,1.6cqmin,7px) clamp(5px,2.2cqmin,9px);border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--text);cursor:pointer}'
+       +'.sced-trans{width:clamp(56px,14cqi,92px);font:inherit;font-size:clamp(10px,3cqmin,13px);padding:clamp(3px,1.6cqmin,7px) clamp(5px,2.2cqmin,9px);border-radius:8px;border:1px solid var(--line);background:var(--tile);color:var(--text)}'
+       +'.sced-translbl{display:inline-flex;align-items:center;gap:6px;font-size:clamp(9px,2.6cqmin,11px);text-transform:uppercase;letter-spacing:.05em;color:var(--faint)}'
        +'.sced-iconpick{display:flex;flex-wrap:wrap;gap:6px}'
-       +'.sced-ib{width:32px;height:32px;padding:5px;display:inline-flex;align-items:center;justify-content:center;border-radius:9px;border:1px solid var(--line-soft);background:var(--tile);color:var(--muted);cursor:pointer}'
+       +'.sced-ib{width:clamp(26px,7.5cqmin,38px);height:clamp(26px,7.5cqmin,38px);padding:clamp(3px,1.4cqmin,6px);display:inline-flex;align-items:center;justify-content:center;border-radius:9px;border:1px solid var(--line-soft);background:var(--tile);color:var(--muted);cursor:pointer}'
        +'.sced-ib.on{border-color:var(--accent);color:var(--accent);background:color-mix(in oklab,var(--accent) 10%,var(--tile))}'
-       +'.sced-ib svg{width:18px;height:18px}'
-       +'.sced-mcct{width:88px;accent-color:var(--warm)}'
-       +'.sced-mcolor{width:28px;height:24px;padding:0;border:1px solid var(--line);border-radius:6px;background:none;cursor:pointer}';
+       +'.sced-ib svg{width:clamp(14px,4.5cqmin,22px);height:clamp(14px,4.5cqmin,22px)}'
+       +'.sced-mcct{width:clamp(60px,18cqi,120px);accent-color:var(--warm)}'
+       +'.sced-mcolor{width:clamp(24px,7cqi,34px);height:clamp(20px,6cqmin,28px);padding:0;border:1px solid var(--line);border-radius:6px;background:none;cursor:pointer}';
       document.head.appendChild(s);
     }
     function edRender(w){
@@ -170,7 +172,7 @@
 
     // ---------- Registrierung ----------
     defWidget('scenebar',{
-      label:'Szenen-Leiste', paletteIcon:'bulb', size:[420,64],
+      label:'Szenen-Leiste', cat:'HomeSuite · Szenen', paletteIcon:'bulb', size:[420,64],
       defaults:function(w){w.scope='house';},
       render:function(w){return barRender(w);},
       mount:function(w){var el=scEl(w);if(!el)return;loadScenes(function(){barPaint(w);});LVB.panel.startPoll('scenebar:'+w.id,30000,function(){loadScenes(function(){barPaint(w);});});},
@@ -191,7 +193,7 @@
     });
 
     defWidget('sceneeditor',{
-      label:'Szenen-Editor', paletteIcon:'bulb', size:[560,460],
+      label:'Szenen-Editor', cat:'HomeSuite · Szenen', paletteIcon:'bulb', size:[560,460],
       defaults:function(w){w.scope='house';},
       render:function(w){return edRender(w);},
       mount:function(w){var el=scEl(w);if(!el)return;loadLights(function(){loadScenes(function(){edLoadDetail(w,function(){edPaint(w);});});});

@@ -12,7 +12,7 @@
     return reg || w.default || ((w.tabs&&w.tabs[0])?w.tabs[0].view:'');
   }
   defWidget('regiontabs',{
-    label:'Region-Tabs', paletteIcon:'wselect', size:[900,48],
+    label:'Region-Tabs', cat:'Leisten (alle Seiten)', paletteIcon:'wselect', size:[900,48],
     defaults:function(w){w.tabs=[];w.style='pills';w.slot='inhalt';},
     render:function(w){
       var cur=_rtabCur(w), st=(w.style==='buttons'||w.style==='underline')?w.style:'pills';

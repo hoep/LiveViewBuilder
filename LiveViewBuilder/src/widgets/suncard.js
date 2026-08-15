@@ -2,7 +2,7 @@
   // Datenquelle: varId = Sonnenaufgang, varId2 = Sonnenuntergang (Zeit-Variablen).
   // Rendering/Compute in refreshSun() (03-render-charts.js) — aufgerufen von render() + live.
   defWidget('suncard',{
-    label:'Sonnenbogen', paletteIcon:'sunrise', size:[280,150],
+    label:'Sonnenbogen', cat:'Wetter & Zeit', paletteIcon:'sunrise', size:[280,150],
     defaults:function(w){w.label='Sonne';},
     render:function(w){
       var svg=w.showNight

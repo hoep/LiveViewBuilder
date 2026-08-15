@@ -1,6 +1,6 @@
   // ===== Widget: Text — statische Textzeile =====
   defWidget('text',{
-    label:'Text', paletteIcon:'wcode', size:[200,48],
+    label:'Text', cat:'Grundelemente', paletteIcon:'wcode', size:[200,48],
     // Mehrzeilige Texte in einem hohen Kasten gehoeren nach OBEN. Zentriert sieht bei
     // kurzem Text gut aus, laesst bei langem Text aber oben und unten Luecken stehen.
     render:function(w){return '<div class="wt'+(w.vtop?' vtop':'')+'"><div class="t">'+escL(w.label||'Text')+'</div></div>';},

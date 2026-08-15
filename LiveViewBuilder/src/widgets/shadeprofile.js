@@ -69,7 +69,7 @@
     // Hub, benannte Profile). noPalette: bleibt auf Bestandsseiten funktionsfaehig,
     // wird nicht mehr neu angeboten (Entfernung nach Cutover).
     noPalette:true,
-    label:'Beschattungs-Profil (IPSShadowing)', paletteIcon:'cover', size:[280,300],
+    label:'Beschattungs-Profil (IPSShadowing)', cat:'HomeSuite · Beschattung', paletteIcon:'cover', size:[280,300],
     defaults:function(w){w.label='';},
     render:function(w){return spRender(w);},
     mount:function(w){var el=spElOf(w);if(!el)el=spElOf(w,$('#ovcanvas'));if(!el)return;spFetch(w,el);},

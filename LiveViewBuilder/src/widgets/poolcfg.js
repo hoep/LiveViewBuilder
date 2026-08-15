@@ -5,34 +5,47 @@
   //  (=[{vid,label,kind,unit,step,options,section}]) -> _collectIds sammelt vid (Poll).
   //  kind: num | bool | enum | str | ro. Schreibt via setVar (RequestAction).
   (function(){
+    // Groessen-Overrides aus der Kachelgroesse (.w hat container-type:size).
+    // Warum hier und nicht in styles.css: die .pcft*-Regeln dort stehen noch auf festen
+    // Pixeln (2 starre Spalten, 4 starre Chip-Spalten, feste Feldbreiten) und brechen damit
+    // bei halber Kachelbreite. Die Regeln liegen ausserhalb dieses Auftrags-Buendels,
+    // deshalb hier als gezielter Einzel-Override je Element (nur Geometrie, kein Verhalten).
+    // Sobald styles.css nachzieht, koennen diese Overrides ersatzlos raus.
+    var PC_GRID  = 'grid-template-columns:repeat(auto-fit,minmax(clamp(200px,44cqmin,420px),1fr));gap:0 clamp(12px,4cqmin,34px)';
+    var PC_CHIPS = 'grid-template-columns:repeat(auto-fit,minmax(clamp(110px,22cqmin,200px),1fr));gap:clamp(5px,2.4cqmin,12px)';
+    var PC_NUMW  = 'width:clamp(62px,16cqmin,110px)';   // Zahlenfeld: war fix 92px
+    var PC_TXTW  = 'width:clamp(96px,28cqmin,190px)';   // Textfeld:   war fix 170px
     function _pcOn(v){return v===true||v===1||v==='1'||(+v>0);}
     function pcEditor(f){
       if(f.kind==='ro')   return '<span class="pcft-ro" data-pcf-vid="'+f.vid+'" data-role="v">–</span>';
       if(f.kind==='bool') return '<button type="button" class="pcft-tog" data-pcf-tog data-pcf-vid="'+f.vid+'"><i></i></button>';
       if(f.kind==='enum') return '<span class="pcft-seg" data-pcf-vid="'+f.vid+'">'+((f.options||[]).map(function(o){return '<button type="button" data-pcf-opt="'+esc(String(o.v))+'">'+esc(o.t)+'</button>';}).join(''))+'</span>';
-      if(f.kind==='str')  return '<input class="pcft-txt" type="text" data-pcf-vid="'+f.vid+'" data-role="v">';
+      if(f.kind==='str')  return '<input class="pcft-txt" type="text" style="'+PC_TXTW+'" data-pcf-vid="'+f.vid+'" data-role="v">';
       var st=(f.step!=null?f.step:1);
       return '<span class="pcft-num"><button type="button" class="pcft-nb" data-pcf-step="'+(-st)+'">−</button>'
-        +'<input class="pcft-in" inputmode="decimal" data-pcf-vid="'+f.vid+'" data-role="v">'
+        +'<input class="pcft-in" style="'+PC_NUMW+'" inputmode="decimal" data-pcf-vid="'+f.vid+'" data-role="v">'
         +'<button type="button" class="pcft-nb" data-pcf-step="'+st+'">+</button>'
         +(f.unit?'<span class="pcft-u">'+esc(f.unit)+'</span>':'')+'</span>';
     }
     function pcRender(w){
       var rows=w.rows||[], order=[], grp={};
       rows.forEach(function(f){var s=f.section||'';if(!(s in grp)){grp[s]=[];order.push(s);}grp[s].push(f);});
-      var h='<div class="pcft">';
+      // Aeussere Huelle = eigener Scroll-Container: breite Konfigurationsseiten sollen INNERHALB
+      // der Kachel scrollen, statt die Kachel waagrecht zu sprengen. Klassennamen und
+      // data-pcf-*-Attribute bleiben unveraendert (live/mount/click suchen weiterhin darunter).
+      var h='<div style="position:absolute;inset:0;overflow:auto;-webkit-overflow-scrolling:touch"><div class="pcft">';
       h+='<div class="pcft-eye">'+esc(w.eyebrow||'POOL CFG · KONFIGURATION')+'</div>';
       h+='<div class="pcft-h1">'+esc(w.h1||w.label||'')+'</div>';
       order.forEach(function(s){var fs=grp[s], ro=fs.every(function(f){return f.kind==='ro';});
         h+='<div class="pcft-sec"><div class="pcft-sh">'+esc((s||'').toUpperCase())+'</div>';
-        if(ro){ h+='<div class="pcft-chips">'+fs.map(function(f){return '<div class="pcft-chip"><b data-pcf-vid="'+f.vid+'" data-role="v">–</b><span>'+escL(f.label)+'</span></div>';}).join('')+'</div>'; }
-        else  { h+='<div class="pcft-grid">'+fs.map(function(f){return '<div class="pcft-r"><span class="pcft-l">'+escL(f.label)+'</span><span class="pcft-e">'+pcEditor(f)+'</span></div>';}).join('')+'</div>'; }
+        if(ro){ h+='<div class="pcft-chips" style="'+PC_CHIPS+'">'+fs.map(function(f){return '<div class="pcft-chip"><b data-pcf-vid="'+f.vid+'" data-role="v">–</b><span>'+escL(f.label)+'</span></div>';}).join('')+'</div>'; }
+        else  { h+='<div class="pcft-grid" style="'+PC_GRID+'">'+fs.map(function(f){return '<div class="pcft-r"><span class="pcft-l">'+escL(f.label)+'</span><span class="pcft-e">'+pcEditor(f)+'</span></div>';}).join('')+'</div>'; }
         h+='</div>';
       });
-      return h+'</div>';
+      return h+'</div></div>';
     }
     defWidget('poolcfg',{
-      label:'Konfig-Tabelle', paletteIcon:'meter', size:[1450,600], noPalette:true,
+      label:'Konfig-Tabelle', cat:'HomeSuite', paletteIcon:'meter', size:[1450,600], noPalette:true,
       render:function(w){return pcRender(w);},
       live:function(w,el,id,d,base,txt,on){
         el.querySelectorAll('[data-pcf-vid="'+id+'"]').forEach(function(n){

@@ -38,7 +38,10 @@
       parts.push('<span class="fltank"><span class="fltlab">'+esc(w.tankLabel||'Becken')+'</span><span class="fltval"'+(w.tankVid?' data-vid="'+w.tankVid+'"':'')+'>'+(w.tankVal?esc(w.tankVal):'–')+'</span>'
         +'<span class="flwave"><svg viewBox="0 0 120 20" preserveAspectRatio="none"><path d="M0 11 Q15 3 30 11 T60 11 T90 11 T120 11 T150 11 T180 11 T210 11 T240 11"/><path d="M0 15 Q15 8 30 15 T60 15 T90 15 T120 15 T150 15 T180 15 T210 15 T240 15"/></svg></span></span>');}
     var onC=_cssColorOrEmpty(w.flPos)||'var(--accent)',offC=_cssColorOrEmpty(w.flOff||'muted')||'var(--muted)';
-    return '<div class="flpipe'+(w.flDir==='v'?' v':'')+'" data-role="pipe" style="--flcol:'+onC+';--flcoloff:'+offC+'">'+parts.join('')+'</div>';
+    // --flfs ist die Schriftskala der Rohrleitung: sie haengt an der Kachelgroesse (cqmin), damit
+    // die .fl*-Regeln in styles.css spaeter auf em umgestellt werden koennen, ohne dass hier
+    // am Markup etwas geaendert werden muss.
+    return '<div class="flpipe'+(w.flDir==='v'?' v':'')+'" data-role="pipe" style="--flcol:'+onC+';--flcoloff:'+offC+';--flfs:clamp(9px,3.2cqmin,15px);font-size:var(--flfs)">'+parts.join('')+'</div>';
   }
   // ===== energy-Modus (Power-Flow-Card-Plus-Stil): Home-Knoten + frei konfigurierbare Kreis-Elemente =====
   var _EF_W=400,_EF_H=300,_EF_HX=200,_EF_HY=150,_EF_RH=40,_EF_RN=32;
@@ -277,7 +280,7 @@
     var hv=$('[data-role=efval-h]',el);if(hv){var hp=w.homeVid?_efWatts(w.homeVid):NaN;hv.textContent=_efFmtW(isNaN(hp)?homeIn:hp);}
   }
   defWidget('flow',{
-    label:'Fluss', paletteIcon:'wsankey', size:[560,168],
+    label:'Fluss', cat:'Diagramme', paletteIcon:'wsankey', size:[560,168],
     defaults:function(w){w.mode='pipeline';w.flPos='#00cdab';w.flRef=20;w.endTank=1;w.tankLabel='Becken';w.startArrow=1;
       w.stages=[{icon:'valve',label:'Ventil',vid:0},{icon:'pump',label:'Pumpe',vid:0},{icon:'filter',label:'Filter',vid:0},{icon:'droplet',label:'pH',vid:0},{icon:'bolt',label:'Redox',vid:0},{icon:'gauge',label:'Durchfluss',vid:0}];},
     render:function(w){var m=_flowMode(w);return m==='hub'?powerflowSVG(w):m==='energy'?energySVG(w):flowPipeline(w);},

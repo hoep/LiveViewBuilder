@@ -1,6 +1,6 @@
   // ===== Widget: Form (shape) — Rechteck/Kreis/Linie, mit Kontur & Eckenradius =====
   defWidget('shape',{
-    label:'Form', paletteIcon:'wshape', size:[80,80],
+    label:'Form', cat:'Grundelemente', paletteIcon:'wshape', size:[80,80],
     render:function(w){var sc=w.color||'#1b2a30',sh=w.shape||'rect';var brd=(w.stroke&&w.strokeW>0)?('border:'+w.strokeW+'px solid '+w.stroke+';'):'';
       if(sh==='line')return '<div style="position:absolute;left:0;right:0;top:50%;height:'+(w.strokeW||3)+'px;transform:translateY(-50%);background:'+(w.stroke||sc)+';border-radius:3px"></div>';
       var rad=(sh==='circle')?'50%':((w.radius!=null?w.radius:8)+'px');

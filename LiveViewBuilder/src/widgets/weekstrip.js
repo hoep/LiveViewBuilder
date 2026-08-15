@@ -47,7 +47,7 @@
   function wstRepaint(w,el){if(!el)el=wstElOf(w);if(!el)return;var host=el.querySelector('.winner')||el;host.innerHTML=wstRender(w);}
 
   defWidget('weekstrip',{
-    label:'Wochen-Streifen', paletteIcon:'calendar', size:[340,190],
+    label:'Wochen-Streifen', cat:'Anzeige', paletteIcon:'calendar', size:[340,190],
     defaults:function(w){w.label='';},
     render:function(w){return wstRender(w);},
     mount:function(w){var el=wstElOf(w);if(!el)el=wstElOf(w,$('#ovcanvas'));if(!el)return;wstStartTimer();wstFetch(w,el);},

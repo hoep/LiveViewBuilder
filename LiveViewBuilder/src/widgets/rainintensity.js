@@ -45,22 +45,25 @@
       if(!b){ sum=''; }
       else if(b.phases===0){ sum='Kein Regen in den nächsten '+b.hours+' h'; }
       else { sum=esc(riWord(b.maxAll))+' gegen <b style="color:var(--text)">'+riHHMM(b.onset)+'</b> · '+b.phases+' Phase'+(b.phases>1?'n':''); }
-      var h='<div class="rint" style="position:absolute;inset:0;display:flex;flex-direction:column;background:var(--surface);border-radius:inherit;padding:8px 12px;box-sizing:border-box">'
-        +'<div class="rint-head" style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;font-size:11px;letter-spacing:.4px;color:var(--muted);text-transform:uppercase">'
+      // Alle Masse aus der Kachel ableiten (.w ist Groessen-Container): die Leiste sitzt mal in
+      // einer flachen 560x96-Kachel, mal doppelt so gross. Untergrenzen halten die Ziffern lesbar.
+      var h='<div class="rint" style="position:absolute;inset:0;display:flex;flex-direction:column;background:var(--surface);border-radius:inherit;padding:clamp(6px,3.5cqmin,14px) clamp(8px,4.5cqmin,18px);box-sizing:border-box">'
+        +'<div class="rint-head" style="display:flex;justify-content:space-between;align-items:baseline;gap:clamp(6px,3cqmin,14px);font-size:clamp(9px,3.5cqmin,13px);letter-spacing:.4px;color:var(--muted);text-transform:uppercase">'
           +'<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+title+'</span>'
-          +'<span style="text-transform:none;letter-spacing:0;color:var(--muted);flex:0 0 auto">'+sum+'</span></div>';
-      if(!b){ h+='<div style="flex:1;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:12px">Keine Vorhersagedaten</div></div>'; return h; }
+          // Zusammenfassung darf schrumpfen und notfalls kuerzen, sonst schiebt sie den Titel weg
+          +'<span style="text-transform:none;letter-spacing:0;color:var(--muted);flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+sum+'</span></div>';
+      if(!b){ h+='<div style="flex:1;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:clamp(10px,4cqmin,14px)">Keine Vorhersagedaten</div></div>'; return h; }
       // Zellen
-      h+='<div class="rint-cells" style="display:flex;gap:3px;margin-top:8px;flex:1;align-items:stretch">';
+      h+='<div class="rint-cells" style="display:flex;gap:clamp(2px,1.2cqmin,5px);margin-top:clamp(5px,3cqmin,12px);flex:1;align-items:stretch">';
       b.slots.forEach(function(s){
         var on=s.on;
-        h+='<div style="flex:1 1 0;min-width:0;display:flex;align-items:center;justify-content:center;border-radius:6px;font-size:11px;font-variant-numeric:tabular-nums;'
+        h+='<div style="flex:1 1 0;min-width:0;display:flex;align-items:center;justify-content:center;border-radius:clamp(4px,2.5cqmin,9px);font-size:clamp(8px,4cqmin,15px);font-variant-numeric:tabular-nums;'
           +(on?('background:'+accent+';color:#fff;font-weight:600'):'background:var(--surface-2);color:var(--faint)')+'">'+(on?1:0)+'</div>';
       });
       h+='</div>';
       // Zeitachse (6h-Ticks)
       var perTick=Math.max(1,Math.round(6/b.sh)); // Slots je 6h
-      h+='<div class="rint-axis" style="display:flex;margin-top:5px;font-size:10px;color:var(--muted);font-variant-numeric:tabular-nums">';
+      h+='<div class="rint-axis" style="display:flex;margin-top:clamp(3px,2cqmin,8px);font-size:clamp(8px,3cqmin,12px);color:var(--muted);font-variant-numeric:tabular-nums">';
       b.slots.forEach(function(s,i){
         var lbl=(i%perTick===0)?riHHMM(s.t):'';
         h+='<div style="flex:1 1 0;min-width:0;text-align:'+(i===0?'left':'center')+'">'+lbl+'</div>';
@@ -71,7 +74,7 @@
     function riPaint(w){var el=riEl(w);if(!el)return;var host=el.querySelector('.winner')||el;host.innerHTML=riRender(w);}
 
     defWidget('rainintensity',{
-      label:'Regen-Intensität 48 h', paletteIcon:'raindrop', size:[560,96],
+      label:'Regen-Intensität 48 h', cat:'Wetter & Zeit', paletteIcon:'raindrop', size:[560,96],
       defaults:function(w){w.title='Regen 48 h';w.riHours=48;w.riSlot=2;w.riThr=0.1;w.riColor='info';},
       render:riRender,
       mount:function(w){/* render liefert bereits alles */},

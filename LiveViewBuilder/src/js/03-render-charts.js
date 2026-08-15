@@ -439,7 +439,7 @@
       var st=a.style||'pin',wantMark=(st!=='line'),wantLine=(st==='line'||st==='both');
       var lbl=_annLbl(w,a,col);
       function ml(){return sr.markLine=sr.markLine||{silent:true,symbol:'none',data:[]};}
-      function mp(){return sr.markPoint=sr.markPoint||{silent:true,symbol:'pin',symbolSize:34,data:[]};}
+      function mp(){return sr.markPoint=sr.markPoint||{silent:true,symbol:'pin',symbolSize:_annPinSize(w),data:[]};}
       if(a.kind==='avg'){
         ml().data.push({type:'average',lineStyle:{color:col,type:'dashed',width:1},label:lbl});return;
       }
@@ -766,6 +766,31 @@
     if(p==='center')o.left='center';else if(p==='right')o.right=6;else o.left=4;
     return o;}
   function _titleSpace(w){return _titleOn(w)?18:0;} // Platz im Grid reservieren, sonst überlappt der Titel
+  // ---- Reservierte Streifen am Rand der Zeichenflaeche ---------------------------------
+  // Legende, Marken-Fahnen und die Perioden-Navigation teilen sich denselben Rand. Wer keinen
+  // eigenen Streifen bekommt, malt in den des anderen — genau so verdeckte die Fahne „Max 23 °C"
+  // einen Legendeneintrag und die Knoepfe ‹ jetzt › lagen auf der Zeitachse.
+  // Fahnengroesse waechst mit der Kachel (wie die Schriften ueber _ecFS), gedeckelt 20..34 px.
+  function _annPinSize(w){var m=Math.min((w&&w.w)||300,(w&&w.h)||180);return Math.round(Math.max(20,Math.min(34,m*0.2)));}
+  // Die Fahne (markPoint 'pin') sitzt UEBER ihrem Datenpunkt. Beim Maximum liegt der Punkt am
+  // oberen Rand der Zeichenflaeche -> ohne Streifen ragt sie in Legende/Titel hinein.
+  function _annTopSpace(w){
+    var list=(w&&w.anns)||[],need=false;
+    list.forEach(function(a){
+      if(!a||a.off)return;
+      if((a.style||'pin')==='line')return;                          // reine Linie hat keine Fahne
+      if(a.kind==='max'||a.kind==='last'||a.kind==='first')need=true; // koennen ganz oben liegen
+    });
+    return need?(_annPinSize(w)+4):0;
+  }
+  // Perioden-Navigation (‹ jetzt ›) liegt als HTML UEBER dem Diagramm, unten links.
+  // Masse gespiegelt aus widgets/chart.js: Knopf clamp(20px,8cqmin,30px), Abstand clamp(4px,2cqmin,10px).
+  function _navSpace(w){
+    var ct=(w&&w.ctype)||'area';
+    if(!w||!w.pnav||ct==='spark'||ct==='waterfall'||ct==='barrace')return 0;
+    var cq=Math.min((w.w||300),(w.h||180))/100;
+    return Math.round(Math.max(20,Math.min(30,8*cq))+Math.max(4,Math.min(10,2*cq))+2);
+  }
   // ---- Liegende Balken: Achsen tauschen (Kategorie/Zeit -> y, Wert -> x) ----
   function _hbShowEnds(ax){if(!ax)return;ax.axisLabel=ax.axisLabel||{};ax.axisLabel.showMinLabel=true;ax.axisLabel.showMaxLabel=true;} // erste+letzte Rubrik immer beschriften
   // _hbCat: kategoriebasierte Balken (Wasserfall/Kalender) — Daten sind 1D (Index), nur Achsen tauschen.
@@ -807,8 +832,8 @@
     // z. B. „1.234") sitzt am rechten Rand und wird von containLabel horizontal nicht abgedeckt ->
     // ohne Legende rechts hier 28px Luft reservieren, sonst uebernimmt die Legende den Rand.
     opt.grid={left:6+(lp==='left'?60:0),right:(lp==='right'?60:28),
-      top:6+_titleSpace(w)+(lp==='top'?20:0)+Math.max(0,nT-1)*34,
-      bottom:(w.zoom?34:16)+(lp==='bottom'?18:0)+Math.max(0,nB-1)*34+(_hbName?16:0),containLabel:true};
+      top:6+_titleSpace(w)+(lp==='top'?20:0)+Math.max(0,nT-1)*34+_annTopSpace(w),
+      bottom:(w.zoom?34:16)+(lp==='bottom'?18:0)+Math.max(0,nB-1)*34+(_hbName?16:0)+_navSpace(w),containLabel:true};
     (opt.series||[]).forEach(function(s){
       if(s.data&&s.data.length&&Array.isArray(s.data[0]))s.data=s.data.map(function(p){return p[1];}); // Kategorie = Index -> nur Wert
       if(s.yAxisIndex!=null){s.xAxisIndex=s.yAxisIndex;delete s.yAxisIndex;}
@@ -865,7 +890,7 @@
         scale:(a.min==null||a.min===''),min:(a.min!=null&&a.min!==''?parseFloat(a.min):null),max:(a.max!=null&&a.max!==''?parseFloat(a.max):null),
         axisLine:{show:ax0.line,lineStyle:{color:cssv('--line')}},axisTick:{show:ax0.ticks,lineStyle:{color:cssv('--line')}},axisLabel:_axLabY(w,ax0,a),splitLine:{show:(ax0.yGrid&&ix===0),lineStyle:{color:cssv('--line-soft')}},splitNumber:(w.gridDivs>0?parseInt(w.gridDivs):null)};});
     var lp=w.legend?(w.legPos||'top'):''; // Legende reserviert Platz am jeweiligen Rand (sonst Ueberlappung)
-    var opt={backgroundColor:'transparent',animation:!!bcfg().chartAnim,grid:{left:6+Math.max(0,nL-1)*48+(lp==='left'?60:0),right:8+Math.max(0,nR-1)*48+(lp==='right'?60:0),top:6+_titleSpace(w)+(lp==='top'?20:0),bottom:(w.zoom?34:14)+(lp==='bottom'?18:0),containLabel:true},tooltip:{trigger:'axis',valueFormatter:_lineFmt},
+    var opt={backgroundColor:'transparent',animation:!!bcfg().chartAnim,grid:{left:6+Math.max(0,nL-1)*48+(lp==='left'?60:0),right:8+Math.max(0,nR-1)*48+(lp==='right'?60:0),top:6+_titleSpace(w)+(lp==='top'?20:0)+_annTopSpace(w),bottom:(w.zoom?34:14)+(lp==='bottom'?18:0)+_navSpace(w),containLabel:true},tooltip:{trigger:'axis',valueFormatter:_lineFmt},
       legend:_legendOpt(w,w.legend),
       title:_titleOpt(w),
       xAxis:{type:'time',boundaryGap:anyBar,splitNumber:_axSplitX(w),axisLine:{show:ax0.line,lineStyle:{color:cssv('--line')}},axisTick:{show:ax0.ticks},axisLabel:_axLabX(w,ax0,false),splitLine:{show:ax0.xGrid,lineStyle:{color:cssv('--line-soft')}}},
@@ -906,7 +931,7 @@
     }
     var lp=showLeg?(w.legPos||'top'):'',axc=_axShow(w);
     _annApply(w,series);   // Kalenderjahr-Balken: Marken gelten hier genauso
-    var opt={backgroundColor:'transparent',animation:!!bcfg().chartAnim,grid:{left:8+(lp==='left'?60:0),right:10+(lp==='right'?60:0),top:6+_titleSpace(w)+(lp==='top'?20:0),bottom:4+(lp==='bottom'?18:0),containLabel:true},
+    var opt={backgroundColor:'transparent',animation:!!bcfg().chartAnim,grid:{left:8+(lp==='left'?60:0),right:10+(lp==='right'?60:0),top:6+_titleSpace(w)+(lp==='top'?20:0)+_annTopSpace(w),bottom:4+(lp==='bottom'?18:0)+_navSpace(w),containLabel:true},
       tooltip:{trigger:'axis',valueFormatter:function(v){return _chNum(w,v);}},
       legend:_legendOpt(w,showLeg),
       title:_titleOpt(w),
@@ -1246,7 +1271,11 @@
       var el=$('.w[data-id="'+w.id+'"]',canvas);if(!el)return;var v=el.querySelector('[data-role=val]');if(!v)return;
       var LBL={min:'Min',avg:'Ø',max:'Max'},ps=aggParts(w),u=w.unit||'';
       if(ps.length===1){v.textContent=_fmtStat(p?p[ps[0]]:null,u,w.dec,w);}
-      else{v.innerHTML=ps.map(function(k){return '<span style="opacity:.55;font-size:.68em;letter-spacing:.02em">'+LBL[k]+'</span> '+esc(_fmtStat(p?p[k]:null,u,w.dec,w));}).join(' <span style="opacity:.3">·</span> ');}
+      // Jeder Wert ein eigener, in sich umbruchfreier Baustein (.svp); der Trenner haengt am
+      // VORHERIGEN Baustein. So bricht die Zeile nur ZWISCHEN den Werten um und nie mitten in
+      // „22,4 °C", und keine neue Zeile beginnt mit einem einsamen Trennpunkt.
+      else{v.innerHTML=ps.map(function(k,i){return '<span class="svp"><span class="svk">'+LBL[k]+'</span> '
+        +esc(_fmtStat(p?p[k]:null,u,w.dec,w))+(i<ps.length-1?' <span class="svs">·</span>':'')+'</span>';}).join(' ');}
       _svcDecorate(w,v);
     });
   }

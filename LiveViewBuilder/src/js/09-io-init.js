@@ -213,6 +213,21 @@
         if(RUN||!/[?&]edit=1/.test(location.search)){enterRun();}
         else{mode='preview';stage.classList.remove('edit');stage.classList.add('preview');
           toast('Dokumentation: '+Object.keys(WIDGETS).length+' Widgets auf '+Object.keys(store.views).length+' Seiten');}
+        // Die Hoehe der Ueberschriften wird GEMESSEN (dokuTextH), damit sie auf schmalen
+        // Fenstern mit dem Zeilenumbruch mitwaechst. Sind die eigenen Schriften beim ersten
+        // Aufbau noch nicht geladen, misst der Browser mit der Ersatzschrift - die Zeilenzahl
+        // kann dann danebenliegen. Darum einmalig neu aufbauen, sobald die Schriften da sind.
+        try{
+          if(document.fonts&&document.fonts.status!=='loaded'&&document.fonts.ready){
+            document.fonts.ready.then(function(){
+              var _c=store&&store.current,_h=store&&store.home;
+              store=buildDokuStore();
+              if(_c&&store.views[_c])store.current=_c;
+              if(_h&&store.views[_h])store.home=_h;
+              switchView(store.current);
+            });
+          }
+        }catch(_e){}
       };
       if(typeof DOKU_INFO!=='undefined'){_dfin();}
       else{var _ds=document.createElement('script');_ds.src='?api=asset&name=dokudata&v={{DOKUVER}}';

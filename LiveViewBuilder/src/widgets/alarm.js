@@ -60,7 +60,7 @@
     if(w.notify!=null&&w.notify!=='')el.setAttribute('data-notify',_acStr(w.notify,w)); // reines Feld — KEIN Push
   }
   defWidget('alarm',{
-    label:'Alarm', paletteIcon:'bell', size:[300,64], noHover:true,
+    label:'Alarm', cat:'Anzeige', paletteIcon:'bell', size:[300,64], noHover:true,
     defaults:function(w){w.condMode='const';w.op='>';w.thr=0;w.color='warn';w.icon='bell';w.title='Alarm';},
     isActive:alarmIsActive, severity:alarmSeverity, sig:alarmSig,
     render:function(w){

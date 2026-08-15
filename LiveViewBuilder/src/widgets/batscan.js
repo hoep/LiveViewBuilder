@@ -22,7 +22,7 @@
   }
   var _bsT={};
   defWidget('batscan',{
-    label:'Jetzt scannen', paletteIcon:'reload', size:[210,40], noHover:true,
+    label:'Jetzt scannen', cat:'Steuerung', paletteIcon:'reload', size:[210,40], noHover:true,
     defaults:function(w){w.frame=false;},
     render:function(w){return '<div class="bs" data-role="bsroot"></div>';},
     mount:function(w){_bsDraw(w);},
