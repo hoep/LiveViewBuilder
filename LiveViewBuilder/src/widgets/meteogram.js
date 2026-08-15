@@ -80,7 +80,17 @@
     if(w.mgPrecip!==false&&(some(pop)||some(precip)||some(hum)))panels.push({key:'precip',wt:1.5});
     if(w.mgCloud!==false&&some(clouds))panels.push({key:'cloud',wt:0.55});
     if(w.mgWind!==false&&some(wind))panels.push({key:'wind',wt:1.5});
-    var N=panels.length,L=44,R=(some(pop)||some(hum))?40:16,topPct=6,botPct=8,gapPct=6.5;
+    // Kachel-Skala: ECharts kennt keine Container-Einheiten, deshalb leiten wir alle festen
+    // Pixelmasse aus der Kachelgroesse ab (gleiche Idee wie _ecFS in js/03). K bleibt gedeckelt,
+    // damit Symbole/Abstaende auf riesigen Kacheln nicht ins Groteske wachsen.
+    var K=Math.max(0.8,Math.min(1.7,Math.min((w.w||460)/460,(w.h||340)/340)));
+    // Achsenraender wachsen mit der Kachelbreite (Platz fuer die Zahlenbeschriftung),
+    // die rechte Seite nur dann breit, wenn dort wirklich eine %-Achse haengt.
+    var L=Math.round(Math.max(24,Math.min(56,(w.w||460)*0.095)));
+    var R=(some(pop)||some(hum))?Math.round(Math.max(22,Math.min(52,(w.w||460)*0.085)))
+                               :Math.round(Math.max(10,Math.min(22,(w.w||460)*0.035)));
+    var symSz=Math.round(Math.max(6,Math.min(14,9*K))), nGap=Math.round(5*K), axMargin=Math.round(6*K);
+    var N=panels.length,topPct=6,botPct=8,gapPct=6.5;
     var wsum=panels.reduce(function(a,p){return a+p.wt;},0),avail=100-topPct-botPct-gapPct*(N-1),y=topPct;
     panels.forEach(function(p){p.top=y;p.h=avail*p.wt/wsum;y+=p.h+gapPct;});
     var fL=_ecF(w,'label',9),gIdx={},yIdx={},grid=[],xAxis=[],yAxis=[],series=[];
@@ -88,9 +98,9 @@
       grid.push({left:L,right:R,top:p.top+'%',height:p.h+'%'});
       xAxis.push({type:'category',gridIndex:gi,data:labels,boundaryGap:false,
         axisLine:{show:true,lineStyle:{color:line}},axisTick:{show:false},splitLine:{show:false},
-        axisLabel:_tst({show:(gi===N-1),color:muted,fontSize:fL,hideOverlap:true,margin:6})});
+        axisLabel:_tst({show:(gi===N-1),color:muted,fontSize:fL,hideOverlap:true,margin:axMargin})});
       gIdx[p.key]=gi;yIdx[p.key]=yAxis.length;
-      yAxis.push(Object.assign({gridIndex:gi,type:'value',splitNumber:3,name:nameU||'',nameLocation:'end',nameGap:5,nameTextStyle:_tst({color:faint,fontSize:fL,align:'left'}),
+      yAxis.push(Object.assign({gridIndex:gi,type:'value',splitNumber:3,name:nameU||'',nameLocation:'end',nameGap:nGap,nameTextStyle:_tst({color:faint,fontSize:fL,align:'left'}),
         axisLine:{show:false},axisTick:{show:false},
         axisLabel:_tst({color:muted,fontSize:fL,hideOverlap:true,formatter:function(v){return _mgFmt(v,0);}}),
         splitLine:{show:true,lineStyle:{color:line,opacity:.4,type:'dashed'}}},yopt||{}));
@@ -142,7 +152,7 @@
       series.push({name:'Wind',type:'line',xAxisIndex:gIdx.wind,yAxisIndex:yIdx.wind,data:wind,smooth:true,showSymbol:false,lineStyle:{width:1.8,color:accent},itemStyle:{color:accent},areaStyle:{opacity:.10,color:accent},z:3});
       if(w.mgWdir!==false&&some(wdir)){var arrowY=Math.ceil(wmax*1.28)*0.93;
         series.push({name:'Richtung',type:'scatter',xAxisIndex:gIdx.wind,yAxisIndex:yIdx.wind,z:5,silent:true,
-          data:rows.map(function(r,i){return (wdir[i]==null)?null:{value:[i,arrowY],symbol:'arrow',symbolSize:9,symbolRotate:((wdir[i]+180)%360),itemStyle:{color:muted}};})});}
+          data:rows.map(function(r,i){return (wdir[i]==null)?null:{value:[i,arrowY],symbol:'arrow',symbolSize:symSz,symbolRotate:((wdir[i]+180)%360),itemStyle:{color:muted}};})});}
     }
     // ---- Wetter-Icons oben im Temperatur-Panel (HTML-Overlay, richtet sich per space-between an den Zeitschritten aus) ----
     if(icoEl){
@@ -173,7 +183,7 @@
       grid:grid,xAxis:xAxis,yAxis:yAxis,series:series},true);
   }
   defWidget('meteogram',{
-    label:'Meteogramm', paletteIcon:'wchart', size:[460,340], noHover:true,
+    label:'Meteogramm', cat:'Wetter & Zeit', paletteIcon:'wchart', size:[460,340], noHover:true,
     defaults:function(w){w.wfmt='auto';w.mgSteps=24;w.fcMode='hours';w.label='';w.mgTimeFmt='hm';w.mgDayFmt='dm';w.mgDec=0;w.tgrad=[{t:-5,color:'#4aa3ff'},{t:4,color:'#3bd6c6'},{t:14,color:'#39d08a'},{t:22,color:'#f2b441'},{t:32,color:'#f2685a'}];},
     render:function(w){return '<div class="mg" style="position:absolute;inset:0;container-type:size"><div data-role="chart" style="position:absolute;inset:0"></div><div data-role="mgicons" style="position:absolute;display:flex;justify-content:space-between;align-items:center;pointer-events:none;z-index:2"></div></div>';},
     props:function(w){

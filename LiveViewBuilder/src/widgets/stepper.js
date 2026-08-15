@@ -6,20 +6,26 @@
 
   function _stpFmtStep(s){return String(s).replace('.',',');}
   defWidget('stepper',{
-    label:'Stepper', paletteIcon:'meter', size:[220,72],
+    label:'Stepper', cat:'Steuerung', paletteIcon:'meter', size:[220,72],
     defaults:function(w){w.min=0;w.max=100;w.step=1;w.label='Wert';},
     render:function(w){
       var s=(w.step!=null?w.step:1), sf=(w.stepFine!=null&&w.stepFine>0)?w.stepFine:0, fine=sf>0;
+      // Knopf- und Wertgroessen kommen aus der Kachel (styles.css hat hier feste px, die in
+      // dieser Phase nicht angefasst werden duerfen). min-height haelt das Tippziel bei 22px+,
+      // die feine Stufe bleibt wie bisher eine Nummer kleiner als die grobe.
+      var bs='font-size:clamp(10px,4.2cqmin,15px);min-width:clamp(28px,13cqmin,52px);min-height:22px;padding:clamp(4px,2.4cqmin,9px) clamp(5px,3cqmin,11px)';
+      var bf='font-size:clamp(9px,3.4cqmin,13px);min-width:clamp(24px,11cqmin,44px);min-height:22px;padding:clamp(3px,2cqmin,8px) clamp(4px,2.4cqmin,9px)';
+      var vs='font-size:clamp(13px,11cqmin,30px)';
       return '<div class="stpr">'
-        +(w.label!==''?'<div class="stpr-lbl">'+escL(w.label||'')+'</div>':'')
+        +(w.label!==''?'<div class="stpr-lbl" style="font-size:var(--wf-lbl)">'+escL(w.label||'')+'</div>':'')
         +'<div class="stpr-row">'
-          +'<button class="stpr-b" data-stp="'+(-s)+'" title="−'+_stpFmtStep(s)+'">−'+_stpFmtStep(s)+'</button>'
-          +(fine?'<button class="stpr-b stpr-fine" data-stp="'+(-sf)+'" title="−'+_stpFmtStep(sf)+'">−'+_stpFmtStep(sf)+'</button>':'')
+          +'<button class="stpr-b" style="'+bs+'" data-stp="'+(-s)+'" title="−'+_stpFmtStep(s)+'">−'+_stpFmtStep(s)+'</button>'
+          +(fine?'<button class="stpr-b stpr-fine" style="'+bf+'" data-stp="'+(-sf)+'" title="−'+_stpFmtStep(sf)+'">−'+_stpFmtStep(sf)+'</button>':'')
           +(w.typein
-             ?'<input class="stpr-val stpr-in" data-role="val" type="text" inputmode="decimal" value="">'
-             :'<b class="stpr-val" data-role="val">–</b>')
-          +(fine?'<button class="stpr-b stpr-fine" data-stp="'+sf+'" title="+'+_stpFmtStep(sf)+'">+'+_stpFmtStep(sf)+'</button>':'')
-          +'<button class="stpr-b" data-stp="'+s+'" title="+'+_stpFmtStep(s)+'">+'+_stpFmtStep(s)+'</button>'
+             ?'<input class="stpr-val stpr-in" style="'+vs+'" data-role="val" type="text" inputmode="decimal" value="">'
+             :'<b class="stpr-val" style="'+vs+'" data-role="val">–</b>')
+          +(fine?'<button class="stpr-b stpr-fine" style="'+bf+'" data-stp="'+sf+'" title="+'+_stpFmtStep(sf)+'">+'+_stpFmtStep(sf)+'</button>':'')
+          +'<button class="stpr-b" style="'+bs+'" data-stp="'+s+'" title="+'+_stpFmtStep(s)+'">+'+_stpFmtStep(s)+'</button>'
         +'</div></div>';
     },
     live:function(w,el,id,d,base,txt,on){ if(w.varId!==id)return; var v=$('[data-role=val]',el); if(!v)return;

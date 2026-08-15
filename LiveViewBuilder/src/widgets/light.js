@@ -64,7 +64,7 @@
     }
   }
   defWidget('light',{
-    label:'Licht', paletteIcon:'bulb', size:[300,200],
+    label:'Licht', cat:'Steuerung', paletteIcon:'bulb', size:[300,200],
     defaults:function(w){w.label='Licht';w.icon='bulb';},
     render:function(w){
       // Der Balken zeigte die Helligkeit bislang nur an. Der generische Schreibweg fuer

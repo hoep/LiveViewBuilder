@@ -58,11 +58,44 @@
     var s = i.groesse || d.size || [240,140];
     // Vorschau-Hoehe eng begrenzt (90..140): hohe Kacheln (Licht/Thermostat) skalieren ihre Schrift
     // sonst nach der Kachelhoehe und wirken „ploetzlich viel groesser" als die kompakten Kacheln.
-    // Meteogramm braucht mehr Platz (mehrere Panels) — ECharts skaliert die Schrift nicht nach Kachelhoehe.
-    var maxH = (t === 'meteogram') ? 340 : ((t === 'heatmap') ? 240 : 140);
+    // Ausnahmen sind Widgets, die MEHRERE Baender uebereinander zeichnen und bei 140 px
+    // mittendrin abschneiden — ihre Schriftmarken haengen ohnehin schon am oberen Anschlag:
+    //   meteogram  mehrere Panels
+    //   heatmap    Matrix + Farbleiste
+    //   meterlist  Kachelraster, vier Metriken = zwei Reihen (braucht ~166 px)
+    //   chart      Legende + Marken-Fahne + Perioden-Navigation belegen feste Baender
+    var DOKU_MAXH = {meteogram:340, heatmap:240, meterlist:190, chart:190};
+    var maxH = DOKU_MAXH[t] || 140;
     var maxW = (t === 'meteogram' || t === 'heatmap') ? 460 : DOKU_PREV;
     return [Math.max(150, Math.min(maxW, parseInt(s[0]) || 240)),
             Math.max(90,  Math.min(maxH, parseInt(s[1]) || 130))];
+  }
+
+  // Hoehe einer text-Kachel MESSEN statt raten. Grund: Auf schmalen Fenstern (Handy, ~420 px)
+  // brechen Ueberschriften auf zwei Zeilen um; eine fest verdrahtete Hoehe (40/36/24) reicht
+  // dann nicht, die zweite Zeile lief in den naechsten Block und wurde abgeschnitten.
+  // Gemessen wird in einem unsichtbaren Kasten mit denselben Regeln wie .wt/.wt .t
+  // (Schriftgroesse w.fsz, Gewicht 600, Innenabstand aus styles.css: waagrecht 7 px,
+  // senkrecht 6 px — die clamp()-Untergrenzen, die bei diesen flachen Kacheln immer greifen).
+  var _dokuMeas = null;
+  function dokuTextH(label, fsz, boxW, minH){
+    var padX = 7, padY = 6, h = minH || 0;
+    try{
+      if(!_dokuMeas){
+        _dokuMeas = document.createElement('div');
+        _dokuMeas.style.cssText = 'position:absolute;left:-9999px;top:0;visibility:hidden;'
+          + 'font-family:var(--fu,sans-serif);font-weight:600;white-space:pre-wrap;'
+          + 'word-break:normal;overflow-wrap:break-word;line-height:normal';
+        document.body.appendChild(_dokuMeas);
+      }
+      // 2 px schmaler messen: liegt eine Zeile haarscharf an der Grenze, wird lieber
+      // umgebrochen gerechnet — eine Zeile Luft zu viel ist harmlos, eine zu wenig nicht.
+      _dokuMeas.style.width = Math.max(40, boxW - 2*padX - 2) + 'px';
+      _dokuMeas.style.fontSize = fsz + 'px';
+      _dokuMeas.textContent = String(label == null ? '' : label);
+      h = Math.max(h, Math.ceil(_dokuMeas.getBoundingClientRect().height) + 2*padY);
+    }catch(e){}
+    return h;
   }
 
   // Zeilenzahl eines Textblocks abschaetzen. Deutsche Woerter brechen frueh um, darum
@@ -140,13 +173,16 @@
       var ws = [], n = 0, y = (DOKU_PAD+30);
       function add(o){ n++; o.id = 'dk' + n; ws.push(o); }
 
-      add({type:'text', x:DOKU_PAD, y:y, w:DOKU_W-2*DOKU_PAD, h:40, bgT:true, fsz:21,
-           label:'Widget-Dokumentation · ' + titel});
-      y += 46;
-      add({type:'text', x:DOKU_PAD, y:y, w:DOKU_W-2*DOKU_PAD, h:36, bgT:true, fsz:11, fg:'#7d9099',
-           label:'Je Widget: oben die Vorschau (läuft mit echten Werten, bedienbar), darunter Zweck und '
-                +'sämtliche Optionen. Über die Ansichtsauswahl oben zu den anderen Themen.'});
-      y += 46;
+      // Hoehen gemessen (Mindestmass = die bisherigen Werte): breit bleibt alles wie gehabt,
+      // schmal waechst der Kasten mit dem Umbruch mit, statt in den naechsten Block zu laufen.
+      var kopfL = 'Widget-Dokumentation · ' + titel, kopfH = dokuTextH(kopfL, 21, DOKU_W-2*DOKU_PAD, 40);
+      add({type:'text', x:DOKU_PAD, y:y, w:DOKU_W-2*DOKU_PAD, h:kopfH, bgT:true, fsz:21, label:kopfL});
+      y += kopfH + 6;
+      var introL = 'Je Widget: oben die Vorschau (läuft mit echten Werten, bedienbar), darunter Zweck und '
+                 + 'sämtliche Optionen. Über die Ansichtsauswahl oben zu den anderen Themen.';
+      var introH = dokuTextH(introL, 11, DOKU_W-2*DOKU_PAD, 36);
+      add({type:'text', x:DOKU_PAD, y:y, w:DOKU_W-2*DOKU_PAD, h:introH, bgT:true, fsz:11, fg:'#7d9099', label:introL});
+      y += introH + 10;
 
       typen.forEach(function(t){
         var info = dokuInfo(t), def = WIDGETS[t] || {};
@@ -154,9 +190,12 @@
         var kopf = (info.titel || def.label || t) + (WIDGETS[t] ? ('  ·  ' + t) : ''); // synthetische Einträge (Chart-Typen) ohne Typ-Slug
         var txtH = Math.round(14 + dokuTxtLen(t) * 17);
 
-        // 1) Überschrift (volle Breite)
-        add({type:'text', x:DOKU_PAD, y:y, w:DOKU_TXTW, h:24, bgT:true, fsz:15, label:kopf});
-        y += 28;
+        // 1) Überschrift (volle Breite) — Hoehe gemessen, sonst verschwindet die zweite Zeile
+        //    langer Namen (z. B. „Beschattungs-Panel (alt/Monolith) · shadingpanel") schmal
+        //    hinter der Vorschaukarte darunter.
+        var kopfH2 = dokuTextH(kopf, 15, DOKU_TXTW, 24);
+        add({type:'text', x:DOKU_PAD, y:y, w:DOKU_TXTW, h:kopfH2, bgT:true, fsz:15, label:kopf});
+        y += kopfH2 + 4;
         // 2) Vorschau-Kachel darunter — linksbündig (bei breitem Layout wirkt zentriert verloren)
         var px = DOKU_PAD;
         if (DOKU_SKIP[t]) {

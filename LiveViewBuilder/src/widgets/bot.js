@@ -66,7 +66,7 @@
     function botLoadMowers(cb){fetch('?api=mower&op=list',{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){_botMowers=(j&&j.mowers)||[];cb&&cb();}).catch(function(){_botMowers=[];cb&&cb();});}
 
     defWidget('bot',{
-      label:'Roboter', paletteIcon:'mower', size:[210,112],
+      label:'Roboter', cat:'HomeSuite', paletteIcon:'mower', size:[210,112],
       render:function(w){
         if(w.mowerId) return '<div class="hbot mowerx"><div data-role="botroot"><div class="load">Mäher lädt…</div></div></div>';
         return '<div class="hvac"><div class="hvrow"><span class="hvicon">'+iconSVG(w.icon||'mower')+'</span><span class="hvst" data-role="val">–</span><span class="hvbat" data-role="sub">–</span></div><div class="hvbtn"><button data-role="vstart">Start</button><button data-role="vstop">Stop</button></div></div>';

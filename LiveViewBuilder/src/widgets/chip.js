@@ -1,6 +1,7 @@
 // Widget: chip (Chip)
 defWidget('chip',{
   label:'Chip',
+  cat:'Anzeige',
   paletteIcon:'star',
   size:[130,36],
   render:function(w){return '<div class="hchip"><span class="hchipic">'+iconSVG(w.icon||'sensor')+'</span><span data-role="val">–</span></div>';},

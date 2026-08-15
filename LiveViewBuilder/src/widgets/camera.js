@@ -25,12 +25,12 @@
     return '';
   }
   defWidget('camera',{
-    label:'Kamera', paletteIcon:'camera', size:[260,160],
+    label:'Kamera', cat:'Medien', paletteIcon:'camera', size:[260,160],
     render:function(w){
       var m=w.camSrc||'media',fit=_camFitCSS(w),nm='<div class="wcamnm">'+escL(w.label||'')+'</div>';
       if(m==='go2rtc'){
         var base=(w.g2Base||'').replace(/\/+$/,''),strm=encodeURIComponent(w.g2Stream||'');
-        if(!base||!w.g2Stream)return '<div class="wcam"><div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--faint);text-align:center;padding:8px">go2rtc: Adresse und Stream-Name setzen</div>'+nm+'</div>';
+        if(!base||!w.g2Stream)return '<div class="wcam"><div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:clamp(10px,4cqmin,15px);color:var(--faint);text-align:center;padding:clamp(6px,4cqmin,14px)">go2rtc: Adresse und Stream-Name setzen</div>'+nm+'</div>';
         // go2rtc liefert eine fertige Player-Seite je Stream; als iframe eingebettet bleibt das Widget schlank
         var mo=(w.g2Mode||'webrtc');
         return '<div class="wcam"><iframe data-role="camframe" src="'+esc(base+'/stream.html?src='+strm+'&mode='+mo)+'" style="position:absolute;inset:0;width:100%;height:100%;border:0;background:#000" allow="autoplay; fullscreen" referrerpolicy="no-referrer"></iframe>'+nm+'</div>';

@@ -120,7 +120,7 @@
 
   // ---------- heatrooms (Controller): Raum-Tabs + Titel ----------
   defWidget('rooms',{
-    label:'Räume', paletteIcon:'thermostat', size:[720,120],
+    label:'Räume', cat:'HomeSuite · Zeitplan (Heizung/Beschattung)', paletteIcon:'thermostat', size:[720,120],
     defaults:function(w){w.session='heat';w.rooms=[];},
     render:function(w){var r=hfReady(w);if(r.err)return hfMsg(r.err);if(r.loading)return hfMsg('Heizung lädt …');var s=r.s,day=hpDayObj(s),n=(day.end||[]).length;
       return '<div class="hplan hfbox">'+hpRoomsBar(w,s)
@@ -182,7 +182,7 @@
   function hfCurveInner(w,s){return '<div class="hp-main hfcurve">'+hpCurve(w,s)
     +'<div class="hp-clegend"><span class="hp-cl-l">Kurve – Griffe ziehen ändert Grenze &amp; Wert</span><span class="hp-cl-r">'+hpNowText(s)+'</span></div></div>';}
   defWidget('curve',{
-    label:'Sollkurve', paletteIcon:'wchart', size:[560,320],
+    label:'Sollkurve', cat:'HomeSuite · Zeitplan (Heizung/Beschattung)', paletteIcon:'wchart', size:[560,320],
     defaults:function(w){w.session='heat';},
     render:function(w){var r=hfReady(w);if(r.err)return hfMsg(r.err);if(r.loading)return hfMsg('Kurve lädt …');return '<div class="hplan hfbox">'+hfCurveInner(w,r.s)+'</div>';},
     mount:function(w){var el=$('.w[data-id="'+w.id+'"]',canvas)||$('.w[data-id="'+w.id+'"]',$('#ovcanvas'));if(!el)return;hfSub(w);hfEnsure(w,el);},
@@ -198,7 +198,7 @@
 
   // ---------- heatweek: Wochenübersicht ----------
   defWidget('week',{
-    label:'Woche', paletteIcon:'wbars', size:[420,240],
+    label:'Woche', cat:'HomeSuite · Zeitplan (Heizung/Beschattung)', paletteIcon:'wbars', size:[420,240],
     defaults:function(w){w.session='heat';},
     render:function(w){var r=hfReady(w);if(r.err)return hfMsg(r.err);if(r.loading)return hfMsg('Woche lädt …');return '<div class="hplan hfbox"><div class="hp-main">'+hpWeekView(w,r.s)+'</div></div>';},
     mount:function(w){var el=$('.w[data-id="'+w.id+'"]',canvas)||$('.w[data-id="'+w.id+'"]',$('#ovcanvas'));if(!el)return;hfSub(w);hfEnsure(w,el);},
@@ -209,7 +209,7 @@
 
   // ---------- heatslots: Wochentag-Wahl + Slot-Pillen ----------
   defWidget('slots',{
-    label:'Slots', paletteIcon:'wlist', size:[560,150],
+    label:'Slots', cat:'HomeSuite · Zeitplan (Heizung/Beschattung)', paletteIcon:'wlist', size:[560,150],
     defaults:function(w){w.session='heat';},
     render:function(w){var r=hfReady(w);if(r.err)return hfMsg(r.err);if(r.loading)return hfMsg('Slots lädt …');var s=r.s;
       return '<div class="hplan hfbox"><div class="hp-days">'+HP_DAYS.map(function(d,i){return '<button class="hp-day'+(i==s.day?' on':'')+'" data-hpday="'+i+'">'+d+'</button>';}).join('')+'</div>'
@@ -227,7 +227,7 @@
     // die Einzelwidgets slotedit/variantbox/transfer/save nutzen; editor bleibt noPalette
     // fuer Bestandsseiten.
     noPalette:true,
-    label:'Editor (kompakt)', paletteIcon:'wtile', size:[300,780],
+    label:'Editor (kompakt)', cat:'HomeSuite · Zeitplan (Heizung/Beschattung)', paletteIcon:'wtile', size:[300,780],
     defaults:function(w){w.session='heat';},
     render:function(w){var r=hfReady(w);if(r.err)return hfMsg(r.err);if(r.loading)return hfMsg('Editor lädt …');var s=r.s,day=hpDayObj(s);
       // Voller Editor wie der Monolith: Slot · Präsenz-Profil · Übertragen (inkl. „Woche übernehmen von") · Speichern.
@@ -258,7 +258,7 @@
 
   // slotedit: nur der Slot-Editor (Wert/Zeit/Sonnen-Anker/einfuegen/loeschen)
   defWidget('slotedit',{
-    label:'Slot-Editor', paletteIcon:'wtile', size:[300,360],
+    label:'Slot-Editor', cat:'HomeSuite · Zeitplan (Heizung/Beschattung)', paletteIcon:'wtile', size:[300,360],
     defaults:function(w){w.session='heat';},
     render:function(w){var r=hfReady(w);if(r.err)return hfMsg(r.err);if(r.loading)return hfMsg('Editor lädt …');var s=r.s;return '<div class="hplan hfbox"><div class="hp-side hfside">'+hpSlotEditor(s,hpDayObj(s))+'</div></div>';},
     mount:hfMount2,
@@ -276,7 +276,7 @@
 
   // variantbox: die Varianten-/Praesenz-Auswahl (Plan/Praesenz)
   defWidget('variantbox',{
-    label:'Varianten', paletteIcon:'wlist', size:[300,180],
+    label:'Varianten', cat:'HomeSuite · Zeitplan (Heizung/Beschattung)', paletteIcon:'wlist', size:[300,180],
     defaults:function(w){w.session='heat';},
     render:function(w){var r=hfReady(w);if(r.err)return hfMsg(r.err);if(r.loading)return hfMsg('Varianten lädt …');return '<div class="hplan hfbox"><div class="hp-side hfside">'+hpPresenceBox(r.s)+'</div></div>';},
     mount:hfMount2,
@@ -287,7 +287,7 @@
 
   // transfer: Tag/Woche kopieren + Woche uebernehmen
   defWidget('transfer',{
-    label:'Übertragen', paletteIcon:'wtile', size:[300,230],
+    label:'Übertragen', cat:'HomeSuite · Zeitplan (Heizung/Beschattung)', paletteIcon:'wtile', size:[300,230],
     defaults:function(w){w.session='heat';},
     render:function(w){var r=hfReady(w);if(r.err)return hfMsg(r.err);if(r.loading)return hfMsg('lädt …');return '<div class="hplan hfbox"><div class="hp-side hfside">'+hpTransferBox(w,r.s)+'</div></div>';},
     mount:hfMount2,
@@ -299,7 +299,7 @@
 
   // save: Speichern-Knopf
   defWidget('save',{
-    label:'Speichern', paletteIcon:'check', size:[300,54],
+    label:'Speichern', cat:'HomeSuite · Zeitplan (Heizung/Beschattung)', paletteIcon:'check', size:[300,54],
     defaults:function(w){w.session='heat';},
     render:function(w){var r=hfReady(w);if(r.err||r.loading)return '<div class="hplan hfbox"></div>';var s=r.s;return '<div class="hplan hfbox"><button class="hp-save'+(s.dirty?' dirty':'')+'" data-hpsave="1" style="width:100%"><svg class="hp-ic"><use href="#ic-check"/></svg> Speichern</button></div>';},
     mount:hfMount2,

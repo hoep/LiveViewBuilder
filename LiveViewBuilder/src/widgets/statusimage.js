@@ -14,7 +14,7 @@
   }
   function _siApply(el,st){var si=$('[data-role=simg]',el);if(si){si.src=st.src;si.style.filter=st.gray?'grayscale(1) opacity(.6)':'';}}
   defWidget('statusimage',{
-    label:'Status-Bild', paletteIcon:'wimage', size:[64,64],
+    label:'Status-Bild', cat:'Anzeige', paletteIcon:'wimage', size:[64,64],
     defaults:function(w){w.states=[{value:false,mediaId:'off'},{value:true,mediaId:0}];},
     render:function(w){var lv=w.varId&&_lastVals[w.varId];var st=_siState(w,lv?lv.v:null);
       return '<div class="hsimg"><img data-role="simg" alt="'+esc(w.label||'')+'" style="'+(st.gray?'filter:grayscale(1) opacity(.6)':'')+'" src="'+st.src+'">'+(w.label?'<span class="hsimlbl">'+escL(w.label)+'</span>':'')+'</div>';},

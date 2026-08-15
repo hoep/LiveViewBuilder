@@ -1,6 +1,7 @@
 // webview widget
 defWidget('webview',{
   label:'WebView',
+  cat:'Anzeige',
   paletteIcon:'wifi',
   size:[320,240],
   defaults:function(w){w.url='';},

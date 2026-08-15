@@ -1,6 +1,6 @@
   // ===== Widget: Gauge — ECharts-Rundinstrument =====
   defWidget('gauge',{
-    label:'Gauge', paletteIcon:'gauge', size:[170,150],
+    label:'Gauge', cat:'Anzeige', paletteIcon:'gauge', size:[170,150],
     render:function(w){return '<div data-role="chart"></div>';},
     props:function(w){if(w.type!=='gauge')return '';
       var FF=[['system-ui,-apple-system,sans-serif','Sans'],['Georgia,\'Times New Roman\',serif','Serif'],['ui-monospace,Menlo,Consolas,monospace','Mono'],['\'Segoe UI\',Arial,sans-serif','Segoe/Arial'],['Verdana,sans-serif','Verdana']];

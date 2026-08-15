@@ -25,13 +25,18 @@
       dayBegin:'<path d="M17 18a5 5 0 0 0-10 0"/><path d="M12 2v7M4.2 10.2l1.4 1.4M1 18h2M21 18h2M18.4 11.6l1.4-1.4M12 9l3 3M12 9l-3 3"/>',
       dayEnd:'<path d="M17 18a5 5 0 0 0-10 0"/><path d="M12 9V2M4.2 10.2l1.4 1.4M1 18h2M21 18h2M18.4 11.6l1.4-1.4M9 6l3 3 3-3"/>',
       temp:'<path d="M14 14.76V5a2 2 0 1 0-4 0v9.76a4 4 0 1 0 4 0z"/>'};
+    // sz wird 1:1 als width/height-Attribut gesetzt — an den Aufrufstellen '100%', damit die
+    // tatsaechliche Groesse ueber den umgebenden, per clamp/cqmin bemessenen <span> kommt.
     function spIcon(id,sz){return '<svg viewBox="0 0 24 24" width="'+(sz||16)+'" height="'+(sz||16)+'" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'+(SP_IC[id]||SP_IC.sun)+'</svg>';}
-    var SP_INP='height:34px;border:1px solid var(--line);border-radius:8px;background:var(--surface-2);color:var(--text);padding:0 10px;font-family:var(--fm);font-size:13px;width:100%;box-sizing:border-box';
+    // Icon-Huelle: feste Kantenlaenge aus der Kachel, damit das 100%-SVG eine Bezugsgroesse hat.
+    function spIcoBox(id,size){return '<span style="display:inline-flex;flex:none;align-items:center;justify-content:center;width:'+size+';height:'+size+'">'+spIcon(id,'100%')+'</span>';}
+    var SP_INP='height:clamp(30px,9cqmin,40px);border:1px solid var(--line);border-radius:8px;background:var(--surface-2);color:var(--text);padding:0 clamp(7px,2.6cqmin,12px);font-family:var(--fm);font-size:clamp(11px,3.4cqmin,14px);width:100%;box-sizing:border-box';
+    var SP_BTN='padding:clamp(6px,2.4cqmin,11px) clamp(8px,3.4cqmin,15px);min-height:clamp(26px,8cqmin,38px);font-size:clamp(10px,3.2cqmin,13px)'; // Tippziel bleibt >=26px
 
     function spField(k,spec,val){
       var t=spec.type||'int', lbl=esc(spec.label||k);
-      var wrap=function(inner){return '<label style="display:flex;flex-direction:column;gap:5px;font-size:11px;color:var(--muted)"><span>'+lbl+'</span>'+inner+'</label>';};
-      if(t==='bool')return wrap('<label style="display:inline-flex;align-items:center;gap:8px;height:34px;cursor:pointer"><input type="checkbox" data-spf="'+k+'"'+(val?' checked':'')+' style="width:18px;height:18px;accent-color:var(--accent)"><span style="color:var(--text);font-size:13px">'+(val?'an':'aus')+'</span></label>');
+      var wrap=function(inner){return '<label style="display:flex;flex-direction:column;gap:clamp(3px,1.6cqmin,6px);font-size:clamp(9px,2.8cqmin,12px);color:var(--muted)"><span>'+lbl+'</span>'+inner+'</label>';};
+      if(t==='bool')return wrap('<label style="display:inline-flex;align-items:center;gap:clamp(5px,2.4cqmin,10px);height:clamp(30px,9cqmin,40px);cursor:pointer"><input type="checkbox" data-spf="'+k+'"'+(val?' checked':'')+' style="width:clamp(16px,5cqmin,22px);height:clamp(16px,5cqmin,22px);accent-color:var(--accent)"><span style="color:var(--text);font-size:clamp(11px,3.4cqmin,14px)">'+(val?'an':'aus')+'</span></label>');
       if(t==='enum'){var o=(spec.options||[]).map(function(x){return '<option value="'+esc(x.value)+'"'+(String(val)===String(x.value)?' selected':'')+'>'+esc(x.label)+'</option>';}).join('');return wrap('<select data-spf="'+k+'" style="'+SP_INP+'">'+o+'</select>');}
       if(t==='time')return wrap('<input type="time" data-spf="'+k+'" value="'+esc(val||'')+'" style="'+SP_INP+'">');
       var step=(t==='float')?'0.1':'1';
@@ -42,53 +47,55 @@
       var st=spSt(w), doku=(typeof DOKU!=='undefined'&&DOKU);
       if(doku && !st.types){var d=spDemo();st.types=d.types;st.list=d.list;st.name=d.name;st.fields=d.fields;}
       var box='position:absolute;inset:0;background:var(--surface);display:flex;flex-direction:column;box-sizing:border-box';
-      var msg=function(t){return '<div style="'+box+';align-items:center;justify-content:center;color:var(--muted);font-size:13px">'+esc(t)+'</div>';};
+      var msg=function(t){return '<div style="'+box+';align-items:center;justify-content:center;color:var(--muted);font-size:clamp(11px,3.4cqmin,14px)">'+esc(t)+'</div>';};
       if(!st.types)return msg('Profile laden …');
       if(st.err)return msg(st.err);
       var td=spTypeDef(st);
       var asg=(st.assigned&&st.assigned[st.type])||null; // dieser Zone zugewiesenes Profil des aktuellen Typs
       // Typ-Reiter (Unterstrich-Tabs)
+      var ICO_ROW='clamp(12px,4cqmin,18px)'; // Icon-Kantenlaenge in Zeilen/Tabs
       var tabs=st.types.map(function(t){var on=t.id===st.type;
-        return '<button data-sptype="'+esc(t.id)+'" style="display:inline-flex;align-items:center;gap:7px;padding:10px 14px;border:0;background:none;cursor:pointer;white-space:nowrap;font-size:12.5px;font-weight:600;color:'+(on?'var(--text)':'var(--muted)')+';border-bottom:2px solid '+(on?'var(--accent)':'transparent')+'">'+spIcon(t.id,15)+esc(t.title)+'</button>';}).join('');
-      var h='<div style="'+box+'"><div style="display:flex;flex-wrap:wrap;border-bottom:1px solid var(--line);padding:0 8px;flex:none">'+tabs+'</div>'
+        return '<button data-sptype="'+esc(t.id)+'" style="display:inline-flex;align-items:center;gap:clamp(4px,2cqmin,8px);'+SP_BTN+';border:0;background:none;cursor:pointer;white-space:nowrap;font-weight:600;color:'+(on?'var(--text)':'var(--muted)')+';border-bottom:2px solid '+(on?'var(--accent)':'transparent')+'">'+spIcoBox(t.id,ICO_ROW)+esc(t.title)+'</button>';}).join('');
+      var h='<div style="'+box+'"><div style="display:flex;flex-wrap:wrap;border-bottom:1px solid var(--line);padding:0 clamp(4px,2.4cqmin,10px);flex:none">'+tabs+'</div>'
         +'<div style="flex:1;display:flex;min-height:0">';
-      // Linke Spalte: Profil-Karten
-      h+='<div style="width:240px;flex:none;border-right:1px solid var(--line);overflow:auto;padding:12px;display:flex;flex-direction:column;gap:8px">'
-        +'<div style="font-size:9px;letter-spacing:.7px;text-transform:uppercase;font-weight:700;color:var(--faint)">'+esc(td?td.title:'Profile')+'</div>';
+      // Linke Spalte: Profil-Karten — Breite folgt der Kachelbreite (cqi), bleibt aber lesbar
+      h+='<div style="width:clamp(140px,30cqi,240px);flex:none;border-right:1px solid var(--line);overflow:auto;padding:clamp(7px,3.2cqmin,14px);display:flex;flex-direction:column;gap:clamp(5px,2.4cqmin,10px)">'
+        +'<div style="font-size:clamp(8px,2.2cqmin,10px);letter-spacing:.7px;text-transform:uppercase;font-weight:700;color:var(--faint)">'+esc(td?td.title:'Profile')+'</div>';
       (st.list||[]).forEach(function(n){var on=n===st.name, mine=(n===asg);
-        h+='<button data-spname="'+esc(n)+'" style="display:flex;align-items:center;gap:9px;text-align:left;border:1px solid '+(on?'var(--accent)':(mine?'color-mix(in oklab,var(--accent) 45%,var(--line))':'var(--line)'))+';border-radius:var(--r-s,9px);background:'+(on?'color-mix(in oklab,var(--accent) 12%,transparent)':'var(--tile)')+';color:var(--text);padding:9px 11px;cursor:pointer;font-size:13px;font-weight:600">'
-          +'<span style="color:'+(on||mine?'var(--accent)':'var(--faint)')+'">'+spIcon(st.type,15)+'</span><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis">'+esc(n)+'</span>'
-          +(mine?'<span style="flex:none;font-size:9px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:#fff;background:var(--accent-2);border-radius:999px;padding:2px 7px">Rollo</span>':'')+'</button>';});
-      if(!(st.list||[]).length)h+='<div style="color:var(--muted);font-size:12px;padding:4px 2px">Noch keine Profile</div>';
-      h+='<button data-spnew="1" style="margin-top:2px;border:1px dashed var(--accent);border-radius:var(--r-s,9px);background:none;color:var(--accent);padding:9px;cursor:pointer;font-size:13px;font-weight:600">+ Neues Profil</button></div>';
-      // Rechte Spalte: Editor
-      h+='<div style="flex:1;min-width:0;overflow:auto;padding:16px">';
+        h+='<button data-spname="'+esc(n)+'" style="display:flex;align-items:center;gap:clamp(5px,2.4cqmin,10px);text-align:left;border:1px solid '+(on?'var(--accent)':(mine?'color-mix(in oklab,var(--accent) 45%,var(--line))':'var(--line)'))+';border-radius:var(--r-s,9px);background:'+(on?'color-mix(in oklab,var(--accent) 12%,transparent)':'var(--tile)')+';color:var(--text);'+SP_BTN+';cursor:pointer;font-weight:600">'
+          +'<span style="display:inline-flex;flex:none;color:'+(on||mine?'var(--accent)':'var(--faint)')+'">'+spIcoBox(st.type,ICO_ROW)+'</span><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis">'+esc(n)+'</span>'
+          +(mine?'<span style="flex:none;font-size:clamp(8px,2.2cqmin,10px);font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:#fff;background:var(--accent-2);border-radius:999px;padding:clamp(1px,.8cqmin,3px) clamp(5px,2cqmin,9px)">Rollo</span>':'')+'</button>';});
+      if(!(st.list||[]).length)h+='<div style="color:var(--muted);font-size:clamp(9px,3cqmin,12px);padding:clamp(3px,1.4cqmin,6px) 2px">Noch keine Profile</div>';
+      h+='<button data-spnew="1" style="margin-top:2px;border:1px dashed var(--accent);border-radius:var(--r-s,9px);background:none;color:var(--accent);'+SP_BTN+';cursor:pointer;font-weight:600">+ Neues Profil</button></div>';
+      // Rechte Spalte: Editor (scrollt selbst, die Kachel bleibt waagrecht ruhig)
+      h+='<div style="flex:1;min-width:0;overflow:auto;padding:clamp(9px,4cqmin,18px)">';
       if(st.name && st.fields && td){
-        h+='<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px"><span style="width:34px;height:34px;border-radius:9px;flex:none;display:flex;align-items:center;justify-content:center;background:color-mix(in oklab,var(--accent) 14%,transparent);color:var(--accent)">'+spIcon(st.type,18)+'</span>'
-          +'<div style="min-width:0"><div style="font-size:17px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(st.name)+'</div>'
-          +'<div style="font-size:11px;color:var(--muted)">'+esc(td.title)+'</div></div></div>';
-        h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px 16px;max-width:520px">';
+        h+='<div style="display:flex;align-items:center;gap:clamp(6px,3cqmin,12px);margin-bottom:clamp(8px,3.6cqmin,16px)"><span style="width:clamp(24px,9cqmin,38px);height:clamp(24px,9cqmin,38px);border-radius:9px;flex:none;display:flex;align-items:center;justify-content:center;background:color-mix(in oklab,var(--accent) 14%,transparent);color:var(--accent)">'+spIcoBox(st.type,'clamp(13px,4.8cqmin,20px)')+'</span>'
+          +'<div style="min-width:0"><div style="font-size:clamp(13px,5cqmin,20px);font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(st.name)+'</div>'
+          +'<div style="font-size:clamp(9px,2.8cqmin,12px);color:var(--muted)">'+esc(td.title)+'</div></div></div>';
+        // Feldraster bricht selbst um (auto-fit) statt starrer Zweispaltigkeit
+        h+='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(clamp(120px,26cqi,190px),1fr));gap:clamp(8px,3cqmin,14px) clamp(10px,4cqmin,18px);max-width:min(520px,100%)">';
         Object.keys(td.schema).forEach(function(k){h+=spField(k,td.schema[k],st.fields[k]);});
         h+='</div>';
-        var gbtn='border:1px solid var(--line);border-radius:8px;background:var(--tile);color:var(--text);padding:8px 14px;cursor:pointer;font-size:12.5px';
-        h+='<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:16px">'
-          +'<button data-spsave="1" style="border:1px solid var(--accent);border-radius:8px;background:var(--accent);color:#fff;padding:8px 16px;cursor:pointer;font-size:12.5px;font-weight:600">Speichern</button>'
+        var gbtn='border:1px solid var(--line);border-radius:8px;background:var(--tile);color:var(--text);'+SP_BTN+';cursor:pointer';
+        h+='<div style="display:flex;flex-wrap:wrap;gap:clamp(5px,2.4cqmin,10px);margin-top:clamp(9px,4cqmin,18px)">'
+          +'<button data-spsave="1" style="border:1px solid var(--accent);border-radius:8px;background:var(--accent);color:#fff;padding:clamp(6px,2.4cqmin,11px) clamp(10px,4cqmin,18px);min-height:clamp(26px,8cqmin,38px);cursor:pointer;font-size:clamp(10px,3.2cqmin,13px);font-weight:600">Speichern</button>'
           +'<button data-spdup="1" style="'+gbtn+'">Duplizieren</button><button data-sprename="1" style="'+gbtn+'">Umbenennen</button>'
-          +'<button data-spdel="1" style="border:1px solid color-mix(in oklab,var(--crit) 45%,var(--line));border-radius:8px;background:none;color:var(--crit);padding:8px 14px;cursor:pointer;font-size:12.5px">Löschen</button></div>';
+          +'<button data-spdel="1" style="border:1px solid color-mix(in oklab,var(--crit) 45%,var(--line));border-radius:8px;background:none;color:var(--crit);'+SP_BTN+';cursor:pointer">Löschen</button></div>';
         // Zuweisung
         var idx=spEntity(w);
-        h+='<div style="margin-top:18px;border-top:1px solid var(--line-soft);padding-top:12px">'
-          +'<div style="font-size:9px;letter-spacing:.7px;text-transform:uppercase;font-weight:700;color:var(--faint);margin-bottom:8px">Zuweisung</div>';
-        if(idx){ h+='<div style="display:flex;align-items:center;flex-wrap:wrap;gap:10px;font-size:13px">Rollo-Profil: <b style="color:var(--text)">'+esc(asg||'—')+'</b>'
-          +'<button data-spassign="1"'+(asg===st.name?' disabled':'')+' style="border:1px solid var(--accent);border-radius:999px;background:'+(asg===st.name?'var(--surface-2)':'color-mix(in oklab,var(--accent) 14%,transparent)')+';color:'+(asg===st.name?'var(--muted)':'var(--accent)')+';padding:6px 13px;cursor:pointer;font-size:12px;font-weight:600">Dieses Rollo → '+esc(st.name)+'</button>'
+        h+='<div style="margin-top:clamp(10px,4.5cqmin,20px);border-top:1px solid var(--line-soft);padding-top:clamp(7px,3cqmin,14px)">'
+          +'<div style="font-size:clamp(8px,2.2cqmin,10px);letter-spacing:.7px;text-transform:uppercase;font-weight:700;color:var(--faint);margin-bottom:clamp(5px,2.4cqmin,10px)">Zuweisung</div>';
+        if(idx){ h+='<div style="display:flex;align-items:center;flex-wrap:wrap;gap:clamp(6px,3cqmin,12px);font-size:clamp(10px,3.2cqmin,13px)">Rollo-Profil: <b style="color:var(--text)">'+esc(asg||'—')+'</b>'
+          +'<button data-spassign="1"'+(asg===st.name?' disabled':'')+' style="border:1px solid var(--accent);border-radius:999px;background:'+(asg===st.name?'var(--surface-2)':'color-mix(in oklab,var(--accent) 14%,transparent)')+';color:'+(asg===st.name?'var(--muted)':'var(--accent)')+';padding:clamp(4px,2cqmin,8px) clamp(8px,3.4cqmin,15px);min-height:clamp(24px,7.5cqmin,34px);cursor:pointer;font-size:clamp(10px,3cqmin,12px);font-weight:600">Dieses Rollo → '+esc(st.name)+'</button>'
           +(asg?'<button data-spunassign="1" style="'+gbtn+'">entfernen</button>':'')+'</div>';
         }
-        else h+='<div style="color:var(--muted);font-size:12px">Kein Rollo gebunden (Session/festes Rollo in den Eigenschaften)</div>';
+        else h+='<div style="color:var(--muted);font-size:clamp(9px,3cqmin,12px)">Kein Rollo gebunden (Session/festes Rollo in den Eigenschaften)</div>';
         h+='</div>';
       } else {
-        h+='<div style="height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:var(--muted);text-align:center">'
-          +'<span style="color:var(--faint)">'+spIcon(st.type,40)+'</span><div style="font-size:14px">'+esc(td?td.title:'Profil')+' wählen oder anlegen</div>'
-          +'<div style="font-size:12px;color:var(--faint)">Links ein Profil antippen oder „+ Neues Profil"</div></div>';
+        h+='<div style="height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:clamp(6px,3cqmin,12px);color:var(--muted);text-align:center">'
+          +'<span style="color:var(--faint)">'+spIcoBox(st.type,'clamp(28px,14cqmin,56px)')+'</span><div style="font-size:clamp(11px,3.8cqmin,15px)">'+esc(td?td.title:'Profil')+' wählen oder anlegen</div>'
+          +'<div style="font-size:clamp(9px,3cqmin,12px);color:var(--faint)">Links ein Profil antippen oder „+ Neues Profil"</div></div>';
       }
       h+='</div></div></div>';
       return h;
@@ -117,7 +124,7 @@
     }
 
     defWidget('shadeprofiles',{
-      label:'Beschattungs-Profile', paletteIcon:'sun', size:[560,420],
+      label:'Beschattungs-Profile', cat:'HomeSuite · Beschattung', paletteIcon:'sun', size:[560,420],
       defaults:function(w){w.bind='session';w.session='shade';},
       render:function(w){return spRender(w);},
       mount:function(w){var el=spEl(w);if(!el)return;var st=spSt(w);

@@ -5,6 +5,7 @@
 function setGaugePro(w,d){var _gc=w.gcolor;if(_gc==null)w.gcolor='graded';setGauge(w,d);w.gcolor=_gc;}
 defWidget('gaugepro',{
   label:'Gauge+',
+  cat:'Diagramme',
   paletteIcon:'gauge',
   size:[170,150],
   render:function(w){return '<div data-role="chart"></div>';},

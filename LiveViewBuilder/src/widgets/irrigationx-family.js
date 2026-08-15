@@ -19,33 +19,39 @@
       +'.irx-msg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:12px}'
       +'.irx-shadow{font-size:11px;color:var(--muted);border:1px dashed var(--line,rgba(128,128,128,.35));border-radius:8px;padding:5px 9px;margin-bottom:8px}'
       +'.irx-floor{font-size:9px;letter-spacing:.7px;text-transform:uppercase;font-weight:700;color:var(--faint);margin:8px 2px 4px}'
-      +'.irx-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px}'
-      +'.irxc{border:1px solid var(--line,rgba(128,128,128,.35));border-radius:var(--r-s,10px);background:var(--tile);padding:10px 11px;display:flex;flex-direction:column;gap:8px}'
+      // Kartenraster: die Mindestbreite waechst mit der Kachel (cqmin gegen die Kachel = .w),
+      // damit auf grossen Uebersichten nicht 6 winzige Spalten entstehen.
+      +'.irx-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(clamp(190px,45cqmin,280px),1fr));gap:clamp(7px,3cqmin,14px)}'
+      // WICHTIG: die Karte ist selbst ein Groessen-Container (inline-size). Alle Innenmasse
+      // rechnen deshalb mit cqi = KARTENbreite. Bei irriggrid ist die Kachel um ein Vielfaches
+      // groesser als eine einzelne Karte - ohne diesen Container wuerde alles zu gross geraten.
+      +'.irxc{container-type:inline-size;border:1px solid var(--line,rgba(128,128,128,.35));border-radius:var(--r-s,10px);background:var(--tile);padding:clamp(7px,3cqmin,13px) clamp(8px,3.2cqmin,14px);display:flex;flex-direction:column;gap:clamp(6px,3cqmin,12px)}'
       +'.irxc.run{border-color:var(--accent)}'
-      +'.irxc-h{display:flex;align-items:center;gap:8px}'
-      +'.irxc-ic{width:20px;height:20px;flex:none;color:var(--accent);display:flex;align-items:center;justify-content:center}'
+      +'.irxc-h{display:flex;align-items:center;gap:clamp(5px,2.6cqi,10px)}'
+      +'.irxc-ic{width:clamp(16px,7cqi,26px);height:clamp(16px,7cqi,26px);flex:none;color:var(--accent);display:flex;align-items:center;justify-content:center}'
       +'.irxc-ic svg{width:100%;height:100%}'
-      +'.irxc-nm{flex:1;min-width:0;font-size:13.5px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}'
-      +'.irxc-st{font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:999px;background:var(--surface-2);color:var(--muted);white-space:nowrap}'
+      +'.irxc-nm{flex:1;min-width:0;font-size:clamp(11px,5cqi,16px);font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}'
+      +'.irxc-st{font-size:clamp(9px,3.8cqi,12px);font-weight:700;padding:2px clamp(5px,2.6cqi,10px);border-radius:999px;background:var(--surface-2);color:var(--muted);white-space:nowrap}'
       +'.irxc-st.on{background:var(--accent);color:#fff}'
       +'.irxc-st.warn{background:color-mix(in oklab,var(--warn,#e0a030) 22%,transparent);color:var(--warn,#e0a030)}'
-      +'.irxc-sub{font-size:10.5px;color:var(--faint)}'
-      +'.irxc-arm{font-size:11px;padding:2px 8px;border-radius:12px;border:1px solid var(--line,rgba(128,128,128,.35));background:none;color:var(--muted);cursor:pointer;white-space:nowrap}'
+      +'.irxc-sub{font-size:clamp(9px,3.8cqi,12px);color:var(--faint)}'
+      +'.irxc-arm{font-size:clamp(9px,3.6cqi,12px);padding:2px clamp(5px,2.6cqi,10px);border-radius:12px;border:1px solid var(--line,rgba(128,128,128,.35));background:none;color:var(--muted);cursor:pointer;white-space:nowrap}'
       +'.irxc-arm.armed{background:var(--accent);border-color:var(--accent);color:#fff}'
-      +'.irxc-run{display:flex;align-items:center;gap:6px}'
+      +'.irxc-run{display:flex;align-items:center;gap:clamp(4px,2.2cqi,9px)}'
       +'.irxc-stp{display:inline-flex;align-items:center;border:1px solid var(--line,rgba(128,128,128,.35));border-radius:8px;overflow:hidden}'
-      +'.irxc-stp button{width:28px;height:30px;border:0;background:var(--surface-2);color:var(--text);cursor:pointer;font-size:15px}'
-      +'.irxc-stp span{min-width:52px;text-align:center;font-family:var(--fm);font-size:12.5px}'
-      +'.irxc-go{flex:1;height:32px;border:0;border-radius:8px;background:var(--accent);color:#fff;font-size:12.5px;font-weight:600;cursor:pointer}'
-      +'.irxc-stop{height:32px;padding:0 12px;border:1px solid var(--line,rgba(128,128,128,.35));border-radius:8px;background:var(--tile);color:var(--text);font-size:12.5px;cursor:pointer}'
-      +'.irxc-tgls{display:flex;gap:8px}'
-      +'.irxc-tgl{flex:1;height:30px;border:1px solid var(--line,rgba(128,128,128,.35));border-radius:8px;background:var(--tile);color:var(--muted);font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px}'
+      // Untergrenzen der Bedienelemente bleiben am Handy tippbar (>= 28px Kantenlaenge).
+      +'.irxc-stp button{width:clamp(28px,11cqi,40px);height:clamp(30px,12cqi,40px);border:0;background:var(--surface-2);color:var(--text);cursor:pointer;font-size:clamp(13px,5cqi,18px)}'
+      +'.irxc-stp span{min-width:clamp(44px,17cqi,70px);text-align:center;font-family:var(--fm);font-size:clamp(10px,4cqi,13px)}'
+      +'.irxc-go{flex:1;height:clamp(30px,12cqi,44px);border:0;border-radius:8px;background:var(--accent);color:#fff;font-size:clamp(11px,4.4cqi,14px);font-weight:600;cursor:pointer}'
+      +'.irxc-stop{height:clamp(30px,12cqi,44px);padding:0 clamp(8px,4cqi,16px);border:1px solid var(--line,rgba(128,128,128,.35));border-radius:8px;background:var(--tile);color:var(--text);font-size:clamp(11px,4.4cqi,14px);cursor:pointer}'
+      +'.irxc-tgls{display:flex;gap:clamp(5px,2.8cqi,10px)}'
+      +'.irxc-tgl{flex:1;height:clamp(28px,11cqi,40px);border:1px solid var(--line,rgba(128,128,128,.35));border-radius:8px;background:var(--tile);color:var(--muted);font-size:clamp(11px,4.4cqi,14px);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px}'
       +'.irxc-tgl.on{border-color:var(--accent);background:color-mix(in oklab,var(--accent) 14%,transparent);color:var(--accent);font-weight:600}'
-      +'.irxc-row{display:flex;align-items:center;gap:8px}'
-      +'.irxc-lbl{width:78px;flex:none;font-size:11.5px;color:var(--muted)}'
-      +'.irxc-rng{flex:1;height:6px;border-radius:6px}'
-      +'.irxc-val{min-width:44px;text-align:right;font-family:var(--fm);font-size:12px}'
-      +'.irxc-sel{flex:1;height:30px;border:1px solid var(--line,rgba(128,128,128,.35));border-radius:8px;background:var(--tile);color:var(--text);font-size:12px;padding:0 6px}';
+      +'.irxc-row{display:flex;align-items:center;gap:clamp(5px,2.8cqi,10px)}'
+      +'.irxc-lbl{width:clamp(58px,22cqi,96px);flex:none;font-size:clamp(10px,4.2cqi,13px);color:var(--muted)}'
+      +'.irxc-rng{flex:1;height:clamp(5px,2cqi,8px);border-radius:6px}'
+      +'.irxc-val{min-width:clamp(38px,15cqi,60px);text-align:right;font-family:var(--fm);font-size:clamp(10px,4cqi,13px)}'
+      +'.irxc-sel{flex:1;height:clamp(28px,11cqi,40px);border:1px solid var(--line,rgba(128,128,128,.35));border-radius:8px;background:var(--tile);color:var(--text);font-size:clamp(11px,4.4cqi,14px);padding:0 clamp(4px,2cqi,9px)}';
       document.head.appendChild(_s);}
 
     var _irData=null, _irErr='', _irLoading=false;
@@ -235,7 +241,8 @@
 
     function irDef(kind,label,defSize){
       defWidget(kind,{
-        label:label, paletteIcon:'droplet', size:defSize,
+        // Kategorie ist fuer beide Familienmitglieder identisch -> fest gesetzt statt Parameter.
+        label:label, cat:'HomeSuite · Bewässerung', paletteIcon:'droplet', size:defSize,
         defaults:function(w){w._kind=(kind==='irrigcircuit')?'circuit':'grid';},
         render:function(w){w._kind=(kind==='irrigcircuit')?'circuit':'grid';return irRender(w);},
         mount:function(w){w._kind=(kind==='irrigcircuit')?'circuit':'grid';var el=irEl(w);if(!el)return;

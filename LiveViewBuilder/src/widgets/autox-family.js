@@ -139,7 +139,7 @@
     function editRender(){
       if(!A.cfg)return '<div class="ax"><div class="ax-msg">lädt …</div></div>';
       var r=A.cfg.rules[A.sel];
-      if(!r)return '<div class="ax"><div class="ax-msg" style="padding:22px">Regel links wählen oder anlegen.</div></div>';
+      if(!r)return '<div class="ax"><div class="ax-msg" style="padding:clamp(10px,5cqmin,24px)">Regel links wählen oder anlegen.</div></div>';
       var h='<div class="ax ax-ed"><div class="ax-ed-head"><span class="ax-ic">'+aIcon(r.type)+'</span>'
         +'<input class="ax-name" id="axName" value="'+esc(r.name||'')+'"><span class="ax-badge">'+esc(TYPES[r.type].label)+'</span>'
         +tog(r.enabled!==false,' id="axEnEd"')+'</div><div class="ax-ed-body">';
@@ -165,11 +165,11 @@
         h+=fld('Wochentage','<div class="ax-days">'+daychips(r.days,'data-axday')+'</div>');
         h+=fld('Licht-Szene',sceneSel(r.sceneId,'id="axScene"'));
         h+=fld('Musik-Zone (optional)','<select class="ax-sel" id="axZone"><option value="0">— keine —</option>'+A.zones.map(function(z){return '<option value="'+z.id+'"'+(z.id==r.audioZone?' selected':'')+'>'+escL(z.name)+'</option>';}).join('')+'</select>'
-          +' <input class="ax-in" id="axSrc" placeholder="Sender/Quelle" value="'+esc(r.audioSource||'')+'" style="width:130px">');
+          +' <input class="ax-in" id="axSrc" placeholder="Sender/Quelle" value="'+esc(r.audioSource||'')+'" style="width:clamp(90px,26cqi,150px)">');
       }
       else if(r.type==='motion'){
         h+=fld('Bewegungsmelder',sensorSel(r.sensor||0,A.motionSensors,'id="axSensor"'));
-        h+=fld('Helligkeit (Lux-Variable, optional)','<div class="ax-r"><input class="ax-in ax-mono" id="axLux" type="number" value="'+(r.lux||'')+'" placeholder="Lux-Var" style="width:120px"> '+stepper('axLuxMax',(r.luxMax||0),'lux max')+'</div>');
+        h+=fld('Helligkeit (Lux-Variable, optional)','<div class="ax-r"><input class="ax-in ax-mono" id="axLux" type="number" value="'+(r.lux||'')+'" placeholder="Lux-Var" style="width:clamp(80px,24cqi,130px)"> '+stepper('axLuxMax',(r.luxMax||0),'lux max')+'</div>');
         h+=fld('Lampen',devChips(r.devices,'data-axdev'));
         h+=fld('Nachlaufzeit',stepper('axHold',Math.round((r.holdSec||0)/60),'min'));
         h+=fld('Helligkeit',stepper('axLevel',lvlTxt(r.level),''));
@@ -231,7 +231,7 @@
       return '<div class="ax ax-card"><div class="ax-card-h '+(kind==='schedule'||kind==='wake'?'sun':'')+'"><span class="ax-ic">'+aIcon(kind)+'</span>'
         +'<span class="ax-card-t">'+esc(meta.plural)+'</span><span class="ax-card-c">'+items.length+'</span>'
         +tog(anyOn,' data-axgroup="'+kind+'"')+'</div><div class="ax-card-b">'+ramp
-        +(rows||'<div class="ax-msg" style="padding:6px 2px">keine</div>')
+        +(rows||'<div class="ax-msg" style="padding:clamp(4px,2cqmin,8px) clamp(2px,1cqmin,4px)">keine</div>')
         +'<div class="ax-cadd" data-axadd="'+kind+'">＋ '+esc(meta.label)+' hinzufügen</div></div></div>';
     }
     function cardWire(h,w){
@@ -258,8 +258,10 @@
       // spannen: motion (ganztags), presence (fenster) — auch deaktivierte, gedimmt
       var spans='';
       (A.cfg.rules||[]).forEach(function(r,i){var off=(r.enabled===false)?' off':'';
-        if(r.type==='motion')spans+='<div class="ax-span motion'+off+'" style="left:1%;width:98%;top:150px" data-axopen="'+i+'">Bewegung: '+escL(r.name||'')+'</div>';
-        if(r.type==='presence'){var f=(r.from||'18:00').split(':'),t2=(r.to||'23:30').split(':');var a=pc((+f[0])*60+(+f[1])),b=pc((+t2[0])*60+(+t2[1]));spans+='<div class="ax-span pres'+off+'" style="left:'+a+'%;width:'+Math.max(4,b-a)+'%;top:180px" data-axopen="'+i+'">Anwesenheit</div>';}
+        // Spannen relativ zur Timeline-Hoehe (65 %/78 % entsprechen den bisherigen 150/230 bzw. 180/230 px),
+        // damit sie jeder spaeteren Hoehenaenderung von .ax-tl folgen.
+        if(r.type==='motion')spans+='<div class="ax-span motion'+off+'" style="left:1%;width:98%;top:65%" data-axopen="'+i+'">Bewegung: '+escL(r.name||'')+'</div>';
+        if(r.type==='presence'){var f=(r.from||'18:00').split(':'),t2=(r.to||'23:30').split(':');var a=pc((+f[0])*60+(+f[1])),b=pc((+t2[0])*60+(+t2[1]));spans+='<div class="ax-span pres'+off+'" style="left:'+a+'%;width:'+Math.max(4,b-a)+'%;top:78%" data-axopen="'+i+'">Anwesenheit</div>';}
       });
       var hours='';[0,6,12,18,24].forEach(function(hh){hours+='<span class="ax-tl-h" style="left:'+(hh/24*100)+'%">'+hh+'</span>';});
       return '<div class="ax ax-tlwrap"><div class="ax-tl-scroll"><div class="ax-tl">'
@@ -268,7 +270,7 @@
         +'<div class="ax-sun" style="left:'+srp+'%">☀</div><div class="ax-sun" style="left:'+ssp+'%">☾</div>'
         +marks+spans
         +'<div class="ax-tl-hours">'+hours+'</div></div></div>'
-        +'<div class="ax-circ"><div class="ax-circ-l">Circadian über den Tag</div><div class="ax-ramp" style="height:12px"></div></div></div>';
+        +'<div class="ax-circ"><div class="ax-circ-l">Circadian über den Tag</div><div class="ax-ramp" style="height:clamp(8px,3cqmin,14px)"></div></div></div>';
     }
     function tlWire(h,w){h.querySelectorAll('[data-axopen]').forEach(function(e){e.onclick=function(){A.sel=+e.getAttribute('data-axopen');aEmit();};});}
 
@@ -276,6 +278,7 @@
     function mk(name,kind,size,rnd,wire){
       defWidget(name,{
         label:({autolist:'Automatik-Liste',autoedit:'Automatik-Detail',autocard:'Automatik-Karte',autotimeline:'Automatik-Tagesverlauf'})[name],
+        cat:({autolist:'HomeSuite · Automatik',autoedit:'HomeSuite · Automatik',autocard:'HomeSuite · Automatik',autotimeline:'HomeSuite · Automatik'})[name],
         paletteIcon:'clock', size:size,
         defaults:function(w){if(name==='autocard')w.kind=w.kind||'schedule';},
         render:function(w){return rnd(w);},

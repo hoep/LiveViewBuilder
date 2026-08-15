@@ -3,7 +3,9 @@
   // Kontrasttext (weiß/dunkel) für eine (auch als var(--x) angegebene) Farbe via YIQ-Helligkeit
   var _ascProbe;
   function _contrastText(col){try{if(!_ascProbe){_ascProbe=document.createElement('span');_ascProbe.style.cssText='position:absolute;left:-9999px;top:-9999px';document.body.appendChild(_ascProbe);}_ascProbe.style.color='#7f7f7f';_ascProbe.style.color=col;var m=getComputedStyle(_ascProbe).color.match(/(\d+)\D+(\d+)\D+(\d+)/);if(!m)return '#ffffff';var yiq=(+m[1]*299+ +m[2]*587+ +m[3]*114)/1000;return yiq>=150?'#141414':'#ffffff';}catch(e){return '#ffffff';}}
-  function _chevSVG(c){return '<svg viewBox="0 0 24 24" style="width:16px;height:16px;fill:none;stroke:'+c+';stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="M9 6l6 6l-6 6"/></svg>';}
+  // Chevron folgt der Kachel (.w ist Groessen-Container): auf einer 130x120-Kachel bleibt er
+  // sichtbar, auf einer grossen Kachel wirkt er nicht mehr verloren. Strichstaerke bleibt fest.
+  function _chevSVG(c){return '<svg viewBox="0 0 24 24" style="width:clamp(12px,7cqmin,22px);height:clamp(12px,7cqmin,22px);fill:none;stroke:'+c+';stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="M9 6l6 6l-6 6"/></svg>';}
   function _assocWid(w){var el=$('.w[data-id="'+w.id+'"]',canvas);if(!el)return;
     var d=w.varId&&_lastVals[w.varId],v=d?d.v:null;
     var m=stateHit(w.amap,v);   // exakt zuerst, dann Operator/Bereich/Platzhalter (Kern)
@@ -53,7 +55,7 @@
     }
   }
   defWidget('assoc',{
-    label:'Zustand', paletteIcon:'toggleon', size:[130,120],
+    label:'Zustand', cat:'Anzeige', paletteIcon:'toggleon', size:[130,120],
     defaults:function(w){w.assocShow='both';},
     render:function(w){var s=w.assocShow||'both';
       var chip=(s!=='text')?'<span class="hassoc-chip" data-role="aico">'+(w.icon?iconSVG(w.icon):'')+'</span>':'';

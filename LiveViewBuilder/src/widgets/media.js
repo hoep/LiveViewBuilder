@@ -1,6 +1,7 @@
 // Widget: media (Media)
 defWidget('media',{
   label:'Media',
+  cat:'Medien',
   paletteIcon:'music',
   size:[240,112],
   defaults:function(w){w.label='Media';},

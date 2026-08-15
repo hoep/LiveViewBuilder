@@ -1,6 +1,7 @@
 // devlist — Geräte-Liste
 defWidget('devlist',{
   label:'Geräte-Liste',
+  cat:'Anzeige',
   paletteIcon:'wlist',
   size:[220,160],
   defaults:function(w){

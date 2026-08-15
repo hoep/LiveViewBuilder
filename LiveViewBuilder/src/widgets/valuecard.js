@@ -87,7 +87,7 @@
     pill.innerHTML='<span class="hpd"></span>'+esc(arrow+txt);
   }
   defWidget('valuecard',{
-    label:'Wertkarte', paletteIcon:'wkpi', size:[240,120],
+    label:'Wertkarte', cat:'Anzeige', paletteIcon:'wkpi', size:[240,120],
     defaults:function(w){w.icon='home';w.label='Wert';w.unit='';w.badgeState='ok';},
     render:function(w){
       var isSel=_vcSel(w);
@@ -107,7 +107,10 @@
         if(st==='muted')tr='<span class="hvcmuted" data-role="badge">'+esc(w.badge||'')+'</span>';
         else tr='<span class="hpill '+esc(st)+'" data-role="badge"><span class="hpd"></span>'+esc(w.badge||'')+'</span>';
       }
-      var val='<div class="hvcval"'+(w.valfs?' style="font-size:'+(parseInt(w.valfs)||0)+'px"':'')+'><span data-role="val">–</span>'+(w.unit?'<small> '+esc(w.unit)+'</small>':'')+'</div>';
+      // Wunsch-Schriftgroesse ist eine OBERGRENZE, keine feste Zahl: min(..,22cqh) sorgt dafuer,
+      // dass ein am Desktop gewaehlter Wert die geschrumpfte Kachel am Handy nicht sprengt.
+      // Leeres valfs bleibt unveraendert bei var(--wf-val) aus styles.css.
+      var val='<div class="hvcval"'+(w.valfs?' style="font-size:min('+(parseInt(w.valfs)||0)+'px,22cqh)"':'')+'><span data-role="val">–</span>'+(w.unit?'<small> '+esc(w.unit)+'</small>':'')+'</div>';
       var cap=w.label?'<div class="hvccap">'+escL(w.label)+'</div>':'';
       var bar=(!isSel&&w.barOn)?('<div class="hvcbar"><div class="btrack"><i data-role="bar"></i></div>'+((w.barCap!=null&&w.barCap!=='')?'<div class="hvcbarcap" data-role="barcap">'+esc(w.barCap)+'</div>':'')+'</div>'):'';
       var rng=(!isSel&&w.rngOn)?('<div class="hvcrng"><span class="rmin" data-role="rmin">–</span><span class="rtrack"><i class="rdot" data-role="rdot"></i></span><span class="rmax" data-role="rmax">–</span></div>'):'';

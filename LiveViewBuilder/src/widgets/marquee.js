@@ -1,13 +1,14 @@
   // ===== Widget: Lauftext (marquee) — Wert als horizontal wandernder Lauftext =====
   defWidget('marquee',{
-    label:'Lauftext', paletteIcon:'meter', size:[220,64],
+    label:'Lauftext', cat:'Anzeige', paletteIcon:'meter', size:[220,64],
     defaults:function(w){w.mqSpeed=12;},
     render:function(w){
       var an='mq'+w.id, sp=(w.mqSpeed>0?w.mqSpeed:12);
       var pre=esc(w.mqPre||''), suf=esc(w.mqSuf||'');
       return '<style>@keyframes '+an+'{0%{transform:translateX(100%)}100%{transform:translateX(-100%)}}</style>'
-        +'<div style="position:absolute;inset:0;display:flex;align-items:center;overflow:hidden;background:var(--surface);border-radius:10px;padding:0 2px">'
-        +'<div style="white-space:nowrap;will-change:transform;animation:'+an+' '+sp+'s linear infinite;font-family:var(--fm);font-variant-numeric:tabular-nums;font-weight:600;color:var(--text)">'
+        // Der Lauftext ist die einzige Zeile -> seine Groesse folgt der Kachelhoehe (cqh), gedeckelt per clamp.
+        +'<div style="position:absolute;inset:0;display:flex;align-items:center;overflow:hidden;background:var(--surface);border-radius:10px;padding:0 clamp(2px,1cqmin,6px)">'
+        +'<div style="white-space:nowrap;will-change:transform;animation:'+an+' '+sp+'s linear infinite;font-family:var(--fm);font-variant-numeric:tabular-nums;font-weight:600;color:var(--text);font-size:clamp(11px,26cqh,34px)">'
         +'<span data-role="pre" style="color:var(--muted)">'+pre+'</span>'
         +'<span data-role="val">–</span>'
         +'<span data-role="suf" style="color:var(--muted)">'+suf+'</span>'

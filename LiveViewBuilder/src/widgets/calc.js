@@ -1,6 +1,6 @@
   // ===== Widget: Berechnung (calc) — Aggregat über mehrere Variablen (P2-Calculation) =====
   defWidget('calc',{
-    label:'Berechnung', paletteIcon:'meter', size:[190,88],
+    label:'Berechnung', cat:'Grundelemente', paletteIcon:'meter', size:[190,88],
     defaults:function(w){w.mode='sum';w.label='Summe';w.items=[{vid:0},{vid:0}];},
     render:function(w){return '<div class="wv"><div class="wvbody" style="min-width:0"><div class="l">'+escL(w.label||'')+'</div><div class="v" data-role="val">–</div></div></div>';},
     props:function(w){return row('Rechnung','<select id="pCalcMode">'+['sum','avg','min','max','diff','count'].map(function(m){return '<option value="'+m+'"'+((w.mode||'sum')===m?' selected':'')+'>'+({sum:'Summe',avg:'Mittel',min:'Min',max:'Max',diff:'Differenz (1 − Rest)',count:'Anzahl > 0'}[m])+'</option>';}).join('')+'</select>')

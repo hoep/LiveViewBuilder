@@ -27,10 +27,12 @@
     }
   }
   defWidget('raincard',{
-    label:'Regenmenge', paletteIcon:'rain', size:[190,120],
+    label:'Regenmenge', cat:'Wetter & Zeit', paletteIcon:'rain', size:[190,120],
     defaults:function(w){w.label='Regen heute';w.rmax=30;},
     render:function(w){
-      return '<div class="wraincard" style="position:absolute;inset:0;display:flex;align-items:stretch;gap:10px;padding:10px 12px;box-sizing:border-box">'
+      // Der Messzylinder skaliert schon ueber viewBox/height:100%; hier wird die Textspalte
+      // an die Kachel gekoppelt, damit sie klein nicht ueberlaeuft und gross nicht verloren wirkt.
+      return '<div class="wraincard" style="position:absolute;inset:0;display:flex;align-items:stretch;gap:clamp(5px,4cqmin,12px);padding:clamp(6px,4cqmin,14px) clamp(7px,5cqmin,16px);box-sizing:border-box">'
         +'<svg viewBox="0 0 40 90" style="height:100%;width:auto;flex:0 0 auto" preserveAspectRatio="xMidYMid meet">'
           +'<defs><clipPath id="rcyl'+w.id+'"><rect x="10" y="10" width="20" height="70" rx="7"/></clipPath></defs>'
           +'<g data-role="rain" style="opacity:0" clip-path="url(#rcyl'+w.id+')" fill="var(--info)"></g>'
@@ -39,8 +41,8 @@
           +'<line x1="30" y1="27.5" x2="34" y2="27.5" stroke="var(--faint)" stroke-width="0.8"/><line x1="30" y1="45" x2="34" y2="45" stroke="var(--faint)" stroke-width="0.8"/><line x1="30" y1="62.5" x2="34" y2="62.5" stroke="var(--faint)" stroke-width="0.8"/>'
         +'</svg>'
         +'<div style="display:flex;flex-direction:column;justify-content:center;min-width:0;flex:1">'
-          +'<div style="display:flex;align-items:baseline;gap:4px"><span data-role="val" style="font-size:30px;font-weight:600;font-family:var(--fm);color:var(--text);line-height:1">–</span><span style="font-size:13px;color:var(--muted)">mm</span></div>'
-          +'<div data-role="sub" style="font-size:12px;color:var(--muted);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escL(w.label||'Regen heute')+'</div>'
+          +'<div style="display:flex;align-items:baseline;gap:clamp(3px,1.5cqmin,6px)"><span data-role="val" style="font-size:clamp(15px,17cqmin,44px);font-weight:600;font-family:var(--fm);color:var(--text);line-height:1">–</span><span style="font-size:clamp(9px,6cqmin,16px);color:var(--muted)">mm</span></div>'
+          +'<div data-role="sub" style="font-size:clamp(9px,5cqmin,14px);color:var(--muted);margin-top:clamp(2px,1.5cqmin,5px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escL(w.label||'Regen heute')+'</div>'
         +'</div></div>';
     },
     mount:function(w){var el=$('.w[data-id="'+w.id+'"]',canvas);if(el)_rainApply(w,el);},

@@ -29,12 +29,16 @@
         data.err === 'no-hub' ? 'Kein HomeSuite-Hub angelegt (Konsole → Instanz „HomeSuite Hub").'
                               : ('HomeSuite nicht erreichbar (' + esc(String(data.err || '?')) + ').'));
       var ents = data.entities || [];
-      var h = '<div class="hs"><div class="hs-head"><b>' + escL(w.label || 'HomeSuite') + '</b>'
+      // Eigener senkrechter Scrollcontainer (die Kachel selbst soll waagrecht ruhig bleiben)
+      // und Grundschrift aus der Kachelgroesse.
+      var h = '<div class="hs" style="height:100%;overflow:auto;font-size:clamp(11px,3cqmin,15px)"><div class="hs-head"><b>' + escL(w.label || 'HomeSuite') + '</b>'
             + '<span class="hs-sub">' + ents.length + ' Entität' + (ents.length === 1 ? '' : 'en') + '</span></div>';
       if (!ents.length) {
         h += LVB.panel.stateBox('empty', 'Noch keine Entitäten. Im Verwaltungs-Bereich anlegen (Heizung/Beschattung/Audio/Bewässerung).');
       } else {
-        h += '<div class="hs-grid">';
+        // Kartenraster aus der Kachel: auf schmalen Kacheln eine Spalte, auf breiten mehrere -
+        // ohne feste Mindestbreite, die auf dem Handy ueber den Rand laufen wuerde.
+        h += '<div class="hs-grid" style="grid-template-columns:repeat(auto-fill,minmax(clamp(112px,34cqmin,190px),1fr));gap:clamp(5px,2.5cqmin,10px)">';
         ents.forEach(function(e){
           var eid = e.instanceID || e.id || '';
           h += '<div class="hs-card" data-domain="' + esc(e.domain || '') + '" data-eid="' + esc(String(eid)) + '">'
@@ -53,7 +57,7 @@
     function hsRepaint(w){ var el = hsEl(w); if (!el) return; var host = el.querySelector('.winner') || el; host.innerHTML = hsRender(w); }
 
     defWidget('homesuite', {
-      label:'HomeSuite', paletteIcon:'gear', size:[440, 280],
+      label:'HomeSuite', cat:'HomeSuite', paletteIcon:'gear', size:[440, 280],
       defaults:function(w){ w.label = 'HomeSuite'; },
       render:function(w){ return hsRender(w); },
       mount:function(w){

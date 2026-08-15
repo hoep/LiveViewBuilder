@@ -1,6 +1,7 @@
 // Widget: statusgrid (Status-Grid)
 defWidget('statusgrid',{
   label:'Status-Grid',
+  cat:'Anzeige',
   paletteIcon:'wgrid',
   size:[300,150],
   defaults:function(w){

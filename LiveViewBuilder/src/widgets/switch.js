@@ -63,7 +63,7 @@
       .catch(function(){delete _swWait[w.varId];});
   }
   defWidget('switch',{
-    label:'Schalter', paletteIcon:'power', size:[180,52],
+    label:'Schalter', cat:'Steuerung', paletteIcon:'power', size:[180,52],
     render:function(w){
       if(_swMulti(w)){
         return '<div class="wsw wswm"><span class="l">'+(w.icon?'<span class="swic">'+iconSVG(w.icon)+'</span>':'')+escL(w.label||'')+'</span>'

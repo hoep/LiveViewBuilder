@@ -1,8 +1,10 @@
   // ===== Widget: table — Datentabelle (Privycs console-kit Look) aus Text-Variable (JSON o. serialized), [Zeile][Spalte], Zeile 0 = Kopf =====
   function _tblChev(state){ // 'asc' | 'desc' | 'idle'
-    if(state==='asc')return '<span class="tbl-chev on"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M18 15l-6-6-6 6"/></svg></span>';
-    if(state==='desc')return '<span class="tbl-chev on"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span>';
-    return '<span class="tbl-chev idle"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 9l4-4 4 4"/><path d="M8 15l4 4 4-4"/></svg></span>';
+    // Groesse in em statt fest 12px: die Pfeile folgen damit der Schriftgroesse der Kopfzeile
+    // (die wiederum aus styles.css kommt). viewBox und Klassen bleiben unveraendert.
+    if(state==='asc')return '<span class="tbl-chev on"><svg style="width:1em;height:1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M18 15l-6-6-6 6"/></svg></span>';
+    if(state==='desc')return '<span class="tbl-chev on"><svg style="width:1em;height:1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span>';
+    return '<span class="tbl-chev idle"><svg style="width:1em;height:1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 9l4-4 4 4"/><path d="M8 15l4 4 4-4"/></svg></span>';
   }
   function _tblIsNum(s){return /\d/.test(s)&&/^[+-]?[\d.,:\/\s%°$€mkKMGhWkwhAV-]*$/.test(String(s));}
   function _tblCmp(a,b){var na=parseFloat(String(a).replace(',','.')),nb=parseFloat(String(b).replace(',','.'));
@@ -82,7 +84,7 @@
   }
   var _tblT={};
   defWidget('table',{
-    label:'Tabelle', paletteIcon:'wtable', size:[420,260],
+    label:'Tabelle', cat:'Anzeige', paletteIcon:'wtable', size:[420,260],
     defaults:function(w){w.label='Tabelle';w.pageSize=10;w.tblView='table';},
     render:function(w){return '<div data-role="tblroot" style="position:absolute;inset:0"></div>';},
     mount:function(w){_tblLoad(w);},

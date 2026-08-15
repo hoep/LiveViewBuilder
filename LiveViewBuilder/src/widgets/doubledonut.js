@@ -50,7 +50,7 @@
     var c1=$('[data-role=ddcv]',el);if(c1)c1.textContent=(w.varId3?_ddTxt(w.varId3):'');
   }
   defWidget('doubledonut',{
-    label:'Doppel-Donut', paletteIcon:'wdonut', size:[220,200],
+    label:'Doppel-Donut', cat:'Diagramme', paletteIcon:'wdonut', size:[220,200],
     defaults:function(w){w.topMin=0;w.topMax=100;w.botMin=0;w.botMax=100;w.ddTop='ok';w.ddBot='info';w.ddW=22;},
     render:function(w){
       var C=_DD_C,R=_DD_R,tc=_ddCol(w.ddTop,'var(--ok)'),bc=_ddCol(w.ddBot,'var(--info)');

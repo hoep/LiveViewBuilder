@@ -1,6 +1,7 @@
 // Widget: meterlist (Metrik-Liste)
 defWidget('meterlist',{
   label:'Metrik-Liste',
+  cat:'Anzeige',
   paletteIcon:'wbars',
   size:[320,170],
   defaults:function(w){

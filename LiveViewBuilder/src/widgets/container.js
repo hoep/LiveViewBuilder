@@ -6,7 +6,7 @@
   //  Kinder editiert man direkt im Container (auswaehlen/ziehen/skalieren); Ablegen per Ziehen hinein,
   //  Loesen ueber den Knopf in den Eigenschaften oder Ziehen aus dem Container heraus.
   defWidget('container',{
-    label:'Container', paletteIcon:'wtile', size:[320,200], noHover:true,
+    label:'Container', cat:'Layout (alle Seiten)', paletteIcon:'wtile', size:[320,200], noHover:true,
     defaults:function(w){w.kids=[];w.panel=true;w.title='';},
     render:function(w){
       var panel=(w.panel!==false), hasT=!!(panel&&w.title);

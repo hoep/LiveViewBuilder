@@ -1,6 +1,7 @@
 // calendar — Kalender
 defWidget('calendar',{
   label:'Kalender',
+  cat:'Wetter & Zeit',
   paletteIcon:'calendar',
   size:[210,180],
   render:function(w){

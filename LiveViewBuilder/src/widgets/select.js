@@ -75,14 +75,16 @@
       .catch(function(){delete _selWait[w.varId];});
   }
   defWidget('select',{
-    label:'Auswahl', paletteIcon:'wselect', size:[220,44],
+    label:'Auswahl', cat:'Steuerung', paletteIcon:'wselect', size:[220,44],
     defaults:function(w){w.options=[{value:0,text:'Aus',color:''},{value:1,text:'An',color:''}];},
     render:function(w){
       var host='<div class="hselhost" data-role="selhost" style="flex:1;min-width:0">'+_selBody(w)+'</div>';
       if(!w.label)return host;                                   // ohne Label wie bisher
-      var ico=w.icon?'<span style="width:16px;height:16px;display:inline-flex;flex:none">'+iconSVG(w.icon)+'</span>':'';
-      return '<div style="display:flex;align-items:center;gap:8px;height:100%">'
-        +'<span style="font-size:12.5px;font-weight:600;color:var(--text);white-space:nowrap;display:flex;align-items:center;gap:6px">'+ico+escL(w.label)+'</span>'
+      // Label-Zeile an der Kachel: gleiches Schrift-Token wie die Knoepfe (--wf-lbl), damit
+      // Beschriftung und Auswahl endlich dieselbe Groesse haben; Icon folgt der Kachel.
+      var ico=w.icon?'<span style="width:clamp(12px,7cqmin,20px);height:clamp(12px,7cqmin,20px);display:inline-flex;flex:none">'+iconSVG(w.icon)+'</span>':'';
+      return '<div style="display:flex;align-items:center;gap:clamp(5px,3cqmin,10px);height:100%">'
+        +'<span style="font-size:var(--wf-lbl);font-weight:600;color:var(--text);white-space:nowrap;display:flex;align-items:center;gap:clamp(4px,2.5cqmin,8px)">'+ico+escL(w.label)+'</span>'
         +host+'</div>';
     },
     mount:function(w){_selLoad(w);},

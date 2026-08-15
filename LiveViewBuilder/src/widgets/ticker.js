@@ -6,16 +6,20 @@
     var cfg={};for(var k in src)cfg[k]=src[k];cfg.id=w.id+'__t'+i+sfx;cfg.type=src.type;delete cfg.x;delete cfg.y;
     var iw=parseInt(mw)||parseInt(src.w)||170;_tickKids.push(cfg);
     var inner;try{inner=widgetInner(cfg);}catch(e){inner='';}
-    var cls='',sty='position:relative;flex:none;height:calc(100% - 4px);width:'+iw+'px;margin:0 5px;background:transparent;border:0'; // Typografie/Farbe des Originals uebernehmen
+    // Die eingestellte Breite bleibt das Mass, bekommt aber eine Untergrenze und eine
+    // Deckelung an der Kachelbreite: auf einem schmalen Band liefe eine 300px-Zeile sonst
+    // ueber. Hoehe/Abstand haengen an der Bandhoehe statt an festen 4/5 px.
+    var cls='',sty='position:relative;flex:none;height:calc(100% - clamp(2px,1.5cqh,6px));width:clamp(64px,'+iw+'px,92cqw);margin:0 clamp(3px,1.2cqmin,8px);background:transparent;border:0'; // Typografie/Farbe des Originals uebernehmen
     if(cfg.fg)sty+=';color:'+cfg.fg;
     if(cfg.ff){cls+=' tw-ff';sty+=';--w-ff:'+cfg.ff;}
     if(cfg.fwt){cls+=' tw-fwt';sty+=';--w-fwt:'+cfg.fwt;}
     if(cfg.fsty){cls+=' tw-fsty';sty+=';--w-fsty:'+cfg.fsty;}
-    if(cfg.fsz){cls+=' tw-fsz';sty+=';--w-fsz:'+cfg.fsz+'px';}
+    // Eingestellte Schriftgroesse bleibt Obergrenze, schrumpft aber im niedrigen Band mit.
+    if(cfg.fsz){cls+=' tw-fsz';sty+=';--w-fsz:clamp(9px,'+cfg.fsz+'px,60cqh)';}
     return '<div class="w t-'+esc(src.type)+cls+'" data-id="'+cfg.id+'"'+(srcId?' data-refsrc="'+srcId+'"':'')+' style="'+sty+'"><div class="winner" style="position:absolute;inset:0">'+inner+'</div></div>';
   }
   defWidget('ticker',{
-    label:'Laufzeile', paletteIcon:'wticker', size:[560,46],
+    label:'Laufzeile', cat:'Anzeige', paletteIcon:'wticker', size:[560,46],
     defaults:function(w){w.label='Alarm';w.speed=46;w.items=[{sev:'warn',icon:'window',text:'2 Fenster offen',sub:'Bad OG · Küche EG'},{sev:'info',icon:'washer',text:'Waschmaschine läuft',sub:'Restzeit 0:42'},{sev:'ok',icon:'shield',text:'Alarm unscharf',sub:''}];},
     render:function(w){
       var its=w.items||[],crit=its.filter(function(m){return !m.wtype&&m.ref==null&&(m.sev||'')==='crit';}).length;

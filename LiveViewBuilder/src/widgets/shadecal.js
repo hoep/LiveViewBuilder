@@ -99,7 +99,7 @@
 
     // ============================ WIDGET ============================
     defWidget('shadecal',{
-      label:'Rollo-Kalibrierung', paletteIcon:'cover', size:[280,150],
+      label:'Rollo-Kalibrierung', cat:'HomeSuite · Beschattung', paletteIcon:'cover', size:[280,150],
       defaults:function(w){w.label='';w.bind='session';w.session='shade';w.domain='shading';},
       render:function(w){return scRender(w);},
       mount:function(w){var el=scEl(w);if(!el)return;

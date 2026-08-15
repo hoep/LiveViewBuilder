@@ -175,7 +175,7 @@
 
   // ============================ WIDGET ============================
   defWidget('mowplan',{
-    label:'Mähplan', paletteIcon:'calendar', size:[720,470],
+    label:'Mähplan', cat:'HomeSuite', paletteIcon:'calendar', size:[720,470],
     defaults:function(w){w.label='Mähplan';},
     render:function(w){return mpRender(w);},
     mount:function(w){var el=mpElOf(w);if(!el)el=mpElOf(w,$('#ovcanvas'));if(!el)return;var st=mpSt(w);

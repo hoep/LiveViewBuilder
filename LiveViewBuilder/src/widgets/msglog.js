@@ -5,6 +5,19 @@
   // hinterlegt ist. Homematic-Meldungen koennen optional per Haken bestaetigt werden (AlReceipt).
   var _SEVCLR={ERROR:'#f2685a',WARNING:'#f2b441',CUSTOM:'#c471ed',NOTIFY:'#4aa3ff',MESSAGE:'#8a97a0',SUCCESS:'#39d08a'};
   var _SEVS=['ERROR','WARNING','CUSTOM','NOTIFY','MESSAGE','SUCCESS'];
+  // ---- Responsive Groessen als Inline-Style ----------------------------------
+  // Jede Kachel (.w) ist ein Groessen-Container (container-type:size), deshalb loesen
+  // cqmin-Werte hier direkt gegen die Kachel auf. Die festen Pixelmasse stehen in
+  // styles.css, die in dieser Phase nicht angefasst werden darf - darum die Overrides
+  // direkt am Markup. clamp() haelt die Schrift auf kleinen Kacheln lesbar und auf
+  // grossen Wandpanels ruhig; die Mindesthoehen sichern das Tippziel (>= 22px).
+  var _MSG_ROWFS='font-size:clamp(10px,3cqmin,13.5px)';
+  var _MSG_COLS='grid-template-columns:auto clamp(44px,14cqmin,74px) clamp(40px,13cqmin,68px) auto 1fr';
+  var _MSG_SEV='font-size:clamp(8.5px,2.4cqmin,11px)';
+  var _MSG_TIME='font-size:clamp(8.5px,2.4cqmin,11px)';
+  var _MSG_SRC='max-width:clamp(70px,22cqmin,150px)';
+  var _MSG_CHIP='font-size:clamp(9px,2.8cqmin,12px);padding:clamp(3px,1.2cqmin,6px) clamp(7px,3cqmin,13px);min-height:22px;display:inline-flex;align-items:center;box-sizing:border-box';
+  var _MSG_ICOB='width:clamp(22px,8cqmin,30px);height:clamp(22px,8cqmin,30px)';
   function _sevDef(w,s){if(!w.sev)return (s==='ERROR'||s==='WARNING'||s==='CUSTOM');return !!w.sev[s];}
   function _msgFilter(w){
     if(typeof RUN!=='undefined'&&RUN){try{var o=localStorage.getItem('lvmsg_'+w.id);if(o){var j=JSON.parse(o);if(j)return j;}}catch(e){}}
@@ -19,7 +32,7 @@
     if(typeof RUN!=='undefined'&&RUN){try{var o=localStorage.getItem('lvmsgsrc_'+w.id);if(o==='symcon'||o==='homematic')return o;}catch(e){}}
     return (w.msgSrc==='homematic')?'homematic':'symcon';
   }
-  function _chips(w){var f=_msgFilter(w);return _SEVS.map(function(s){return '<span class="hmsgchip'+(f[s]?'':' off')+'" data-sevchip="'+s+'" style="--cc:'+_SEVCLR[s]+'">'+s+'</span>';}).join('');}
+  function _chips(w){var f=_msgFilter(w);return _SEVS.map(function(s){return '<span class="hmsgchip'+(f[s]?'':' off')+'" data-sevchip="'+s+'" style="--cc:'+_SEVCLR[s]+';'+_MSG_CHIP+'">'+s+'</span>';}).join('');}
   // Homematic-Interface-Auswahl: BidCos-RF (klassisch HM) und HmIP-RF getrennt an/abwaehlbar.
   // Builder-Standard w.hmIf ({bidcos,hmip}, beide an), im Frontend per Chip live uebersteuerbar.
   function _hmIf(w){
@@ -33,8 +46,8 @@
   function _ifChips(w){ // nur bei Homematic-Quelle (Liste) — HM/IP live filtern
     if(_msgSrc(w)!=='homematic')return '';
     var f=_hmIf(w);
-    return '<span class="hmsgifs"><span class="hmsgifc'+(f.bidcos?'':' off')+'" data-ifchip="bidcos" title="Homematic BidCos-RF">HM</span>'
-      +'<span class="hmsgifc'+(f.hmip?'':' off')+'" data-ifchip="hmip" title="Homematic IP (HmIP-RF)">IP</span></span>';
+    return '<span class="hmsgifs"><span class="hmsgifc'+(f.bidcos?'':' off')+'" data-ifchip="bidcos" title="Homematic BidCos-RF" style="'+_MSG_CHIP+'">HM</span>'
+      +'<span class="hmsgifc'+(f.hmip?'':' off')+'" data-ifchip="hmip" title="Homematic IP (HmIP-RF)" style="'+_MSG_CHIP+'">IP</span></span>';
   }
   function _srcSwitch(w){ // Live-Umschalter Symcon/Homematic (nur mit CCU-IP)
     if(!w.hmIP)return '';
@@ -114,30 +127,35 @@
       var ack=(src==='homematic'&&w.hmAck);
       if(src==='homematic'){ // eigenes, kompaktes Zeilen-Layout (keine Zeit/Quelle, optional Haken)
         box.innerHTML=msgs.map(function(m){var c=_SEVCLR[m.sev]||'#8a97a0';
-          return '<div class="hmsgi hm"><span class="hmsgdot" style="background:'+c+'"></span><span class="hmsgsev" style="color:'+c+'">'+esc(m.sev||'')+'</span><span class="hmsgm">'+esc(m.m||'')+'</span>'
-            +(ack?'<button class="hmackb" data-hmack="1" data-haddr="'+esc(m.addr||'')+'" data-htype="'+esc(m.type||'')+'" title="Bestätigen"><svg class="i"><use href="#ic-check"/></svg></button>':'')
+          // HM-Zeile behaelt ihr eigenes 4-Spalten-Raster aus styles.css (auto auto 1fr auto);
+          // hier nur die Schriftgroessen an die Kachel koppeln.
+          return '<div class="hmsgi hm" style="'+_MSG_ROWFS+'"><span class="hmsgdot" style="background:'+c+'"></span><span class="hmsgsev" style="color:'+c+';'+_MSG_SEV+'">'+esc(m.sev||'')+'</span><span class="hmsgm">'+esc(m.m||'')+'</span>'
+            +(ack?'<button class="hmackb" data-hmack="1" data-haddr="'+esc(m.addr||'')+'" data-htype="'+esc(m.type||'')+'" title="Bestätigen" style="'+_MSG_ICOB+'"><svg class="i"><use href="#ic-check"/></svg></button>':'')
             +'</div>';}).join('');
       } else {
         box.innerHTML=msgs.map(function(m){var c=_SEVCLR[m.sev]||'#8a97a0',tm=(m.t||'').slice(-8);
           var key=_ackKey(m),ak=_msgIsAcked(w,src,data,m),btn='';
           if(src==='symcon'&&w.ackVid){
-            if(!hist)btn='<button class="hmsgx" data-msgdismiss="1" data-mkey="'+esc(key)+'" title="Ausblenden">✕</button>';
-            else if(data.keys[key])btn='<button class="hmsgx" data-msgrestore="1" data-mkey="'+esc(key)+'" title="Zurückholen">↺</button>';
+            var xb='font-size:clamp(11px,3.2cqmin,15px);min-width:22px;min-height:22px'; // Tippziel darf nie unter 22px fallen
+            if(!hist)btn='<button class="hmsgx" data-msgdismiss="1" data-mkey="'+esc(key)+'" title="Ausblenden" style="'+xb+'">✕</button>';
+            else if(data.keys[key])btn='<button class="hmsgx" data-msgrestore="1" data-mkey="'+esc(key)+'" title="Zurückholen" style="'+xb+'">↺</button>';
           }
-          return '<div class="hmsgi'+((hist&&ak)?' acked':'')+(btn?' ackrow':'')+'"><span class="hmsgdot" style="background:'+c+'"></span><span class="hmsgsev" style="color:'+c+'">'+esc(m.sev||'')+'</span><span class="hmsgtime">'+esc(tm)+'</span><span class="hmsgsrc">'+esc(m.src||'')+'</span><span class="hmsgm">'+esc(m.m||'')+'</span>'+btn+'</div>';}).join('');
+          // Spaltenbreiten aus der Kachel: Severity/Zeit duerfen mitschrumpfen, die Ausblenden-
+          // Spalte kommt nur dazu, wenn der Knopf da ist (sonst rutscht die Meldung ins Leere).
+          return '<div class="hmsgi'+((hist&&ak)?' acked':'')+(btn?' ackrow':'')+'" style="'+_MSG_ROWFS+';'+_MSG_COLS+(btn?' auto':'')+'"><span class="hmsgdot" style="background:'+c+'"></span><span class="hmsgsev" style="color:'+c+';'+_MSG_SEV+'">'+esc(m.sev||'')+'</span><span class="hmsgtime" style="'+_MSG_TIME+'">'+esc(tm)+'</span><span class="hmsgsrc" style="'+_MSG_SRC+'">'+esc(m.src||'')+'</span><span class="hmsgm">'+esc(m.m||'')+'</span>'+btn+'</div>';}).join('');
         if(!w.noAuto&&wasBottom)box.scrollTop=box.scrollHeight;
       }
     }).catch(function(){box.classList.remove('is-count');box.innerHTML='<div class="hmsge" style="color:var(--crit)">Nicht lesbar</div>';box._sig='err';});
   }
   defWidget('msglog',{
-    label:'Meldungen', paletteIcon:'wticker', size:[460,230], noHover:true,
+    label:'Meldungen', cat:'Anzeige', paletteIcon:'wticker', size:[460,230], noHover:true,
     defaults:function(w){w.label='Meldungen';w.max=25;},
     render:function(w){var compact=(w.view==='count'); // Kompakt: nur Titel + grosse Zahl, keine Chips/Quell-Umschalter
       var symAck=(_msgSrc(w)==='symcon'&&w.ackVid);
       var ackUI=(!compact&&symAck)
-        ?('<span class="hmsgackw"><button class="hmsgackb" data-msgack="1" title="Alle als bestätigt ausblenden">Bestätigen</button><button class="hmsgackb ghost'+(_msgHist(w)?' on':'')+'" data-msghist="1" title="Verlauf (bestätigte zeigen)">Verlauf</button></span>')
+        ?('<span class="hmsgackw"><button class="hmsgackb" data-msgack="1" title="Alle als bestätigt ausblenden" style="'+_MSG_CHIP+'">Bestätigen</button><button class="hmsgackb ghost'+(_msgHist(w)?' on':'')+'" data-msghist="1" title="Verlauf (bestätigte zeigen)" style="'+_MSG_CHIP+'">Verlauf</button></span>')
         :'';
-      var ackC=(compact&&symAck)?('<button class="hmsgackx" data-msgack="1" title="Alle bestätigen"><svg class="i"><use href="#ic-check"/></svg></button>'):''; // Kompakt: kleiner Haken oben rechts
+      var ackC=(compact&&symAck)?('<button class="hmsgackx" data-msgack="1" title="Alle bestätigen" style="'+_MSG_ICOB+'"><svg class="i"><use href="#ic-check"/></svg></button>'):''; // Kompakt: kleiner Haken oben rechts
       return '<div class="hmsg'+(compact?' is-count':'')+'"><div class="hmsgtop"><span class="hmsgt">'+escL(w.label||'Meldungen')+'</span>'+(compact?ackC:(_srcSwitch(w)+_ifChips(w)+'<span class="hmsgchips">'+_chips(w)+'</span>'+ackUI))+'</div><div class="hmsgl'+(compact?' is-count':'')+'" data-role="msgl"><div class="hmsge">…</div></div></div>';},
     props:function(w){return '<div class="pgh">Quelle</div>'
       +row('Typ','<select id="pMsgSrc"><option value="symcon"'+(w.msgSrc!=='homematic'?' selected':'')+'>Symcon-Log</option><option value="homematic"'+(w.msgSrc==='homematic'?' selected':'')+'>Homematic-CCU</option></select>')

@@ -152,7 +152,7 @@
   }
 
   defWidget('cover',{
-    label:'Rollo', paletteIcon:'blinds', size:[300,128], noHover:true,
+    label:'Rollo', cat:'Steuerung', paletteIcon:'blinds', size:[300,128], noHover:true,
     render:function(w){
       var viz=_covOn(w,'covViz',true), slider=_covOn(w,'covSlider',false);
       var icU=w.icUp||'chevup', icS=w.icStop||'stop', icD=w.icDn||'chevdn';

@@ -38,7 +38,11 @@
     var rows=log.filter(function(e){return !w._room || e.room===w._room;});
     if(w._err){ body.innerHTML='<div class="shl-empty" style="color:var(--crit)">Log nicht lesbar</div>'; return; }
     if(!rows.length){ body.innerHTML='<div class="shl-empty">Keine Einträge</div>'; return; }
-    body.innerHTML='<div class="shl-tbl"><div class="shl-r shl-h"><span>Zeit</span><span>Raum</span><span>Modus</span><span>Ist→Ziel</span><span>Grund</span><span>Status</span></div>'
+    // Mindestbreite fuer das Raster (shl-tblmin): darunter wird waagrecht im BESTEHENDEN
+    // .shl-body gescrollt (das hat schon overflow:auto) statt die Spalten zu zerquetschen -
+    // die Kachel selbst scrollt dadurch nie waagrecht. Bewusst KEIN zusaetzlicher Behaelter
+    // drumherum: der wuerde den klebenden Kopf (.shl-h, position:sticky) vom Scrollport loesen.
+    body.innerHTML='<div class="shl-tbl shl-tblmin"><div class="shl-r shl-h"><span>Zeit</span><span>Raum</span><span>Modus</span><span>Ist→Ziel</span><span>Grund</span><span>Status</span></div>'
       + rows.map(function(e){
           var why=e.why||'', wc=_SHL_WHY[why]||'muted', manual=(e.src==='manuell');
           return '<div class="shl-r">'
@@ -53,7 +57,7 @@
   }
   function _shlLoad(w, el){ _shlFetch(w, function(){ _shlPaint(w, el); }); }
   defWidget('shadelog',{
-    label:'Beschattung · Log', paletteIcon:'wlist', size:[1040,720],
+    label:'Beschattung · Log', cat:'HomeSuite · Beschattung', paletteIcon:'wlist', size:[1040,720],
     defaults:function(w){w.max=300;},
     render:function(w){
       return '<div class="shl">'

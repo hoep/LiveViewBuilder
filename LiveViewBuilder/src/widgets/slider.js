@@ -31,6 +31,8 @@
   function _rgCur(w,id,fb){if(!id)return fb;var lv=_lastVals[id];if(!lv)return fb;var n=parseFloat(String(lv.v).replace(',','.'));return isNaN(n)?fb:n;}
 
   // ---------------------------------------------------------------- Variante „slider" (Schieberegler)
+  // Hinweis: Track- und Thumb-Masse von .hslider/.hsrange stehen fest in styles.css und werden
+  // hier bewusst NICHT angefasst (zentrale Datei, eigener Arbeitsschritt).
   function _rgRenderSlider(w){
     return '<div class="hslider"><div class="hsrow"><span class="hsname">'+escL(w.label||'')+'</span><span class="hsval" data-role="val">–</span></div><input class="hsrange" type="range" data-role="range" min="'+(w.min!=null?w.min:0)+'" max="'+(w.max!=null?w.max:100)+'" step="'+(w.step||1)+'" value="0"'+(w.mirror?' style="transform:scaleX(-1)"':'')+'></div>';
   }
@@ -56,14 +58,17 @@
     var mn=_rgMin(w),mx=_rgMax(w);
     var loV=_rgClamp(_rgCur(w,w.varId,mn),mn,mx),hiV=_rgClamp(_rgCur(w,w.varId2,mx),mn,mx);
     var lf=_rgFrac(w,loV)*100,hf=_rgFrac(w,hiV)*100,a=Math.min(lf,hf),b=Math.max(lf,hf);
-    var lbl=w.label?'<span style="color:var(--muted);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0">'+escL(w.label)+'</span>':'<span></span>';
-    var head='<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px">'+lbl+'<span style="font-family:var(--fm);font-variant-numeric:tabular-nums;font-size:13px;color:var(--text);white-space:nowrap"><b data-role="vlo">'+_rgFmt(loV)+'</b><span style="color:var(--muted)"> – </span><b data-role="vhi">'+_rgFmt(hiV)+'</b></span></div>';
-    function thumb(role,left){return '<div data-role="'+role+'" data-rs-thumb="1" style="position:absolute;top:50%;left:'+left+'%;width:22px;height:22px;transform:translate(-50%,-50%);border-radius:50%;background:var(--surface);border:2px solid var(--accent);box-shadow:0 1px 3px rgba(0,0,0,.25);cursor:grab;touch-action:none;z-index:2"></div>';}
-    var rail='<div data-role="rail" style="position:absolute;left:11px;right:11px;top:50%;transform:translateY(-50%);height:5px;border-radius:3px;background:var(--surface-2)">'
-      +'<div data-role="fill" style="position:absolute;top:0;bottom:0;left:'+a+'%;right:'+(100-b)+'%;background:var(--accent);border-radius:3px"></div>'
+    // Masse aus der Kachelgroesse (die Kachel ist ein Groessen-Container). Die Untergrenzen
+    // halten den Griff auch auf kleinen Kacheln greifbar; die Prozent-Geometrie bleibt gleich.
+    var TH='clamp(16px,26cqmin,30px)'; // Griffdurchmesser
+    var lbl=w.label?'<span style="color:var(--muted);font-size:clamp(10px,4.2cqmin,15px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0">'+escL(w.label)+'</span>':'<span></span>';
+    var head='<div style="display:flex;justify-content:space-between;align-items:center;gap:clamp(6px,4cqmin,12px);margin-bottom:clamp(5px,3cqmin,10px)">'+lbl+'<span style="font-family:var(--fm);font-variant-numeric:tabular-nums;font-size:clamp(11px,4.8cqmin,17px);color:var(--text);white-space:nowrap"><b data-role="vlo">'+_rgFmt(loV)+'</b><span style="color:var(--muted)"> – </span><b data-role="vhi">'+_rgFmt(hiV)+'</b></span></div>';
+    function thumb(role,left){return '<div data-role="'+role+'" data-rs-thumb="1" style="position:absolute;top:50%;left:'+left+'%;width:'+TH+';height:'+TH+';transform:translate(-50%,-50%);border-radius:50%;background:var(--surface);border:2px solid var(--accent);box-shadow:0 1px 3px rgba(0,0,0,.25);cursor:grab;touch-action:none;z-index:2"></div>';}
+    var rail='<div data-role="rail" style="position:absolute;left:clamp(8px,4cqmin,16px);right:clamp(8px,4cqmin,16px);top:50%;transform:translateY(-50%);height:clamp(4px,6cqmin,9px);border-radius:999px;background:var(--surface-2)">'
+      +'<div data-role="fill" style="position:absolute;top:0;bottom:0;left:'+a+'%;right:'+(100-b)+'%;background:var(--accent);border-radius:999px"></div>'
       +thumb('lo',lf)+thumb('hi',hf)+'</div>';
-    return '<div style="position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;padding:8px 12px;box-sizing:border-box">'+head
-      +'<div style="position:relative;height:22px">'+rail+'</div></div>';
+    return '<div style="position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;padding:clamp(6px,4cqmin,14px);box-sizing:border-box">'+head
+      +'<div style="position:relative;height:clamp(18px,28cqmin,34px)">'+rail+'</div></div>';
   }
 
   // ---------------------------------------------------------------- Variante „circle" (zwei Griffe, rund)
@@ -97,8 +102,9 @@
 
   // ---------------------------------------------------------------- Variante „stepper" (+/− Tasten)
   function _rgRenderStepper(w){
-    function btn(role,ic){return '<button data-role="'+role+'" style="width:34px;height:34px;border-radius:9px;border:1px solid var(--line);background:var(--surface-2);color:var(--text);cursor:pointer;flex:none;display:flex;align-items:center;justify-content:center;touch-action:none"><svg class="i" style="width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round"><use href="#ic-'+ic+'"/></svg></button>';}
-    return '<div style="height:100%;display:flex;align-items:center;gap:8px;padding:6px 10px">'+btn('dec','minus')+'<div style="flex:1;text-align:center;min-width:0"><div data-role="val" style="font-family:var(--fm);font-variant-numeric:tabular-nums;font-size:20px;font-weight:600;line-height:1">–</div>'+(w.label?'<div style="font-size:11px;color:var(--muted);margin-top:2px">'+escL(w.label)+'</div>':'')+'</div>'+btn('inc','plus')+'</div>';
+    // Tasten bleiben ueber die Untergrenze (28px) auch auf schmalen Kacheln ein sicheres Tippziel.
+    function btn(role,ic){return '<button data-role="'+role+'" style="width:clamp(28px,42cqmin,52px);height:clamp(28px,42cqmin,52px);border-radius:9px;border:1px solid var(--line);background:var(--surface-2);color:var(--text);cursor:pointer;flex:none;display:flex;align-items:center;justify-content:center;touch-action:none"><svg class="i" style="width:clamp(13px,20cqmin,24px);height:clamp(13px,20cqmin,24px);fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round"><use href="#ic-'+ic+'"/></svg></button>';}
+    return '<div style="height:100%;display:flex;align-items:center;gap:clamp(6px,4cqmin,14px);padding:clamp(5px,3cqmin,10px) clamp(8px,5cqmin,16px)">'+btn('dec','minus')+'<div style="flex:1;text-align:center;min-width:0"><div data-role="val" style="font-family:var(--fm);font-variant-numeric:tabular-nums;font-size:clamp(14px,26cqmin,30px);font-weight:600;line-height:1">–</div>'+(w.label?'<div style="font-size:clamp(9px,10cqmin,14px);color:var(--muted);margin-top:2px">'+escL(w.label)+'</div>':'')+'</div>'+btn('inc','plus')+'</div>';
   }
 
   // ---------------------------------------------------------------- Variante „dial" (runder Sollwert-Regler)
@@ -172,7 +178,7 @@
 
   // ---------------------------------------------------------------- Registry
   defWidget('slider',{
-    label:'Regler', paletteIcon:'wslider', size:RG_SIZE.slider,
+    label:'Regler', cat:'Steuerung', paletteIcon:'wslider', size:RG_SIZE.slider,
     noHover:true, // Klick-Hook gilt nur der Dial-Variante; die übrigen Varianten sollen keinen Ganz-Widget-Hover bekommen
     defaults:function(w){w.rmode='slider';w.min=0;w.max=100;w.step=1;},
     render:function(w){

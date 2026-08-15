@@ -27,7 +27,7 @@
       sp.textContent=out;}
   }
   defWidget('windrose',{
-    label:'Windrose', paletteIcon:'wind', size:[150,150],
+    label:'Windrose', cat:'Wetter & Zeit', paletteIcon:'wind', size:[150,150],
     render:function(w){
       var ticks='',labs='',i,LB=['N','NO','O','SO','S','SW','W','NW'];
       for(i=0;i<8;i++){var big=(i%2===0),p0=_wrPt(i*45,46),p1=_wrPt(i*45,big?40:43);

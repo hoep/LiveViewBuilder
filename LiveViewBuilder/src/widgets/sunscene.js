@@ -1467,7 +1467,7 @@
 
     // ---- Widget ----
     defWidget('sunscene', {
-      label: 'Sonnenszene', paletteIcon: 'sun', size: [420, 260], noHover: true,
+      label: 'Sonnenszene', cat: 'Wetter & Zeit', paletteIcon: 'sun', size: [420, 260], noHover: true,
       defaults: function (w) {
         w.ssPitch = 52; w.ssBearing = 20; w.ssRadius = 55;
         w.ssHouseL = 25; w.ssHouseB = 12; w.ssHouseH = 7.5; w.ssRoofH = 3.5; w.ssNorth = 0;

@@ -83,8 +83,13 @@
     shuffle:'<path d="M16 3h5v5"/><path d="M4 20 21 3"/><path d="M21 16v5h-5"/><path d="M15 15l6 6"/><path d="M4 4l5 5"/>',
     repeat:'<path d="M17 2l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/>'
   };
-  function afSvg(p,sz){return '<svg viewBox="0 0 24 24" width="'+(sz||18)+'" height="'+(sz||18)+'" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'+p+'</svg>';}
-  function afMsg(t){return '<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:12px">'+esc(t)+'</div>';}
+  // Die Groesse der Transport-/Regler-Icons gehoert den CSS-Regeln (.aftrans/.afwide/.afibtn svg,
+  // alle bereits clamp+cqmin). Die Attribute hier sind nur der Rueckfall fuer Kontexte ohne eigene
+  // Regel - darum relativ in em statt in festen Pixeln. sz bleibt als Bezugsgroesse erhalten
+  // (18 = Normalmass), damit die Groessenverhaeltnisse der Icons untereinander gleich bleiben.
+  function afSvg(p,sz){var em=((sz||18)/18).toFixed(2)+'em';
+    return '<svg viewBox="0 0 24 24" width="'+em+'" height="'+em+'" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'+p+'</svg>';}
+  function afMsg(t){return '<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:clamp(10px,4cqmin,14px)">'+esc(t)+'</div>';}
   function afReady(w){var s=afSess(w);if(s.err)return {err:s.err};if(!s.loaded)return {loading:true};return {s:s};}
   function afSessRow(w){return row('Session-ID','<input id="afSessInp" value="'+esc(w.session||'audio')+'" placeholder="audio">')
     +'<div style="font-size:11px;color:var(--muted);margin:2px 2px 4px">Gleiche Session-ID = geteilte Bedienung mit den anderen Audio-Teil-Widgets.</div>';}
@@ -104,7 +109,7 @@
         esc(hsLabel(w,'r',i,hsStripDomain(r.name)))+
         (r.role==='member'?' <span style="font-family:var(--fm);font-size:.72em;color:var(--info);border:1px solid color-mix(in oklab,var(--info) 45%,transparent);border-radius:999px;padding:0 .42em">GRP</span>':'')+'</button>';}).join('')+'</div>';}
   defWidget('audioroom',{
-    label:'Audio · Räume', paletteIcon:'wselect', size:[720,52],
+    label:'Audio · Räume', cat:'HomeSuite · Audio', paletteIcon:'wselect', size:[720,52],
     defaults:function(w){w.session='audio';},
     render:function(w){var r=afReady(w);if(r.err)return afMsg(r.err);if(r.loading)return afMsg('Audio lädt …');
       return '<div class="afw afrooms">'+afRoomBar(w,r.s)+'</div>';},
@@ -120,7 +125,7 @@
 
   // ---------- audionow: Cover + Titel + Interpret + Fortschritt ----------
   defWidget('audionow',{
-    label:'Audio · Now-Playing', paletteIcon:'image', size:[420,240],
+    label:'Audio · Now-Playing', cat:'HomeSuite · Audio', paletteIcon:'image', size:[420,240],
     defaults:function(w){w.session='audio';},
     render:function(w){var r=afReady(w);if(r.err)return afMsg(r.err);if(r.loading)return afMsg('lädt …');var s=r.s,c=afCur(s);if(!c)return afMsg('kein Raum');
       // Radio: laufender Titel + Song-Cover (RadioNow) statt Sender-Platzhalter.
@@ -166,7 +171,7 @@
 
   // ---------- audioctl: Transport + Volume + Mute/Power ----------
   defWidget('audioctl',{
-    label:'Audio · Steuerung', paletteIcon:'wselect', size:[420,150],
+    label:'Audio · Steuerung', cat:'HomeSuite · Audio', paletteIcon:'wselect', size:[420,150],
     defaults:function(w){w.session='audio';},
     render:function(w){var r=afReady(w);if(r.err)return afMsg(r.err);if(r.loading)return afMsg('lädt …');var c=afCur(r.s);if(!c)return afMsg('kein Raum');
       // Transport: Zurueck · Start/Pause · Stop · Vor. Der mittlere Knopf zeigt IMMER die
@@ -213,7 +218,7 @@
 
   // ---------- audiosrc: Quelle (Favorit/Radio/Playlist) — kompakte Stepper ----------
   defWidget('audiosrc',{
-    label:'Audio · Quelle', paletteIcon:'wlist', size:[420,120],
+    label:'Audio · Quelle', cat:'HomeSuite · Audio', paletteIcon:'wlist', size:[420,120],
     defaults:function(w){w.session='audio';},
     render:function(w){var r=afReady(w);if(r.err)return afMsg(r.err);if(r.loading)return afMsg('lädt …');var c=afCur(r.s);if(!c)return afMsg('kein Raum');
       function rowSrc(lbl,ident,val){return '<div class="afsrow"><span class="lbl">'+lbl+'</span>'
@@ -231,7 +236,7 @@
 
   // ---------- audioradio: Sender  direkt spielen (HQ-Stream statt TuneIn) ----------
   defWidget('audioradio',{
-    label:'Audio · Radio (Direktstream)', paletteIcon:'wlist', size:[420,150],
+    label:'Audio · Radio (Direktstream)', cat:'HomeSuite · Audio', paletteIcon:'wlist', size:[420,150],
     defaults:function(w){w.session='audio';},
     render:function(w){var r=afReady(w);if(r.err)return afMsg(r.err);if(r.loading)return afMsg('lädt …');var s=r.s,c=afCur(s);if(!c)return afMsg('kein Raum');
       if(!s.stations){afLoadStations(w,function(){afEmit(w);});return afMsg('Sender lädt …');}
@@ -305,7 +310,7 @@
     if(g.tracks.length)html+='<div class="alib-tracks">'+g.tracks.map(function(e,i){var it=e.it;return '<button class="alib-trk" data-afitem="'+e.idx+'"><span class="alib-n">'+(i+1)+'</span><div class="alib-rmeta"><div class="alib-tt">'+esc(it.title)+'</div><div class="alib-ts">'+esc(it.artist||'')+'</div></div><span class="alib-dur">'+_alibDur(it.durationSec)+'</span></button>';}).join('')+'</div>';
     return html;}
   defWidget('audiolib',{
-    label:'Audio · Bibliothek', paletteIcon:'wlist', size:[900,560],
+    label:'Audio · Bibliothek', cat:'HomeSuite · Audio', paletteIcon:'wlist', size:[900,560],
     defaults:function(w){w.session='audio';},
     render:function(w){var r=afReady(w);if(r.err)return afMsg(r.err);if(r.loading)return afMsg('lädt …');var s=r.s,c=afCur(s);if(!c)return afMsg('kein Raum');
       var L=afLib(w);
@@ -343,12 +348,14 @@
 
   // ---------- multiroom: Gruppen-Manager (N-zu-1) ----------
   defWidget('multiroom',{
-    label:'Audio · Multiroom', paletteIcon:'wlist', size:[420,320],
+    label:'Audio · Multiroom', cat:'HomeSuite · Audio', paletteIcon:'wlist', size:[420,320],
     defaults:function(w){w.session='audio';},
     render:function(w){var r=afReady(w);if(r.err)return afMsg(r.err);if(r.loading)return afMsg('lädt …');var s=r.s,cur=afCur(s);if(!cur)return afMsg('kein Raum');
       var master=cur.coordinator||'';
-      var head='<div class="hd"><span class="aftag">Multiroom · Master: '+esc(cur.name)+'</span>'
-        +'<button data-afungroup="1">Gruppe trennen</button></div>';
+      // Kopfzeile ebenfalls an der Kachel ausrichten; der Trennen-Knopf ist reiner Text und
+      // braucht eine Mindesthoehe, damit er auf kleinen Kacheln noch ein Tippziel bleibt.
+      var head='<div class="hd" style="gap:clamp(5px,3cqmin,12px)"><span class="aftag">Multiroom · Master: '+esc(cur.name)+'</span>'
+        +'<button data-afungroup="1" style="min-height:clamp(22px,9cqmin,32px)">Gruppe trennen</button></div>';
       // Gruppen-Lautstaerke: ein Regler an den Koordinator (Anzeige naeherungsweise = Master-Volume).
       var gvol='<div class="afvolrow"><span class="lbl" style="width:clamp(30px,13cqmin,54px);font-size:clamp(8px,3.2cqmin,12px);color:var(--faint);flex:none">Gruppe</span>'
         +'<div class="afbar" data-afgvol><i data-afgvolfill style="width:'+Math.max(0,Math.min(100,cur.volume||0))+'%;pointer-events:none"></i></div>'

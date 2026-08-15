@@ -411,16 +411,34 @@
     state.widgets.push(w);render();select(w.id);
   }
   function _wirePitem(b){b.onclick=function(){addWidget(b.dataset.add);};b.setAttribute('draggable','true');b.addEventListener('dragstart',function(e){e.dataTransfer.setData('text/hlw',b.dataset.add);e.dataTransfer.effectAllowed='copy';});}
-  $$('.pitem').forEach(_wirePitem);
-  // Registry-Widgets, die (noch) nicht in der kuratierten Palette stehen, automatisch unter „Weitere" ergänzen (ausser noPalette)
+  // Feste Reihenfolge der Palette-Gruppen. Die Zuordnung kommt vom Widget selbst (Feld cat:),
+  // damit Palette und Registry nicht auseinanderlaufen koennen. "Weitere" ist nur das Sicherheitsnetz
+  // fuer Registrierungen ohne cat: - die Gruppe soll leer bleiben und taucht dann gar nicht auf.
+  var PAL_CATS=['Layout (alle Seiten)','Grundelemente','Steuerung','Anzeige','Diagramme','Wetter & Zeit','Medien',
+    'HomeSuite','HomeSuite · Zeitplan (Heizung/Beschattung)','HomeSuite · Beschattung','HomeSuite · Licht',
+    'HomeSuite · Szenen','HomeSuite · Automatik','HomeSuite · Audio','HomeSuite · Bewässerung',
+    'Bausteine (eigene)','Leisten (alle Seiten)','Weitere'];
+  var PAL_BLOCKCAT='Bausteine (eigene)';   // diese Gruppe traegt den Baustein-Kasten (#blocks)
   // Palette-Suche: filtert .pitem live nach Label/Typ, blendet leere Gruppen-Header aus.
   var _palWired=false;
   function _palFilter(){
     var pal=document.querySelector('.palette');var inp=document.getElementById('palq');if(!pal||!inp)return;
     var q=(inp.value||'').trim().toLowerCase();
+    var blk=document.getElementById('blocks');
     var kids=pal.children,curH=null,curAny=false;
     for(var i=0;i<kids.length;i++){var el=kids[i];
       if(el.classList.contains('pgh')){if(curH)curH.style.display=curAny?'':'none';curH=el;curAny=false;continue;}
+      // Eigene Bausteine liegen IM Kasten, sind also keine direkten Kinder der Palette:
+      // darum hier hineinfiltern und den Kasten als Gruppeninhalt zaehlen.
+      if(blk&&el===blk){
+        var anyB=false;
+        $$('.pitem',el).forEach(function(b){var bt=(b.textContent||'').toLowerCase();
+          var bv=(q===''||bt.indexOf(q)>=0);b.style.display=bv?'':'none';if(bv)anyB=true;});
+        var showBox=(q===''||anyB);
+        el.style.display=showBox?'flex':'none';  // Ausgangswert ist display:flex (Inline-Style im Shell)
+        if(showBox)curAny=true;
+        continue;
+      }
       if(el.classList.contains('pitem')){
         var t=(el.textContent||'').toLowerCase(),d=(el.getAttribute('data-add')||'').toLowerCase();
         var vis=(q===''||t.indexOf(q)>=0||d.indexOf(q)>=0);
@@ -429,23 +447,37 @@
     }
     if(curH)curH.style.display=curAny?'':'none';
   }
+  // Baut die komplette Widget-Palette aus der Registry auf (Gruppen aus cat:, innerhalb alphabetisch).
   function syncPalette(){
     var pal=document.querySelector('.palette');if(!pal||typeof WIDGETS==='undefined')return;
     if(!_palWired){var _pq=document.getElementById('palq');if(_pq){_pq.addEventListener('input',_palFilter);_palWired=true;}}
-    var have={};$$('.pitem',pal).forEach(function(el){var t=el.getAttribute('data-add');if(t)have[t]=1;});
-    // Alias-Registrierungen (z. B. WIDGETS.powerflow === WIDGETS.flow) dürfen keinen zweiten
+    // Alias-Registrierungen (z. B. WIDGETS.powerflow === WIDGETS.flow) duerfen keinen zweiten
     // Palette-Eintrag erzeugen - sonst taucht derselbe Baustein doppelt unter altem Namen auf.
-    var seenReg=[];
-    Object.keys(have).forEach(function(t){if(WIDGETS[t])seenReg.push(WIDGETS[t]);}); // was die Palette schon zeigt
-    var miss=Object.keys(WIDGETS).filter(function(t){
+    // Der zuerst registrierte Name gewinnt (Registry-Reihenfolge = Einfuegereihenfolge).
+    var seenReg=[],groups={};
+    Object.keys(WIDGETS).forEach(function(t){
       var reg=WIDGETS[t];
-      if(have[t]||!reg||reg.noPalette)return false;
-      if(seenReg.indexOf(reg)>=0)return false;   // dieselbe Registrierung nur einmal (Alias)
-      seenReg.push(reg);return true;
-    }).sort();
-    if(!miss.length)return;
-    var hdr=document.createElement('div');hdr.className='pgh';hdr.textContent='Weitere';pal.appendChild(hdr);
-    miss.forEach(function(t){var el=document.createElement('div');el.className='pitem';el.setAttribute('data-add',t);el.textContent=(WIDGETS[t].label||t);pal.appendChild(el);_wirePitem(el);});
+      if(!reg||reg.noPalette)return;             // noPalette: nur programmatisch/auf Bestandsseiten
+      if(seenReg.indexOf(reg)>=0)return;         // dieselbe Registrierung nur einmal (Alias)
+      seenReg.push(reg);
+      var c=reg.cat||'Weitere';if(PAL_CATS.indexOf(c)<0)c='Weitere';  // unbekannte Kategorie faellt auf
+      (groups[c]=groups[c]||[]).push({type:t,label:(reg.label||t)});
+    });
+    // Neu aufbauen: erzeugte Koepfe/Eintraege raus, der Baustein-Kasten bleibt als Knoten bestehen
+    // (er traegt Inhalt und Verdrahtung aus buildBlocks()) und wird nur umgehaengt.
+    var blocks=document.getElementById('blocks');
+    Array.prototype.slice.call(pal.children).forEach(function(el){if(el!==blocks)pal.removeChild(el);});
+    PAL_CATS.forEach(function(c){
+      var list=(groups[c]||[]).sort(function(a,b){return a.label.localeCompare(b.label,'de');});
+      var isBlk=!!(blocks&&c===PAL_BLOCKCAT);
+      if(!list.length&&!isBlk)return;            // leere Gruppe bekommt auch keinen Kopf
+      var hdr=document.createElement('div');hdr.className='pgh';hdr.textContent=c;pal.appendChild(hdr);
+      list.forEach(function(it){
+        var el=document.createElement('div');el.className='pitem';el.setAttribute('data-add',it.type);
+        el.textContent=it.label;pal.appendChild(el);_wirePitem(el);
+      });
+      if(isBlk)pal.appendChild(blocks);          // eigene Bausteine direkt hinter ihren Kopf
+    });
   }
   canvas.addEventListener('dragover',function(e){e.preventDefault();e.dataTransfer.dropEffect='copy';});
   canvas.addEventListener('drop',function(e){e.preventDefault();var r=canvas.getBoundingClientRect();var px=(e.clientX-r.left)/zoom,py=(e.clientY-r.top)/zoom;var blk=e.dataTransfer.getData('text/hlwblock');if(blk){insertBlock(blk,px,py);return;}var t=e.dataTransfer.getData('text/hlw');if(!t)return;

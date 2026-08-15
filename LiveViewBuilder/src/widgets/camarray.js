@@ -21,10 +21,14 @@
       return '<img data-role="cam"'+(src?' data-media="'+esc(src)+'"':'')+' alt="'+esc(c.label||'')+'" style="object-fit:'+fit+'" src="'+(src?('?api=media&id='+esc(src)):'')+'">';
     }
     function _paPill(w,c,i,active){
-      return '<button type="button" class="camarr-pill'+(active?' active':'')+'" data-caidx="'+i+'">'
-        +(active?'<span class="camarr-ic">'+iconSVG('camera')+'</span>':'')
+      // Icon, Punkt und Innenabstand haengen an der Pill-SCHRIFT (em), nicht an festen Pixeln:
+      // damit folgt die ganze Pille der responsiven --pa-fs. Das Icon-SVG bekommt die Groesse
+      // inline mit, weil styles.css es sonst auf feste 14 px zwingt (.camarr-ic svg).
+      var ic=active?('<span class="camarr-ic" style="width:1.15em;height:1.15em">'+iconSVG('camera').replace('<svg ','<svg style="width:100%;height:100%" ')+'</span>'):'';
+      return '<button type="button" class="camarr-pill'+(active?' active':'')+'" data-caidx="'+i+'" style="gap:.5em;padding:.5em 1em;min-height:22px;box-sizing:border-box">'
+        +ic
         +'<span class="camarr-lbl">'+escL(c.label||('Kamera '+(i+1)))+'</span>'
-        +(active?'<i class="camarr-dot"></i>':'')+'</button>';
+        +(active?'<i class="camarr-dot" style="width:.58em;height:.58em"></i>':'')+'</button>';
     }
     function _paStyle(w){
       var s=[],add=function(k,v){if(v)s.push(k+':'+v);};
@@ -32,7 +36,11 @@
       add('--pa-bg',_skinToCss(w.paPillBg));
       add('--pa-tx',_skinToCss(w.paPillTx));
       add('--pa-dot',_skinToCss(w.paDot));
-      if(w.paFs)add('--pa-fs',(parseInt(w.paFs)||12)+'px');
+      // Ohne eigene Einstellung waechst die Pill-Schrift mit der Kachel (statt fester 12px aus
+      // styles.css). Ist eine Groesse eingestellt, bleibt sie die Obergrenze, schrumpft auf
+      // kleiner Kachel aber mit - sonst decken drei Pills das halbe Kamerabild ab.
+      if(w.paFs)add('--pa-fs','min('+(parseInt(w.paFs)||12)+'px,5cqmin)');
+      else add('--pa-fs','clamp(10px,3.4cqmin,16px)');
       if(w.paBold===false)s.push('--pa-fw:500');
       return s.length?(' style="'+s.join(';')+'"'):'';
     }
@@ -47,11 +55,15 @@
       var root=_paRootEl(w);if(!root)return;
       var ring=root.querySelector('[data-role=paring]');if(!ring)return;
       var W=ring.clientWidth,H=ring.clientHeight;if(W<24||H<24)return;
-      var pad=9,gap=6;
+      // Randabstand und Luecken aus der gemessenen Kachel (K), nicht fest: auf einer kleinen
+      // Kachel frisst 9px Rand sonst das Bild, auf einem Wandpanel klebt die Leiste am Rand.
+      var K=Math.min(W,H);
+      var pad=Math.max(6,Math.min(16,K*0.035)),gap=Math.max(4,Math.min(12,K*0.025));
       var pills=[].slice.call(ring.querySelectorAll('.camarr-pill'));if(!pills.length)return;
       var actEl=root.querySelector('.camarr-l .camarr-pill');
+      if(actEl&&actEl.parentNode){actEl.parentNode.style.top=pad+'px';actEl.parentNode.style.left=pad+'px';} // aktive Pille auf denselben Rand wie der Ring
       var actW=actEl?actEl.offsetWidth:0;
-      var actGap=actEl?18:0;                       // Abstand aktive Kamera -> erste Auswahl-Pill
+      var actGap=actEl?Math.max(10,Math.min(26,K*0.06)):0;   // Abstand aktive Kamera -> erste Auswahl-Pill
       var h0=pills[0].offsetHeight||24;
       var items=pills.map(function(p){return {el:p,w:p.offsetWidth,h:p.offsetHeight};});
       var x0=pad+actW+actGap, right=W-pad;         // linke Grenze (nach aktiver Kamera) / rechter Rand (Ecke)
@@ -83,7 +95,7 @@
       var ro=new ResizeObserver(function(){_paLayout(w);});ro.observe(ring);_paRO[w.id]=ro;
     }
     defWidget('camarray',{
-      label:'Kamera-Array', paletteIcon:'camera', size:[360,220],
+      label:'Kamera-Array', cat:'Medien', paletteIcon:'camera', size:[360,220],
       defaults:function(w){w.cams=[{label:'Kamera 1',type:'media',src:''}];w.camFit='cover';},
       render:function(w){
         var cams=w.cams||[],ci=_paActive(w),fit=_camFitCSS(w);

@@ -107,7 +107,7 @@
     // (rooms/curve/slots, domain=shading). noPalette: bleibt auf Bestandsseiten
     // funktionsfaehig, wird aber nicht mehr neu angeboten (Entfernung nach Cutover).
     noPalette:true,
-    label:'Beschattung (IPSShadowing)', paletteIcon:'cover', size:[260,230],
+    label:'Beschattung (IPSShadowing)', cat:'HomeSuite · Beschattung', paletteIcon:'cover', size:[260,230],
     defaults:function(w){w.label='';},
     render:function(w){return shRender(w);},
     mount:function(w){var el=shElOf(w);if(!el)el=shElOf(w,$('#ovcanvas'));if(!el)return;shStartTimer();shFetch(w,el);},

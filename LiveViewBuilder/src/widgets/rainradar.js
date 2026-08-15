@@ -38,16 +38,20 @@
     function rrRender(w){
       var title=escL(w.title||'Niederschlagsradar');
       return '<div class="rr" style="position:absolute;inset:0;display:flex;flex-direction:column;background:var(--surface);border-radius:inherit;overflow:hidden">'
-        +'<div class="rr-head" style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 10px;font-size:11px;letter-spacing:.4px;color:var(--muted);text-transform:uppercase;flex:0 0 auto">'
+        // Kopfzeile aus der Kachelgroesse: auf der kleinen Kachel bleibt die Karte gross,
+        // auf dem Wandpanel wird die Zeile lesbar. Die drei Spans erben die Groesse.
+        +'<div class="rr-head" style="display:flex;justify-content:space-between;align-items:center;gap:clamp(5px,2.2cqmin,12px);padding:clamp(4px,1.6cqmin,9px) clamp(7px,3cqmin,14px);font-size:clamp(9px,2.6cqmin,13px);letter-spacing:.4px;color:var(--muted);text-transform:uppercase;flex:0 0 auto">'
           +'<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:0 1 auto">'+title+'</span>'
           +'<span data-role="rrsum" style="text-transform:none;letter-spacing:0;color:var(--text);flex:1 1 auto;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>'
           +'<span data-role="rrts" style="font-family:monospace;letter-spacing:0;flex:0 0 auto;opacity:.7"></span></div>'
         +'<div class="rr-clip" style="position:relative;flex:1 1 auto;overflow:hidden;background:var(--surface-2)">'
           +'<img class="rr-img" style="position:absolute;max-width:none;display:none" alt="">'
-          +'<div class="rr-mk" style="position:absolute;left:50%;top:50%;width:16px;height:16px;transform:translate(-50%,-50%);pointer-events:none">'
-            +'<span style="position:absolute;left:50%;top:50%;width:11px;height:11px;transform:translate(-50%,-50%);border:2px solid #fff;border-radius:50%;box-shadow:0 0 0 1.5px rgba(0,0,0,.45)"></span>'
-            +'<span style="position:absolute;left:50%;top:50%;width:4px;height:4px;transform:translate(-50%,-50%);background:#e53935;border-radius:50%"></span></div>'
-          +'<div class="rr-empty" style="position:absolute;inset:0;display:none;align-items:center;justify-content:center;color:var(--muted);font-size:12px">Radarkarte …</div>'
+          // Marker waechst mit der Kachel; Ring und Punkt sind Prozent DES Markers, damit das
+          // Verhaeltnis in jeder Groesse gleich bleibt (Rahmenstaerke bleibt bewusst fest).
+          +'<div class="rr-mk" style="position:absolute;left:50%;top:50%;width:clamp(12px,4.5cqmin,26px);height:clamp(12px,4.5cqmin,26px);transform:translate(-50%,-50%);pointer-events:none">'
+            +'<span style="position:absolute;left:50%;top:50%;width:70%;height:70%;transform:translate(-50%,-50%);border:2px solid #fff;border-radius:50%;box-sizing:border-box;box-shadow:0 0 0 1.5px rgba(0,0,0,.45)"></span>'
+            +'<span style="position:absolute;left:50%;top:50%;width:25%;height:25%;transform:translate(-50%,-50%);background:#e53935;border-radius:50%"></span></div>'
+          +'<div class="rr-empty" style="position:absolute;inset:0;display:none;align-items:center;justify-content:center;color:var(--muted);font-size:clamp(10px,3cqmin,14px)">Radarkarte …</div>'
         +'</div></div>';
     }
     function rrPaint(w){
@@ -95,7 +99,7 @@
       if(mk)mk.style.display=(w.showMarker!==false)?'':'none';
     }
     defWidget('rainradar',{
-      label:'Niederschlagsradar', paletteIcon:'cloudsun', size:[420,300],
+      label:'Niederschlagsradar', cat:'Wetter & Zeit', paletteIcon:'cloudsun', size:[420,300],
       defaults:function(w){w.title='Niederschlagsradar';w.zoom=1;w.animMs=500;}, // Frame-Modus: zeigt die Bild-Uhrzeit
       render:rrRender,
       mount:function(w){rrPaint(w);},
