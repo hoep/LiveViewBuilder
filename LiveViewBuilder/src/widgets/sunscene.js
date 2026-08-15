@@ -792,8 +792,10 @@
       ctx.beginPath();
       ctx.moveTo(x0 + rr, y0); ctx.arcTo(x1, y0, x1, y1, rr); ctx.arcTo(x1, y1, x0, y1, rr);
       ctx.arcTo(x0, y1, x0, y0, rr); ctx.arcTo(x0, y0, x1, y0, rr); ctx.closePath();
-      ctx.fillStyle = ssA(pal.tile, pal.light ? 0.90 : 0.84); ctx.fill();
-      ctx.strokeStyle = ssA(pal.line, 0.6); ctx.lineWidth = Math.max(0.6, K / 1000); ctx.stroke();
+      // Kein Hintergrund - das Band bleibt durchsichtig, die Kachelfarbe scheint durch.
+      // Die feine Umrandung bleibt als Begrenzung; der Pfad dient weiter als Maske, damit
+      // Tageskurve und Marken nicht ueber das Band hinauslaufen.
+      ctx.strokeStyle = ssA(pal.line, 0.55); ctx.lineWidth = Math.max(0.6, K / 1000); ctx.stroke();
       ctx.clip();
 
       // Tageskurve: gefuellte Flaeche der Sonnenhoehe
