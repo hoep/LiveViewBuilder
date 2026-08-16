@@ -105,7 +105,7 @@
   document.addEventListener('pointercancel',function(){if(_lpTimer){clearTimeout(_lpTimer);_lpTimer=null;}_lpFired=false;});
   function _wChange(e){
     if(mode==='edit')return;
-    var ss=e.target.closest('[data-role=skwsel]');if(ss){store.skin=ss.value;applySkin();try{localStorage.setItem('lvskin',store.skin);}catch(_){}return;}
+    var ss=e.target.closest('[data-role=skwsel]');if(ss){var _base=store.skin;store.skin=ss.value;applySkin();try{localStorage.setItem('lvskin',store.skin);localStorage.setItem('lvskinbase',_base);}catch(_){}return;}  // Layout-Stand mitschreiben: aendert er sich spaeter, verfaellt die Geraete-Wahl
     var _iw=e.target.closest('.w');if(_iw){var _iww=_wForEl(_iw);if(_iww){var _iwr=WIDGETS[_iww.type];if(_iwr&&_iwr.input&&_iwr.input(_iww,_iw,e)===true)return;}}
     var r=e.target.closest('[data-role=range]');if(!r)return;var el=r.closest('.w');if(!el)return;var w=_wForEl(el);if(!w)return;
     if(w.type==='light'){if(w.varId2)setVar(w.varId2,r.value);}
