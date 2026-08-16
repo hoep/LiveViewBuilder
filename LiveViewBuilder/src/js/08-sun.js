@@ -141,6 +141,30 @@
       return 'abnehmende Sichel';
     }
 
+
+    /**
+     * Bewoelkungsgrad aus gemessener Strahlung.
+     *  Grundlage ist der Klarheitsindex kt = gemessen / Klarhimmel. Die Umrechnung in
+     *  Bewoelkung folgt Kasten & Czeplak (1980):  G/Gklar = 1 - 0,75 * (N/8)^3,4
+     *  nach N aufgeloest. Das ist die uebliche Faustformel der Solarmeteorologie.
+     *
+     *  Nur brauchbar, solange die Sonne hoch genug steht - unter etwa 5 Grad ist der
+     *  Klarhimmelwert so klein, dass jede Messungenauigkeit durchschlaegt. Nachts gibt es
+     *  ueberhaupt keine Aussage; dann liefert die Funktion null und der Aufrufer muss auf
+     *  eine andere Quelle ausweichen.
+     *  -> 0..1 oder null
+     */
+    function cloudFromRad(measured, elevDeg) {
+      if (measured == null || !(elevDeg > 5)) return null;
+      var cs = clearSky(elevDeg);
+      if (!(cs > 40)) return null;
+      var kt = Math.max(0, Math.min(1.05, measured / cs));   // knapp ueber 1 durch Wolkenreflexe
+      if (kt >= 1) return 0;
+      var n = Math.pow(Math.max(0, (1 - kt) / 0.75), 1 / 3.4);
+      return Math.max(0, Math.min(1, n));
+    }
+
     return { pos: pos, dayTrack: dayTrack, riseSet: riseSet, clearSky: clearSky, clearness: clearness,
+             cloudFromRad: cloudFromRad,
              moon: moon, moonName: moonName, D: D, R: R };
   })();
