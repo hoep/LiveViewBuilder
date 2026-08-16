@@ -119,11 +119,19 @@
       var rel=((p.az-azB)+360)%360;
       if(rel>width){sun.style.display='none';return;}              // Sonne hinter der Fassade
       hl=10+(rel/width)*80;                                        // Fensterdurchlauf: links -> rechts
-    } else {
-      // Fallback ohne Profil: Ausrichtung aus den Widget-Einstellungen, +-90° Sichtfeld
-      var face=(w.covFace!=null&&w.covFace!=='')?+w.covFace:180, dl=((p.az-face+540)%360)-180;
+    } else if(w.covFace!=null&&w.covFace!==''){
+      // Ohne gebundenes Sonnenfenster: Ausrichtung aus den Widget-Einstellungen, +-90° Sichtfeld.
+      var face=+w.covFace, dl=((p.az-face+540)%360)-180;
       if(Math.abs(dl)>=90){sun.style.display='none';return;}
       hl=50+(dl/90)*34;
+    } else {
+      // WEDER Sonnenfenster GEBUNDEN NOCH Ausrichtung gesetzt -> gar nichts zeigen.
+      // Hier stand frueher die stille Vorgabe 180 (Sued). Eine unkonfigurierte Kachel
+      // behauptete damit eine Himmelsrichtung, die niemand angegeben hatte: Buero und
+      // Kueche (Nordfenster) zeigten mittags Sonne, weil 133° im Sued-Sichtfeld liegen.
+      // Eine erfundene Richtung ist schlimmer als eine leere Anzeige - wer die Sonne im
+      // Fenster sehen will, bindet das Sonnenfenster der Zone oder setzt die Ausrichtung.
+      sun.style.display='none';return;
     }
     // vertikal: Sonnenhoehe 0..elMax -> Horizont(unten) .. Zenit(oben). Nur auf den
     // Fensterrahmen begrenzen (Rand-Marge), NICHT auf den freien Glasausschnitt.
