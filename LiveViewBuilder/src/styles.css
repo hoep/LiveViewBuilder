@@ -705,6 +705,12 @@
   .hint{font-size:11px;color:var(--faint);margin:8px 2px}
   .prop{display:flex;flex-direction:column;gap:9px}
   .prow{display:flex;align-items:center;gap:8px}.prow label{font-size:11px;color:var(--muted);width:64px;flex:none}
+  /* Variablen-Zeilen (fieldPick): die BESCHRIFTUNG braucht den Platz, das ID-Feld nicht.
+     Vorher galt auch hier label{width:64px} - lange Namen wie "Niederschlagsart" wurden
+     unlesbar zusammengequetscht -, waehrend das ID-Feld ueber flex:1 die ganze Restbreite
+     einnahm, obwohl darin nur eine Zahl steht. Genau verkehrt herum. */
+  .prow.fpick label{width:auto;flex:1 1 auto;min-width:0;overflow-wrap:anywhere}
+  .prow.fpick input{flex:0 0 64px;width:64px}
   .assocbox{margin:-2px 0 2px}
   .alist{display:flex;flex-direction:column;gap:3px;margin-top:4px}
   .alist.off{opacity:.5}

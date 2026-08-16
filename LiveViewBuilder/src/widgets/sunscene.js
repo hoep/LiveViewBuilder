@@ -336,7 +336,12 @@
       ssHouse(ctx, cam, K, sun, day, clrE, w, geo, pal);
       if (geo) ssAttrib(ctx, W, Hs, K, pal, 0, w);
       ssSunDisc(ctx, cam, K, sun, clrE, w, cloud);
-      ssLabels(ctx, W, Hs, K, sun, ssVal(w.ssRad), clrE, track, w, mn, pal);
+      // Fuer die Kopfzeile die GEMESSENE Klarheit (Strahlung gegen Klarhimmelwert), nicht clrE.
+      // clrE ist durch die Bewoelkung gedeckelt und steuert Halo, Dunst und Schattenhaerte -
+      // als Text neben dem W/m2-Wert war es irrefuehrend: 310 von 423 W/m2 sind 73 % klar,
+      // angezeigt wurden aber 26 %, weil daraus 74 % Bedeckung zurueckgerechnet werden
+      // (Kasten & Czeplak: kt = 1 - 0,75*N^3,4 - eine dichte Decke laesst immer noch viel durch).
+      ssLabels(ctx, W, Hs, K, sun, ssVal(w.ssRad), clr, track, w, mn, pal);
       ssStrip(ctx, W, H, Hs, K, w, track, pal);
       return cv;
     }
