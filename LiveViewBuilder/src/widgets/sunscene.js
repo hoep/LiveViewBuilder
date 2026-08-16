@@ -201,6 +201,10 @@
       var b = bearing * D, p = pitch * D, cb = Math.cos(b), sb = Math.sin(b), cp = Math.cos(p), sp = Math.sin(p);
       return {
         s: s, bearing: bearing, pitch: pitch, radius: radius,
+        cb: cb, sb: sb, cp: cp, sp: sp,          // Kamerawinkel, damit ssSkyFit nachrechnen kann
+        // Sonne und Mond haengen NICHT mehr an K = min(W, Hs): eine breite, flache Kachel hat
+        // reichlich Platz, von dem die kurze Kante nichts sieht - die Scheibe wurde dort winzig.
+        rSun: ssBodyR(W, H, 34), rMoon: ssBodyR(W, H, 26),
         // Der Himmel sitzt auf einer GROESSEREN Kuppel als der Boden und wird leicht ueberhoeht.
         // Sonst heben sich bei starker Neigung Nord-Anteil und Hoehe gegenseitig auf und der
         // Tagesbogen erscheint als flache Linie statt als Bogen.
@@ -242,6 +246,15 @@
       var Hs = Math.max(40, H - sh);
       var K = Math.min(W, Hs);                   // Bezugsgroesse fuer ALLE Masse (responsiv)
       var cam = ssCam(w, W, Hs), sun = ssSun(w);
+      // Himmel einpassen, BEVOR gezeichnet oder zwischengespeichert wird: der Fit veraendert cam
+      // und muss deshalb auch bei einem Treffer im Zwischenspeicher gelten, sonst passen die
+      // spaeter darueber gezeichneten Ebenen nicht mehr zum Bild.
+      var fg = ssGeo(w), ftr = LVSUN.dayTrack(fg.lat, fg.lon, ssNow(w), 30), fap = null;
+      for (var fi = 0; fi < ftr.length; fi++) { if (!fap || ftr[fi].elev > fap.elev) fap = ftr[fi]; }
+      var fmn = LVSUN.moon(fg.lat, fg.lon, ssNow(w) / 1000);
+      ssSkyFit(cam, [fap && { az: fap.az, el: fap.elev }, { az: sun.az, el: sun.elev },
+                     fmn && { az: fmn.az, el: fmn.elev }],
+               Math.max(12, K * 0.07) + cam.rSun);
       var rad = ssVal(w.ssRad);                  // gemessene Globalstrahlung W/m2
       var clr = (rad != null) ? LVSUN.clearness(rad, sun.elev) : null;
       var geo = ssGeo3(w, el);
@@ -426,6 +439,45 @@
         ctx.restore();
       });
     }
+    /**
+     * Durchmesser von Sonne und Mond. Bezug ist das geometrische Mittel BEIDER Kanten, nicht
+     * die kurze - sonst schrumpfen sie auf einer breiten, flachen Kachel mit, obwohl daneben
+     * Platz frei ist. Untergrenze, damit die Scheibe nie zum Punkt wird; Obergrenze, damit sie
+     * auf einer kleinen Kachel nicht den halben Himmel einnimmt.
+     */
+    function ssBodyR(W, H, div) {
+      var r = Math.sqrt(Math.max(1, W * H)) / div * 1.15;
+      return Math.max(6, Math.min(r, Math.min(W, H) / 7));
+    }
+
+    /**
+     * Haelt den Himmel in der Kachel. Die Kuppel wird ueberhoeht gezeichnet (skyLift), damit der
+     * Tagesbogen als Bogen und nicht als flache Linie erscheint. Auf einer flachen Kachel wandern
+     * Sonne, Mond und Bogen dadurch ueber den oberen Rand hinaus - fuer den Betrachter fehlen sie
+     * einfach. Statt die Koerper an den Rand zu klemmen (dann staenden sie falsch), wird die
+     * Ueberhoehung so weit zurueckgenommen, dass der hoechste zu zeigende Punkt gerade hineinpasst.
+     * Die Lage der Koerper zueinander bleibt dabei richtig.
+     *
+     * pts = [{az, el}, ...] - alles, was sichtbar bleiben muss (Bogenscheitel, Sonne, Mond).
+     */
+    function ssSkyFit(cam, pts, margin) {
+      var need = 1;
+      for (var i = 0; i < pts.length; i++) {
+        var el = pts[i] && pts[i].el, az = pts[i] && pts[i].az;
+        if (el == null || az == null || el < 0) continue;
+        var hr = Math.cos(el * D) * cam.skyR, u = Math.sin(el * D) * cam.skyR * cam.skyLift;
+        if (!(u > 0)) continue;
+        var e = hr * Math.sin(az * D), n = hr * Math.cos(az * D);
+        var n2 = -e * cam.sb + n * cam.cb;
+        var y = cam.cy - (n2 * cam.cp + u * cam.sp) * cam.s;
+        if (y >= margin) continue;
+        // y(k) = cy - (n2*cp + u*k*sp)*s ; k so waehlen, dass y genau auf den Rand faellt
+        var k = (((cam.cy - margin) / cam.s) - n2 * cam.cp) / (u * cam.sp);
+        if (k > 0 && k < need) need = k;
+      }
+      if (need < 1) cam.skyLift *= need;
+    }
+
     function ssSky3(cam, az, el, R) {
       var hr = Math.cos(el * D) * R, u = Math.sin(el * D) * R * cam.skyLift;
       return cam.project(hr * Math.sin(az * D), hr * Math.cos(az * D), u);
@@ -762,14 +814,14 @@
     function ssMoonDisc(ctx, cam, K, sun, day, w, cloud) {
       if (!_covOn2(w, 'ssMoon', true)) return null;
       // Dieselbe Regel wie fuer die Sonne: hinter einer geschlossenen Decke ist er weg.
+      // Wie bei der Sonne: der Mond wird bei dichter Decke matt, verschwindet aber nicht.
       var mcc = Math.max(0, Math.min(1, cloud || 0));
-      if (mcc > 0.85) return null;
       var g = ssGeo(w), m = LVSUN.moon(g.lat, g.lon, ssNow(w) / 1000);
       if (m.elev < -1) return null;                            // unter dem Horizont
-      var vis = Math.max(0, Math.min(1, (0.62 - day) / 0.45)) * (1 - mcc * 0.9);   // Tag und Wolken
+      var vis = Math.max(0, Math.min(1, (0.62 - day) / 0.45)) * Math.max(0.22, 1 - mcc * 0.9);  // Tag und Wolken
       if (vis <= 0.02) return m;
       var q = ssSky3(cam, m.az, m.elev, cam.skyR);
-      var R = K / 26;
+      var R = cam.rMoon;
       // Richtung zur Sonne auf dem Bildschirm - dorthin zeigt die beleuchtete Seite
       var sp = ssSky3(cam, sun.az, sun.elev, cam.skyR);
       var ang = Math.atan2(sp.y - q.y, sp.x - q.x);
@@ -892,13 +944,14 @@
 
     function ssSunDisc(ctx, cam, K, sun, clr, w, cloud) {
       if (sun.elev < -2) return;
-      // Bei geschlossener Decke steht keine scharfe Scheibe am Himmel, sondern eine matte
-      // helle Stelle. Ab etwa 85 % Bedeckung verschwindet sie ganz.
+      // Bei geschlossener Decke steht keine scharfe Scheibe am Himmel, sondern eine matte helle
+      // Stelle. Frueher verschwand sie ab 85 % Bedeckung GANZ - dann fehlte die Sonne im Bild,
+      // obwohl der Stand die Hauptaussage des Widgets ist. Jetzt bleibt sie immer sichtbar, nur
+      // eben matt: die Helligkeit faellt mit der Bedeckung, hoert aber bei einem Rest auf.
       var cc = Math.max(0, Math.min(1, cloud || 0));
-      if (cc > 0.85) return;
-      var dim = 1 - cc * 0.9;
+      var dim = Math.max(0.22, 1 - cc * 0.9);
       var R = cam.skyR, p = ssSky3(cam, sun.az, sun.elev, R);
-      var base = K / 34, halo = base * (2.2 + (clr == null ? 1 : clr * 3.4));
+      var base = cam.rSun, halo = base * (2.2 + (clr == null ? 1 : clr * 3.4));
       var gr = ctx.createRadialGradient(p.x, p.y, base * 0.3, p.x, p.y, halo);
       var a0 = (clr == null ? 0.55 : 0.35 + clr * 0.6);
       gr.addColorStop(0, 'rgba(255,240,200,' + Math.min(0.98, a0 + 0.3).toFixed(2) + ')');
