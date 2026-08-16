@@ -159,6 +159,24 @@
     return 'clock';                      // Auto (Zeitplan) = Uhr, NICHT die Sonne
   }
 
+  /**
+   * Sperrgrund auf die Fensterflaeche abbilden. Ein blockiertes Rollo sah bisher aus wie ein
+   * ruhendes - man wartete auf eine Fahrt, die nie kommt. Jetzt umrandet die Visualisierung:
+   *   ROT (--crit)  ein Kontakt verhindert die Fahrt (Tuer/Fenster offen, Sturm, Regen)
+   *   GELB (--warn) von Hand uebersteuert - die Automatik haelt sich absichtlich zurueck
+   * Leerer Grund = keine Umrandung. Farben ausschliesslich aus dem Skin.
+   */
+  function _covBlock(w,el,val){
+    var win=el&&el.querySelector('.hc2win'); if(!win) return;
+    var t=String(val==null?'':val);
+    win.classList.remove('blk-crit','blk-warn');
+    win.removeAttribute('title');
+    if(!t.trim()) return;
+    var manuell=/hand|manuell/i.test(t);
+    win.classList.add(manuell?'blk-warn':'blk-crit');
+    win.title=t;
+  }
+
   defWidget('cover',{
     label:'Rollo', cat:'Steuerung', paletteIcon:'blinds', size:[300,128], noHover:true,
     render:function(w){
@@ -232,6 +250,9 @@
         var mtxt=(txt!=null&&txt!==''&&!/^-?\d+([.,]\d+)?$/.test(String(txt).trim()))?txt:null;
         if(mtxt){var cs2=$('[data-role=ctext]',el);if(cs2){cs2.textContent=mtxt;el._covMtxt=mtxt;}}
         return;}
+      // Sperrgrund (BlockReason der Zone) -> Fensterflaeche umranden. NUR die Visualisierung,
+      // nicht die ganze Kachel: die Sperre betrifft die FAHRT, und die findet im Fenster statt.
+      if(w.cvBlockVid&&id===w.cvBlockVid){ _covBlock(w,el,d&&d.v); return; }
       // Helligkeit ODER Sonnenfenster-Werte (Azimut-Grenzen/Hoehenschwelle) -> nur Sonne neu setzen
       if((w.covBrightVid&&id===w.covBrightVid)||id===w.cvAzB||id===w.cvAzE||id===w.cvElv){
         var win=$('[data-role=win]',el);if(win){var pc=$('.hc2pct',win);var op0=pc?parseInt(pc.textContent)||0:0;_covSun(w,win,op0);}return;}
@@ -265,6 +286,7 @@
         +row('Befehl Zu','<input id="pCvDn" value="'+esc(String(w.cvDn==null?'':w.cvDn))+'" placeholder="leer = 0">')
         +'<div class="pgh">Sonnenstand</div>'
         +fieldPick(w,'covBrightVid','Helligkeit (Lux, optional)')
+        +fieldPick(w,'cvBlockVid','Sperrgrund (BlockReason)')
         +row('Fensterrichtung (Azimut)','<input id="pCovFace" type="number" min="0" max="360" value="'+(w.covFace!=null?w.covFace:'')+'" placeholder="180 = Süd" style="width:90px"> °')
         +row('Breitengrad','<input id="pCovLat" value="'+esc(String(w.covLat==null?'':w.covLat))+'" placeholder="48.0657" style="width:110px">')
         +row('Längengrad','<input id="pCovLon" value="'+esc(String(w.covLon==null?'':w.covLon))+'" placeholder="14.1241" style="width:110px">')
