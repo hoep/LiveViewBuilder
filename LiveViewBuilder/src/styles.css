@@ -579,7 +579,12 @@
   /* Alarm-Panel — Rahmen + Kopf (Eyebrow/Alle quittieren) + flex-wrap-Reihe der aktiven Karten */
   /* .alarmpanel ist ein INLINE-SIZE-Container -> hier wird bewusst mit cqi (Panelbreite)
      gerechnet, nicht mit cqmin: cqb/cqmin haetten keine verlaessliche Bezugsachse. */
-  .alarmpanel{position:absolute;inset:0;box-sizing:border-box;display:flex;flex-direction:column;gap:clamp(6px,2cqi,14px);padding:clamp(7px,2.4cqi,16px) clamp(9px,2.8cqi,19px);border:1px solid var(--line-soft);border-radius:16px;background:var(--surface);container-type:inline-size;overflow:auto}
+  /* Die senkrechten Masse muessen der HOEHE folgen, nicht der Breite. Mit cqi (Breite)
+     wuchsen Polster und Abstand auf einer breiten Alarmleiste auf 16/14 px - der Platz
+     fehlte genau den Alarm-Karten darin, die sich die Resthoehe teilen, und sie wirkten
+     gestaucht. container-type:size liefert zusaetzlich cqh; die Kacheln darin rechnen
+     unveraendert mit cqi gegen die Breite. */
+  .alarmpanel{position:absolute;inset:0;box-sizing:border-box;display:flex;flex-direction:column;gap:clamp(5px,4cqh,12px);padding:clamp(6px,5cqh,14px) clamp(9px,2.8cqi,19px);border:1px solid var(--line-soft);border-radius:16px;background:var(--surface);container-type:size;overflow:auto}
   .alp-head{display:flex;align-items:center;justify-content:space-between;gap:clamp(6px,2.5cqi,16px)}
   .alp-eye{font-family:var(--fu);font-size:clamp(9px,2.2cqi,14px);font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--_alpeye,var(--crit))}
   .alp-ackall{border:0;background:none;cursor:pointer;font-size:clamp(10px,2.4cqi,15px);color:var(--muted);padding:clamp(2px,.6cqi,4px) clamp(3px,1cqi,7px)}
@@ -1546,10 +1551,9 @@
      und waere bei einer breiten, flachen Kachel viel zu hoch. Die Uebersicht selbst darf
      NICHT schrumpfen (flex 0 0): sonst rutschen ihre Zeilen uebereinander, statt Platz
      abzugeben. Auf flachen Kacheln entfallen stattdessen die sechs nicht bearbeiteten
-     Tageszeilen - die Tagesknoepfe darueber waehlen ohnehin, und der Editor braucht den
-     Platz dringender als eine Vorschau. */
+     Tageszeilen. ALLE SIEBEN bleiben immer sichtbar - die Woche auf einen Blick ist der
+     Sinn der Uebersicht; der Tagesknopf darueber waehlt nur, welche Zeile bedienbar ist. */
   .wep-week{display:flex;flex-direction:column;gap:clamp(2px,.9cqh,5px);flex:0 0 auto}
-  @container (max-height:380px){ .wep-wrow:not(.wep-wrow-edit){display:none} }
   .wep-wrow{display:flex;align-items:center;gap:clamp(4px,2.4cqmin,10px);cursor:pointer;padding:clamp(0px,.4cqh,3px) clamp(2px,1.4cqmin,5px);border-radius:6px;border:1px solid transparent}
   .wep-wrow:hover{background:var(--surface-2)}
   .wep-wrow.on{border-color:var(--accent);background:var(--surface-2)}
@@ -2549,10 +2553,13 @@
            transform:translateX(-50%);cursor:ew-resize;touch-action:none;z-index:2}
   .wep-hnd::before{content:"";position:absolute;top:0;bottom:0;left:50%;width:2px;
            transform:translateX(-50%);background:var(--text);border-radius:2px;opacity:.8}
+  /* Runder Griff wie die uebrigen Schalt- und Schiebeknoepfe im Projekt - eine Raute
+     waere hier das einzige eckige Bedienelement gewesen. */
   .wep-hnd::after{content:"";position:absolute;top:50%;left:50%;
-           width:clamp(8px,2.6cqmin,12px);height:clamp(8px,2.6cqmin,12px);
-           transform:translate(-50%,-50%) rotate(45deg);background:var(--surface);
-           border:2px solid var(--text);border-radius:2px}
+           width:clamp(10px,3cqmin,15px);height:clamp(10px,3cqmin,15px);
+           transform:translate(-50%,-50%);background:var(--surface);
+           border:2px solid var(--text);border-radius:50%;
+           box-shadow:0 1px 3px rgba(0,0,0,.35)}
   .wep-hnd.on::before,.wep-hnd.drag::before{background:var(--accent);opacity:1}
   .wep-hnd.on::after,.wep-hnd.drag::after{border-color:var(--accent)}
   .wep-hnd>span{position:absolute;left:50%;transform:translateX(-50%);
