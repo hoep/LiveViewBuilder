@@ -127,7 +127,18 @@
       label:'Beschattungs-Profile', cat:'HomeSuite · Beschattung', paletteIcon:'sun', size:[560,420],
       defaults:function(w){w.bind='session';w.session='shade';},
       render:function(w){return spRender(w);},
+      // hfEmit() zeichnet bei einem Auswahlwechsel ueber render + _bind neu. Ohne _bind kaeme
+      // zwar frisches HTML, aber die Zuweisung des NEUEN Rollos wuerde nie geholt - die Liste
+      // haette weiter die des alten angezeigt. Deshalb hier die Zuweisung nachladen.
+      _bind:function(w,el){var st=spSt(w);var idx=spEntity(w);
+        if(idx){spHub('profileAssigned',{entityId:idx}).then(function(a){st.assigned=(a&&a.assigned)||null;spPaint(w);});}
+        spBind(w,el);},
       mount:function(w){var el=spEl(w);if(!el)return;var st=spSt(w);
+        // An die Session KOPPELN. Ohne hfSub() steht das Widget nicht in der Abonnentenliste,
+        // die der Raum-Selektor beim Wechsel per hfEmit() neu zeichnet - es blieb auf dem
+        // Rollo stehen, das beim Laden der Seite gerade ausgewaehlt war, und folgte der
+        // Auswahl nie. suncompass, shadesun und shadecal machen es genauso.
+        if(w.bind!=='fixed' && typeof hfSub==='function')hfSub(w);
         if(typeof DOKU!=='undefined'&&DOKU){spPaint(w);return;}
         if(!st.types){spHub('profileTypes',{}).then(function(j){st.types=(j&&j.types)||[];if(st.types[0])st.type=st.types[0].id;spLoadList(w);}).catch(function(){st.err='Hub nicht erreichbar';spPaint(w);});}
         else spBind(w,el);},
