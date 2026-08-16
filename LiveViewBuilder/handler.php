@@ -645,6 +645,26 @@ if ($api === 'shading') {
         foreach ($hsshList as $iid) {
             if ((int) @IPS_GetProperty($iid, 'PositionId') === $pos) { return (int) $iid; }
         }
+        // Seit der IPSShadowing-Abloesung fahren die Rollos NATIV ueber den Treiber; eine
+        // gebundene Fremd-Positionsvariable gibt es nicht mehr, PositionId steht ueberall auf 0.
+        // Damit fand die Suche oben nichts, calTarget() lieferte 0 und der Kalibrier-Aufruf
+        // endete in {"ok":false,"err":"inst"} - kein Rollo fuhr, an KEINEM Fenster.
+        // Adressiert wird jetzt zusaetzlich ueber die Positions-Variable des MODULS (Ident
+        // 'Position'). Sie liegt nicht zwingend direkt unter der Instanz (Variablengruppen),
+        // deshalb wird der Teilbaum durchsucht.
+        foreach ($hsshList as $iid) {
+            $stack = [(int) $iid];
+            while ($stack) {
+                $n = array_pop($stack);
+                foreach (IPS_GetChildrenIDs($n) as $c) {
+                    if (IPS_VariableExists($c)) {
+                        if ($c === $pos && IPS_GetObject($c)['ObjectIdent'] === 'Position') { return (int) $iid; }
+                        continue;
+                    }
+                    $stack[] = $c;
+                }
+            }
+        }
         return 0;
     };
     $calTarget = function () use ($hsshList, $hsshByPos): int {
