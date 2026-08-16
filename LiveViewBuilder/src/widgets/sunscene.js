@@ -101,6 +101,16 @@
           if (!val) return fb;
           var c = (typeof _skinColor === 'function' && _skinColor(val)) || '';
           if (!c) { c = /^(#|rgb|hsl)/i.test(val) ? val : v('--' + val, ''); }
+          // _skinColor liefert Skin-Namen als "var(--muted)" zurueck. Fuer CSS ist das
+          // richtig, fuer die Zeichenflaeche NICHT: addColorStop wirft darauf einen Fehler.
+          // CSS.supports() hilft hier nicht - es haelt var(...) fuer gueltig. Also wird die
+          // Variable aufgeloest, bevor die Farbe die Zeichenflaeche erreicht.
+          var m = /^var\(\s*(--[\w-]+)\s*(?:,([^)]*))?\)$/.exec(String(c).trim());
+          if (m) {
+            var rv = v(m[1], '').trim();
+            if (!rv && m[2]) { rv = m[2].trim(); }        // Rueckfall aus der var()-Angabe
+            c = rv;
+          }
           return ssColOk(c) ? c : fb;
         }
       };
@@ -113,6 +123,8 @@
     /** Ist die Zeichenkette eine Farbe, die die Zeichenflaeche versteht? */
     function ssColOk(c) {
       if (!c) return false;
+      // var(...) ist fuer CSS gueltig, fuer die Zeichenflaeche aber unbrauchbar.
+      if (/^var\(/i.test(String(c).trim())) return false;
       try {
         if (typeof CSS !== 'undefined' && CSS.supports) return CSS.supports('color', c);
       } catch (e) { /* alte Browser: unten weiter */ }
