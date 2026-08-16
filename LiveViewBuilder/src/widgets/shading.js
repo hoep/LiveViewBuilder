@@ -24,6 +24,21 @@
     }};}
 
   // ============================ RENDER ============================
+  // Sperrgruende auf Symbol, Kurztext und Farbe abbilden. Der volle Text steht im Titel.
+  var SH_BLOCKS=[
+    [/tür|tuer/i,        'door',   'Tür',        'crit'],
+    [/sturm|wind/i,      'wind',   'Sturm',      'crit'],
+    [/kalibr/i,          'ruler',  'Kalibrierung','warn'],
+    [/hand|manuell/i,    'hand',   'Hand',       'warn'],
+    [/hub|automatik aus/i,'power',  'Aus',        'muted'],
+    [/schatten|scharf/i, 'eye',    'Schatten',   'muted'],
+    [/regen/i,           'droplet','Regen',      'warn']
+  ];
+  function shBlockDef(t){for(var i=0;i<SH_BLOCKS.length;i++)if(SH_BLOCKS[i][0].test(t))return SH_BLOCKS[i];return [null,'lock','blockiert','warn'];}
+  function shBlockIcon(t){var d=shBlockDef(t);return (typeof iconSVG==='function')?iconSVG(d[1]):'';}
+  function shBlockShort(t){return shBlockDef(t)[2];}
+  function shBlockCls(t){return ' sev-'+shBlockDef(t)[3];}
+
   function shRender(w){
     var st=shSt(w);
     if(!st.loaded)return '<div class="shd shd-msg">lädt …</div>';
@@ -31,7 +46,13 @@
     if((!w.deviceId&&!(typeof DOKU!=='undefined'&&DOKU))||!st.data)return '<div class="shd shd-msg">Rollo im Panel wählen</div>';
     var d=st.data, pos=(d.position&&d.position.value)|0, auto=!!(d.automatic&&d.automatic.value);
     var h='<div class="shd">';
+    // Sperr-Anzeiger LINKS neben der Automatik-Umschaltung. Er erscheint nur, wenn das
+    // Modul einen Grund nennt (BlockReason) - so heisst Stillstand nicht mehr "es passiert
+    // halt nichts", sondern sagt, WAS im Weg steht. Die Symbole sind je Grund verschieden,
+    // damit man sie ohne Antippen unterscheiden kann.
+    var blk=(d.block&&d.block.value)||'';
     h+='<div class="shd-head"><span class="shd-name">'+escL(w.label||d.name)+'</span>'
+      +(blk?('<span class="shd-block'+shBlockCls(blk)+'" title="'+esc(blk)+'">'+shBlockIcon(blk)+'<b>'+esc(shBlockShort(blk))+'</b></span>'):'')
       +'<button class="shd-auto'+(auto?' on':'')+'" data-shauto="1" title="Automatik '+(auto?'an':'aus')+'"><span class="shd-dot"></span>Auto</button></div>';
     // Position: Jalousie-Visual + Wert + Slider + Presets
     h+='<div class="shd-posrow"><div class="shd-blind" title="'+pos+' % geschlossen"><i style="height:'+pos+'%"></i></div>'
