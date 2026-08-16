@@ -11,6 +11,42 @@
 
   (function(){
     var _rrTimer={};
+    /**
+     * Bemisst und zentriert die Radarkarte auf die KACHEL. Frueher stand diese Rechnung
+     * mitten im Datenlauf: die Pixelgroesse wurde einmal aus clip.clientWidth genommen und
+     * blieb dann stehen. Beim Verkleinern oder Vergroessern der Kachel - Fenster, Zoom,
+     * Regionswechsel - behielt das Bild seine alte Groesse; das Widget war schlicht nicht
+     * responsiv. War die Kachel beim ersten Lauf noch nicht vermessen (clientWidth 0), griff
+     * ausserdem der Rueckfall auf die Entwurfsbreite und wurde nie korrigiert.
+     *
+     * Die Bildquelle wird hier NICHT angefasst - nur Groesse und Lage. Sonst wuerde jede
+     * Groessenaenderung die Frame-Animation neu starten lassen.
+     */
+    function rrFit(w, el){
+      el = el || rrEl(w); if(!el) return;
+      var clip=$('.rr-clip',el), img=$('.rr-img',el); if(!clip||!img) return;
+      var m=rrMeta(w); if(!m||!m.img) return;
+      var lxP=(w.locX!=null&&w.locX!=='')?+w.locX:(m.img.lx!=null?m.img.lx:50);
+      var lyP=(w.locY!=null&&w.locY!=='')?+w.locY:(m.img.ly!=null?m.img.ly:50);
+      var lx=Math.min(0.98,Math.max(0.02,lxP/100)), ly=Math.min(0.98,Math.max(0.02,lyP/100));
+      var CW=clip.clientWidth, CH=clip.clientHeight;
+      if(!(CW>0)||!(CH>0)) return;          // noch nicht vermessen - der Beobachter kommt wieder
+      var IW=m.img.w||1, IH=m.img.h||1;
+      var zoom=(w.zoom!=null&&w.zoom!==''?Math.max(1,+w.zoom):1);
+      var sCover=Math.max(CW/IW,CH/IH), sFillX=CW/(2*Math.min(lx,1-lx)*IW), sFillY=CH/(2*Math.min(ly,1-ly)*IH);
+      var scale=Math.max(sCover,sFillX,sFillY)*zoom, dW=IW*scale, dH=IH*scale;
+      img.style.width=dW+'px'; img.style.height=dH+'px';
+      img.style.left=(CW/2-lx*dW)+'px'; img.style.top=(CH/2-ly*dH)+'px';
+    }
+
+    /** Haengt EINEN Groessenbeobachter an die Kachel (mehrfaches Aufrufen ist unschaedlich). */
+    function rrObserve(w, el){
+      var clip=$('.rr-clip',el); if(!clip||clip._rrRO) return;
+      if(typeof ResizeObserver!=='function') return;
+      clip._rrRO=new ResizeObserver(function(){ rrFit(w, rrEl(w)); });
+      clip._rrRO.observe(clip);
+    }
+
     function rrStop(w){ if(_rrTimer[w.id]){clearInterval(_rrTimer[w.id]);delete _rrTimer[w.id];} }
     function rrMeta(w){
       if(typeof DOKU!=='undefined'&&DOKU) return {img:{w:1398,h:798,lx:62.59,ly:39.6,url:'',ts:'04.08.26 15:00'},frames:[],
@@ -70,15 +106,11 @@
       var lxP=(w.locX!=null&&w.locX!=='')?+w.locX:(m.img.lx!=null?m.img.lx:50);
       var lyP=(w.locY!=null&&w.locY!=='')?+w.locY:(m.img.ly!=null?m.img.ly:50);
       var lx=Math.min(0.98,Math.max(0.02,lxP/100)), ly=Math.min(0.98,Math.max(0.02,lyP/100));
-      // Clip-Masse (Design, transform-stabil) + Zentrier-/Fuell-Skalierung
-      var CW=(clip.clientWidth||(w.w||420)), CH=(clip.clientHeight||((w.h||300)-28)); if(CW<1)CW=1; if(CH<1)CH=1;
-      var IW=m.img.w||1, IH=m.img.h||1;
-      var zoom=(w.zoom!=null&&w.zoom!==''?Math.max(1,+w.zoom):1);
-      var sCover=Math.max(CW/IW,CH/IH), sFillX=CW/(2*Math.min(lx,1-lx)*IW), sFillY=CH/(2*Math.min(ly,1-ly)*IH);
-      var scale=Math.max(sCover,sFillX,sFillY)*zoom, dW=IW*scale, dH=IH*scale;
+      // Bemessung an die KACHEL binden (siehe rrFit) - und bei jeder Groessenaenderung neu.
+      rrFit(w, el);
+      rrObserve(w, el);
       if(img){
-        img.style.width=dW+'px'; img.style.height=dH+'px';
-        img.style.left=(CW/2-lx*dW)+'px'; img.style.top=(CH/2-ly*dH)+'px'; img.style.display='';
+        img.style.display='';
         // Animation: einstellbare Frame-Rate (zeigt die Frame-UHRZEIT) ODER Original-GIF.
         var animMs=(w.animMs!=null&&w.animMs!==''?+w.animMs:0);
         var frames=(m.frames&&m.frames.length>1)?m.frames:null;
