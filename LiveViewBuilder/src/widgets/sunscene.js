@@ -1054,7 +1054,14 @@
       } else {
         t2 = 'Azimut ' + sun.az.toFixed(0) + '°';
         if (rad != null) t2 += '  ·  ' + Math.round(rad) + ' W/m²';
-        if (clr != null) t2 += '  ·  ' + Math.round(clr * 100) + ' % klar';
+        // Klarheit und ihr Gegenstueck. ACHTUNG: 100 - klar ist die TRUEBUNG des Lichts, nicht
+        // der modellierte Bedeckungsgrad - der wird nach Kasten & Czeplak gerechnet und faellt
+        // hoeher aus (kt 0,89 entspricht 56 % Bedeckung, nicht 11 %). Hier steht bewusst das
+        // Gegenstueck zum daneben angezeigten Messwert, damit sich beide Zahlen zu 100 ergaenzen.
+        if (clr != null) {
+          var kp = Math.round(clr * 100);
+          t2 += '  ·  ' + kp + ' % klar / ' + (100 - kp) + ' % bewölkt';
+        }
       }
       ctx.fillText(t2, pad, pad + f * 1.15);
       var rs = LVSUN.riseSet(track);
