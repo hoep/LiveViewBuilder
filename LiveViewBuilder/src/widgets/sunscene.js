@@ -1041,10 +1041,33 @@
       } else {
         fog = ssFogEst(ssVal(w.ssTempV), ssVal(w.ssDewV), ssVal(w.ssHumV));
       }
-      // Bewoelkung: gebunden (Prozent oder Anteil) oder aus dem Niederschlag gefolgert -
-      // wenn es regnet oder schneit, ist der Himmel bedeckt, egal was gebunden ist.
-      var cl = ssVal(w.ssCloudV);
-      var cloud = (cl == null) ? null : Math.max(0, Math.min(1, cl > 1 ? cl / 100 : cl));
+      // Bewoelkung aus der besten verfuegbaren Quelle. Reihenfolge bewusst so:
+      //  1. aus der gemessenen Strahlung - der oertlichste Wert ueberhaupt, direkt vom
+      //     eigenen Dach, ohne jede Fremdquelle. Geht nur bei Sonne ueber 5 Grad.
+      //  2. eine gebundene Bewoelkungsvariable (meist ein Dienst wie OpenWeatherMap).
+      //  3. die Stundenvorhersage aus dem Wetter-JSON - vor allem fuer die Nacht, wo aus
+      //     der Strahlung nichts folgt.
+      //  4. Niederschlag als Untergrenze: es kann nicht regnen und blau sein.
+      var cloud = null, cloudSrc = '';
+      var mode = w.ssCloudSrc || 'auto';
+      var rad = ssVal(w.ssRad);
+      if (mode === 'auto' || mode === 'rad') {
+        var g = ssGeo(w), sp = ssSun(w);
+        var cr = LVSUN.cloudFromRad(rad, sp.elev);
+        if (cr != null) { cloud = cr; cloudSrc = 'Strahlung'; }
+      }
+      if (cloud == null && (mode === 'auto' || mode === 'var')) {
+        var cl = ssVal(w.ssCloudV);
+        if (cl != null) { cloud = Math.max(0, Math.min(1, cl > 1 ? cl / 100 : cl)); cloudSrc = 'Variable'; }
+      }
+      if (cloud == null && (mode === 'auto' || mode === 'fc')) {
+        var fc = ssWxForecast(w);
+        if (fc && fc.cloud != null) { cloud = fc.cloud; cloudSrc = 'Vorhersage'; }
+        if (fc) {
+          if (!(rain > 0.01) && fc.rain > 0.01) { rain = fc.rain; }
+          if (!(snow > 0.01) && fc.snow > 0.01) { snow = fc.snow; }
+        }
+      }
       var min = (snow > 0.01) ? 0.92 : (rain > 0.05) ? 0.85 : (rain > 0.01) ? 0.6
               : (fog > 0.15) ? 0.55 : 0;
       if (min > 0) { cloud = (cloud == null) ? min : Math.max(cloud, min); }
@@ -1063,7 +1086,7 @@
            : wind;                                    // m/s oder ohne Einheit
       }
       return { rain: rain || 0, snow: snow || 0, fog: fog || 0, wind: ws,
-               cloud: cloud == null ? 0 : cloud, nass: nass };
+               cloud: cloud == null ? 0 : cloud, cloudSrc: cloudSrc, nass: nass };
     }
 
     /**
@@ -1088,6 +1111,117 @@
         return Math.max(0, Math.min(0.85, (rh - 95) / 5 * 0.6 + 0.25));
       }
       return null;
+    }
+
+
+    /**
+     * Wetter-JSON einer beliebigen Quelle fuer die AKTUELLE Stunde auslesen.
+     *  Gedacht als Rueckfall fuer Werte, die es als Messwert nicht gibt - allen voran die
+     *  Bewoelkung nachts, wenn sich aus der Strahlung nichts ableiten laesst.
+     *  Erkannt werden ohne Konfiguration:
+     *    - OpenWeatherMap One Call : hourly[].clouds (%), .rain['1h'], .snow['1h'], .visibility
+     *    - PirateWeather / Dark Sky: hourly.data[].cloudCover (0..1), .precipIntensity, .visibility
+     *    - Open-Meteo              : hourly.time[] + hourly.cloudcover[] (%)
+     *  Symcon liefert manche Wettervariablen PHP-serialisiert statt als JSON - dafuer gibt
+     *  es einen schlanken Entpacker, weil JSON.parse daran scheitert.
+     */
+    var _ssWxCache = { raw: null, out: null };
+    function ssWxForecast(w) {
+      var vid = w.ssWxJson; if (!vid) return null;
+      var d = _lastVals[vid]; if (!d || d.v == null) return null;
+      var raw = String(d.v);
+      if (_ssWxCache.raw === raw) return _ssWxCache.out;     // je Abruf nur einmal auswerten
+      var o = null;
+      try { o = ssWxDecode(raw); } catch (e) { o = null; }
+      var res = o ? ssWxPick(o) : null;
+      _ssWxCache = { raw: raw, out: res };
+      return res;
+    }
+    /** JSON oder PHP-serialisiert entpacken. */
+    function ssWxDecode(raw) {
+      var t = raw.replace(/^\s+/, '');
+      if (t.charAt(0) === '{' || t.charAt(0) === '[') return JSON.parse(t);
+      if (/^a:\d+:\{/.test(t)) return ssPhpUnserialize(t);
+      return null;
+    }
+    /** Sehr schlanker Entpacker fuer PHP-serialisierte Arrays/Skalare. */
+    function ssPhpUnserialize(str) {
+      var i = 0;
+      function val() {
+        var t = str.charAt(i);
+        if (t === 'N') { i += 2; return null; }
+        if (t === 'b') { var b = str.charAt(i + 2) === '1'; i = str.indexOf(';', i) + 1; return b; }
+        if (t === 'i' || t === 'd') {
+          var e = str.indexOf(';', i); var n = parseFloat(str.slice(i + 2, e)); i = e + 1; return n;
+        }
+        if (t === 's') {
+          var c1 = str.indexOf(':', i + 2), len = parseInt(str.slice(i + 2, c1), 10);
+          var st = c1 + 2, sv = str.substr(st, len); i = st + len + 2; return sv;
+        }
+        if (t === 'a') {
+          var c2 = str.indexOf(':', i + 2), cnt = parseInt(str.slice(i + 2, c2), 10);
+          i = str.indexOf('{', i) + 1;
+          var arr = {}, allNum = true;
+          for (var k = 0; k < cnt; k++) {
+            var key = val(), v2 = val();
+            arr[key] = v2; if (typeof key !== 'number') allNum = false;
+          }
+          i++;                                              // schliessende Klammer
+          if (allNum) { var out = []; Object.keys(arr).forEach(function (k2) { out[+k2] = arr[k2]; }); return out; }
+          return arr;
+        }
+        return null;
+      }
+      return val();
+    }
+    /** Aus der entpackten Struktur die Werte der aktuellen Stunde ziehen. */
+    function ssWxPick(o) {
+      var nowSec = Date.now() / 1000, best = null, src = '';
+      function nimm(list, tf, cf, rf, sf, vf, cScale, quelle) {
+        if (!list || !list.length) return;
+        var pick = null, dt = 1e9;
+        for (var i = 0; i < list.length; i++) {
+          var t = tf(list[i]); if (t == null) continue;
+          var d = Math.abs(t - nowSec);
+          if (d < dt) { dt = d; pick = list[i]; }
+        }
+        if (!pick || dt > 5400) return;                     // mehr als 1,5 h daneben: unbrauchbar
+        var c = cf(pick);
+        best = {
+          cloud: (c == null) ? null : Math.max(0, Math.min(1, c * cScale)),
+          rain: rf ? rf(pick) : null, snow: sf ? sf(pick) : null, vis: vf ? vf(pick) : null
+        };
+        src = quelle;
+      }
+      // OpenWeatherMap One Call
+      if (o.hourly && o.hourly.length && o.hourly[0] && o.hourly[0].dt != null) {
+        nimm(o.hourly, function (x) { return x.dt; }, function (x) { return x.clouds; },
+             function (x) { return x.rain ? (x.rain['1h'] || 0) : 0; },
+             function (x) { return x.snow ? (x.snow['1h'] || 0) : 0; },
+             function (x) { return x.visibility; }, 0.01, 'OpenWeatherMap');
+      }
+      // PirateWeather / Dark Sky
+      if (!best && o.hourly && o.hourly.data && o.hourly.data.length) {
+        nimm(o.hourly.data, function (x) { return x.time; }, function (x) { return x.cloudCover; },
+             function (x) { return (x.precipType === 'snow') ? 0 : (x.precipIntensity || 0); },
+             function (x) { return (x.precipType === 'snow') ? (x.precipIntensity || 0) : 0; },
+             function (x) { return (x.visibility != null) ? x.visibility * 1000 : null; }, 1, 'PirateWeather');
+      }
+      // Open-Meteo (parallele Reihen)
+      if (!best && o.hourly && o.hourly.time && o.hourly.time.length) {
+        var list = o.hourly.time.map(function (t, i) {
+          return { t: (typeof t === 'string') ? Date.parse(t) / 1000 : t,
+                   c: (o.hourly.cloudcover || o.hourly.cloud_cover || [])[i],
+                   r: (o.hourly.rain || o.hourly.precipitation || [])[i],
+                   s: (o.hourly.snowfall || [])[i],
+                   v: (o.hourly.visibility || [])[i] };
+        });
+        nimm(list, function (x) { return x.t; }, function (x) { return x.c; },
+             function (x) { return x.r; }, function (x) { return x.s; },
+             function (x) { return x.v; }, 0.01, 'Open-Meteo');
+      }
+      if (best) best.src = src;
+      return best;
     }
 
     /** Streuwert 0..1 aus einer Zahl - fuer immer gleiche Tropfenbahnen ohne Zustand. */
@@ -1535,8 +1669,13 @@
         h += fieldPick(w, 'ssDewV', 'Taupunkt (für Nebel)');
         h += fieldPick(w, 'ssHumV', 'Luftfeuchte (für Nebel)');
         h += fieldPick(w, 'ssWindV', 'Wind');
-        h += fieldPick(w, 'ssCloudV', 'Bewölkung %');
-        h += '<div style="font-size:11px;color:var(--muted);margin:2px 2px 6px">Alles einzeln optional — gebunden wird, was die eigene Wetterstation liefert. <b>Niederschlagsart</b>: ab Wert 2 gilt der Regenwert als Schnee (Tempest-Konvention); ohne Bindung bleibt es Regen. <b>Sicht/Nebel</b>: Werte über 5 gelten als Sichtweite in Metern (unter 2000 m zieht Nebel auf), kleinere als Anteil. Fehlt ein Sichtweitensensor, wird der Nebel aus <b>Temperatur und Taupunkt</b> geschätzt — je kleiner der Abstand, desto dichter (unter 0,5 K dicht, ab 2,5 K keiner); die Luftfeuchte dämpft das Ergebnis und dient ohne Taupunkt als schwächerer Ersatz. Weil es eine Schätzung ist, macht sie die Szene nie ganz zu. <b>Regensensor</b>: meldet er Regen, während die Station noch 0,0 mm/h zeigt, erscheint Nieselregen. <b>Bewölkung</b> graut den Himmel aus, dämpft die Sonne, macht die Schatten weich und verdeckt nachts die Sterne; bei Regen oder Schnee wird sie auch ohne Bindung angenommen — ein blauer Himmel im Regen wäre der auffälligste Fehler. <b>Wind</b> neigt den Regen und treibt den Schnee; die Einheit der Variablen (km/h, kn, mph, m/s) wird berücksichtigt.</div>';
+        h += row('Bewölkung aus', '<select id="ssCloudSrc">'
+          + [['auto','automatisch (beste Quelle)'],['rad','nur Strahlung'],['var','nur Variable'],['fc','nur Vorhersage']]
+              .map(function(o){return '<option value="'+o[0]+'"'+(((w.ssCloudSrc||'auto')===o[0])?' selected':'')+'>'+o[1]+'</option>';}).join('')
+          + '</select>');
+        h += fieldPick(w, 'ssCloudV', 'Bewölkung % (Variable)');
+        h += fieldPick(w, 'ssWxJson', 'Wetter-JSON (Vorhersage)');
+        h += '<div style="font-size:11px;color:var(--muted);margin:2px 2px 6px">Alles einzeln optional — gebunden wird, was die eigene Wetterstation liefert. <b>Niederschlagsart</b>: ab Wert 2 gilt der Regenwert als Schnee (Tempest-Konvention); ohne Bindung bleibt es Regen. <b>Sicht/Nebel</b>: Werte über 5 gelten als Sichtweite in Metern (unter 2000 m zieht Nebel auf), kleinere als Anteil. Fehlt ein Sichtweitensensor, wird der Nebel aus <b>Temperatur und Taupunkt</b> geschätzt — je kleiner der Abstand, desto dichter (unter 0,5 K dicht, ab 2,5 K keiner); die Luftfeuchte dämpft das Ergebnis und dient ohne Taupunkt als schwächerer Ersatz. Weil es eine Schätzung ist, macht sie die Szene nie ganz zu. <b>Regensensor</b>: meldet er Regen, während die Station noch 0,0 mm/h zeigt, erscheint Nieselregen. <b>Bewölkung</b> kommt automatisch aus der besten Quelle: zuerst aus der <b>gemessenen Strahlung</b> (Klarheitsindex gegen den Klarhimmelwert, Umrechnung nach Kasten &amp; Czeplak) — das ist der örtlichste Wert überhaupt, geht aber nur bei Sonne über 5°; sonst aus der gebundenen Variablen; nachts aus der <b>Stundenvorhersage</b> im Wetter-JSON (OpenWeatherMap, PirateWeather/Dark Sky oder Open-Meteo, auch PHP-serialisiert). Sie graut den Himmel aus, dämpft die Sonne, macht die Schatten weich und verdeckt nachts die Sterne; bei Regen oder Schnee wird sie auch ohne Bindung angenommen — ein blauer Himmel im Regen wäre der auffälligste Fehler. <b>Wind</b> neigt den Regen und treibt den Schnee; die Einheit der Variablen (km/h, kn, mph, m/s) wird berücksichtigt.</div>';
         h += '<div class="pgh">Energie</div>';
         h += ssImportRow(w);
         h += listEditor(w, 'elements', 'Typ · Name · Icon · Farbe · Leistung-ID',
@@ -1601,6 +1740,7 @@
         [['ssHN', 'homeName'], ['ssHI', 'homeIcon']].forEach(function (o) {
           var e = $('#' + o[0]); if (e) e.onchange = function () { w[o[1]] = this.value || undefined; up(); };
         });
+        var _cs = $('#ssCloudSrc'); if (_cs) _cs.onchange = function () { w.ssCloudSrc = (this.value === 'auto') ? undefined : this.value; up(); };
         [['ssGeoR', 'ssGeoR'], ['ssMaxB', 'ssMaxB'], ['ssEnRad', 'ssEnRad'], ['ssEnA0', 'ssEnA0'], ['ssEnRef', 'ssEnRef'], ['ssLat', 'lat'], ['ssLon', 'lon'], ['ssHL', 'ssHouseL'], ['ssHB', 'ssHouseB'], ['ssHH', 'ssHouseH'],
          ['ssHR', 'ssRoofH'], ['ssN', 'ssNorth'], ['ssP', 'ssPitch'], ['ssB', 'ssBearing'], ['ssR', 'ssRadius']].forEach(function (o) {
           var e = $('#' + o[0]); if (e) e.onchange = function () {
