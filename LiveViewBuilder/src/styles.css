@@ -1946,27 +1946,42 @@
   .ax-cnm{font-size:12px;color:var(--muted);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .ax-cadd{font-size:11.5px;color:var(--muted);border-top:1px dashed var(--line-soft);padding-top:8px;margin-top:2px;cursor:pointer}
   /* timeline */
-  .ax-tlwrap{padding:2px}
-  .ax-tl-scroll{overflow-x:auto}
-  .ax-tl{position:relative;min-width:600px;height:230px;padding:26px 6px 30px}
-  .ax-tl-band{position:absolute;top:24px;bottom:30px;border-radius:8px}
+  /* Zeitleiste: die Hoehe kommt jetzt aus der Kachel und wird durchgereicht.
+     Alle Innenteile sind absolut positioniert - deshalb koennen top/bottom/height in
+     PROZENT der Leistenhoehe stehen und wandern automatisch mit. Frueher waren sie auf
+     die festen 230px eingemessen (Band 24/30, Stundenskala 8/16, Sonne 4, Marken 40);
+     eine geaenderte Hoehe verschob nur den Rahmen, nicht den Inhalt. Die Prozentwerte
+     unten entsprechen exakt den alten Pixeln bei 230px, das Bild bleibt also gleich.
+     Senkrechtes Polster entfaellt: es wirkte auf absolut positionierte Kinder ohnehin
+     nicht, machte aber die Umrechnung undurchsichtig. */
+  .ax-tlwrap{padding:2px;min-height:0}
+  .ax-tl-scroll{overflow-x:auto;overflow-y:hidden;flex:1;min-height:0;display:flex;align-items:stretch}
+  .ax-tl{position:relative;min-width:600px;flex:1 1 auto;height:100%;
+         min-height:clamp(94px,40cqh,190px);padding:0 6px}
+  .ax-tl-band{position:absolute;top:10.4%;bottom:13%;border-radius:8px}
   .ax-tl-band.night{left:0;right:0;background:color-mix(in oklab,var(--moon,#9db8e6) 10%,var(--tile));border:1px solid var(--line-soft)}
   .ax-tl-band.day{background:color-mix(in oklab,var(--sun,#f5c026) 12%,transparent);border-left:1px dashed color-mix(in oklab,var(--sun,#f5c026) 45%,var(--line));border-right:1px dashed color-mix(in oklab,var(--sun,#f5c026) 45%,var(--line))}
-  .ax-tl-tick{position:absolute;top:24px;bottom:30px;width:1px;background:var(--line-soft)}
-  .ax-tl-hours{position:absolute;left:0;right:0;bottom:8px;height:16px}
-  .ax-tl-h{position:absolute;transform:translateX(-50%);font-family:var(--fm,monospace);font-size:10px;color:var(--faint)}
-  .ax-sun{position:absolute;top:4px;transform:translateX(-50%);font-size:12px;color:var(--sun,#f5c026)}
-  .ax-mk{position:absolute;top:40px;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer}
-  .ax-mk-d{width:26px;height:26px;border-radius:8px;border:1px solid var(--line);background:var(--surface);display:flex;align-items:center;justify-content:center;color:var(--accent)}
+  .ax-tl-tick{position:absolute;top:10.4%;bottom:13%;width:1px;background:var(--line-soft)}
+  .ax-tl-hours{position:absolute;left:0;right:0;bottom:3.5%;height:7%;min-height:12px}
+  .ax-tl-h{position:absolute;transform:translateX(-50%);font-family:var(--fm,monospace);font-size:clamp(8px,2.6cqmin,13px);color:var(--faint)}
+  .ax-sun{position:absolute;top:1.7%;transform:translateX(-50%);font-size:clamp(9px,3.2cqmin,16px);color:var(--sun,#f5c026)}
+  .ax-mk{position:absolute;top:17.4%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:clamp(2px,.8cqmin,5px);cursor:pointer;max-width:26%}
+  .ax-mk-d{width:clamp(19px,6.4cqmin,34px);height:clamp(19px,6.4cqmin,34px);border-radius:clamp(6px,2cqmin,10px);flex:none;border:1px solid var(--line);background:var(--surface);display:flex;align-items:center;justify-content:center;color:var(--accent)}
   .ax-mk.sun .ax-mk-d{color:var(--sun,#f5c026);border-color:color-mix(in oklab,var(--sun,#f5c026) 50%,var(--line))}
-  .ax-mk-d svg{width:15px;height:15px} .ax-mk .ax-ic{width:15px;height:15px}
-  .ax-mk-l{font-size:10px;color:var(--text);white-space:nowrap;background:var(--surface);border:1px solid var(--line-soft);border-radius:6px;padding:2px 6px}
-  .ax-mk-t{font-family:var(--fm,monospace);font-size:9px;color:var(--faint)}
-  .ax-span{position:absolute;height:19px;border-radius:6px;display:flex;align-items:center;padding:0 8px;font-size:10px;color:var(--text);cursor:pointer}
+  .ax-mk-d svg{width:58%;height:58%} .ax-mk .ax-ic{width:58%;height:58%}
+  .ax-mk-l{font-size:clamp(8px,2.7cqmin,13px);color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;background:var(--surface);border:1px solid var(--line-soft);border-radius:6px;padding:2px clamp(3px,1.6cqmin,8px)}
+  .ax-mk-t{font-family:var(--fm,monospace);font-size:clamp(7px,2.3cqmin,12px);color:var(--faint)}
+  .ax-span{position:absolute;height:8.3%;min-height:13px;border-radius:6px;display:flex;align-items:center;padding:0 clamp(4px,2cqmin,10px);font-size:clamp(8px,2.6cqmin,13px);color:var(--text);cursor:pointer;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
   .ax-span.motion{background:color-mix(in oklab,var(--info,#5ab6ff) 16%,var(--tile));border:1px solid color-mix(in oklab,var(--info,#5ab6ff) 45%,var(--line))}
   .ax-span.pres{background:color-mix(in oklab,var(--accent) 14%,var(--tile));border:1px solid color-mix(in oklab,var(--accent) 45%,var(--line))}
   .ax-mk.off,.ax-span.off{opacity:.42;filter:grayscale(.4)}
-  .ax-circ{margin-top:10px}
+  .ax-circ{margin-top:clamp(4px,2.5cqh,10px);flex:none}
+  /* Enge Kachel: lieber das Beiwerk weglassen als alles beschneiden. Unter rund 190 px
+     Hoehe faellt der Circadian-Streifen weg, unter 150 px zusaetzlich die Uhrzeit unter
+     den Marken - Name und Position tragen die Aussage, die Minute ist dann Zierde. */
+  @container (max-height:190px){ .ax-tlwrap .ax-circ{display:none} }
+  @container (max-height:150px){ .ax-tlwrap .ax-mk-t{display:none} }
+  @container (max-height:120px){ .ax-tlwrap .ax-mk-l{display:none} }
   .ax-circ-l{font-size:10.5px;color:var(--faint);margin-bottom:5px}
 
   /* Sonnensimulation */
