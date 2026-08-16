@@ -157,7 +157,12 @@
     if(_compKids&&_compKids.length)_compKids.slice().forEach(function(w){try{if(w.type==='container')expandContainer(w);else if(w.type==='alarmpanel'&&typeof expandAlarmPanel==='function')expandAlarmPanel(w);}catch(_e){}});
     // mount-Hooks auch für Klone (Laufband/Komponenten) + Werte aus Cache spiegeln -> Status-Bild/Wetter/cval usw. erscheinen sofort, nicht erst bei Wertänderung
     function _mountKid(w){try{var _mw=WIDGETS[w.type];if(_mw&&_mw.mount)_mw.mount(w);}catch(e){}}
-    if(_compKids&&_compKids.length)_compKids.forEach(_mountKid);
+    // Komponenten-Kinder brauchen DIESELBE Behandlung wie Container-Kinder: erst
+    // activateWidget (setzt Diagramme, Kameras, HTML, Wochenplan, Kalender ... ueberhaupt erst
+    // in Gang), dann den mount-Hook. Vorher lief hier NUR _mountKid - reine DOM-Widgets wie
+    // Wertkarten sahen deshalb richtig aus, ein Diagramm in einer Komponente blieb dagegen ein
+    // leeres <div data-role="chart"> und wurde schlicht nicht angezeigt.
+    if(_compKids&&_compKids.length)_compKids.forEach(function(w){try{activateWidget(w,canvas);}catch(e){}_mountKid(w);});
     if(_contKids&&_contKids.length)_contKids.forEach(function(w){try{activateWidget(w,canvas);}catch(e){}_mountKid(w);}); // Container-Kinder: Diagramme/Kameras + mount
     if(_tickKids&&_tickKids.length)_tickKids.forEach(_mountKid);
     var eh=$('#emptyhint');if(!eh){eh=document.createElement('div');eh.id='emptyhint';eh.textContent='Element aus der Palette hierher ziehen — oder eine Variable im Baum anklicken';canvas.appendChild(eh);}eh.style.display=state.widgets.length?'none':'flex';
