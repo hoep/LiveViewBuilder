@@ -189,7 +189,16 @@
     function ssEl(w) { return $('.w[data-id="' + w.id + '"]', canvas) || $('.w[data-id="' + w.id + '"]', $('#ovcanvas')); }
     function ssSt(w) { return _ssState[w.id] || (_ssState[w.id] = { bearing: null, pitch: null, drag: null, raf: 0, spin: 0 }); }
     function ssNum(v, d) { var n = parseFloat(v); return isNaN(n) ? d : n; }
-    function ssVal(vid) { if (!vid) return null; var e = _lastVals[vid]; if (!e) return null; var n = parseFloat(e.v); return isNaN(n) ? null : n; }
+    // Wert einer gebundenen Variablen. WAHRHEITSWERTE zaehlen mit: ein Regensensor, ein
+    // Fensterkontakt, ein Schaltausgang liefern true/false, und parseFloat(true) ist NaN -
+    // solche Variablen kamen hier nie an. Sichtbar wurde es am optischen Regensensor: er
+    // meldete "es regnet", das Widget blieb trocken, weil der Niesel-Rueckfall auf null lief.
+    function ssVal(vid) {
+      if (!vid) return null;
+      var e = _lastVals[vid]; if (!e) return null;
+      if (typeof e.v === 'boolean') return e.v ? 1 : 0;
+      var n = parseFloat(e.v); return isNaN(n) ? null : n;
+    }
     function ssGeo(w) { return { lat: ssNum(w.lat, 48.0657), lon: ssNum(w.lon, 14.1241) }; }
     // Darstellungszeit: normalerweise jetzt. w.ssNow (ms) erlaubt einen abweichenden Zeitpunkt -
     // gebraucht fuer Pruef-Renderings und spaeter fuer den Zeitleisten-Regler.
