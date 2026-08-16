@@ -392,7 +392,7 @@
       // als Text neben dem W/m2-Wert war es irrefuehrend: 310 von 423 W/m2 sind 73 % klar,
       // angezeigt wurden aber 26 %, weil daraus 74 % Bedeckung zurueckgerechnet werden
       // (Kasten & Czeplak: kt = 1 - 0,75*N^3,4 - eine dichte Decke laesst immer noch viel durch).
-      ssLabels(ctx, W, Hs, K, sun, ssVal(w.ssRad), clr, track, w, mn, pal);
+      ssLabels(ctx, W, Hs, K, sun, ssVal(w.ssRad), clr, track, w, mn, pal, wx);
       ssStrip(ctx, W, H, Hs, K, w, track, pal);
       return cv;
     }
@@ -1044,7 +1044,7 @@
       }
     }
     // Beschriftung: alles in Bezug auf K -> skaliert mit der Kachel
-    function ssLabels(ctx, W, H, K, sun, rad, clr, track, w, mn, pal) {
+    function ssLabels(ctx, W, H, K, sun, rad, clr, track, w, mn, pal, wx) {
       if (!_covOn2(w, 'ssInfo', true)) return;
       var f = Math.max(9, K / 22), pad = K / 26;
       ctx.save();
@@ -1071,6 +1071,11 @@
           var kp = Math.round(clr * 100);
           t2 += '  ·  ' + kp + ' % klar / ' + (100 - kp) + ' % bewölkt';
         }
+        // Niederschlag im Klartext. Unter 0,5 mm/h steht bewusst KEINE Zahl: dort greift der
+        // Rueckfall ueber den Regensensor mit einem gesetzten Ersatzwert (0,25) - eine Zahl
+        // waere erfunden. Darueber ist es ein echter Messwert und wird auch als solcher genannt.
+        var np = ssPrecipText(wx);
+        if (np) t2 += '  ·  ' + np;
       }
       ctx.fillText(t2, pad, pad + f * 1.15);
       var rs = LVSUN.riseSet(track);
@@ -1081,6 +1086,22 @@
         ctx.textAlign = 'right'; ctx.fillText(t3, W - pad, pad);
       }
       ctx.restore();
+    }
+
+    /** Niederschlag als Klartext fuer die Kopfzeile: Art, Staerke und - wenn gemessen - Menge. */
+    function ssPrecipText(wx) {
+      if (!wx) return '';
+      var sn = +(wx.snow || 0), rn = +(wx.rain || 0);
+      var num = function (v) { return v.toFixed(1).replace('.', ',') + ' mm/h'; };
+      if (sn > 0.01) {
+        if (sn < 0.5) return 'leichter Schneefall';
+        return (sn < 2.5 ? 'Schneefall ' : sn < 10 ? 'kräftiger Schneefall ' : 'starker Schneefall ') + num(sn);
+      }
+      if (rn > 0.01) {
+        if (rn < 0.5) return 'es nieselt';
+        return (rn < 2.5 ? 'leichter Regen ' : rn < 10 ? 'Regen ' : 'starker Regen ') + num(rn);
+      }
+      return '';
     }
 
     // Hilfsfunktionen (eigen, damit das Widget unabhaengig bleibt)
