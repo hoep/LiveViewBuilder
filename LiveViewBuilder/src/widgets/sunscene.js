@@ -1118,10 +1118,8 @@
      * Wetter-JSON einer beliebigen Quelle fuer die AKTUELLE Stunde auslesen.
      *  Gedacht als Rueckfall fuer Werte, die es als Messwert nicht gibt - allen voran die
      *  Bewoelkung nachts, wenn sich aus der Strahlung nichts ableiten laesst.
-     *  Erkannt werden ohne Konfiguration:
-     *    - OpenWeatherMap One Call : hourly[].clouds (%), .rain['1h'], .snow['1h'], .visibility
-     *    - PirateWeather / Dark Sky: hourly.data[].cloudCover (0..1), .precipIntensity, .visibility
-     *    - Open-Meteo              : hourly.time[] + hourly.cloudcover[] (%)
+     *  Quelle ist OpenWeatherMap One Call (hourly[].clouds in Prozent, .rain['1h'],
+     *  .snow['1h'], .visibility in Metern).
      *  Symcon liefert manche Wettervariablen PHP-serialisiert statt als JSON - dafuer gibt
      *  es einen schlanken Entpacker, weil JSON.parse daran scheitert.
      */
@@ -1174,54 +1172,33 @@
       }
       return val();
     }
-    /** Aus der entpackten Struktur die Werte der aktuellen Stunde ziehen. */
+    /**
+     * Aus dem entpackten OpenWeatherMap-One-Call die Stunde ziehen, die dem Jetzt am
+     * naechsten liegt.
+     *
+     * Bewusst NUR OpenWeatherMap. Tempest kaeme als zweite Quelle nicht in Frage: die
+     * Station liefert hier gar keine Vorhersage (nur UDP-Rohbeobachtungen) und misst
+     * grundsaetzlich keinen Bewoelkungsgrad - ihr Beitrag ist die Solarstrahlung, und die
+     * ist ohnehin schon die erste Quelle. Ein Wildwuchs an Formaten waere also Aufwand
+     * ohne Gegenwert; ein Anbieter, ein Weg, nachvollziehbares Ergebnis.
+     */
     function ssWxPick(o) {
-      var nowSec = Date.now() / 1000, best = null, src = '';
-      function nimm(list, tf, cf, rf, sf, vf, cScale, quelle) {
-        if (!list || !list.length) return;
-        var pick = null, dt = 1e9;
-        for (var i = 0; i < list.length; i++) {
-          var t = tf(list[i]); if (t == null) continue;
-          var d = Math.abs(t - nowSec);
-          if (d < dt) { dt = d; pick = list[i]; }
-        }
-        if (!pick || dt > 5400) return;                     // mehr als 1,5 h daneben: unbrauchbar
-        var c = cf(pick);
-        best = {
-          cloud: (c == null) ? null : Math.max(0, Math.min(1, c * cScale)),
-          rain: rf ? rf(pick) : null, snow: sf ? sf(pick) : null, vis: vf ? vf(pick) : null
-        };
-        src = quelle;
+      var list = o && o.hourly;
+      if (!list || !list.length || !list[0] || list[0].dt == null) return null;
+      var nowSec = Date.now() / 1000, pick = null, dt = 1e9;
+      for (var i = 0; i < list.length; i++) {
+        var d = Math.abs(list[i].dt - nowSec);
+        if (d < dt) { dt = d; pick = list[i]; }
       }
-      // OpenWeatherMap One Call
-      if (o.hourly && o.hourly.length && o.hourly[0] && o.hourly[0].dt != null) {
-        nimm(o.hourly, function (x) { return x.dt; }, function (x) { return x.clouds; },
-             function (x) { return x.rain ? (x.rain['1h'] || 0) : 0; },
-             function (x) { return x.snow ? (x.snow['1h'] || 0) : 0; },
-             function (x) { return x.visibility; }, 0.01, 'OpenWeatherMap');
-      }
-      // PirateWeather / Dark Sky
-      if (!best && o.hourly && o.hourly.data && o.hourly.data.length) {
-        nimm(o.hourly.data, function (x) { return x.time; }, function (x) { return x.cloudCover; },
-             function (x) { return (x.precipType === 'snow') ? 0 : (x.precipIntensity || 0); },
-             function (x) { return (x.precipType === 'snow') ? (x.precipIntensity || 0) : 0; },
-             function (x) { return (x.visibility != null) ? x.visibility * 1000 : null; }, 1, 'PirateWeather');
-      }
-      // Open-Meteo (parallele Reihen)
-      if (!best && o.hourly && o.hourly.time && o.hourly.time.length) {
-        var list = o.hourly.time.map(function (t, i) {
-          return { t: (typeof t === 'string') ? Date.parse(t) / 1000 : t,
-                   c: (o.hourly.cloudcover || o.hourly.cloud_cover || [])[i],
-                   r: (o.hourly.rain || o.hourly.precipitation || [])[i],
-                   s: (o.hourly.snowfall || [])[i],
-                   v: (o.hourly.visibility || [])[i] };
-        });
-        nimm(list, function (x) { return x.t; }, function (x) { return x.c; },
-             function (x) { return x.r; }, function (x) { return x.s; },
-             function (x) { return x.v; }, 0.01, 'Open-Meteo');
-      }
-      if (best) best.src = src;
-      return best;
+      // Mehr als 1,5 Stunden daneben heisst: der Datensatz ist veraltet oder lueckenhaft.
+      if (!pick || dt > 5400) return null;
+      return {
+        cloud: (pick.clouds == null) ? null : Math.max(0, Math.min(1, pick.clouds / 100)),
+        rain: pick.rain ? (pick.rain['1h'] || 0) : 0,
+        snow: pick.snow ? (pick.snow['1h'] || 0) : 0,
+        vis: (pick.visibility != null) ? pick.visibility : null,
+        src: 'OpenWeatherMap'
+      };
     }
 
     /** Streuwert 0..1 aus einer Zahl - fuer immer gleiche Tropfenbahnen ohne Zustand. */
@@ -1674,8 +1651,8 @@
               .map(function(o){return '<option value="'+o[0]+'"'+(((w.ssCloudSrc||'auto')===o[0])?' selected':'')+'>'+o[1]+'</option>';}).join('')
           + '</select>');
         h += fieldPick(w, 'ssCloudV', 'Bewölkung % (Variable)');
-        h += fieldPick(w, 'ssWxJson', 'Wetter-JSON (Vorhersage)');
-        h += '<div style="font-size:11px;color:var(--muted);margin:2px 2px 6px">Alles einzeln optional — gebunden wird, was die eigene Wetterstation liefert. <b>Niederschlagsart</b>: ab Wert 2 gilt der Regenwert als Schnee (Tempest-Konvention); ohne Bindung bleibt es Regen. <b>Sicht/Nebel</b>: Werte über 5 gelten als Sichtweite in Metern (unter 2000 m zieht Nebel auf), kleinere als Anteil. Fehlt ein Sichtweitensensor, wird der Nebel aus <b>Temperatur und Taupunkt</b> geschätzt — je kleiner der Abstand, desto dichter (unter 0,5 K dicht, ab 2,5 K keiner); die Luftfeuchte dämpft das Ergebnis und dient ohne Taupunkt als schwächerer Ersatz. Weil es eine Schätzung ist, macht sie die Szene nie ganz zu. <b>Regensensor</b>: meldet er Regen, während die Station noch 0,0 mm/h zeigt, erscheint Nieselregen. <b>Bewölkung</b> kommt automatisch aus der besten Quelle: zuerst aus der <b>gemessenen Strahlung</b> (Klarheitsindex gegen den Klarhimmelwert, Umrechnung nach Kasten &amp; Czeplak) — das ist der örtlichste Wert überhaupt, geht aber nur bei Sonne über 5°; sonst aus der gebundenen Variablen; nachts aus der <b>Stundenvorhersage</b> im Wetter-JSON (OpenWeatherMap, PirateWeather/Dark Sky oder Open-Meteo, auch PHP-serialisiert). Sie graut den Himmel aus, dämpft die Sonne, macht die Schatten weich und verdeckt nachts die Sterne; bei Regen oder Schnee wird sie auch ohne Bindung angenommen — ein blauer Himmel im Regen wäre der auffälligste Fehler. <b>Wind</b> neigt den Regen und treibt den Schnee; die Einheit der Variablen (km/h, kn, mph, m/s) wird berücksichtigt.</div>';
+        h += fieldPick(w, 'ssWxJson', 'OWM-Vorhersage (JSON)');
+        h += '<div style="font-size:11px;color:var(--muted);margin:2px 2px 6px">Alles einzeln optional — gebunden wird, was die eigene Wetterstation liefert. <b>Niederschlagsart</b>: ab Wert 2 gilt der Regenwert als Schnee (Tempest-Konvention); ohne Bindung bleibt es Regen. <b>Sicht/Nebel</b>: Werte über 5 gelten als Sichtweite in Metern (unter 2000 m zieht Nebel auf), kleinere als Anteil. Fehlt ein Sichtweitensensor, wird der Nebel aus <b>Temperatur und Taupunkt</b> geschätzt — je kleiner der Abstand, desto dichter (unter 0,5 K dicht, ab 2,5 K keiner); die Luftfeuchte dämpft das Ergebnis und dient ohne Taupunkt als schwächerer Ersatz. Weil es eine Schätzung ist, macht sie die Szene nie ganz zu. <b>Regensensor</b>: meldet er Regen, während die Station noch 0,0 mm/h zeigt, erscheint Nieselregen. <b>Bewölkung</b> kommt automatisch aus der besten Quelle: zuerst aus der <b>gemessenen Strahlung</b> (Klarheitsindex gegen den Klarhimmelwert, Umrechnung nach Kasten &amp; Czeplak) — das ist der örtlichste Wert überhaupt, geht aber nur bei Sonne über 5°; sonst aus der gebundenen Variablen; nachts aus der <b>Stundenvorhersage</b> im Wetter-JSON (OpenWeatherMap One Call, auch PHP-serialisiert). Sie graut den Himmel aus, dämpft die Sonne, macht die Schatten weich und verdeckt nachts die Sterne; bei Regen oder Schnee wird sie auch ohne Bindung angenommen — ein blauer Himmel im Regen wäre der auffälligste Fehler. <b>Wind</b> neigt den Regen und treibt den Schnee; die Einheit der Variablen (km/h, kn, mph, m/s) wird berücksichtigt.</div>';
         h += '<div class="pgh">Energie</div>';
         h += ssImportRow(w);
         h += listEditor(w, 'elements', 'Typ · Name · Icon · Farbe · Leistung-ID',
