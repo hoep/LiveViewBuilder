@@ -312,6 +312,17 @@
   .ssc canvas{display:block;width:100%;height:100%}
   .stage.edit .ssc{cursor:inherit}
   .hc2win{position:relative;flex:0 0 40%;min-width:0;overflow:hidden;border-right:1px solid var(--line);background:linear-gradient(180deg,#0d131d,#0b1017)}
+  /* Sperr-Umrandung der Fensterflaeche: rot = ein Kontakt verhindert die Fahrt,
+     gelb = von Hand uebersteuert. inset statt border, damit die Kachelmasse gleich bleiben. */
+  /* Sperr-Umrandung als EIGENE EBENE ueber allem. Als Innenschatten der Flaeche selbst lag sie
+     unter dem Rollladen (.hc2shut, z-index 2) und verschwand, sobald das Rollo geschlossen war -
+     also genau dann, wenn die Sperre am wichtigsten ist. z-index 5 liegt ueber Sonne (1),
+     Rollladen (2), Gurt (3) und dem unsichtbaren Zieh-Regler (4); pointer-events:none, damit
+     Ziehen und Klicken unveraendert funktionieren. */
+  .hc2win.blk-crit::after,.hc2win.blk-warn::after{content:"";position:absolute;inset:0;
+    pointer-events:none;z-index:5;border-radius:inherit}
+  .hc2win.blk-crit::after{box-shadow:inset 0 0 0 2px var(--crit), inset 0 0 12px color-mix(in oklab,var(--crit) 30%,transparent)}
+  .hc2win.blk-warn::after{box-shadow:inset 0 0 0 2px var(--warn), inset 0 0 12px color-mix(in oklab,var(--warn) 26%,transparent)}
   .hc2win.open{background:radial-gradient(130% 85% at 50% 125%, color-mix(in oklab,var(--accent) 26%, transparent) 0%, transparent 62%),linear-gradient(180deg,#10202a 0%,#122a2c 55%,#0e1a1e 100%)}
   .hc2sky{position:absolute;inset:0}
   .hc2win.open .hc2sky{background:linear-gradient(180deg,#2b6f6a 0%,#2f8f7d 35%,#6fae7e 70%,#244035 100%);opacity:.55}

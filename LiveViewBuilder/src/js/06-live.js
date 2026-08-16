@@ -1,6 +1,6 @@
   // C1: nutzt das Widget diese Variablen-ID als Daten-Bindung? (spiegelt pollVals, ohne visVar)
   function widgetDataId(w,id){
-    if(w.varId===id||w.varId2===id||w.varId3===id||w.cvActId===id||w.cvAzB===id||w.cvAzE===id||w.cvElv===id||w.cmpVid===id||w.ackVid===id||w.condVar===id||w.vTemp===id||w.vCond===id||w.vHum===id||w.vWind===id||w.vRain===id||w.ssAz===id||w.ssEl===id||w.ssRad===id||w.ssRainV===id||w.ssSnowV===id||w.ssPtypeV===id||w.ssFogV===id||w.ssWindV===id||w.ssRainSensV===id||w.ssTempV===id||w.ssDewV===id||w.ssHumV===id||w.ssWetV===id||w.ssCloudV===id||w.ssWxJson===id)return true;
+    if(w.varId===id||w.varId2===id||w.varId3===id||w.cvActId===id||w.cvAzB===id||w.cvAzE===id||w.cvElv===id||w.cvBlockVid===id||w.cmpVid===id||w.ackVid===id||w.condVar===id||w.vTemp===id||w.vCond===id||w.vHum===id||w.vWind===id||w.vRain===id||w.ssAz===id||w.ssEl===id||w.ssRad===id||w.ssRainV===id||w.ssSnowV===id||w.ssPtypeV===id||w.ssFogV===id||w.ssWindV===id||w.ssRainSensV===id||w.ssTempV===id||w.ssDewV===id||w.ssHumV===id||w.ssWetV===id||w.ssCloudV===id||w.ssWxJson===id)return true;
     var A=['items','links','rows','src','snk','fc','elements','stages','steps','series'],i,j,o;
     for(i=0;i<A.length;i++){var a=w[A[i]];if(a)for(j=0;j<a.length;j++){o=a[j];if(o&&(o.vid===id||o.subvid===id||o.hi===id||o.lo===id||o.pq===id||o.cond===id||o.speedVid===id||o.socVid===id))return true;}}
     // Alarm-Karte: nur im Text (title/sub/notify) referenzierte Formel-IDs treiben live() ebenfalls
@@ -112,7 +112,7 @@
   var _vidx=null;
   function _vidxAdd(id,w,root){if(!id)return;(_vidx[id]=_vidx[id]||[]).push({w:w,root:root});}
   function _collectIds(w,add){ // alle Variablen-IDs eines Widgets an add() geben
-    add(w.varId);add(w.varId2);add(w.varId3);add(w.cvActId);add(w.cvAzB);add(w.cvAzE);add(w.cvElv);add(w.cmpVid);add(w.ackVid);add(w.visVar);add(w.condVar);add(w.vTemp);add(w.vCond);add(w.vHum);add(w.vWind);add(w.vRain);add(w.ssAz);add(w.ssEl);add(w.ssRad);add(w.ssRainV);add(w.ssSnowV);add(w.ssPtypeV);add(w.ssFogV);add(w.ssWindV);add(w.ssRainSensV);add(w.ssTempV);add(w.ssDewV);add(w.ssHumV);add(w.ssWetV);add(w.ssCloudV);add(w.ssWxJson);
+    add(w.varId);add(w.varId2);add(w.varId3);add(w.cvActId);add(w.cvAzB);add(w.cvAzE);add(w.cvElv);add(w.cvBlockVid);add(w.cmpVid);add(w.ackVid);add(w.visVar);add(w.condVar);add(w.vTemp);add(w.vCond);add(w.vHum);add(w.vWind);add(w.vRain);add(w.ssAz);add(w.ssEl);add(w.ssRad);add(w.ssRainV);add(w.ssSnowV);add(w.ssPtypeV);add(w.ssFogV);add(w.ssWindV);add(w.ssRainSensV);add(w.ssTempV);add(w.ssDewV);add(w.ssHumV);add(w.ssWetV);add(w.ssCloudV);add(w.ssWxJson);
     if(w.fc)w.fc.forEach(function(r){add(r.hi);add(r.lo);add(r.pq);add(r.cond);});
     ['links','src','snk','items','rows','steps','series'].forEach(function(k){if(w[k])w[k].forEach(function(o){if(o)add(o.vid);});});
     if(w.stages)w.stages.forEach(function(o){if(o){add(o.vid);add(o.subvid);add(o.sv);}}); // Pipeline-Stationen (Wert + Zusatzwert + Status-Var fuer bedingten Fluss)
