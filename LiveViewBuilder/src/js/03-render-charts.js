@@ -602,8 +602,13 @@
     var ser={type:'line',showSymbol:false,smooth:true,lineStyle:{color:acc,width:1.8},
       data:data,markPoint:{silent:true,symbol:'circle',symbolSize:5,itemStyle:{color:acc},label:{show:false},data:data.length?[{coord:data[data.length-1]}]:[]}};
     if(w.fill!==false)ser.areaStyle={color:accA(.16,acc)};
+    // KEIN Tooltip auf der Sparkline. Sie ist bewusst winzig (auf einer Wertkarte oft nur
+    // 142x30 px) und traegt keine Achsen - der Tooltip von ECharts rechnet seine Schrift aber
+    // in absoluten Pixeln und wird zusaetzlich von der Seitenskalierung mitgezogen. Ueber einer
+    // 30 px hohen Linie stand damit ein Kasten, der die halbe Kachel verdeckte. Wer Werte ablesen
+    // will, nimmt ein richtiges Diagramm; die Sparkline zeigt den VERLAUF.
     ec.setOption({backgroundColor:'transparent',animation:!!bcfg().chartAnim,grid:{left:2,right:2,top:6,bottom:4},
-      tooltip:{trigger:'axis',confine:true,valueFormatter:function(v){return _chNum(w,v);}},
+      tooltip:{show:false},
       xAxis:{type:'time',show:false},yAxis:{type:'value',scale:true,show:false},
       series:[ser]},true);
   }
