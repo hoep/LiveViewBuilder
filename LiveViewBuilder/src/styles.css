@@ -1542,20 +1542,33 @@
   .wep-day:hover{color:var(--text)}
   .wep-day.on{background:var(--accent-2);border-color:var(--accent-2);color:#ffffff;font-weight:700}
   .wep-day.empty{opacity:.45}
-  .wep-week{display:flex;flex-direction:column;gap:clamp(2px,1.2cqmin,5px);flex:0 0 auto}
-  .wep-wrow{display:flex;align-items:center;gap:clamp(4px,2.4cqmin,10px);cursor:pointer;padding:clamp(1px,.6cqmin,3px) clamp(2px,1.4cqmin,5px);border-radius:6px;border:1px solid transparent}
+  /* Die Balkenhoehe rechnet bewusst in cqh (Kachelhoehe) - cqmin nimmt die kleinere Kante
+     und waere bei einer breiten, flachen Kachel viel zu hoch. Die Uebersicht selbst darf
+     NICHT schrumpfen (flex 0 0): sonst rutschen ihre Zeilen uebereinander, statt Platz
+     abzugeben. Auf flachen Kacheln entfallen stattdessen die sechs nicht bearbeiteten
+     Tageszeilen - die Tagesknoepfe darueber waehlen ohnehin, und der Editor braucht den
+     Platz dringender als eine Vorschau. */
+  .wep-week{display:flex;flex-direction:column;gap:clamp(2px,.9cqh,5px);flex:0 0 auto}
+  @container (max-height:380px){ .wep-wrow:not(.wep-wrow-edit){display:none} }
+  .wep-wrow{display:flex;align-items:center;gap:clamp(4px,2.4cqmin,10px);cursor:pointer;padding:clamp(0px,.4cqh,3px) clamp(2px,1.4cqmin,5px);border-radius:6px;border:1px solid transparent}
   .wep-wrow:hover{background:var(--surface-2)}
   .wep-wrow.on{border-color:var(--accent);background:var(--surface-2)}
   .wep-wlab{flex:0 0 clamp(18px,7cqmin,34px);font-size:.85em;color:var(--muted)}
-  .wep-wbar{position:relative;flex:1 1 auto;height:clamp(11px,4.4cqmin,22px);border-radius:4px;overflow:hidden;background:var(--tile)}
+  .wep-wbar{position:relative;flex:1 1 auto;height:clamp(9px,3.1cqh,20px);border-radius:4px;overflow:hidden;background:var(--tile)}
   .wep-wbar i{position:absolute;top:0;bottom:0;display:block}
   .wep-legend{display:flex;flex-wrap:wrap;gap:clamp(6px,3cqmin,13px);font-size:.85em;color:var(--muted);flex:0 0 auto}
   .wep-lchip{display:inline-flex;align-items:center;gap:clamp(3px,1.6cqmin,7px)}
   .wep-lchip i{width:.92em;height:.92em;border-radius:3px;display:inline-block}
-  .wep-body{display:flex;gap:clamp(7px,3.4cqmin,16px);flex:1 1 auto;min-height:0}
+  /* Der Umbau hatte hier display/flex/min-height verloren - ohne sie bekommt der
+     Koerper keine Hoehe, Slot-Pillen und Editor fallen zusammen und der Speichern-Knopf
+     legt sich darueber. Die eigentliche Absicht (auf schmaler Kachel untereinander)
+     steht jetzt als Container-Abfrage darunter. */
+  /* Mindesthoehe knapp halten: zu grosszuegig gesetzt drueckt sie den Speichern-Knopf
+     aus der Kachel. Die Slot-Pillen scrollen im Zweifel selbst (overflow:auto). */
+  .wep-body{display:flex;gap:clamp(7px,3cqmin,14px);flex:1 1 auto;min-height:clamp(66px,17cqh,150px)}
   .wep-main{flex:1 1 auto;display:flex;flex-direction:column;gap:clamp(4px,2cqmin,9px);min-width:0}
   /* Seitenspalte prozentual statt fixer 220px; unter ~520px Kachelbreite bricht sie um (s.u.) */
-  .wep-side{flex:0 1 34%;min-width:clamp(150px,30cqi,240px);overflow:auto}
+  .wep-side{flex:0 0 clamp(150px,30cqi,240px);min-width:0;overflow:auto}
   .wep-grpnote{font-size:.85em;color:var(--muted)}
   .wep-pills{display:flex;flex-wrap:wrap;gap:clamp(4px,2cqmin,8px);align-content:flex-start;overflow:auto}
   .wep-pill{display:flex;flex-direction:column;align-items:flex-start;gap:1px;border:1px solid var(--line-soft);border-left:4px solid var(--wc,var(--accent));background:var(--surface-2);color:var(--text);font:inherit;padding:clamp(3px,1.6cqmin,7px) clamp(6px,3cqmin,13px);min-height:clamp(26px,8cqmin,40px);border-radius:7px;cursor:pointer;line-height:1.25}
@@ -2521,3 +2534,30 @@
      Der Wert liegt unter dem bestehenden @container (max-width:620px)-Umbruch, damit die
      dortige 3-Spalten-Regel nicht ausgehebelt wird. */
   .shl-tblmin{min-width:260px}
+
+  /* Wochenplan-Editor: die Zeile des gewaehlten Tages ist bedienbar.
+     Bisher liess sich der Start eines Slots nur ueber Schrittknoepfe (-1h/-10m/...)
+     verschieben - fuer eine grobe Zeitverlegung viele Klicks. Jetzt traegt jede
+     Slot-Grenze einen Griff, der sich mit Maus oder Finger ziehen laesst (5-Minuten-
+     Raster, mindestens 5 Minuten Abstand zu den Nachbarn). Der erste Punkt liegt fest
+     auf 00:00 und bekommt bewusst keinen Griff. Umgesetzt in der VORHANDENEN Zeile,
+     damit die Uebersicht nicht waechst und man dort zieht, wo man hinsieht. */
+  .wep-wrow-edit .wep-wbar{overflow:visible;touch-action:none;cursor:default}
+  .wep-wrow-edit .wep-wbar>i{cursor:pointer}
+  .wep-wrow-edit .wep-wbar>i.on{box-shadow:inset 0 0 0 2px var(--text)}
+  .wep-hnd{position:absolute;top:-3px;bottom:-3px;width:clamp(11px,3.4cqmin,18px);
+           transform:translateX(-50%);cursor:ew-resize;touch-action:none;z-index:2}
+  .wep-hnd::before{content:"";position:absolute;top:0;bottom:0;left:50%;width:2px;
+           transform:translateX(-50%);background:var(--text);border-radius:2px;opacity:.8}
+  .wep-hnd::after{content:"";position:absolute;top:50%;left:50%;
+           width:clamp(8px,2.6cqmin,12px);height:clamp(8px,2.6cqmin,12px);
+           transform:translate(-50%,-50%) rotate(45deg);background:var(--surface);
+           border:2px solid var(--text);border-radius:2px}
+  .wep-hnd.on::before,.wep-hnd.drag::before{background:var(--accent);opacity:1}
+  .wep-hnd.on::after,.wep-hnd.drag::after{border-color:var(--accent)}
+  .wep-hnd>span{position:absolute;left:50%;transform:translateX(-50%);
+           top:calc(-1 * clamp(12px,3.6cqmin,16px));font-family:var(--fm,monospace);
+           font-size:clamp(7px,2.4cqmin,11px);color:var(--muted);white-space:nowrap;
+           pointer-events:none;opacity:0;transition:opacity .12s}
+  .wep-wrow-edit:hover .wep-hnd>span,.wep-hnd.on>span,.wep-hnd.drag>span{opacity:1}
+  .wep-hnd.drag>span{color:var(--accent);font-weight:700}
