@@ -305,7 +305,7 @@
     w.hidden=undefined;render();select(w.id);renderProps();toast('„'+(w.name||w.type)+'" zurück auf die Seite');commit();
   }
   function fieldPick(w,path,label){var v=getPath(w,path)||''; // Variable an ein beliebiges Feld (Pfad) binden: Eingabe + wählen + entfernen
-    return '<div class="prow"><label>'+label+'</label><input data-fid="'+path+'" value="'+(v||'')+'" placeholder="ID" style="width:60px"> <button class="btn" data-fpick="'+path+'" style="padding:5px 7px">wählen</button>'+(v?' <button class="btn" data-fclr="'+path+'" style="padding:5px 7px" title="entfernen">×</button>':'')+'</div>';}
+    return '<div class="prow fpick"><label>'+label+'</label><input data-fid="'+path+'" value="'+(v||'')+'" placeholder="ID"> <button class="btn" data-fpick="'+path+'" style="padding:5px 7px">wählen</button>'+(v?' <button class="btn" data-fclr="'+path+'" style="padding:5px 7px" title="entfernen">×</button>':'')+'</div>';}
   function cell(l,id,v){return '<div class="prow"><label style="width:18px">'+l+'</label><input id="'+id+'" type="number" value="'+v+'"></div>';}
   function poscell(l,id,v){return '<div class="prow"><label style="width:44px">'+l+'</label><input id="'+id+'" type="number" value="'+(v!=null?v:'')+'" placeholder="0"></div>';}
   function posSection(w){ // freie Positionierung von Wert & Icon (nur fuer kompakte Wert/Icon-Widgets)
