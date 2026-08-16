@@ -324,7 +324,18 @@
       var cloud = wx ? wx.cloud : 0;
       // Bedeckter Himmel heisst diffuses Licht: weiche Schatten, matte Sonne. Dafuer wird
       // die Klarheit gedeckelt - sie steuert im ganzen Widget Halo, Dunst und Schattenhaerte.
-      var clrE = (cloud > 0) ? ((clr == null) ? (1 - cloud) : Math.min(clr, 1 - cloud)) : clr;
+      // clrE steuert Halo, Dunst und Schattenhaerte. Sie darf NICHT ein zweites Mal durch die
+      // Bewoelkung gedeckelt werden, wenn diese aus DERSELBEN Strahlungsmessung zurueckgerechnet
+      // wurde - das waere ein Messwert zweimal angewandt: aus kt=0,73 folgen nach Kasten &
+      // Czeplak 74 % Bedeckung, die Szene wuerde auf 26 % gedimmt, obwohl gemessene 73 % der
+      // Klarhimmelstrahlung ankommen. Schatten und Halo waren dadurch systematisch zu matt.
+      // Stammt die Bewoelkung aus einer UNABHAENGIGEN Quelle (gebundene Variable, Vorhersage),
+      // bleibt die Deckelung richtig - dann sind es zwei verschiedene Beobachtungen.
+      var cloudIndep = !!(wx && wx.cloudSrc && wx.cloudSrc !== 'Strahlung');
+      var clrE;
+      if (clr == null)                        clrE = (cloud > 0) ? (1 - cloud) : null;
+      else if (cloud > 0 && cloudIndep)       clrE = Math.min(clr, 1 - cloud);
+      else                                    clrE = clr;
       ssSky(ctx, W, Hs, K, day, clrE, w, pal, cloud);
       var starA = (1 - day / 0.55) * (1 - cloud * 0.9);            // Wolken verdecken die Sterne
       if (day < 0.55 && starA > 0.03 && _covOn2(w, 'ssStars', true)) ssStars(ctx, W, Hs, K, starA, w);
