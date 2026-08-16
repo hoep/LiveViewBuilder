@@ -89,10 +89,22 @@ if ($api === 'geo') {
 
     $c = geo_read($DATADIR, $lat, $lon, $rad);
     if ($c !== null && empty($c['stale'])) { echo json_encode($c); return; }
-    // Noch kein Cache: einmalig holen. Kurze Frist, damit ein ausgefallener
-    // Overpass-Server nicht den Hook-Thread blockiert - dann liefern wir lieber
-    // den alten Stand bzw. eine leere Antwort, und der naechste Aufruf versucht es neu.
-    $fresh = geo_build($DATADIR, $lat, $lon, $rad, true, 12);
+
+    // Noch kein (frischer) Cache. Der Abruf bei Overpass laeuft IM HOOK-THREAD und blockiert
+    // damit alle anderen Anfragen der Seite - gemessen 8 s fuer einen ungecachten Radius,
+    // waehrend eine daneben laufende, laengst gecachte Anfrage 6,4 s wartete statt 2 ms.
+    // Darum: hoechstens EIN Abruf gleichzeitig und hoechstens einer alle 10 Minuten je
+    // Standort/Radius. Alle anderen bekommen sofort, was da ist (notfalls leer) und fragen
+    // beim naechsten Aufruf wieder - besser eine Szene ohne Nachbarhaeuser als eine Seite,
+    // die auf einen fremden Server wartet.
+    $lock = rtrim($DATADIR, '/') . '/cache-geo-' . str_replace('.', '_', (string) $lat) . '_'
+          . str_replace('.', '_', (string) $lon) . '_' . $rad . '.lock';
+    $now  = time();
+    $busy = is_file($lock) && ($now - (int) @filemtime($lock)) < 600;
+    if ($busy) { echo json_encode($c !== null ? $c : ['ok' => false, 'err' => 'pending']); return; }
+    @touch($lock);
+    $fresh = geo_build($DATADIR, $lat, $lon, $rad, true, 8);
+    if (!empty($fresh['ok'])) { @unlink($lock); }
     if (!empty($fresh['ok'])) { echo json_encode($fresh); return; }
     echo json_encode($c !== null ? $c : ['ok' => false, 'err' => $fresh['err'] ?? 'fetch']);
     return;
