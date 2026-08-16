@@ -857,7 +857,18 @@
     }
 
     /** Hoehe der Zeitleiste (0 = aus). */
-    function ssStripH(w, K) { return _covOn2(w, 'ssStrip', true) ? Math.max(26, K / 5.6) : 0; }
+    /**
+     * Hoehe des Zeitleisten-Bands. Der Teiler war 5,6 - das Band nahm damit fast ein Fuenftel
+     * der Kachel ein und draengte sich vor die Szene, um die es geht. Jetzt flacher (Teiler 8)
+     * und einstellbar: ssStripPct ist ein PROZENTWERT der automatischen Hoehe, dieselbe Logik
+     * wie bei den Schriftgroessen. Die Innenmasse des Bands haengen an seiner eigenen Hoehe,
+     * es skaliert also mit; nur die Beschriftung folgt K und bleibt dadurch lesbar.
+     */
+    function ssStripH(w, K) {
+      if (!_covOn2(w, 'ssStrip', true)) return 0;
+      var pct = Math.max(50, Math.min(200, ssNum(w.ssStripPct, 100))) / 100;
+      return Math.max(18, (K / 8) * pct);
+    }
 
     /**
      * Zeitleiste mit Tageskurve. Die Flaeche zeigt die Sonnenhoehe ueber den Tag, die Nacht
@@ -869,7 +880,12 @@
       var pad = Math.max(5, K / 46), x0 = pad, x1 = W - pad;
       var y0 = Hs + pad * 0.5, y1 = H - pad * 0.5, bw = x1 - x0;
       sh = y1 - y0;
-      var fs = Math.max(8, K / 40);
+      // Schrift und Beschriftungslage haengen an der BANDHOEHE, nicht an K. Vorher galt
+      // fs = K/40 bei einer Bandhoehe von K/5,6 - die Bedingung 0,16*sh >= fs ging damit
+      // gerade noch auf. Sobald das Band flacher wird, schnitt die Maske die Beschriftung
+      // oben ab. Jetzt ist sie an sh gedeckelt und wird von der Oberkante aus gesetzt.
+      var fs = Math.max(7.5, Math.min(K / 40, sh * 0.26));
+      var tTop = sh * 0.09, tBot = tTop + fs * 1.2;   // Textband innerhalb des Streifens
       var maxE = 1; track.forEach(function (p) { if (p.elev > maxE) maxE = p.elev; });
 
       ctx.save();
@@ -890,7 +906,7 @@
       track.forEach(function (p) {
         var x = x0 + bw * (p.min / 1440);
         var e = Math.max(0, p.elev) / maxE;
-        ctx.lineTo(x, y1 - (sh * 0.62) * e - sh * 0.12);
+        ctx.lineTo(x, y1 - (sh * 0.55) * e - sh * 0.10);
       });
       ctx.lineTo(x1, y1); ctx.closePath();
       var gr = ctx.createLinearGradient(0, y0, 0, y1);
@@ -900,22 +916,22 @@
       // Auf- und Untergang
       var rs = LVSUN.riseSet(track);
       ctx.font = ssFont(w, 'Tl', fs, pal);
-      ctx.fillStyle = ssA(pal.muted, 0.95); ctx.textBaseline = 'bottom';
+      ctx.fillStyle = ssA(pal.muted, 0.95); ctx.textBaseline = 'top';
       var curM = (ssNow(w) - ssMidnight(w)) / 60000;
       [[rs.rise, '↑'], [rs.set, '↓']].forEach(function (o) {
         if (o[0] == null) return;
         var x = x0 + bw * (o[0] / 1440);
         if (Math.abs(o[0] - curM) < 90) return;      // liegt unter dem Griff - weglassen
-        ctx.beginPath(); ctx.moveTo(x, y0 + sh * 0.18); ctx.lineTo(x, y1);
+        ctx.beginPath(); ctx.moveTo(x, y0 + tBot); ctx.lineTo(x, y1);
         ctx.strokeStyle = ssA(pal.muted, 0.35); ctx.lineWidth = Math.max(0.6, K / 1100); ctx.stroke();
         ctx.textAlign = 'center';
-        ctx.fillText(o[1] + ' ' + ssHM(o[0]), x, y0 + sh * 0.16);
+        ctx.fillText(o[1] + ' ' + ssHM(o[0]), x, y0 + tTop);
       });
 
       // Griff auf dem dargestellten Zeitpunkt
       var cur = (ssNow(w) - ssMidnight(w)) / 60000;
       var hx = x0 + bw * Math.max(0, Math.min(1440, cur)) / 1440;
-      ctx.beginPath(); ctx.moveTo(hx, y0 + sh * 0.12); ctx.lineTo(hx, y1);
+      ctx.beginPath(); ctx.moveTo(hx, y0 + tBot); ctx.lineTo(hx, y1);
       ctx.strokeStyle = pal.accent; ctx.lineWidth = Math.max(1.2, K / 420); ctx.stroke();
       ctx.beginPath(); ctx.arc(hx, y1 - sh * 0.12, Math.max(2.6, K / 150), 0, 7);
       ctx.fillStyle = pal.accent; ctx.fill();
@@ -924,7 +940,7 @@
       var lw = ctx.measureText(lab).width;
       ctx.textAlign = (hx + lw / 2 + 6 > x1) ? 'right' : (hx - lw / 2 - 6 < x0 ? 'left' : 'center');
       ctx.fillStyle = pal.accent;
-      ctx.fillText(lab, ctx.textAlign === 'center' ? hx : (ctx.textAlign === 'right' ? x1 - 4 : x0 + 4), y0 + sh * 0.16);
+      ctx.fillText(lab, ctx.textAlign === 'center' ? hx : (ctx.textAlign === 'right' ? x1 - 4 : x0 + 4), y0 + tTop);
       ctx.restore();
     }
     function ssHM(min) {
@@ -1753,6 +1769,7 @@
         h += row('Blickrichtung (°)', '<input id="ssB" type="number" min="0" max="359" value="' + ssNum(w.ssBearing, 20) + '" style="width:64px">');
         h += row('Umkreis (m)', '<input id="ssR" type="number" min="20" max="400" value="' + ssNum(w.ssRadius, 55) + '" style="width:64px">');
         h += row('Zeitleiste', '<input type="checkbox" id="ssStrip"' + (_covOn2(w, 'ssStrip', true) ? ' checked' : '') + '>');
+        h += row('Höhe der Zeitleiste (%)', '<input id="ssStripPct" type="number" min="50" max="200" step="5" value="' + ssNum(w.ssStripPct, 100) + '" style="width:64px"> <span style="font-size:11px;color:var(--muted)">100 % = automatisch, kleiner = flacher</span>');
         h += '<div style="font-size:11px;color:var(--muted);margin:2px 2px 6px">Zeigt die Tageskurve der Sonnenhöhe. Ziehen fährt den Tag durch — Schatten, Sonnenstand und Mond folgen. Doppeltippen kehrt zu „jetzt" zurück; die gewählte Zeit wird nicht gespeichert.</div>';
         h += row('Mond', '<input type="checkbox" id="ssMoon"' + (_covOn2(w, 'ssMoon', true) ? ' checked' : '') + '>');
         h += row('Sterne', '<input type="checkbox" id="ssStars"' + (_covOn2(w, 'ssStars', true) ? ' checked' : '') + '>');
@@ -1784,7 +1801,7 @@
         });
         var _cs = $('#ssCloudSrc'); if (_cs) _cs.onchange = function () { w.ssCloudSrc = (this.value === 'auto') ? undefined : this.value; up(); };
         [['ssGeoR', 'ssGeoR'], ['ssMaxB', 'ssMaxB'], ['ssEnRad', 'ssEnRad'], ['ssEnA0', 'ssEnA0'], ['ssEnRef', 'ssEnRef'], ['ssLat', 'lat'], ['ssLon', 'lon'], ['ssHL', 'ssHouseL'], ['ssHB', 'ssHouseB'], ['ssHH', 'ssHouseH'],
-         ['ssHR', 'ssRoofH'], ['ssN', 'ssNorth'], ['ssP', 'ssPitch'], ['ssB', 'ssBearing'], ['ssR', 'ssRadius']].forEach(function (o) {
+         ['ssHR', 'ssRoofH'], ['ssN', 'ssNorth'], ['ssP', 'ssPitch'], ['ssB', 'ssBearing'], ['ssR', 'ssRadius'], ['ssStripPct', 'ssStripPct']].forEach(function (o) {
           var e = $('#' + o[0]); if (e) e.onchange = function () {
             w[o[1]] = this.value === '' ? undefined : parseFloat(this.value);
             if (o[1] === 'ssBearing' || o[1] === 'ssPitch') { var s = ssSt(w); s.bearing = null; s.pitch = null; }
