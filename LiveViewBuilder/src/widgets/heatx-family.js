@@ -139,6 +139,12 @@
       h+=row('Quelle','<label style="display:inline-flex;align-items:center;gap:6px;font-size:12px"><input type="checkbox" id="hfHs"'+(w.hsMode?' checked':'')+((w.domain==='shading'||w.domain==='irrigation')?' disabled':'')+'> HomeSuite-Zonen</label>');
       if(!w.hsMode) h+=row('Steuerung (Root-ID)','<input id="hfRoot" type="number" value="'+(w.rootId||'')+'" placeholder="53700" style="width:110px">');
       h+='<div class="pgh">'+(w.hsMode?'Zonen (HeatingZone)':'Räume &amp; Etage')+'</div>';
+      // Ebenen-Auswahl (Geschosse / Raeume / beide) gehoert IMMER in den Editor. Sie stand
+      // frueher nur im hsMode-Zweig; bei Domaene "Beschattung"/"Bewaesserung" ist die
+      // Quelle-Umschaltung aber deaktiviert, w.hsMode blieb leer - und damit war die Zeile
+      // unerreichbar. Bestehende Kacheln zeigten die Geschoss-Reiter trotzdem (floorTabs aus
+      // einer aelteren Editor-Fassung), neu angelegte liessen sich nicht mehr so einstellen.
+      if(!w.hsMode) h+=hsLevelRow(w);
       if(!_hpRooms){hpLoadRooms(w,function(){if(typeof renderProps==='function')renderProps();});return h+'<div style="color:var(--muted);font-size:12px;padding:4px 2px">'+(w.hsMode?'Zonen laden …':'Raumliste lädt …')+'</div>';}
       if(w.hsMode){ var floors=(_hpGroupOrder&&_hpGroupOrder.length)?_hpGroupOrder:['EG','OG','DG'];
         h+=hsLevelRow(w);                                  // Ebenen: Geschosse / Raeume / beide

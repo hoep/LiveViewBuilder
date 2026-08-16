@@ -131,7 +131,19 @@
       // zwar frisches HTML, aber die Zuweisung des NEUEN Rollos wuerde nie geholt - die Liste
       // haette weiter die des alten angezeigt. Deshalb hier die Zuweisung nachladen.
       _bind:function(w,el){var st=spSt(w);var idx=spEntity(w);
-        if(idx){spHub('profileAssigned',{entityId:idx}).then(function(a){st.assigned=(a&&a.assigned)||null;spPaint(w);});}
+        if(idx){spHub('profileAssigned',{entityId:idx}).then(function(a){
+          st.assigned=(a&&a.assigned)||null;
+          var asg=(st.assigned&&st.assigned[st.type])||'';
+          // Das EINSTELLUNGSFENSTER muss dem neuen Rollo folgen, nicht nur die Hervorhebung
+          // in der Liste. st.assigned steuert die Liste, st.name/st.fields das geoeffnete
+          // Profil - wurde nur ersteres aufgefrischt, sprang die Liste richtig, waehrend
+          // unten weiter die Werte des zuvor geoeffneten Profils standen.
+          // Ausnahme: ungespeicherte Aenderungen (st.dirty) werden NICHT verworfen.
+          if(!st.dirty){
+            if(asg && asg!==st.name){ spLoadProfile(w,asg); return; }   // laedt Felder + malt
+            if(!asg){ st.name=''; st.fields=null; }                     // Zone ohne Zuweisung
+          }
+          spPaint(w);});}
         spBind(w,el);},
       mount:function(w){var el=spEl(w);if(!el)return;var st=spSt(w);
         // An die Session KOPPELN. Ohne hfSub() steht das Widget nicht in der Abonnentenliste,
