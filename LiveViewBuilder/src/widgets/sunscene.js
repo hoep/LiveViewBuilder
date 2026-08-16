@@ -20,6 +20,23 @@
     var _ssState = {};         // widgetId -> Laufzeitzustand (Kamera, Drag, Animation)
     var D = Math.PI / 180;
 
+    // Browser-Speicher fuer die Gebaeudedaten. Bewusst mit Verfallsdatum und Versionsmarke:
+    // aendert sich das Format, wird der alte Stand nicht mehr gelesen. Faellt der Speicher aus
+    // (privates Fenster, voll), passiert nichts Schlimmes - dann bleibt es beim Server-Abruf.
+    var SS_GEO_V = 1, SS_GEO_TTL = 30 * 86400e3;
+    function ssGeoLoad(key) {
+      try {
+        var raw = localStorage.getItem('lvb.geo.' + key); if (!raw) return null;
+        var o = JSON.parse(raw);
+        if (!o || o.v !== SS_GEO_V || !o.t || (Date.now() - o.t) > SS_GEO_TTL) return null;
+        return (o.d && o.d.b) ? o.d : null;
+      } catch (e) { return null; }
+    }
+    function ssGeoSave(key, data) {
+      try { localStorage.setItem('lvb.geo.' + key, JSON.stringify({ v: SS_GEO_V, t: Date.now(), d: data })); }
+      catch (e) { /* Speicher voll oder gesperrt - dann eben nicht */ }
+    }
+
     var _ssGeoCache = {};      // "lat,lon,r" -> {state:'load'|'ok'|'err', data:...}
     // Gebaeude vom eigenen Hook holen (der liefert nur aus dem serverseitigen Cache).
     function ssGeo3(w, el) {
@@ -30,13 +47,27 @@
       if (c) return c.state === 'ok' ? c.data : null;
       _ssGeoCache[key] = { state: 'load' };
       if (w._ssGeoData) { _ssGeoCache[key] = { state: 'ok', data: w._ssGeoData }; return w._ssGeoData; }
+
+      // Gebaeude aus dem BROWSER-Speicher sofort verwenden. Sie aendern sich praktisch nie -
+      // der Server haelt sie ohnehin 60 Tage vor. Ohne diesen Schritt zeigt die Szene bei jedem
+      // Seitenaufruf erst eine leere Nachbarschaft und zeichnet sich Sekunden spaeter neu; auf
+      // einem Tablet ist genau das die gefuehlte Ladezeit. Danach wird trotzdem einmal beim
+      // Server nachgefragt und der Speicher aufgefrischt - nur eben im Hintergrund.
+      var stored = ssGeoLoad(key);
+      if (stored) { _ssGeoCache[key] = { state: 'ok', data: stored }; }
+
       fetch('?api=geo&lat=' + g.lat + '&lon=' + g.lon + '&r=' + r, { cache: 'no-store' })
         .then(function (x) { return x.json(); })
         .then(function (j) {
-          _ssGeoCache[key] = (j && j.ok && j.b) ? { state: 'ok', data: j } : { state: 'err' };
+          if (j && j.ok && j.b) {
+            _ssGeoCache[key] = { state: 'ok', data: j };
+            ssGeoSave(key, j);
+          } else if (!stored) {
+            _ssGeoCache[key] = { state: 'err' };
+          }
           var e2 = ssEl(w); if (e2) ssDraw(w, e2);
-        }).catch(function () { _ssGeoCache[key] = { state: 'err' }; });
-      return null;
+        }).catch(function () { if (!stored) _ssGeoCache[key] = { state: 'err' }; });
+      return stored || null;
     }
 
     /**
