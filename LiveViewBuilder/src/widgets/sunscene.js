@@ -1125,9 +1125,24 @@
       if (sens != null && sens > 0 && !(rain > 0.05) && !(snow > 0.05)) { rain = 0.25; }
       var fogRaw = ssVal(w.ssFogV), wind = ssVal(w.ssWindV);
       var typ = ssVal(w.ssPtypeV);
-      // Ein Niederschlagswert plus Typkennung: 2 = Schnee (Tempest-Konvention), sonst Regen.
-      if (typ != null && rain != null && snow == null) {
-        if (typ >= 2) { snow = rain; rain = 0; }
+      // Die Tempest-Typkennung kennt KEINEN Schnee: 0 = keiner, 1 = Regen, 2 = Hagel (am Geraet
+      // als Profil "Tempest_perception_type" so hinterlegt). Hier stand frueher "ab 2 ist es
+      // Schnee" - bei Hagel wurde also Schnee gezeichnet. Die Kennung sagt jetzt nur noch, DASS
+      // es niederschlaegt; ob Regen oder Schnee entscheidet weiter unten die Feuchtkugel.
+      if (typ != null && typ > 0 && !(rain > 0.05) && !(snow > 0.05)) { rain = 0.25; }
+
+      // Schnee ableiten, wenn keine eigene Schnee-Variable gebunden ist. Massgeblich ist die
+      // FEUCHTKUGELtemperatur, nicht die Lufttemperatur: eine fallende Flocke kuehlt sich durch
+      // Verdunstung selbst, in trockener Luft faellt Schnee daher noch bei +3 °C Luft. Fehlt
+      // eine gemessene Feuchtkugel, wird sie aus Temperatur und Luftfeuchte gerechnet (Stull
+      // 2011). Zwischen 0,5 und 1,5 °C ist es Schneeregen - beides wird anteilig gezeichnet.
+      if (snow == null && rain > 0.01) {
+        var tw = ssVal(w.ssWetV);
+        if (tw == null) tw = ssWetBulb(ssVal(w.ssTempV), ssVal(w.ssHumV));
+        if (tw != null) {
+          var sf = Math.max(0, Math.min(1, (1.5 - tw) / 1.0));
+          if (sf > 0) { snow = rain * sf; rain = rain * (1 - sf); }
+        }
       }
       var fog = null;
       if (fogRaw != null) {
@@ -1137,6 +1152,17 @@
         else fog = Math.max(0, Math.min(1, fogRaw));
       } else {
         fog = ssFogEst(ssVal(w.ssTempV), ssVal(w.ssDewV), ssVal(w.ssHumV));
+        // Wind loest Nebel auf: die bodennahe Schicht wird durchmischt und die feuchte Luft
+        // von trockenerer ersetzt. Ueber etwa 10 km/h haelt sich Nebel kaum, ab 25 km/h gar
+        // nicht. Gilt nur fuer die SCHAETZUNG - ein echter Sichtsensor misst, was ist.
+        if (fog != null && wind != null) {
+          var wu = ssUnit(w.ssWindV);
+          var wkmh = (wu.indexOf('kn') >= 0) ? wind * 1.852
+                   : (wu.indexOf('mph') >= 0) ? wind * 1.609
+                   : (wu.indexOf('m/s') >= 0 || wu === 'ms') ? wind * 3.6
+                   : wind;                                   // km/h ist der Normalfall
+          fog *= Math.max(0, Math.min(1, (25 - wkmh) / 15));
+        }
       }
       // Bewoelkung aus der besten verfuegbaren Quelle. Reihenfolge bewusst so:
       //  1. aus der gemessenen Strahlung - der oertlichste Wert ueberhaupt, direkt vom
@@ -1195,6 +1221,19 @@
      *  Das Ergebnis ist bewusst auf 0,85 gedeckelt: es ist eine Abschaetzung, kein Messwert,
      *  und soll die Szene nie voellig zumachen.
      */
+    /**
+     * Feuchtkugeltemperatur aus Lufttemperatur und relativer Feuchte, Naeherung nach
+     * Stull (2011). Gilt fuer etwa -20..+50 °C und 5..99 % Feuchte - fuer die Frage
+     * "Regen oder Schnee" mehr als genau genug (Fehler unter 0,3 K).
+     */
+    function ssWetBulb(t, rh) {
+      if (t == null || rh == null) return null;
+      rh = Math.max(1, Math.min(100, rh));
+      return t * Math.atan(0.151977 * Math.sqrt(rh + 8.313659))
+           + Math.atan(t + rh) - Math.atan(rh - 1.676331)
+           + 0.00391838 * Math.pow(rh, 1.5) * Math.atan(0.023101 * rh) - 4.686035;
+    }
+
     function ssFogEst(t, td, rh) {
       if (t != null && td != null) {
         var spread = t - td;
@@ -1739,9 +1778,10 @@
         h += fieldPick(w, 'ssSnowV', 'Schnee mm/h');
         h += fieldPick(w, 'ssPtypeV', 'Niederschlagsart');
         h += fieldPick(w, 'ssFogV', 'Sicht / Nebel');
-        h += fieldPick(w, 'ssTempV', 'Temperatur (für Nebel)');
+        h += fieldPick(w, 'ssTempV', 'Temperatur (Nebel & Schnee)');
         h += fieldPick(w, 'ssDewV', 'Taupunkt (für Nebel)');
-        h += fieldPick(w, 'ssHumV', 'Luftfeuchte (für Nebel)');
+        h += fieldPick(w, 'ssHumV', 'Luftfeuchte (Nebel & Schnee)');
+        h += fieldPick(w, 'ssWetV', 'Feuchtkugel (für Schnee)');
         h += fieldPick(w, 'ssWindV', 'Wind');
         h += row('Bewölkung aus', '<select id="ssCloudSrc">'
           + [['auto','automatisch (beste Quelle)'],['rad','nur Strahlung'],['var','nur Variable'],['fc','nur Vorhersage']]
