@@ -241,7 +241,18 @@
       migrateStore(store); // Typ-Migration (js/11-migrate.js): alte Einzel-Typen -> Sammel-Typ + Variante. MUSS vor dem ersten Rendern laufen
       invalidateAllIds(); // Warm-Cache-ID-Menge nach (Neu-)Laden neu berechnen
       if(!store.skin)store.skin='Standard';if(!store.theme)store.theme='dark';
-      if(RUN){try{var _lt=localStorage.getItem('lvtheme');if(_lt)store.theme=_lt;var _ls=localStorage.getItem('lvskin');if(_ls&&allSkins()[_ls])store.skin=_ls;}catch(_){}}
+      // Geraete-Vorlieben im Betrieb. Hell/Dunkel ist persoenlich und bleibt gemerkt.
+      // Der SKIN dagegen ist eine Entscheidung des Layouts: eine einmal am Geraet
+      // getroffene Wahl hat frueher dauerhaft gewonnen, auch wenn im Builder laengst ein
+      // anderer Skin eingestellt wurde. Das war unsichtbar und nicht zu beheben, ausser
+      // man kannte den Speicherschluessel. Jetzt wird zur Wahl auch der Layout-Stand
+      // vermerkt: aendert sich dieser, faellt die Geraete-Wahl weg und das Layout gilt.
+      if(RUN){try{
+        var _lt=localStorage.getItem('lvtheme'); if(_lt)store.theme=_lt;
+        var _ls=localStorage.getItem('lvskin'), _lb=localStorage.getItem('lvskinbase');
+        if(_ls&&allSkins()[_ls]&&(!_lb||_lb===store.skin)){ store.skin=_ls; }
+        else if(_ls){ localStorage.removeItem('lvskin'); localStorage.removeItem('lvskinbase'); }
+      }catch(_){}}
       applySkin();GS=bcfg().gs;if(bcfg().sideW){var _sd=$('.side');if(_sd)_sd.style.width=bcfg().sideW+'px';}
       var _sv=VIEWNAME||lvPage();switchView((_sv&&store.views&&store.views[_sv])?_sv:store.current);buildSwatches();buildIconLib();buildBlocks();buildSkins();buildSettings();buildLayoutList();syncPalette();decoratePalette();chromeUI(); // ?view= auch im Edit-Modus berücksichtigen; syncPalette ergänzt fehlende Registry-Widgets
       if(!RUN&&!DOKU&&typeof loadBuilderSettings==='function')loadBuilderSettings(); // Zoom/Tab/Schwebemodus aus builder-settings.json
