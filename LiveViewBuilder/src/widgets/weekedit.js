@@ -57,9 +57,22 @@
     h+='<div class="wep-days">'+WE_DAYS.map(function(d,i){var gg=weGroupForDay(st,i);return '<button class="wep-day'+(i==st.day?' on':'')+(gg?'':' empty')+'" data-weday="'+i+'">'+d+'</button>';}).join('')+'</div>';
     // Wochenübersicht
     h+='<div class="wep-week">';
-    for(var i=0;i<7;i++){var gg=weGroupForDay(st,i),gp=wePoints(gg),start=0,segs='';
-      for(var k=0;k<gp.length;k++){var s=weH2M(gp[k].h,gp[k].m),e=(k+1<gp.length)?weH2M(gp[k+1].h,gp[k+1].m):1440;segs+='<i style="left:'+(s/1440*100)+'%;width:'+((e-s)/1440*100)+'%;background:'+weAct(st,gp[k].actionId).color+'"></i>';}
-      h+='<div class="wep-wrow'+(i==st.day?' on':'')+'" data-weday="'+i+'"><span class="wep-wlab">'+WE_DAYS[i]+'</span><div class="wep-wbar">'+segs+'</div></div>';
+    // Die Zeile des GEWAEHLTEN Tages ist bedienbar: jedes Feld waehlt seinen Slot an,
+    // jede Slot-Grenze traegt einen Ziehpunkt. Bewusst in der vorhandenen Zeile statt in
+    // einer zusaetzlichen Leiste - das kostet keinen Platz und man zieht dort, wo man
+    // ohnehin hinsieht. Der erste Punkt liegt fest auf 00:00 und hat keinen Griff.
+    for(var i=0;i<7;i++){var gg=weGroupForDay(st,i),gp=wePoints(gg),start=0,segs='',edit=(i==st.day);
+      for(var k=0;k<gp.length;k++){
+        var s=weH2M(gp[k].h,gp[k].m),e=(k+1<gp.length)?weH2M(gp[k+1].h,gp[k+1].m):1440;
+        var ak=weAct(st,gp[k].actionId);
+        segs+='<i'+(edit?' data-wetlseg="'+(k+1)+'"'+((k+1)==st.slot?' class="on"':''):'')
+             +' style="left:'+(s/1440*100)+'%;width:'+((e-s)/1440*100)+'%;background:'+ak.color+'"'
+             +(edit?' title="'+esc(ak.name)+' '+weM2H(s)+'–'+weM2H(e)+'"':'')+'></i>';
+        if(edit&&k>0){
+          segs+='<b class="wep-hnd'+((k+1)==st.slot?' on':'')+'" data-wehnd="'+k+'" style="left:'+(s/1440*100)+'%"><span>'+weM2H(s)+'</span></b>';
+        }
+      }
+      h+='<div class="wep-wrow'+(edit?' on wep-wrow-edit':'')+'" data-weday="'+i+'"><span class="wep-wlab">'+WE_DAYS[i]+'</span><div class="wep-wbar"'+(edit?' data-wetl':'')+'>'+segs+'</div></div>';
     }
     h+='</div>';
     // Legende Aktionen
@@ -170,6 +183,54 @@
     $$('[data-weadd]',el).forEach(function(ab){ab.onclick=function(){weAddSlot(st,(w.maxWin)|0);rp();};}); // Kopf- UND Editor-Knopf
     $$('[data-wedel]',el).forEach(function(db){db.onclick=function(){weDelSlot(st);rp();};});
     var sv=$('[data-wesave]',el);if(sv)sv.onclick=function(){weSave(w,el);};
+
+    // --- Ziehpunkte auf der Tagesleiste ---
+    // Waehrend des Ziehens wird NICHT neu gerendert: das wuerde den Griff unter dem Finger
+    // wegreissen. Stattdessen wandern Griff und Felder direkt im DOM mit; erst beim
+    // Loslassen wird der Wert uebernommen und die Ansicht neu aufgebaut.
+    var tl=$('[data-wetl]',el);
+    if(tl){
+      $$('[data-wetlseg]',tl).forEach(function(sg){
+        sg.onclick=function(){ st.slot=+sg.getAttribute('data-wetlseg'); rp(); };
+      });
+      $$('[data-wehnd]',tl).forEach(function(hd){
+        hd.onpointerdown=function(ev){
+          if(typeof editing!=='undefined'&&editing)return;
+          var idx=+hd.getAttribute('data-wehnd');
+          var pts2=wePoints(weGroupForDay(st,st.day));
+          if(!pts2[idx])return;
+          var box=tl.getBoundingClientRect();
+          // Grenzen: mindestens 5 Minuten Abstand zu beiden Nachbarn.
+          var lo=weH2M(pts2[idx-1].h,pts2[idx-1].m)+5;
+          var hi=(idx+1<pts2.length)?weH2M(pts2[idx+1].h,pts2[idx+1].m)-5:1435;
+          var lbl=$('span',hd), segL=$('[data-wetlseg="'+idx+'"]',tl), segR=$('[data-wetlseg="'+(idx+1)+'"]',tl);
+          var segRend=segR?(parseFloat(segR.style.left)+parseFloat(segR.style.width)):100;
+          var min=weH2M(pts2[idx].h,pts2[idx].m);
+          hd.classList.add('drag');
+          try{hd.setPointerCapture(ev.pointerId);}catch(_){}
+          function toMin(x){
+            var u=(x-box.left)/Math.max(1,box.width);
+            var m=Math.round(u*1440/5)*5;                       // 5-Minuten-Raster
+            return Math.max(lo,Math.min(hi,m));
+          }
+          function paint(m){
+            var pc=m/1440*100;
+            hd.style.left=pc+'%'; if(lbl)lbl.textContent=weM2H(m);
+            if(segL)segL.style.width=(pc-parseFloat(segL.style.left))+'%';
+            if(segR){segR.style.left=pc+'%';segR.style.width=(segRend-pc)+'%';}
+          }
+          hd.onpointermove=function(e2){ min=toMin(e2.clientX); paint(min); e2.preventDefault(); };
+          function ende(){
+            hd.onpointermove=null; hd.onpointerup=null; hd.onpointercancel=null;
+            hd.classList.remove('drag');
+            pts2[idx].h=Math.floor(min/60); pts2[idx].m=min%60;
+            weDirty(st); st.slot=idx+1; rp();
+          }
+          hd.onpointerup=ende; hd.onpointercancel=ende;
+          ev.preventDefault();
+        };
+      });
+    }
   }
 
   // ============================ WIDGET ============================
