@@ -1536,7 +1536,11 @@
   function widget(id){var w=state.widgets.filter(function(x){return x.id===id;})[0];if(w)return w;
     var ck0=chromeAllKids().filter(function(x){return x.id===id;})[0];if(ck0)return ck0; /* Widget in einer Leiste */
     var cd0=chromeDef(id);if(cd0)return cd0; /* die Leiste selbst (fuer Auswahl + Eigenschaften) */
-    if(_compKids&&_compKids.length){var ck=_compKids.filter(function(x){return x.id===id;})[0];if(ck)return ck;}if(_contKids&&_contKids.length){var kk=_contKids.filter(function(x){return x.id===id;})[0];if(kk)return kk;}if(_tickKids&&_tickKids.length){var tk=_tickKids.filter(function(x){return x.id===id;})[0];if(tk)return tk;}if(_popup&&_popup.widgets)return _popup.widgets.filter(function(x){return x.id===id;})[0];return w;}
+    if(_compKids&&_compKids.length){var ck=_compKids.filter(function(x){return x.id===id;})[0];if(ck)return ck;}if(_contKids&&_contKids.length){var kk=_contKids.filter(function(x){return x.id===id;})[0];if(kk)return kk;}if(_tickKids&&_tickKids.length){var tk=_tickKids.filter(function(x){return x.id===id;})[0];if(tk)return tk;}if(_popup&&_popup.widgets){var pw0=_popup.widgets.filter(function(x){return x.id===id;})[0];if(pw0)return pw0;}
+    // Hover-Kopien tragen seit der ID-Vereindeutigung ebenfalls eigene IDs - sonst waeren
+    // sie ueber widget() nicht mehr auffindbar.
+    if(typeof _hover!=='undefined'&&_hover&&_hover.widgets){var hw0=_hover.widgets.filter(function(x){return x.id===id;})[0];if(hw0)return hw0;}
+    return w;}
   // A1: Overlay/Popup — eine Ansicht als schwebendes Fenster über der aktuellen Ansicht
   var _popup=null;
   var _navStack=[]; // B3: Seiten-Verlauf für Zurück-Navigation
@@ -1559,15 +1563,36 @@
     return dd;
   }
   // Alias-Remap der Widget-Kopien einer Overlay-Ansicht (Popup/Hover)
-  function _ovClone(v,alias){var map=alias||{};function mp(id){return (id&&map[id]!=null)?map[id]:id;}
-    return (v.widgets||[]).map(function(w){var c={};for(var k in w)c[k]=w[k];c.varId=mp(c.varId);c.varId2=mp(c.varId2);c.varId3=mp(c.varId3);if(c.visVar)c.visVar=mp(c.visVar);return c;});}
+  /**
+   * Kopie der Widgets einer Overlay-Ansicht (Popup/Hover) mit EIGENEN IDs.
+   *
+   * Widget-IDs sind nur JE SEITE eindeutig - die automatische Vergabe faengt auf jeder
+   * Seite wieder bei w1 an. Ein Popup ueber einer Seite brachte damit zwangslaeufig
+   * doppelte data-id in EIN Dokument: Widgets, die ihr Element per data-id suchen,
+   * erwischten die fremde Kachel der Seite darunter und zeichneten ins Leere (Tabelle
+   * "Programmierte Aufnahmen" blieb leer, weil Main dieselbe ID w141 als Container-Kind
+   * fuehrt). Das Suffix macht die Kopie eindeutig und trennt zugleich den Widget-Zustand
+   * (Zeichen-Caches, Chart-Instanzen, gemerkte Filter) von der Seite darunter.
+   *
+   * BEWUSST STABIL (nicht hochgezaehlt): Widgets, die sich etwas je ID merken
+   * (z. B. battlist im localStorage), sollen ihre Einstellung ueber mehrere Oeffnungen
+   * behalten. Kinder (Container/Komponenten) werden mitbenannt, sonst kollidieren die.
+   */
+  function _ovClone(v,alias,sfx){var map=alias||{};function mp(id){return (id&&map[id]!=null)?map[id]:id;}
+    var S=sfx||'~p';
+    function cl(w){var c={};for(var k in w)c[k]=w[k];
+      c.id=String(w.id)+S;
+      c.varId=mp(c.varId);c.varId2=mp(c.varId2);c.varId3=mp(c.varId3);if(c.visVar)c.visVar=mp(c.visVar);
+      if(w.kids&&w.kids.length)c.kids=w.kids.map(cl);
+      return c;}
+    return (v.widgets||[]).map(cl);}
   // ---- Hover-Overlay: eine Ansicht als Flyout am Widget (Desktop-Hover; Touch nur als Fallback) ----
   var _hover=null;
   function openHover(name,alias,anchorEl){
     if(!name||!store.views[name]||!anchorEl)return;
     if(_hover&&_hover.name===name&&_hover.anchor===anchorEl)return; // bereits offen fuer dieses Widget
     closeHover();
-    var v=store.views[name],ws=_ovClone(v,alias);
+    var v=store.views[name],ws=_ovClone(v,alias,'~h');
     var pw=(v.page&&v.page.w)||400,ph=(v.page&&v.page.h)||300;
     var maxW=Math.min(window.innerWidth*0.6,520),maxH=Math.min(window.innerHeight*0.7,480);
     var sc=Math.min(1,maxW/pw,maxH/ph);

@@ -10,7 +10,22 @@
   function _tblCmp(a,b){var na=parseFloat(String(a).replace(',','.')),nb=parseFloat(String(b).replace(',','.'));
     if(!isNaN(na)&&!isNaN(nb)&&/^[+-]?[\d.,\s]+$/.test(String(a))&&/^[+-]?[\d.,\s]+$/.test(String(b)))return na-nb;
     return String(a).localeCompare(String(b),undefined,{numeric:true,sensitivity:'base'});}
-  function _tblEl(w){return $('.w[data-id="'+w.id+'"]',canvas)||((_popup&&$('#ovcanvas'))?$('.w[data-id="'+w.id+'"]',$('#ovcanvas')):null);}
+  // Kollisions-sichere Elementsuche (Seite vs. Popup/Hover). Widget-IDs sind nur JE SEITE
+  // eindeutig - dieselbe automatisch vergebene ID (w141 …) kommt auf mehreren Seiten vor,
+  // auch als KIND in einem Container. Wer stur "canvas zuerst" nimmt, erwischt dann die
+  // fremde Kachel, findet dort kein [data-role=tblroot] und zeichnet gar nichts: die
+  // Tabelle im Popup blieb leer, waehrend dieselbe Seite einzeln aufgerufen lief.
+  // Deshalb: ALLE Kandidaten sammeln, aktiven Kontext (Popup/Hover) zuerst, und das
+  // Element nehmen, das wirklich einen Tabellen-Rumpf enthaelt.
+  function _tblEl(w){
+    var cands=[],sel='.w[data-id="'+w.id+'"]';
+    var oc=document.getElementById('ovcanvas'),hc=document.getElementById('hovcanvas');
+    if(oc)cands=cands.concat([].slice.call(oc.querySelectorAll(sel)));
+    if(hc)cands=cands.concat([].slice.call(hc.querySelectorAll(sel)));
+    if(typeof canvas!=='undefined'&&canvas)cands=cands.concat([].slice.call(canvas.querySelectorAll(sel)));
+    for(var i=0;i<cands.length;i++){if(cands[i].querySelector('[data-role=tblroot]'))return cands[i];}
+    return cands[0]||null;
+  }
   // Optionaler Status-Stil: Text -> Schweregrad; % aus Text lesen (fuer Ladebalken)
   function _tblSevOf(t){t=String(t==null?'':t).toLowerCase();
     if(/leer|schwach|kritisch|critical|empty|entladen/.test(t))return 'crit';
