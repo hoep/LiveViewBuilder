@@ -1307,6 +1307,34 @@ if ($api === 'publish') {
 }
 
 // ---- Objekt-Metadaten:  ?api=objinfo&id=<objid> ----
+if ($api === 'wxvars') {
+    // Loest eine Wetter-Instanz in ihre Variablen auf: Ident => ObjektID.
+    //
+    // Gedacht fuer Widgets, die "die Wetterlage" zeigen wollen, ohne dass jemand fuenf
+    // Variablen einzeln zuweist. Aufgeloest wird EINMAL im Editor; die IDs landen danach als
+    // gewoehnliche Bindungen im Widget. Zur Laufzeit aufzuloesen waere falsch: die Live-Abfrage
+    // sammelt ihre IDs aus den Widget-Eigenschaften, eine erst spaeter ermittelte ID wuerde nie
+    // abgefragt und die Kachel bliebe stumm.
+    header('Content-Type: application/json; charset=utf-8');
+    $inst = (int) ($_GET['inst'] ?? 0);
+    if ($inst <= 0 || !@IPS_InstanceExists($inst)) {
+        echo json_encode(['error' => 'keine Instanz']);
+        return;
+    }
+    $out = ['inst' => $inst, 'name' => IPS_GetName($inst), 'vars' => []];
+    foreach (IPS_GetChildrenIDs($inst) as $c) {
+        if (IPS_GetObject($c)['ObjectType'] !== 2) {
+            continue;
+        }
+        $id = IPS_GetObject($c)['ObjectIdent'];
+        if ($id !== '') {
+            $out['vars'][$id] = ['id' => (int) $c, 'name' => IPS_GetName($c)];
+        }
+    }
+    echo json_encode($out);
+    return;
+}
+
 if ($api === 'objinfo') {
     header('Content-Type: application/json; charset=utf-8');
     $id = (int) ($_GET['id'] ?? 0);
