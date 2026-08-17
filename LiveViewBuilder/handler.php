@@ -679,6 +679,96 @@ if ($api === 'shading') {
         echo HSH_Manage($hub, json_encode(['op' => 'shadeLog', 'args' => ['limit' => (int) ($_GET['limit'] ?? 300)]]));
         return;
     }
+    // op=zonecfg: Automatik-Bindung EINER Zone gebuendelt lesen (frei) — fuer die Widgets
+    // shadedoors / shadesens / shadearm. Liefert je Eintrag AUFGELOEST (Name + aktueller Wert),
+    // damit das Widget nicht drei weitere Abfragen braucht:
+    //   doors[] = Tuerkontakte mit Live-Zustand (offen?),
+    //   env{}   = Sensor-Bindungen mit Herkunft (own = eigene Wahl, sonst Haus-Vorgabe vom Hub),
+    //   armed   = scharf/Schatten der Zone, hubMode = 0 Aus / 1 Auto / 2 Scharf (Hub hat Vorrang).
+    if (($_GET['op'] ?? '') === 'zonecfg') {
+        $iid = $calTarget();
+        if ($iid <= 0 || !function_exists('HSSH_Manage')) { echo json_encode(['ok' => false, 'err' => 'inst']); return; }
+        $cfgR = json_decode((string) @HSSH_Manage($iid, json_encode(['op' => 'getConfig'])), true);
+        $cfg  = is_array($cfgR) ? ($cfgR['config'] ?? $cfgR) : [];
+        $vinfo = function (int $vid) {
+            if ($vid <= 0 || !@IPS_VariableExists($vid)) { return null; }
+            $v = @GetValue($vid);
+            return ['id' => $vid, 'name' => @IPS_GetName(@IPS_GetParent($vid)) . ' · ' . @IPS_GetName($vid),
+                    'val' => is_bool($v) ? ($v ? 1 : 0) : $v, 'bool' => is_bool($v)];
+        };
+        $doors = [];
+        foreach ((array) ($cfg['doorIds'] ?? []) as $d) {
+            $i = $vinfo((int) $d);
+            if ($i !== null) { $i['open'] = (bool) $i['val']; $doors[] = $i; }
+        }
+        // Herkunft je Sensor: eigene Instanz-Property > 0 => eigene Wahl, sonst Hub-Vorgabe.
+        $envMap = ['sunAzId' => 'EnvSunAzId', 'sunElId' => 'EnvSunElId', 'windId' => 'EnvWindId',
+                   'rainId' => 'EnvRainId', 'brightId' => 'EnvBrightId'];
+        $env = [];
+        foreach ($envMap as $k => $prop) {
+            $eff = (int) (($cfg['env'][$k] ?? 0));
+            $own = (int) @IPS_GetProperty($iid, $prop);
+            $env[$k] = ['own' => ($own > 0), 'info' => $vinfo($eff)];
+        }
+        // Temperatur-Fuehler gehoeren dem ROLLO (jeder Raum hat einen eigenen), die
+        // SCHWELLEN kommen aus dem geteilten Profil. Beide getrennt ausliefern, damit
+        // das Widget zeigen kann, was woher stammt.
+        $tg   = is_array($cfg['tempGate'] ?? null) ? $cfg['tempGate'] : [];
+        $temp = ['in' => $vinfo((int) ($tg['sensorId'] ?? 0)), 'out' => $vinfo((int) ($tg['outSensorId'] ?? 0)),
+                 'aboveC' => $tg['aboveC'] ?? null, 'outAboveC' => $tg['outAboveC'] ?? null,
+                 'requireSun' => (bool) ($tg['requireSun'] ?? true)];
+        $hub  = (int) (@IPS_GetInstanceListByModuleID('{A0C082B4-9E74-430E-BD97-F9CEBB364257}')[0] ?? 0);
+        $hmv  = $hub > 0 ? (int) @IPS_GetObjectIDByIdent('ArmShadingMode', $hub) : 0;
+        echo json_encode(['ok' => true, 'id' => $iid,
+            'name'    => @IPS_GetName(@IPS_GetParent($iid)) . ' · ' . @IPS_GetName($iid),
+            'doors'   => $doors, 'env' => $env, 'temp' => $temp,
+            'armed'   => (bool) @IPS_GetProperty($iid, 'Armed'),
+            'hubMode' => $hmv > 0 ? (int) @GetValue($hmv) : null]);
+        return;
+    }
+    // op=tempvars: Temperatur-Variablen des Hauses als Auswahl (frei lesen). Erkannt ueber
+    // das Variablenprofil (~Temperature o. Ae.), sonst ueber den Namen - analog zur
+    // Kontakt-Erkennung des Hubs, nur fuer Zahlenwerte statt Boolean.
+    if (($_GET['op'] ?? '') === 'tempvars') {
+        $out = [];
+        foreach (@IPS_GetVariableList() ?: [] as $vid) {
+            $v = @IPS_GetVariable($vid);
+            if (!$v || !in_array((int) $v['VariableType'], [1, 2], true)) { continue; } // int/float
+            $prof = ($v['VariableCustomProfile'] !== '') ? $v['VariableCustomProfile'] : $v['VariableProfile'];
+            $name = (string) @IPS_GetName($vid);
+            $par  = (int) @IPS_GetParent($vid);
+            $inst = $par > 0 ? (string) @IPS_GetName($par) : $name;
+            $hay = $name . ' ' . $inst;
+            // AUSSCHLIESSEN, sonst ertrinkt die Auswahl in Fehltreffern: Lampen-Farbtemperatur,
+            // Geraete-Innentemperaturen (Batterie/CPU/Wechselrichter), Boden-/Wasserfuehler.
+            // Der Nutzer sucht hier einen RAUMFUEHLER, nichts anderes.
+            if (preg_match('/farbtemp|color ?temp|colour ?temp|batterie|battery|cpu|kelvin|soil|boden|wasser|water|vorlauf|ruecklauf|rücklauf|abgas|kessel|puffer|kollektor|speicher|taupunkt|gefuehlt|gefühlt|soll|target/i', $hay)) { continue; }
+            $isT  = (bool) preg_match('/^~?Temperature/i', (string) $prof)
+                 || (bool) preg_match('/\btemperatur\b|\btemperature\b|\btemp\b/i', $hay);
+            if (!$isT) { continue; }
+            $out[] = ['id' => (int) $vid, 'instance' => $inst, 'var' => $name, 'val' => @GetValue($vid)];
+        }
+        usort($out, static function ($a, $b) { return strnatcasecmp($a['instance'] . $a['var'], $b['instance'] . $b['var']); });
+        echo json_encode(['ok' => true, 'count' => count($out), 'vars' => $out]);
+        return;
+    }
+    // op=setenv: EINE Sensor-Bindung der Zone setzen bzw. auf die Haus-Vorgabe zuruecksetzen
+    // (Token, schreibend – reine Konfiguration, kein Geraetebefehl). vid=0 => Property auf 0,
+    // damit wieder der Hub-Wert gilt (Rangfolge: eigene Property > Hub > Standard).
+    if (($_GET['op'] ?? '') === 'setenv') {
+        if (!hash_equals($TOKEN, (string) ($_GET['key'] ?? ''))) { echo json_encode(['ok' => false, 'err' => 'forbidden']); return; }
+        $iid  = $calTarget();
+        $map  = ['sunAzId' => 'EnvSunAzId', 'sunElId' => 'EnvSunElId', 'windId' => 'EnvWindId',
+                 'rainId' => 'EnvRainId', 'brightId' => 'EnvBrightId'];
+        $sk   = (string) ($_GET['sk'] ?? '');
+        $vid  = max(0, (int) ($_GET['vid'] ?? 0));
+        if ($iid <= 0 || !isset($map[$sk])) { echo json_encode(['ok' => false, 'err' => 'arg']); return; }
+        if ($vid > 0 && !@IPS_VariableExists($vid)) { echo json_encode(['ok' => false, 'err' => 'var']); return; }
+        @IPS_SetProperty($iid, $map[$sk], $vid);
+        @IPS_ApplyChanges($iid);
+        echo json_encode(['ok' => true, 'sk' => $sk, 'vid' => $vid]);
+        return;
+    }
     // op=caltimes: aktuell in HomeSuite (ShadingDevice) gespeicherte Fahrzeiten lesen (frei) — Kalibrier-Widget.
     // Adressiert das Rollo ueber seine Positions-Variable (pos = posVid aus op=list) -> HSSH-Instanz.
     if (($_GET['op'] ?? '') === 'caltimes') {
@@ -977,6 +1067,36 @@ if ($api === 'audio') {
         if (!in_array($iid, $list, true)) { echo json_encode(['ok' => false, 'err' => 'instance']); return; }
         $fn = $pfx($iid) . '_Manage';
         echo function_exists($fn) ? $fn($iid, json_encode(['op' => 'radioNow'])) : json_encode(['ok' => false, 'err' => 'prefix']);
+        return;
+    }
+
+    // op=queue: Warteschlange der Zone (lesend). Cover-Adressen werden wie ueberall auf den
+    // Bild-Proxy umgeschrieben - die Sonos-Player liefern relative bzw. player-lokale URLs,
+    // die der Browser des Wandtablets sonst nicht laden kann.
+    if ($op === 'queue') {
+        $iid = (int) ($_GET['id'] ?? 0);
+        if (!in_array($iid, $list, true)) { echo json_encode(['ok' => false, 'err' => 'instance']); return; }
+        $fn = $pfx($iid) . '_Manage';
+        if (!function_exists($fn)) { echo json_encode(['ok' => false, 'err' => 'prefix']); return; }
+        $r = json_decode((string) $fn($iid, json_encode(['op' => 'queue',
+            'args' => ['limit' => max(1, min(200, (int) ($_GET['limit'] ?? 60)))]])), true);
+        if (is_array($r) && !empty($r['items'])) {
+            foreach ($r['items'] as &$it) { if (!empty($it['cover'])) { $it['cover'] = $coverUrl($it['cover']); } }
+            unset($it);
+        }
+        echo json_encode($r ?: ['ok' => false, 'err' => 'empty']);
+        return;
+    }
+
+    // op=queueplay: Spur der Warteschlange anspringen (Token, schaltend).
+    if ($op === 'queueplay') {
+        if (!hash_equals($TOKEN, (string) ($_GET['key'] ?? ''))) { echo json_encode(['ok' => false, 'err' => 'forbidden']); return; }
+        $iid = (int) ($_GET['id'] ?? 0);
+        if (!in_array($iid, $list, true)) { echo json_encode(['ok' => false, 'err' => 'instance']); return; }
+        $fn = $pfx($iid) . '_Manage';
+        echo function_exists($fn)
+            ? $fn($iid, json_encode(['op' => 'playQueueIndex', 'args' => ['index' => (int) ($_GET['index'] ?? 0)]]))
+            : json_encode(['ok' => false, 'err' => 'prefix']);
         return;
     }
 

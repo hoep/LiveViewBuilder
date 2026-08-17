@@ -66,15 +66,44 @@
     }).catch(function(){toast('Übernehmen: Verbindungsfehler');cb&&cb();});
   }
 
-  function hfEnsure(w,el){var sess=hfSess(w);var def=WIDGETS[w.type];
+  // Startraum EINER Sitzung: bevorzugt der am Selektor eingestellte Raum, sonst der
+  // erste seiner Reihenfolge. hw traegt roomOrder/roomHidden des jeweiligen Widgets.
+  function hfStartRoom(w,hw){
+    var rooms=hpCfgRooms(hw);
+    var pref=parseInt(w&&w.startRoom||0)||0;
+    if(pref&&rooms.some(function(r){return r.idx==pref;}))return pref;
+    return rooms.length?rooms[0].idx:((_hpRooms&&_hpRooms[0])?_hpRooms[0].idx:0);
+  }
+  function hfSynth(w,sess){
+    return sess.hsMode?{hsMode:true,domain:sess.domain,rooms:w.rooms,roomOrder:w.roomOrder,roomHidden:w.roomHidden,
+                        rootId:w.rootId,id:w.id,type:w.type,floor:w.floor}:w;
+  }
+  /**
+   * owner=true kennzeichnet den RAUM-SELEKTOR (Widget „Raeume"). Ohne diese Unterscheidung
+   * war der Startraum ein Wettrennen: hfEnsure laeuft bei JEDEM Widget der Sitzung, und wer
+   * zuerst fertig lud, legte den Raum fest - meist eine Kachel, die die Reihenfolge des
+   * Selektors gar nicht kennt. Ergebnis: der Selektor zeigte seinen ersten Raum, die Kacheln
+   * einen anderen. Jetzt darf nur der Selektor den Startraum setzen; kam eine Kachel zuerst,
+   * korrigiert er beim Nachziehen auf seinen eigenen Startraum.
+   */
+  function hfEnsure(w,el,owner){var sess=hfSess(w);var def=WIDGETS[w.type];
     if(w.domain)sess.domain=w.domain;                   // heating (Default) | shading
     if(w.hsMode||w.domain==='shading'||w.domain==='irrigation')sess.hsMode=true; // shading/irrigation nur HomeSuite
-    if(sess.loaded){if(def._bind)def._bind(w,el);return;}
+    if(sess.loaded){
+      // Selektor kommt nach einer Kachel: Startraum nachtraeglich durchsetzen.
+      if(owner&&sess.seeded!=='owner'){
+        sess.seeded='owner';
+        var want=hfStartRoom(w,hfSynth(w,sess));
+        if(want&&want!=sess.roomIdx){hfLoadRoom(w,want,function(){hfEmit(w);});return;}
+      }
+      if(def._bind)def._bind(w,el);return;
+    }
     if(sess.loading)return; sess.loading=true; if(w.rootId)sess.root=w.rootId;
     // Im HomeSuite-Modus die Raumliste aus den Entitaeten holen (synthetisches hsMode-w).
-    var hw=sess.hsMode?{hsMode:true,domain:sess.domain,rooms:w.rooms,rootId:w.rootId,id:w.id,type:w.type,floor:w.floor}:w;
-    hpLoadRooms(hw,function(){ var rooms=hpCfgRooms(hw); var first=rooms.length?rooms[0].idx:((_hpRooms&&_hpRooms[0])?_hpRooms[0].idx:0);
-      if(!sess.roomIdx)sess.roomIdx=first; hfLoadRoom(w,sess.roomIdx,function(){sess.loaded=true;sess.loading=false;hfEmit(w);}); });
+    var hw=hfSynth(w,sess);
+    hpLoadRooms(hw,function(){
+      if(!sess.roomIdx){sess.roomIdx=hfStartRoom(w,hw);sess.seeded=owner?'owner':'follower';}
+      hfLoadRoom(w,sess.roomIdx,function(){sess.loaded=true;sess.loading=false;hfEmit(w);}); });
   }
   function hfSave(w){var sess=hfSess(w);var week=hpWeek(sess).map(function(d){return {end:d.end.slice(),val:d.val.map(Number)};});
     if(typeof DOKU!=='undefined'&&DOKU){sess.dirty=false;hfEmit(w);toast('Demo: gespeichert (nur Anzeige)');return;}
@@ -126,7 +155,7 @@
       return '<div class="hplan hfbox">'+hpRoomsBar(w,s)
         +'<div class="hp-titlerow"><div class="hp-title">'+esc(s.name||hpRoomName(s.roomIdx))+' <span class="hp-titsub">· '+esc(hpVarName(s))+'</span></div>'
         +'<div class="hp-sub">'+HP_DAYL[s.day]+' · '+n+' Slot'+(n!=1?'s':'')+' · Ø '+hpVal(hpWeekAvg([day]))+' '+esc(_hpVC.unit)+(s.dirty?' · <b class="hp-unsaved">ungespeichert</b>':'')+'</div></div></div>';},
-    mount:function(w){var el=$('.w[data-id="'+w.id+'"]',canvas)||$('.w[data-id="'+w.id+'"]',$('#ovcanvas'));if(!el)return;hfSub(w);hfEnsure(w,el);},
+    mount:function(w){var el=$('.w[data-id="'+w.id+'"]',canvas)||$('.w[data-id="'+w.id+'"]',$('#ovcanvas'));if(!el)return;hfSub(w);hfEnsure(w,el,true);}, // owner: bestimmt den Startraum
     _bind:function(w,el){var s=hfSess(w);
       $$('[data-hproom]',el).forEach(function(b){b.onclick=function(){var idx=+b.getAttribute('data-hproom');if(idx==s.roomIdx)return;
         if(s.dirty&&!confirm('Ungespeicherte Änderungen verwerfen?'))return;s.slot=1;hfLoadRoom(w,idx,function(){hfEmit(w);});};});
@@ -146,6 +175,11 @@
       // einer aelteren Editor-Fassung), neu angelegte liessen sich nicht mehr so einstellen.
       if(!w.hsMode) h+=hsLevelRow(w);
       if(!_hpRooms){hpLoadRooms(w,function(){if(typeof renderProps==='function')renderProps();});return h+'<div style="color:var(--muted);font-size:12px;padding:4px 2px">'+(w.hsMode?'Zonen laden …':'Raumliste lädt …')+'</div>';}
+      // STARTRAUM: mit welchem Raum die Seite aufgeht. Ohne das entschied die Ladereihenfolge.
+      (function(){var rr=hpCfgRooms(hfSynth(w,hfSess(w)));
+        var o='<option value="">(erster der Reihenfolge)</option>'+rr.map(function(r){
+          return '<option value="'+r.idx+'"'+((''+w.startRoom)===(''+r.idx)?' selected':'')+'>'+esc(hpRoomName(r.idx))+'</option>';}).join('');
+        h+=row('Startraum','<select id="hfStart">'+o+'</select>');})();
       if(w.hsMode){ var floors=(_hpGroupOrder&&_hpGroupOrder.length)?_hpGroupOrder:['EG','OG','DG'];
         h+=hsLevelRow(w);                                  // Ebenen: Geschosse / Raeume / beide
         h+=row('Geschoss (Filter)','<select id="hfFloor"'+(hsLevels(w)!=='rooms'?' disabled':'')+'><option value="">Alle Geschosse</option>'+floors.map(function(g){return '<option value="'+esc(g)+'"'+(w.floor===g?' selected':'')+'>'+esc(g)+'</option>';}).join('')+'</select>'); }
@@ -171,6 +205,8 @@
       h+=hfColorScaleRows(w);
       return h;},
     wire:function(w){hfSessWire(w);
+      if($('#hfStart'))$('#hfStart').onchange=function(){w.startRoom=parseInt(this.value)||undefined;commit();
+        var s=hfSess(w);var want=hfStartRoom(w,hfSynth(w,s));if(want&&want!=s.roomIdx){s.seeded='owner';hfLoadRoom(w,want,function(){hfEmit(w);});}};
       if($('#hfDom'))$('#hfDom').onchange=function(){w.domain=this.value;if(w.domain==='shading'||w.domain==='irrigation')w.hsMode=true;w.rooms=[];_hpRooms=null;_hpRoomsRoot=null;var s=hfSess(w);s.domain=w.domain;s.hsMode=!!w.hsMode;s.loaded=false;s.loading=false;s.roomIdx=0;s.variant=0;s.variants=null;commit();renderProps();var el=$('.w[data-id="'+w.id+'"]',canvas);if(el)hfEnsure(w,el);hfEmit(w);};
       if($('#hfHs'))$('#hfHs').onchange=function(){w.hsMode=this.checked||undefined;w.rooms=[];_hpRooms=null;_hpRoomsRoot=null;var s=hfSess(w);s.hsMode=!!w.hsMode;s.loaded=false;s.loading=false;s.roomIdx=0;commit();renderProps();var el=$('.w[data-id="'+w.id+'"]',canvas);if(el)hfEnsure(w,el);hfEmit(w);};
       if($('#hfFloor'))$('#hfFloor').onchange=function(){w.floor=this.value||undefined;var s=hfSess(w);s.loaded=false;s.loading=false;s.roomIdx=0;commit();renderProps();var el=$('.w[data-id="'+w.id+'"]',canvas);if(el)hfEnsure(w,el);hfEmit(w);};
