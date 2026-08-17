@@ -2896,3 +2896,37 @@
   .hwband .tx b{font-weight:700;font-variant-numeric:tabular-nums;color:var(--bc,var(--text))}
   .hwband .sx{margin-left:auto;flex:0 0 auto;color:var(--faint);font-size:clamp(8px,2.6cqmin,11px);
               font-variant-numeric:tabular-nums;white-space:nowrap}
+
+  /* ===== Rollo-Kachel: Wetterlage im freien Glasausschnitt =====================
+     Gezeichnet wird NUR unterhalb der Lamellen — so weit, wie das Rollo offen ist.
+     Bei geschlossenem Rollo bleibt die Schicht leer, wie in Wirklichkeit.
+     Die Bewegung ist einstellbar (--wxspd): auf einer Beschattungsseite liegen
+     siebzehn dieser Kacheln nebeneinander, und siebzehn gleichzeitig fallende
+     Regenwaende sind auf Dauer unruhig. Ohne Bewegung bleibt alles stehen. */
+  .hc2wx{position:absolute;left:0;right:0;bottom:0;overflow:hidden;pointer-events:none;z-index:2}
+  .hc2wx i{position:absolute;display:block}
+  /* Regen: Striche fallen. Laenge und Deckkraft haengen an der Regenrate. */
+  .hc2wx.wx-rain i{width:1.5px;height:9px;border-radius:1px;
+    background:linear-gradient(180deg,rgba(160,205,255,0),rgba(160,205,255,.85));
+    animation:wxfall var(--wxspd,1.1s) linear infinite}
+  /* Schnee: Flocken, langsamer und mit seitlichem Versatz. */
+  .hc2wx.wx-snow i{width:3px;height:3px;border-radius:50%;background:#eaf2f7;opacity:.9;
+    animation:wxflake calc(var(--wxspd,1.1s) * 3.2) linear infinite}
+  /* Nebel: Schwaden, Deckkraft nach gemessener Sicht. */
+  .hc2wx.wx-fog b{position:absolute;left:-12%;right:-12%;height:7px;border-radius:99px;
+    background:#cfe0e6;filter:blur(3px);animation:wxdrift calc(var(--wxspd,1.1s) * 9) ease-in-out infinite alternate}
+  /* Gewitter: Himmel verdunkelt, Blitz zuckt selten und kurz. */
+  .hc2wx.wx-storm{background:linear-gradient(180deg,rgba(20,16,30,.72),rgba(30,22,40,.32))}
+  .hc2wx .wxbolt{position:absolute;left:52%;top:16%;width:1.1em;height:2.1em;transform:translateX(-50%);
+    opacity:0;animation:wxflash 7s steps(1,end) infinite}
+  @keyframes wxfall{from{transform:translateY(-120%)}to{transform:translateY(1400%)}}
+  @keyframes wxflake{from{transform:translate(0,-140%)}to{transform:translate(6px,1500%)}}
+  @keyframes wxdrift{from{transform:translateX(-6%)}to{transform:translateX(6%)}}
+  @keyframes wxflash{0%,96%{opacity:0}96.5%{opacity:1}97%{opacity:.15}97.6%{opacity:.9}98.4%,100%{opacity:0}}
+  /* Ohne Bewegung: alles steht, die Verteilung bleibt sichtbar. */
+  .hc2wx.wx-still i,.hc2wx.wx-still b,.hc2wx.wx-still .wxbolt{animation:none}
+  .hc2wx.wx-still .wxbolt{opacity:.9}
+  @media (prefers-reduced-motion:reduce){
+    .hc2wx i,.hc2wx b,.hc2wx .wxbolt{animation:none}
+    .hc2wx .wxbolt{opacity:.9}
+  }

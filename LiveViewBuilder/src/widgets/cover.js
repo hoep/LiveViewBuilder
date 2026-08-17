@@ -62,6 +62,7 @@
       var fb=$('.hc2mkfab',win);if(fb)fb.style.height=(_covMkOut(open)*0.66)+'%';   // Tuch waechst mit dem Ausfahrgrad
       var pc=$('.hc2pct',win);if(pc)pc.innerHTML=shown+'<span>%</span>';
       _covSun(w,win,open);
+      _covWx(w,win,open);
     }
     // Slider (Fenster-Overlay + optionaler unterer) nachziehen, wenn nicht in Bearbeitung
     $$('[data-role=range]',el).forEach(function(r){if(document.activeElement!==r)r.value=open;});
@@ -88,6 +89,89 @@
   // Live-Wert einer gebundenen Variable als Zahl (oder null, wenn nicht gebunden/leer).
   function _covNum(vid){ if(!vid)return null; var e=_lastVals[vid]; if(!e)return null;
     var n=parseFloat(e.v); return isNaN(n)?null:n; }
+  // Wetter-Instanz in Bindungen aufloesen.
+  //
+  // Die IDs werden EINMAL hier ermittelt und als gewoehnliche Eigenschaften am Widget abgelegt.
+  // Zur Laufzeit aufzuloesen waere falsch: die Live-Abfrage sammelt ihre IDs aus den
+  // Widget-Eigenschaften, eine erst spaeter ermittelte ID wuerde nie abgefragt — die Kachel
+  // bliebe stumm, obwohl alles "zugewiesen" aussieht.
+  function _covWxBind(w){
+    var st=$('#pCovWxSt'), keys=['wxFog','wxPrecip','wxRainRate','wxStorm','wxStormDist','wxSnow'];
+    if(!w.wxInst){keys.forEach(function(k){delete w[k];});
+      if(st)st.textContent='noch nicht zugewiesen';commit();return;}
+    if(st)st.textContent='wird gelesen …';
+    fetch(API+'&api=wxvars&inst='+w.wxInst).then(function(r){return r.json();}).then(function(d){
+      if(!d||!d.vars){if(st)st.textContent='keine Variablen gefunden';return;}
+      var m={wxFog:'FogPct',wxPrecip:'PrecipType',wxRainRate:'RainRate',
+             wxStorm:'StormLevel',wxStormDist:'StormDist',wxSnow:'SnowCover'}, n=0;
+      for(var k in m){ if(d.vars[m[k]]){w[k]=d.vars[m[k]].id;n++;} else delete w[k]; }
+      if(st)st.textContent=n?(n+' Werte von "'+(d.name||'')+'"'):'passt nicht — ist das eine Wetter-Instanz?';
+      commit();render();
+    }).catch(function(){if(st)st.textContent='nicht erreichbar';});
+  }
+
+  // Wetterlage im freien Glasausschnitt.
+  //
+  // Gezeichnet wird nur UNTERHALB der Lamellen: die Schicht beginnt dort, wo das Rollo endet.
+  // Ist es zu, bleibt sie leer — man sieht durch ein geschlossenes Rollo nun einmal nichts.
+  //
+  // Vorrang Gewitter > Schnee > Regen > Nebel. Schnee gegen Regen entscheidet die
+  // NIEDERSCHLAGSART des Wettermoduls (aus der Feuchtkugel), nicht die Lufttemperatur —
+  // bei drei Grad und trockener Luft faellt Schnee, waehrend das Thermometer ueber null steht.
+  function _covWx(w,el,openPct){
+    var lay=el&&el.querySelector('[data-role=wx]'); if(!lay)return;
+    if(!_covOn(w,'covWx',false)){lay.style.display='none';return;}
+    var _n=function(id){var d=id&&_lastVals[id];if(!d)return null;
+      var v=parseFloat(String(d.v).replace(',','.'));return isNaN(v)?null:v;};
+    var storm=_n(w.wxStorm)||0, art=_n(w.wxPrecip)||0, rate=_n(w.wxRainRate)||0,
+        fog=_n(w.wxFog)||0, snow=_n(w.wxSnow);
+    // Freier Ausschnitt: von der Rollounterkante bis zum Fensterboden.
+    var offen=Math.max(0,Math.min(100,openPct==null?0:openPct));
+    if(offen<4){lay.style.display='none';return;}       // praktisch zu: nichts zeigen
+    lay.style.display=''; lay.style.top=(100-offen)+'%';
+
+    var modus=null;
+    if(storm>=2) modus='storm';
+    else if(art>=2||snow===true||snow===1) modus='snow';
+    else if(rate>0.01||art===1) modus='rain';
+    else if(fog>=35) modus='fog';                        // Nebeldichte in Prozent
+    if(!modus){lay.className='hc2wx';lay.innerHTML='';lay.dataset.wx='';return;}
+
+    // Bewegung: 0 ohne, 1 ruhig, 2 normal, 3 lebendig. Die Anzahl der Teilchen haengt an der
+    // Staerke, die Geschwindigkeit an der Einstellung — nicht umgekehrt: ein Nieselregen soll
+    // duenn aussehen, nicht langsam.
+    var stufe=(w.covWxAnim==null?1:+w.covWxAnim);
+    var tempo=[0,1.9,1.3,0.85][Math.max(0,Math.min(3,stufe))]||1.3;
+    var dicht=modus==='rain'?Math.max(4,Math.min(16,Math.round(4+rate*2.2)))
+             :modus==='snow'?9:0;
+    var sig=modus+'|'+dicht+'|'+stufe;
+    if(lay.dataset.wx===sig)return;                      // nicht bei jedem Tick neu bauen
+    lay.dataset.wx=sig;
+    lay.className='hc2wx wx-'+modus+(stufe===0?' wx-still':'');
+    lay.style.setProperty('--wxspd',tempo.toFixed(2)+'s');
+
+    var h='';
+    if(modus==='rain'||modus==='storm'){
+      var n=modus==='storm'?Math.max(3,Math.round(dicht*0.6)):dicht;
+      for(var i=0;i<n;i++)
+        h+='<i style="left:'+(4+Math.random()*92).toFixed(0)+'%;top:'+(Math.random()*90).toFixed(0)
+          +'%;animation-delay:'+(Math.random()*1.4).toFixed(2)+'s"></i>';
+      if(modus==='storm')
+        h+='<svg class="wxbolt" viewBox="0 0 16 30"><path d="M9 1 3 16h5l-2 13 8-17H9l2-11z" fill="#ffd23f"/></svg>';
+    } else if(modus==='snow'){
+      for(var j=0;j<dicht;j++)
+        h+='<i style="left:'+(5+Math.random()*90).toFixed(0)+'%;top:'+(Math.random()*90).toFixed(0)
+          +'%;animation-delay:'+(Math.random()*3).toFixed(2)+'s"></i>';
+    } else if(modus==='fog'){
+      // Deckkraft nach Nebeldichte: bei 35 % kaum zu sehen, bei 100 % milchig.
+      lay.style.opacity=Math.max(.18,Math.min(.62,fog/160)).toFixed(2);
+      for(var k=0;k<4;k++)
+        h+='<b style="top:'+(14+k*24)+'%;animation-delay:'+(k*0.8).toFixed(1)+'s"></b>';
+    }
+    if(modus!=='fog')lay.style.opacity='';
+    lay.innerHTML=h;
+  }
+
   // Sonne am ECHTEN Sonnenstand platzieren — Blick des Betrachters durchs Fenster nach draussen.
   // Die Sonne steht FEST an ihrer Himmelsposition (Hoehe = oben/unten, Azimut = links/rechts);
   // das herabfahrende Rollo VERDECKT sie (Stapelreihenfolge im CSS: Rollo ueber der Sonne).
@@ -186,6 +270,7 @@
       var win = viz ? ('<div class="hc2win" data-role="win">'
           +'<div class="hc2sky"></div>'+(_mk?'':'<div class="hc2roll"></div>')
           +(_covOn(w,'covSun',true)?'<div class="hc2sun"></div>':'')
+          +(_covOn(w,'covWx',false)?'<div class="hc2wx" data-role="wx"></div>':'')
           +(_mk?('<div class="hc2mkcase"></div><div class="hc2mkfab" style="height:0"><i></i><b></b><u></u></div>')
                :'<div class="hc2shut" style="height:100%"></div>')
           +'<div class="hc2tick">50</div>'
@@ -255,7 +340,7 @@
       if(w.cvBlockVid&&id===w.cvBlockVid){ _covBlock(w,el,d&&d.v); return; }
       // Helligkeit ODER Sonnenfenster-Werte (Azimut-Grenzen/Hoehenschwelle) -> nur Sonne neu setzen
       if((w.covBrightVid&&id===w.covBrightVid)||id===w.cvAzB||id===w.cvAzE||id===w.cvElv){
-        var win=$('[data-role=win]',el);if(win){var pc=$('.hc2pct',win);var op0=pc?parseInt(pc.textContent)||0:0;_covSun(w,win,op0);}return;}
+        var win=$('[data-role=win]',el);if(win){var pc=$('.hc2pct',win);var op0=pc?parseInt(pc.textContent)||0:0;_covSun(w,win,op0);_covWx(w,win,op0);}return;}
       // Anzeige folgt der IST-Position (cvActId), Befehle gehen auf das schaltbare
       // Soll-Control (varId). Ohne cvActId bleibt es beim alten Verhalten (varId=Anzeige).
       // Sonst wuerde die Kachel den kommandierten Wert zeigen statt der echten Lage
@@ -274,6 +359,11 @@
         +'<div class="pgh">Darstellung</div>'
         +row('Fenster-Visualisierung','<input type="checkbox" id="pCovViz"'+(_covOn(w,'covViz',true)?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">Rollo/Glas links (Rollo = Slider)</span>')
         +row('Sonne anzeigen','<input type="checkbox" id="pCovSun"'+(_covOn(w,'covSun',true)?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">nur bei Tag &amp; offenem Rollo</span>')
+        +row('Wetter anzeigen','<input type="checkbox" id="pCovWx"'+(_covOn(w,'covWx',false)?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">Regen, Schnee, Nebel, Gewitter — nur im offenen Teil</span>')
+        +row('Wetter-Instanz','<input id="pCovWxI" type="number" style="width:96px" value="'+(w.wxInst||'')+'"> <button class="btn" id="pCovWxB" style="padding:4px 8px;font-size:11px">lesen</button> <span id="pCovWxSt" style="font-size:11px;color:var(--muted)">'+(w.wxStorm?'zugewiesen':'noch nicht zugewiesen')+'</span>')
+        +row('Bewegung','<select id="pCovWxA">'+[[0,'ohne'],[1,'ruhig'],[2,'normal'],[3,'lebendig']].map(function(o){
+             return '<option value="'+o[0]+'"'+(((w.covWxAnim==null?1:+w.covWxAnim)===o[0])?' selected':'')+'>'+o[1]+'</option>';}).join('')
+             +'</select> <span style="font-size:11px;color:var(--muted)">viele Kacheln nebeneinander: lieber ruhig</span>')
         +row('Slider unter Tasten','<input type="checkbox" id="pCovSlider"'+(_covOn(w,'covSlider',false)?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">zusätzlicher horizontaler Slider mit Skala</span>')
         +row('Art','<select id="pCvKind"><option value=""'+(!_covIsMk(w)?' selected':'')+'>Rollo</option><option value="markise"'+(_covIsMk(w)?' selected':'')+'>Markise</option></select>')
         +'<div style="font-size:11px;color:var(--muted);margin:2px 2px 4px">Markise: Tuch statt Rollopanzer, Beschriftung „Ein/Aus" und Anzeige des <b>Ausfahrgrads</b>.</div>'
@@ -306,6 +396,10 @@
     wire:function(w){
       function tog(id,key,def){var e=$('#'+id);if(e)e.onchange=function(){w[key]=(this.checked===def)?undefined:this.checked;render();commit();};}
       tog('pCovViz','covViz',true); tog('pCovSun','covSun',true); tog('pCovSlider','covSlider',false);
+      tog('pCovWx','covWx',false);
+      if($('#pCovWxA'))$('#pCovWxA').onchange=function(){w.covWxAnim=(this.value==='1')?undefined:parseInt(this.value,10);render();commit();};
+      if($('#pCovWxI'))$('#pCovWxI').onchange=function(){w.wxInst=parseInt(this.value,10)||undefined;_covWxBind(w);};
+      if($('#pCovWxB'))$('#pCovWxB').onclick=function(){_covWxBind(w);};
           if($('#pCvKind'))$('#pCvKind').onchange=function(){w.cvKind=this.value||undefined;render();commit();};
 if($('#pCvInv'))$('#pCvInv').onchange=function(){w.cvInv=this.checked||undefined;render();commit();};
       [['pCvUp','cvUp'],['pCvHalf','cvHalf'],['pCvStop','cvStop'],['pCvDn','cvDn'],['pCovLat','covLat'],['pCovLon','covLon']].forEach(function(p){
@@ -328,7 +422,7 @@ if($('#pCvInv'))$('#pCvInv').onchange=function(){w.cvInv=this.checked||undefined
   setInterval(function(){if(typeof state==='undefined'||!state.widgets)return;
     function tick(w){if(!w||w.type!=='cover'||!_covOn(w,'covSun',true))return;
       var el=$('.w[data-id="'+w.id+'"]',canvas);if(!el){var oc=document.getElementById('ovcanvas');if(oc)el=$('.w[data-id="'+w.id+'"]',oc);}
-      if(!el)return;var win=$('[data-role=win]',el);if(!win)return;var pc=$('.hc2pct',win);_covSun(w,win,pc?(parseInt(pc.textContent)||0):0);}
+      if(!el)return;var win=$('[data-role=win]',el);if(!win)return;var pc=$('.hc2pct',win);var _op=pc?(parseInt(pc.textContent)||0):0;_covSun(w,win,_op);_covWx(w,win,_op);}
     allWidgets().forEach(tick);
     if(typeof _contKids!=='undefined'&&_contKids)_contKids.forEach(tick);
     if(typeof _compKids!=='undefined'&&_compKids)_compKids.forEach(tick);
