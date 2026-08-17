@@ -305,7 +305,7 @@
                  sun.az.toFixed(2), sun.elev.toFixed(2), clr == null ? 'x' : clr.toFixed(3),
                  geo ? geo.count : -1, Math.floor(ssNow(w) / 60000), ssStyleKey(w),
                  pal0.tile + pal0.accent,
-                 wx ? [wx.cloud.toFixed(2), wx.rain.toFixed(2), wx.snow.toFixed(2), wx.fog.toFixed(2)].join(',') : 'x'
+                 wx ? [wx.cloud.toFixed(2), wx.rain.toFixed(2), wx.snow.toFixed(2), wx.fog.toFixed(2), wx.storm].join(',') : 'x'
                 ].join('|');
       var st = ssSt(w);
       if (st.key !== key || !st.buf) {
@@ -313,6 +313,10 @@
         st.key = key;
       }
       ctx.drawImage(st.buf, 0, 0, W, H);
+
+      // Der Blitz kommt NACH dem Puffer - er soll blitzen, nicht eingebrannt sein.
+
+      if (wx && wx.storm > 0) ssFlash(ctx, W, Hs, K, wx);
 
       var tW = (typeof performance !== 'undefined' ? performance.now() : ssNow(w)) / 1000;
       if (wx && wx.nass) {
@@ -380,9 +384,17 @@
       var starA = (1 - day / 0.55) * (1 - cloud * 0.9);            // Wolken verdecken die Sterne
       if (day < 0.55 && starA > 0.03 && _covOn2(w, 'ssStars', true)) ssStars(ctx, W, Hs, K, starA, w);
       ssGround(ctx, cam, W, Hs, K, day, w, pal);
-      var track = LVSUN.dayTrack(g.lat, g.lon, ssNow(w), 6);
-      ssArc(ctx, cam, K, track, sun, day, w, pal);
+      // NACHTS DIE MONDBAHN. Die Sonnenbahn sagt bei untergegangener Sonne nichts - sie
+      // laeuft unsichtbar unter dem Horizont durch. Wer nachts hinsieht, will wissen, wo
+      // der Mond steht und wohin er zieht.
+      var nachtBahn = (sun.elev < -0.833);
+      var track = nachtBahn ? ssMoonTrack(g.lat, g.lon, ssNow(w), 6)
+                            : LVSUN.dayTrack(g.lat, g.lon, ssNow(w), 6);
+      ssArc(ctx, cam, K, track, sun, day, w, pal, nachtBahn);
       var mn = ssMoonDisc(ctx, cam, K, sun, day, w, cloud);
+      // Gewitter: dunkle Wolkenbank. Sie gehoert in den gepufferten Teil - nur das
+      // Aufblitzen wird spaeter live darueber gezeichnet.
+      if (wx && wx.storm > 0) ssStormBank(ctx, cam, W, Hs, K, wx, day, pal);
       if (geo) ssNeighbours(ctx, cam, K, sun, day, clrE, w, geo, pal);
       ssHouse(ctx, cam, K, sun, day, clrE, w, geo, pal);
       if (geo) ssAttrib(ctx, W, Hs, K, pal, 0, w);
@@ -471,16 +483,98 @@
       ctx.closePath(); ctx.strokeStyle = ssA(pal.light ? pal.line : '#8cbec8', pal.light ? 0.30 : 0.10);
       ctx.lineWidth = Math.max(0.6, K / 800); ctx.stroke(); ctx.restore();
     }
+    /**
+     * Bahn des MONDES ueber den Tag - gleiche Form wie LVSUN.dayTrack fuer die Sonne, damit
+     * ssArc sie ohne Sonderfall zeichnen kann.
+     */
+    function ssMoonTrack(lat, lon, atMs, stepMin) {
+      var d = new Date(atMs || Date.now());
+      var mid = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0).getTime() / 1000;
+      var st = stepMin || 6, pts = [];
+      for (var m = 0; m <= 1440; m += st) {
+        var q = LVSUN.moon(lat, lon, mid + m * 60);
+        pts.push({ min: m, az: q.az, elev: q.elev });
+      }
+      return pts;
+    }
+
+    /**
+     * Wolkenbank eines Gewitters, dunkler als die uebrige Bewoelkung. Bei Regen zusaetzlich
+     * Regenstriche. Wetterleuchten (Stufe 1) bekommt KEINE Bank - das Gewitter steht ja weit
+     * weg; dort bleibt nur das schwache Aufleuchten am Horizont.
+     */
+    function ssStormBank(ctx, cam, W, Hs, K, wx, day, pal) {
+      if (wx.storm < 2) return;
+      ctx.save();
+      var h = Hs * 0.42, y = Hs * 0.06;
+      var g = ctx.createLinearGradient(0, y, 0, y + h);
+      g.addColorStop(0, ssA(pal.light ? '#5b6b72' : '#1b2230', pal.light ? 0.5 : 0.82));
+      g.addColorStop(1, ssA(pal.light ? '#93a2a8' : '#232c3c', 0));
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.moveTo(0, y);
+      for (var x = 0; x <= W; x += W / 8) {
+        ctx.quadraticCurveTo(x + W / 16, y + h * (0.55 + 0.22 * Math.sin(x / (W / 3))), x + W / 8, y + h * 0.62);
+      }
+      ctx.lineTo(W, y); ctx.closePath(); ctx.fill();
+      if (wx.rain > 0) {
+        ctx.strokeStyle = ssA('#5ab6ff', 0.32); ctx.lineWidth = Math.max(0.7, K / 700);
+        for (var i = 0; i < 60; i++) {
+          var rx = (i * 97) % W, ry = y + h * 0.5 + ((i * 53) % (Hs * 0.4));
+          ctx.beginPath(); ctx.moveTo(rx, ry); ctx.lineTo(rx - K / 130, ry + K / 40); ctx.stroke();
+        }
+      }
+      ctx.restore();
+    }
+
+    /**
+     * BLITZ - live ueber den gepufferten Hintergrund gezeichnet, nicht hinein: sonst muesste
+     * die ganze Szene je Bild neu entstehen. Der Takt kommt aus der UHR, nicht aus einem
+     * Zaehler, damit ein Neuzeichnen den Rhythmus nicht verschiebt.
+     *
+     * Doppelschlag alle paar Sekunden, dazwischen Ruhe; je naeher das Gewitter, desto oefter.
+     * Bei Wetterleuchten nur ein Aufhellen ohne sichtbaren Kanal - genau so sieht ein fernes
+     * Gewitter aus. Gilt bei Tag wie bei Nacht.
+     */
+    function ssFlash(ctx, W, Hs, K, wx) {
+      if (!wx || !wx.storm) return 0;
+      var per = wx.storm >= 3 ? 3200 : (wx.storm >= 2 ? 5200 : 8000);
+      var t = Date.now() % per, a = 0;
+      if (t < 90) a = 1 - t / 90;
+      else if (t > 140 && t < 210) a = (1 - (t - 140) / 70) * 0.65;
+      if (a <= 0.01) return 0;
+      var seed = Math.floor(Date.now() / per);
+      var fx = ((seed * 9301 + 49297) % 233280) / 233280;
+      ctx.save();
+      ctx.fillStyle = ssA('#ffffff', (a * (wx.storm >= 2 ? 0.20 : 0.10)).toFixed(3));
+      ctx.fillRect(0, 0, W, Hs);
+      if (wx.storm >= 2) {
+        var x0 = W * (0.18 + 0.64 * fx), y0 = Hs * 0.10, y1 = Hs * 0.66, x = x0, y = y0, i = 0;
+        ctx.strokeStyle = ssA('#fff4c2', (a * 0.95).toFixed(3));
+        ctx.lineWidth = Math.max(1.2, K / 260); ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+        ctx.shadowColor = ssA('#f2b441', (a * 0.8).toFixed(3)); ctx.shadowBlur = K / 22;
+        ctx.beginPath(); ctx.moveTo(x0, y0);
+        while (y < y1) {
+          x += ((((seed + i) * 7919) % 2) ? 1 : -1) * (W * 0.035);
+          y += (y1 - y0) / 5; ctx.lineTo(x, y); i++;
+        }
+        ctx.stroke();
+      }
+      ctx.restore();
+      return a;
+    }
+
     // Tagesbogen + Auf-/Untergangsmarken
-    function ssArc(ctx, cam, K, track, sun, day, w, pal) {
-      var R = cam.skyR, acc = pal.col(w.ssArcColor, '#ffd166');
+    function ssArc(ctx, cam, K, track, sun, day, w, pal, mondBahn) {
+      // Die Mondbahn bekommt die Mondfarbe statt des Sonnengelbs - sonst sieht die Nacht
+      // aus wie ein vergessener Tagesbogen.
+      var R = cam.skyR, acc = mondBahn ? pal.col(w.ssMoonColor, '#9db8e6') : pal.col(w.ssArcColor, '#ffd166');
       ctx.save(); ctx.beginPath(); var first = true;
       track.forEach(function (s) {
         if (s.elev < -1.5) { first = true; return; }
         var p = ssSky3(cam, s.az, s.elev, R);
         first ? (ctx.moveTo(p.x, p.y), first = false) : ctx.lineTo(p.x, p.y);
       });
-      ctx.strokeStyle = ssA(acc, (0.18 + day * 0.3).toFixed(2));
+      ctx.strokeStyle = ssA(acc, (mondBahn ? 0.42 : (0.18 + day * 0.3)).toFixed(2));
       ctx.lineWidth = Math.max(1, K / 300); ctx.setLineDash([K / 90, K / 90]); ctx.stroke();
       ctx.setLineDash([]); ctx.restore();
       // Auf-/Untergang
@@ -490,7 +584,7 @@
         var i = Math.max(0, Math.min(track.length - 1, Math.round(o[1] / st)));
         var s = track[i], p = ssSky3(cam, s.az, Math.max(0, s.elev), R);
         ctx.save();
-        ctx.fillStyle = 'rgba(255,209,102,.55)';
+        ctx.fillStyle = mondBahn ? 'rgba(157,184,230,.6)' : 'rgba(255,209,102,.55)';
         ctx.beginPath(); ctx.arc(p.x, p.y, Math.max(2, K / 190), 0, 7); ctx.fill();
         ctx.restore();
       });
@@ -1282,7 +1376,12 @@
            : (u.indexOf('mph') >= 0) ? wind * 0.447
            : wind;                                    // m/s oder ohne Einheit
       }
+      // Gewitter kommt aus der eigenen Ableitung (HomeSuite\Wetter): Stufe 0-3 und die
+      // Entfernung des letzten Blitzes. Ohne Bindung bleibt es bei 0 - dann zeichnet die
+      // Szene auch kein Gewitter, statt eines zu erfinden.
+      var storm = ssVal(w.ssStormV), sdist = ssVal(w.ssStormDistV);
       return { rain: rain || 0, snow: snow || 0, fog: fog || 0, wind: ws,
+               storm: Math.max(0, Math.min(3, Math.round(storm || 0))), stormDist: sdist,
                cloud: cloud == null ? 0 : cloud, cloudSrc: cloudSrc, nass: nass };
     }
 
@@ -1807,6 +1906,28 @@
           var ro = new ResizeObserver(function () { ssDraw(w, el); });
           ro.observe(box); _ssRO[w.id] = ro;
         }
+        // Bei Gewitter laeuft ein SCHNELLER Takt mit, damit der Blitz zuckt. Er lebt nur,
+
+        // solange die Stufe > 0 ist, und haengt sich danach selbst wieder aus - eine Kachel
+
+        // soll nicht dauerhaft 8 Bilder je Sekunde zeichnen, nur weil einmal ein Blitz kam.
+
+        if (!ssSt(w).flash) {
+
+          ssSt(w).flash = setInterval(function () {
+
+            var e3 = ssEl(w);
+
+            if (!e3 || !document.body.contains(e3)) { clearInterval(ssSt(w).flash); ssSt(w).flash = 0; return; }
+
+            var wx3 = _covOn2(w, 'ssWeather', true) ? ssWx(w) : null;
+
+            if (wx3 && wx3.storm > 0) ssDraw(w, e3);
+
+          }, 120);
+
+        }
+
         // langsamer Takt: die Sonne bewegt sich um 0,25 Grad je Minute - 20 s genuegen.
         // Selbst-Stopp, sobald das Widget nicht mehr im Dokument haengt (kein unmount-Hook).
         if (!ssSt(w).tick) {
@@ -1852,6 +1973,10 @@
         h += fieldPick(w, 'ssSnowV', 'Schnee mm/h');
         h += fieldPick(w, 'ssPtypeV', 'Niederschlagsart');
         h += fieldPick(w, 'ssFogV', 'Sicht / Nebel');
+        // Gewitter aus der eigenen Ableitung (HomeSuite\\Wetter): Stufe 0 kein, 1 Wetterleuchten,
+        // 2 Gewitter, 3 in der Naehe. Ohne Bindung zeichnet die Szene kein Gewitter.
+        h += fieldPick(w, 'ssStormV', 'Gewitter-Stufe 0-3');
+        h += fieldPick(w, 'ssStormDistV', 'Gewitter · Entfernung km');
         h += fieldPick(w, 'ssTempV', 'Temperatur (Nebel & Schnee)');
         h += fieldPick(w, 'ssDewV', 'Taupunkt (für Nebel)');
         h += fieldPick(w, 'ssHumV', 'Luftfeuchte (Nebel & Schnee)');
