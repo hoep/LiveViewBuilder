@@ -203,6 +203,12 @@
     var condHasVar=(w.vCond&&_lt(w.vCond)!=null),condTxt=condHasVar?_lt(w.vCond):(cur?cur.cond:null);
     var icon=condHasVar?wCondIcon(condTxt):((cur&&cur.icon)||w.icon||'cloudsun');
     if(w.vRain&&_lb(w.vRain)){icon='rain';if(!condHasVar)condTxt='Regen';}   // Regen-Variable true -> Aktuell auf Regen erzwingen
+    // Gewitter schlaegt alles. Vorher gewann der Regensensor: bei Gewitter MIT Regen - also im
+    // Regelfall - zeigte die Karte einen harmlosen Regenschauer, obwohl es blitzt. Die Stufe
+    // kommt direkt aus der gebundenen Variablen, nicht aus dem Zustandstext: Text ist Auslegung,
+    // die Stufe ist gemessen.
+    if(w.vStorm&&(_ln(w.vStorm)||0)>=2){icon='storm';if(!condHasVar)condTxt='Gewitter';}
+    else if(!w.vStorm&&/gewitter|thunder|storm/i.test(''+(condTxt||''))){icon='storm';}
     var hum=(w.vHum&&_ln(w.vHum)!=null)?_ln(w.vHum):(cur?cur.humidity:null);
     var wind=(w.vWind&&_ln(w.vWind)!=null)?_ln(w.vWind):(cur?cur.wind:null);
     var ci=el.querySelector('[data-role=cico]');if(ci)ci.innerHTML=iconSVG(icon);
