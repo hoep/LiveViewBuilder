@@ -1,6 +1,6 @@
   function buildIconLib(q){
     var box=$('#iconLib');if(!box)return;box.innerHTML='';q=(q||'').toLowerCase();
-    var cats={};Object.keys(ICONS).forEach(function(id){var e=ICONS[id];if(q&&id.toLowerCase().indexOf(q)<0&&e[0].toLowerCase().indexOf(q)<0)return;(cats[e[0]]=cats[e[0]]||[]).push(id);});
+    var cats={};Object.keys(ICONS).forEach(function(id){var e=ICONS[id];if(q&&id.toLowerCase().indexOf(q)<0&&e[0].toLowerCase().indexOf(q)<0&&(e[2]||'').indexOf(q)<0)return;(cats[e[0]]=cats[e[0]]||[]).push(id);});
     Object.keys(cats).forEach(function(cat){
       var h=document.createElement('div');h.className='iconcat';h.textContent=cat;box.appendChild(h);
       var g=document.createElement('div');g.className='icongrid';
