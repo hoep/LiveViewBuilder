@@ -37,11 +37,11 @@
     afLoad(w,function(){s.loaded=true;s.loading=false;afEmit(w);afLoadRadio(w);afStartPoll(w);});
   }
   function afStartPoll(w){var s=afSess(w);if(s.pollId||(typeof DOKU!=='undefined'&&DOKU))return;
-    s.pollId=setInterval(function(){ if(s.dragging)return; afLoad(w,function(){afEmit(w);afLoadRadio(w);}); },8000);
+    s.pollId=setInterval(function(){ if(s.dragging)return; afLoad(w,function(){afEmit(w);afLoadRadio(w);afQueueTick(w);}); },8000);
   }
   // Radio "was laeuft": laufender Titel + Song-Cover fuer den aktuellen Raum (RadioNow, IPSSonos-frei).
   function afLoadRadio(w){var s=afSess(w);var c=afCur(s);if(!c){return;}
-    if(typeof DOKU!=='undefined'&&DOKU){ s.radio={roomId:c.id,isRadio:true,isTalk:false,artist:'Ava Max',title:'Sweet but Psycho',cover:'',station:'Hitradio Ö3'}; afEmit(w); return; }
+    if(typeof DOKU!=='undefined'&&DOKU){ s.radio={roomId:c.id,isRadio:true,isTalk:false,key:'oe3',artist:'Ava Max',title:'Sweet but Psycho',cover:'',station:'Hitradio Ö3'}; afEmit(w); return; }
     fetch('?api=audio&op=radionow&id='+c.id,{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
       if(j&&j.ok){ j.roomId=c.id; s.radio=j; afEmit(w); }
     }).catch(function(){});
@@ -83,13 +83,48 @@
     shuffle:'<path d="M16 3h5v5"/><path d="M4 20 21 3"/><path d="M21 16v5h-5"/><path d="M15 15l6 6"/><path d="M4 4l5 5"/>',
     repeat:'<path d="M17 2l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/>'
   };
-  // Die Groesse der Transport-/Regler-Icons gehoert den CSS-Regeln (.aftrans/.afwide/.afibtn svg,
+  // Die Groesse der Transport-/Regler-Icons gehoert den CSS-Regeln (.aftb/.afibtn svg,
   // alle bereits clamp+cqmin). Die Attribute hier sind nur der Rueckfall fuer Kontexte ohne eigene
   // Regel - darum relativ in em statt in festen Pixeln. sz bleibt als Bezugsgroesse erhalten
   // (18 = Normalmass), damit die Groessenverhaeltnisse der Icons untereinander gleich bleiben.
   function afSvg(p,sz){var em=((sz||18)/18).toFixed(2)+'em';
     return '<svg viewBox="0 0 24 24" width="'+em+'" height="'+em+'" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'+p+'</svg>';}
   function afMsg(t){return '<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:clamp(10px,4cqmin,14px)">'+esc(t)+'</div>';}
+  /**
+   * GENERISCHES COVER, wenn weder Sender- noch Titelbild vorliegt (nichts gewaehlt, Quelle
+   * ohne Bild, Bild nicht ladbar). Vorher blieb dort eine leere Farbflaeche stehen, die wie
+   * ein Ladefehler aussah. Reines Inline-SVG - keine externe Datei, skaliert mit der Kachel.
+   * Zeigt eine ruhige, um die Mitte gespiegelte Wellenform mit einem Ring dahinter.
+   *
+   * Zwei Punkte gegenueber der ersten Fassung berichtigt:
+   *  - Die Zeichenfarbe kam bei laufender Wiedergabe hart aus '#fff'. Im hellen Skin lag
+   *    damit Weiss auf einer nahezu weissen Flaeche - praktisch unsichtbar. Jetzt Akzent
+   *    (spielt) bzw. --faint (still), also in beiden Skins tragfaehig.
+   *  - Die Verlaufs-ID war fest ('afph'). Mehrere Now-Playing-Kacheln auf einer Seite
+   *    teilten sich denselben <defs>-Eintrag; die ID ist jetzt je Aufruf eindeutig.
+   */
+  var _afPhN = 0;
+  function afCoverPlaceholder(muted){
+    var id='afph'+(++_afPhN);
+    var col=muted?'var(--faint)':'var(--accent)';
+    // Halbe Auslenkung je Saeule, symmetrisch um die Mittellinie (y=60). Die Wellenform
+    // bleibt bewusst KLEIN und mittig im Ring - eine formatfuellende Zeichnung wirkte auf
+    // grossen Kacheln wie ein Muster und zog den Blick vom Titel weg.
+    var h=[7,13,19,25,29,25,19,13,7],bars='';
+    for(var i=0;i<h.length;i++){var x=36+i*6;
+      bars+='<path d="M'+x+' '+(60-h[i])+'V'+(60+h[i])+'"/>';}
+    return '<svg viewBox="0 0 120 120" preserveAspectRatio="xMidYMid slice" width="100%" height="100%" aria-hidden="true" style="display:block">'
+      +'<defs><linearGradient id="'+id+'" x1="0" y1="0" x2="1" y2="1">'
+      +'<stop offset="0" stop-color="var(--surface-2)"/><stop offset="1" stop-color="var(--tile)"/></linearGradient></defs>'
+      +'<rect width="120" height="120" fill="url(#'+id+')"/>'
+      +'<circle cx="60" cy="60" r="40" fill="none" stroke="'+col+'" stroke-opacity=".18" stroke-width="1.6"/>'
+      +'<g fill="none" stroke="'+col+'" stroke-opacity=".38" stroke-width="3.2" stroke-linecap="round">'+bars+'</g>'
+      +'</svg>';
+  }
+  // Echte Zeitangabe? Der Zuspieler meldet fuer eine leere/ruhende Zone "0:00" statt
+  // eines leeren Feldes. Ein solcher Nullwert ist KEINE Spielzeit - sonst zeichnet die
+  // Kachel unter "Nichts ausgewaehlt" einen Fortschrittsbalken von 0:00 bis 0:00.
+  function afZeit(s){return !!s && !/^0+(:0+)*$/.test(String(s).trim());}
   function afReady(w){var s=afSess(w);if(s.err)return {err:s.err};if(!s.loaded)return {loading:true};return {s:s};}
   function afSessRow(w){return row('Session-ID','<input id="afSessInp" value="'+esc(w.session||'audio')+'" placeholder="audio">')
     +'<div style="font-size:11px;color:var(--muted);margin:2px 2px 4px">Gleiche Session-ID = geteilte Bedienung mit den anderen Audio-Teil-Widgets.</div>';}
@@ -124,33 +159,76 @@
   });
 
   // ---------- audionow: Cover + Titel + Interpret + Fortschritt ----------
+  //
+  //  ZWEI ZUSTAENDE, EIN AUFBAU:
+  //    Warteschlange/Titel - Titel gross, Interpret darunter, Album klein; darunter die
+  //                          ECHTE Spielzeit als Fortschrittsbalken (ziehbar, wenn die
+  //                          Quelle springen kann) mit verstrichener Zeit und Dauer.
+  //    Radio               - laufender Song gross, Interpret darunter; statt eines
+  //                          erfundenen Fortschritts eine LIVE-Kennzeichnung mit Sender.
+  //  Rechts neben dem Titel bleibt nichts leer: die Kopfzeile traegt links den Raum und
+  //  rechts das Zustandsabzeichen, der Fuss laeuft ueber die volle Breite der Textspalte.
+  //  Leere Zeilen werden GAR NICHT ausgegeben - eine leere Zeile kostet auf flachen
+  //  Kacheln genau die Hoehe, die dem Titel fehlt.
   defWidget('audionow',{
     label:'Audio · Now-Playing', cat:'HomeSuite · Audio', paletteIcon:'image', size:[420,240],
     defaults:function(w){w.session='audio';},
     render:function(w){var r=afReady(w);if(r.err)return afMsg(r.err);if(r.loading)return afMsg('lädt …');var s=r.s,c=afCur(s);if(!c)return afMsg('kein Raum');
       // Radio: laufender Titel + Song-Cover (RadioNow) statt Sender-Platzhalter.
       var rad=(s.radio&&s.radio.roomId===c.id&&s.radio.isRadio)?s.radio:null;
+      var isTalk=!!(rad&&rad.isTalk);
+      var station=rad?(rad.station||''):'';
       var cover=(rad&&rad.cover)?rad.cover:c.coverUrl;
       var isLogo=!!(rad&&rad.coverIsLogo);
-      var line1=rad?(rad.isTalk?(rad.station||c.name):rad.title):(c.title||'—');
-      var line2=rad?(rad.isTalk?'Nachrichten / Wortprogramm':rad.artist):(c.artist||'');
-      var line3=rad?(rad.isTalk?'':(rad.station||'')):(c.album||'');
-      var tag=esc(c.name)+(rad?' · '+(rad.station||'Radio'):(c.playing?' · spielt':' · pausiert'));
-      var fit=isLogo?'contain':'cover',pad=isLogo?'padding:16px;box-sizing:border-box;':'',bg=isLogo?'var(--surface-2)':'linear-gradient(135deg,var(--accent),var(--accent-2))';
-      var cov=cover?('<img src="'+esc(cover)+'" style="width:100%;height:100%;object-fit:'+fit+';'+pad+'" onerror="this.style.display=\'none\'">'):'';
-      // Seek nur bei echter Dauer (nicht bei Live-Radio ohne Position).
-      var seekable=!rad && !!c.duration;
+      var line1,line2,line3;
+      if(rad){ line1=isTalk?(station||hsStripDomain(c.name)):(rad.title||station||'');
+               line2=isTalk?'Nachrichten / Wortprogramm':(rad.artist||'');
+               line3=''; }                                  // Sender steht im Fuss bei LIVE
+      else   { line1=c.title||''; line2=c.artist||''; line3=c.album||''; }
+      var leer=!line1;                                       // nichts gewaehlt / Zone still
+      // Zustandsabzeichen rechts in der Kopfzeile. Reine ANZEIGE - deshalb ein runder
+      // Punkt statt einer Taste (runde Schaltflaechen gibt es in dieser Oberflaeche nicht).
+      var bTxt='Pause',bCls='';
+      if(rad){bTxt='Live';bCls=' live';}
+      else if(c.playing){bTxt='Spielt';bCls=' play';}
+      else if(c.power===false){bTxt='Aus';bCls=' off';}
+      var fit=isLogo?'contain':'cover',pad=isLogo?'padding:8%;box-sizing:border-box;':'',bg=isLogo?'var(--surface-2)':'linear-gradient(135deg,var(--accent),var(--accent-2))';
+      // Ohne Bild NICHT einfach eine leere Flaeche stehen lassen (sah aus wie ein Ladefehler),
+      // sondern ein generisches Cover zeichnen. Bleibt auch liegen, wenn ein Bild NACHTRAEGLICH
+      // scheitert: das <img> legt sich darueber und blendet sich bei onerror wieder aus.
+      var ph='<div style="position:absolute;inset:0">'+afCoverPlaceholder(!c.playing)+'</div>';
+      var cov=ph+(cover?('<img src="'+esc(cover)+'" style="position:absolute;inset:0;width:100%;height:100%;object-fit:'+fit+';'+pad+'" onerror="this.style.display=\'none\'">'):'');
+      if(!cover)bg='var(--surface-2)';
+      // Fuss: Live-Kennzeichnung ODER echte Spielzeit - nie ein erfundener Fortschritt.
+      var seekable=!rad && afZeit(c.duration);                // Seek nur bei echter Dauer
       var posPct=Math.max(0,Math.min(100,c.positionPct||0));
-      var barSeek='<div class="afbar"'+(seekable?' data-afseek':'')+' style="margin:.5em 0 .2em;cursor:'+(seekable?'pointer':'default')+'"><i data-afseekfill style="width:'+posPct+'%;pointer-events:none"></i></div>';
+      var ft='';
+      if(rad){
+        // Links der Sender (das Abzeichen oben sagt bereits LIVE - der Fuss wiederholt es
+        // nicht, sondern nennt die Quelle), rechts die Art der Quelle. Faellt eines mit
+        // der grossen Zeile zusammen, wird es ersetzt statt doppelt gezeigt.
+        var q1=station||'Live-Stream'; if(q1===line1)q1='Live-Stream';
+        var q2=isTalk?'Wortprogramm':'Direktstream'; if(q2===q1)q2='';
+        ft='<div class="lv'+(c.playing?' on':'')+'">'
+          +'<span class="eq"><i></i><i></i><i></i><i></i></span><span class="stn">'+esc(q1)+'</span>'
+          +(q2?('<span class="src">'+esc(q2)+'</span>'):'')+'</div>';
+      } else if(afZeit(c.duration)){
+        ft='<div class="afbar"'+(seekable?' data-afseek':'')+' style="cursor:'+(seekable?'pointer':'default')+'">'
+          +'<i data-afseekfill style="width:'+posPct+'%;pointer-events:none"></i></div>'
+          +'<div class="tm"><span>'+esc(c.position||'0:00')+'</span><span>'+esc(c.duration)+'</span></div>';
+      } else if(afZeit(c.position)){
+        // Spielt, aber der Zuspieler meldet keine Dauer (Stream ohne Laengenangabe).
+        ft='<div class="tm"><span>'+esc(c.position)+'</span><span>ohne Spielzeit</span></div>';
+      }
       return '<div class="afw afnow">'
         +'<div class="cov" style="background:'+bg+'">'+cov+'</div>'
         +'<div class="txt">'
-        +'<div class="tag">'+tag+'</div>'
-        +'<div class="l1">'+esc(line1||'—')+'</div>'
-        +'<div class="l2">'+esc(line2||'')+'</div>'
-        +'<div class="l3">'+esc(line3||'')+'</div>'
-        +barSeek
-        +'<div class="tm"><span>'+esc(c.position||'0:00')+'</span><span>'+esc(c.duration||'')+'</span></div>'
+        +'<div class="hd"><span class="tag">'+esc(hsStripDomain(c.name))+'</span>'
+        +'<span class="bdg'+bCls+'"><i></i>'+esc(bTxt)+'</span></div>'
+        +'<div class="l1'+(leer?' dim':'')+'">'+esc(leer?'Nichts ausgewählt':line1)+'</div>'
+        +(line2?'<div class="l2">'+esc(line2)+'</div>':'')
+        +(line3?'<div class="l3">'+esc(line3)+'</div>':'')
+        +(ft?('<div class="ft">'+ft+'</div>'):'')
         +'</div></div>';},
     mount:afMount,
     _bind:function(w,el){var s=afSess(w);var sb=$('[data-afseek]',el);if(!sb)return;var fill=$('[data-afseekfill]',sb);
@@ -173,28 +251,40 @@
   defWidget('audioctl',{
     label:'Audio · Steuerung', cat:'HomeSuite · Audio', paletteIcon:'wselect', size:[420,150],
     defaults:function(w){w.session='audio';},
-    render:function(w){var r=afReady(w);if(r.err)return afMsg(r.err);if(r.loading)return afMsg('lädt …');var c=afCur(r.s);if(!c)return afMsg('kein Raum');
-      // Transport: Zurueck · Start/Pause · Stop · Vor. Der mittlere Knopf zeigt IMMER die
-      // Aktion, die als naechstes moeglich ist - spielt gerade nichts, steht dort Start.
-      function seg(ic,cmd,on,ttl){return '<button data-afcmd="'+cmd+'" title="'+ttl+'"'+(on?' class="on"':'')+'>'+ic+'</button>';}
+    render:function(w){var r=afReady(w);if(r.err)return afMsg(r.err);if(r.loading)return afMsg('lädt …');var s=r.s,c=afCur(s);if(!c)return afMsg('kein Raum');
+      // EIN Bedienblock: Transport, Lautstaerke und Sleep stehen untereinander, getrennt nur
+      // durch feine Linien. Alle Tasten sind eckig; rund bleiben allein der Reglergriff und
+      // die reinen Zustandspunkte. Start/Pause traegt als einzige Taste die gefuellte
+      // Aktivflaeche (--accent-2, weisse Schrift) und zeigt IMMER die naechstmoegliche Aktion.
+      function tb(cls,ic,cmd,ttl){return '<button class="aftb'+(cls?' '+cls:'')+'" data-afcmd="'+cmd+'" title="'+ttl+'" aria-label="'+ttl+'">'+ic+'</button>';}
       var playing=!!c.playing;
-      var bar='<div class="aftrans">'
-        +seg(afSvg(AF_IC.prev,18),'5',false,'Zurück')
-        +seg(afSvg(playing?AF_IC.pause:AF_IC.play,20),playing?'2':'1',true,playing?'Pause':'Start')
-        +seg(afSvg(AF_IC.stop,16),'3',false,'Stop')
-        +seg(afSvg(AF_IC.next,18),'4',false,'Vor')+'</div>';
-      function wide(ic,lbl,cmd,on){return '<button data-afcmd="'+cmd+'"'+(on?' class="on"':'')+'>'+ic+'<span>'+lbl+'</span></button>';}
-      var rep=(c.repeat||0)%3;var repLbl=rep===1?'Titel':(rep===2?'Alle':'Repeat');
-      var sr='<div class="afwide">'+wide(afSvg(AF_IC.shuffle,16),'Shuffle','shuffle',!!c.shuffle)
-        +wide(afSvg(AF_IC.repeat,16),repLbl,'repeat',rep>0)+'</div>';
-      function ibtn(ic,cmd,on){return '<button class="afibtn'+(on?' on':'')+'" data-afcmd="'+cmd+'">'+ic+'</button>';}
-      var vol='<div class="afvolrow">'+ibtn(afSvg(c.mute?AF_IC.mute:AF_IC.vol,17),'mute',!!c.mute)
-        +'<div class="afbar" data-afvol><i style="width:'+Math.max(0,Math.min(100,c.volume||0))+'%"></i></div>'
-        +'<span class="afvolnum">'+(c.volume||0)+'</span>'+ibtn(afSvg(AF_IC.power,16),'power',!!c.power)+'</div>';
-      function sbtn(m,lbl){return '<button data-afsleep="'+m+'">'+lbl+'</button>';}
-      var arm='<button class="arm'+(c.armed?' on':'')+'" data-afarm="1" title="'+(c.armed?'Scharf – klick für Schatten-Modus':'Schatten-Modus – klick zum Scharfschalten')+'">'+(c.armed?'Scharf':'Schatten')+'</button>';
-      var sleep='<div class="afsleep"><span class="lbl">Sleep</span>'+sbtn(15,'15m')+sbtn(30,'30m')+sbtn(60,'60m')+sbtn(0,'Aus')+arm+'</div>';
-      return '<div class="afw">'+bar+sr+vol+sleep+'</div>';},
+      // Shuffle und Repeat stehen gleichwertig links und rechts der Transporttasten - gleiche
+      // Groesse, gleiche Form, nur zurueckgenommen, weil sie Betriebsarten und keine Aktionen sind.
+      var rep=(c.repeat||0)%3;
+      var repTtl=rep===1?'Wiederholen: Titel':(rep===2?'Wiederholen: alle':'Wiederholen: aus');
+      var trans='<div class="aftrans">'
+        +tb('gh'+(c.shuffle?' on':''),afSvg(AF_IC.shuffle,15),'shuffle',c.shuffle?'Zufall: ein':'Zufall: aus')
+        +tb('',afSvg(AF_IC.prev,18),'5','Zurück')
+        +tb('pri',afSvg(playing?AF_IC.pause:AF_IC.play,24),playing?'2':'1',playing?'Pause':'Start')
+        +tb('',afSvg(AF_IC.stop,16),'3','Stop')
+        +tb('',afSvg(AF_IC.next,18),'4','Vor')
+        +tb('gh'+(rep>0?' on':''),afSvg(AF_IC.repeat,15)+(rep===1?'<b class="afrep1">1</b>':''),'repeat',repTtl)
+        +'</div>';
+      function ibtn(ic,cmd,on,ttl){return '<button class="afibtn'+(on?' on':'')+'" data-afcmd="'+cmd+'" title="'+ttl+'" aria-label="'+ttl+'">'+ic+'</button>';}
+      var v=Math.max(0,Math.min(100,c.volume||0));
+      var vol='<div class="afvolrow">'+ibtn(afSvg(c.mute?AF_IC.mute:AF_IC.vol,17),'mute',!!c.mute,c.mute?'Stumm aufheben':'Stumm schalten')
+        +'<div class="afbar afbar-k" data-afvol><i data-afvolfill style="width:'+v+'%;pointer-events:none"></i>'
+        +'<b data-afvolknob style="left:'+v+'%"></b></div>'
+        +'<span class="afvolnum" data-afvolnum>'+v+'</span>'
+        +ibtn(afSvg(AF_IC.power,16),'power',!!c.power,c.power?'Ausschalten':'Einschalten')+'</div>';
+      // Der Zuspieler meldet keinen Sleep-Stand zurueck. Markiert wird daher NUR die in dieser
+      // Sitzung gesetzte Wahl - ohne Wahl bleibt die Zeile absichtlich ohne Aktivflaeche.
+      var sel=(s.sleepSel&&s.sleepSel[c.id]!=null)?s.sleepSel[c.id]:null;
+      function sbtn(m,lbl){return '<button class="afchip'+(sel===m?' on':'')+'" data-afsleep="'+m+'">'+lbl+'</button>';}
+      var arm='<button class="afchip afarm'+(c.armed?' on':'')+'" data-afarm="1" title="'+(c.armed?'Scharf – klick für Schatten-Modus':'Schatten-Modus – klick zum Scharfschalten')+'">'+(c.armed?'Scharf':'Schatten')+'</button>';
+      var sleep='<div class="afsleep"><span class="lbl">Sleep-Timer</span>'
+        +'<div class="afsleepopts">'+sbtn(15,'15m')+sbtn(30,'30m')+sbtn(60,'60m')+sbtn(0,'Aus')+arm+'</div></div>';
+      return '<div class="afw afctl">'+trans+'<div class="afdiv"></div>'+vol+'<div class="afdiv"></div>'+sleep+'</div>';},
     mount:afMount,
     _bind:function(w,el){var s=afSess(w);
       $$('[data-afcmd]',el).forEach(function(b){b.onclick=function(){var cmd=b.getAttribute('data-afcmd');var c=afCur(s);if(!c)return;
@@ -204,10 +294,25 @@
         else if(cmd==='repeat')afSet(w,'Repeat',((c.repeat||0)+1)%3); // 0=aus,1=Titel,2=alle
         else afSet(w,'Transport',cmd); // 1=Start 2=Pause 3=Stop 4=Vor 5=Zurueck
       };});
-      var vb=$('[data-afvol]',el);if(vb)vb.onclick=function(e){var box=vb.getBoundingClientRect();var pct=Math.round((e.clientX-box.left)/box.width*100);afSet(w,'Volume',Math.max(0,Math.min(100,pct)));};
+      // Lautstaerke: ziehen statt nur tippen. Waehrend des Ziehens laufen Fuellung, Griff und
+      // Zahl mit; gesendet wird erst beim Loslassen (s.dragging haelt solange die Abfrage an).
+      var vb=$('[data-afvol]',el);
+      if(vb){var vf=$('[data-afvolfill]',vb),vk=$('[data-afvolknob]',vb),vn=$('[data-afvolnum]',el);
+        function vpct(x){var box=vb.getBoundingClientRect();if(!box.width)return 0;
+          return Math.max(0,Math.min(100,Math.round((x-box.left)/box.width*100)));}
+        function vshow(p){if(vf)vf.style.width=p+'%';if(vk)vk.style.left=p+'%';if(vn)vn.textContent=p;}
+        var vd=false;
+        vb.onpointerdown=function(e){vd=true;s.dragging=true;try{vb.setPointerCapture(e.pointerId);}catch(_){}vshow(vpct(e.clientX));e.preventDefault();};
+        vb.onpointermove=function(e){if(!vd)return;vshow(vpct(e.clientX));};
+        vb.onpointerup=function(e){if(!vd)return;vd=false;s.dragging=false;var p=vpct(e.clientX);vshow(p);afSet(w,'Volume',p);};
+        vb.onpointercancel=function(){vd=false;s.dragging=false;};
+      }
       $$('[data-afsleep]',el).forEach(function(b){b.onclick=function(){var m=+b.getAttribute('data-afsleep');var c=afCur(s);if(!c)return;
-        if(typeof DOKU!=='undefined'&&DOKU){toast(m?('Demo: Sleep '+m+' min'):'Demo: Sleep aus');return;}
+        // Die getroffene Wahl je Raum merken, damit die Zeile den zuletzt gesetzten Wert zeigt.
+        (s.sleepSel||(s.sleepSel={}))[c.id]=m;
+        if(typeof DOKU!=='undefined'&&DOKU){toast(m?('Demo: Sleep '+m+' min'):'Demo: Sleep aus');afEmit(w);return;}
         if(m>0)afManage(w,c.id,{op:'setSleep',args:{minutes:m}}); else afManage(w,c.id,{op:'cancelSleep'});
+        afEmit(w);
       };});
       var ab=$('[data-afarm]',el);if(ab)ab.onclick=function(){var c=afCur(s);if(!c)return;
         if(typeof DOKU!=='undefined'&&DOKU){toast('Demo: '+(c.armed?'Schatten-Modus':'Scharf'));return;}
@@ -235,17 +340,59 @@
   });
 
   // ---------- audioradio: Sender  direkt spielen (HQ-Stream statt TuneIn) ----------
+  //
+  //  Senderliste als volle, gut treffbare Zeilen: Kennzeichen, Sendername und - beim
+  //  laufenden Sender - der gerade gespielte Titel. Kopfzeile fest, Liste scrollt INNERHALB
+  //  der Kachel; alle Groessen haengen an der Kachel (siehe .afrad in styles.css).
+
+  // Laufender Sender. radionow liefert normalerweise den Sender-Key; meldet der Zuspieler
+  // nur den Sendernamen, wird ueber den Titel zugeordnet - sonst bliebe die Liste ohne
+  // Markierung, obwohl hoerbar etwas laeuft.
+  function afRadioKey(s,c,stations){
+    var rad=(s&&s.radio&&c&&s.radio.roomId===c.id)?s.radio:null;if(!rad)return '';
+    if(rad.key)return rad.key;
+    var norm=function(t){return String(t||'').toLowerCase().replace(/[^0-9a-zäöüß]/g,'');};
+    var nm=norm(rad.station);if(!nm)return '';
+    for(var i=0;i<(stations||[]).length;i++){if(norm(stations[i].title)===nm)return stations[i].key;}
+    return '';
+  }
+  // Pegel-Symbol des laufenden Senders. Reine Anzeige; die Balkenhoehe animiert das CSS
+  // (nur wenn wirklich gespielt wird), damit sich Laufen und Pause unterscheiden lassen.
+  var AF_EQ='<svg class="afr-eqs" viewBox="0 0 24 24" aria-hidden="true">'
+    +'<rect class="b1" x="3" y="9" width="4" height="12" rx="1"/>'
+    +'<rect class="b2" x="10" y="4" width="4" height="17" rx="1"/>'
+    +'<rect class="b3" x="17" y="12" width="4" height="9" rx="1"/></svg>';
+  var AF_PLAY='<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5l11 7-11 7z"/></svg>';
   defWidget('audioradio',{
-    label:'Audio · Radio (Direktstream)', cat:'HomeSuite · Audio', paletteIcon:'wlist', size:[420,150],
+    label:'Audio · Radio (Direktstream)', cat:'HomeSuite · Audio', paletteIcon:'wlist', size:[420,300],
     defaults:function(w){w.session='audio';},
     render:function(w){var r=afReady(w);if(r.err)return afMsg(r.err);if(r.loading)return afMsg('lädt …');var s=r.s,c=afCur(s);if(!c)return afMsg('kein Raum');
       if(!s.stations){afLoadStations(w,function(){afEmit(w);});return afMsg('Sender lädt …');}
-      var curKey=(s.radio&&s.radio.roomId===c.id)?(s.radio.key||''):'';
-      var chips=s.stations.map(function(st){var on=(curKey&&curKey===st.key);
-        return '<button class="afchip'+(on?' on':'')+'" data-afstation="'+esc(st.key)+'">'+esc(st.title)+'</button>';}).join('');
-      return '<div class="afw afw-scroll">'
-        +'<div class="aftag">Radio · Direktstream ('+esc(c.name)+')</div>'
-        +'<div class="afchips">'+chips+'</div></div>';},
+      var sts=s.stations||[];
+      var curKey=afRadioKey(s,c,sts);
+      var rad=(s.radio&&s.radio.roomId===c.id)?s.radio:null;
+      var playing=!!c.playing;
+      // Zweite Zeile des laufenden Senders: der Titel, bei Wortprogramm die ehrliche Ansage.
+      var curSub='';
+      if(rad){curSub=rad.isTalk?(String(rad.title||'')||'Wortprogramm / Nachrichten')
+        :[rad.artist,rad.title].filter(Boolean).join(' · ');}
+      // Volle Zeilen statt duenner Pillen: am Wandtablet muss ein Sender im Vorbeigehen
+      // treffbar sein. Der laufende traegt Pegel-Symbol, Marke und die gefuellte Aktivflaeche.
+      var list=sts.map(function(st){var on=(curKey&&curKey===st.key);
+        return '<button class="afr-row'+(on?' on':'')+'" data-afstation="'+esc(st.key)+'"'+(on?' aria-current="true"':'')+'>'
+          +(on?('<span class="afr-badge on'+(playing?' live':'')+'">'+AF_EQ+'</span>')
+              :('<span class="afr-badge">'+esc(_alibInit(st.title))+'</span>'))
+          +'<span class="afr-m"><span class="afr-nm">'+esc(st.title)+'</span>'
+          +((on&&curSub)?('<span class="afr-sub">'+esc(curSub)+'</span>'):'')+'</span>'
+          +(on?('<span class="afr-tag">'+(playing?'Läuft':'Pause')+'</span>')
+              :('<span class="afr-go">'+AF_PLAY+'</span>'))
+          +'</button>';}).join('');
+      var body=sts.length?('<div class="afrlist">'+list+'</div>')
+        :('<div class="afr-none">Keine Sender hinterlegt.<span>Die Senderliste kommt aus dem AudioZone-Modul.</span></div>');
+      return '<div class="afw afrad">'
+        +'<div class="afr-hd"><span class="aftag">Radio · '+esc(hsStripDomain(c.name))+'</span>'
+        +'<span class="afr-meta">'+sts.length+' Sender</span></div>'
+        +body+'</div>';},
     mount:afMount,
     _bind:function(w,el){var s=afSess(w);$$('[data-afstation]',el).forEach(function(b){b.onclick=function(){var key=b.getAttribute('data-afstation');var c=afCur(s);if(!c)return;
       if(typeof DOKU!=='undefined'&&DOKU){toast('Demo: '+key);return;}
@@ -352,21 +499,51 @@
     defaults:function(w){w.session='audio';},
     render:function(w){var r=afReady(w);if(r.err)return afMsg(r.err);if(r.loading)return afMsg('lädt …');var s=r.s,cur=afCur(s);if(!cur)return afMsg('kein Raum');
       var master=cur.coordinator||'';
-      // Kopfzeile ebenfalls an der Kachel ausrichten; der Trennen-Knopf ist reiner Text und
-      // braucht eine Mindesthoehe, damit er auf kleinen Kacheln noch ein Tippziel bleibt.
-      var head='<div class="hd" style="gap:clamp(5px,3cqmin,12px)"><span class="aftag">Multiroom · Master: '+esc(cur.name)+'</span>'
-        +'<button data-afungroup="1" style="min-height:clamp(22px,9cqmin,32px)">Gruppe trennen</button></div>';
-      // Gruppen-Lautstaerke: ein Regler an den Koordinator (Anzeige naeherungsweise = Master-Volume).
-      var gvol='<div class="afvolrow"><span class="lbl" style="width:clamp(30px,13cqmin,54px);font-size:clamp(8px,3.2cqmin,12px);color:var(--faint);flex:none">Gruppe</span>'
+      // Zuerst sortieren: verbundene Mitglieder und uebrige Raeume. Erst danach steht fest,
+      // ob es ueberhaupt eine Gruppe gibt - davon haengen Kopfzeile und Beschriftungen ab.
+      var members=[],free=[];
+      s.rooms.forEach(function(rr){
+        if(rr.id===cur.id)return;                       // der Master steht separat ganz oben
+        var inGrp=(rr.role==='member'&&rr.coordinator===master&&master!=='');
+        (inGrp?members:free).push(rr);
+      });
+      var hasGrp=members.length>0;
+      // Kopfzeile: eine Zeile, die NIE umbricht. Der Raumname kuerzt mit Ellipse, der Knopf
+      // behaelt seine Breite. Auf schmalen Kacheln traegt er die Kurzform (Container-Query).
+      // Ohne Mitglieder gibt es nichts zu trennen - dann entfaellt der Knopf ganz.
+      var head='<div class="hd"><span class="aftag">Multiroom · '+esc(hsStripDomain(cur.name))+'</span>'
+        +(hasGrp?('<button class="ung" data-afungroup="1" title="Alle Mitglieder aus der Gruppe nehmen">'
+          +'<span class="tx">Gruppe trennen</span><span class="ic">Trennen</span></button>'):'')+'</div>';
+      // Lautstaerke des Verbunds: ein Regler an den Koordinator (Anzeige = Master-Volume).
+      // Ohne Mitglieder regelt er nur diesen einen Raum - das sagt die Beschriftung auch.
+      var gvol='<div class="afvolrow gv"><span class="lbl">'+(hasGrp?'Gruppe':'Raum')+'</span>'
         +'<div class="afbar" data-afgvol><i data-afgvolfill style="width:'+Math.max(0,Math.min(100,cur.volume||0))+'%;pointer-events:none"></i></div>'
         +'<span class="afvolnum">'+(cur.volume||0)+'</span></div>';
-      var rows=s.rooms.map(function(rr){ if(rr.id===cur.id)return '';
-        var inGrp=(rr.role==='member'&&rr.coordinator===master&&master!=='');
-        return '<div class="r">'
-          +'<span class="sw" style="background:'+(rr.playing?'linear-gradient(135deg,var(--accent),var(--accent-2))':'var(--surface-2)')+'"></span>'
-          +'<span class="nm" style="font-weight:600">'+esc(hsStripDomain(rr.name))+'</span>'
-          +'<span style="font-size:clamp(8px,3cqmin,12px);color:var(--muted);flex:none">'+(inGrp?'synchron':(rr.role==='member'?'andere Gruppe':(rr.playing?'spielt eigenes':'frei')))+'</span>'
-          +'<button data-afgrp="'+rr.id+'" data-afin="'+(inGrp?1:0)+'" style="width:clamp(32px,14cqmin,52px);height:clamp(19px,8cqmin,30px);border-radius:999px;border:1px solid '+(inGrp?'var(--accent)':'var(--line)')+';background:'+(inGrp?'var(--accent)':'var(--surface-2)')+';position:relative;cursor:pointer;flex:none;padding:0"><span style="position:absolute;top:12%;'+(inGrp?'right:9%':'left:9%')+';width:min(42%,1.1em);aspect-ratio:1;border-radius:50%;background:'+(inGrp?'#fff':'var(--muted)')+';transition:.15s"></span></button></div>';}).join('');
+      // Zeile eines Raums als festes Spaltenraster (Name | Pegel bzw. Status | Zahl | Taste),
+      // damit verbundene und getrennte Zeilen dieselben Kanten haben. Verbundene tragen ihren
+      // eigenen Pegel, getrennte sind zurueckgenommen. Beitreten/Verlassen ist eine ECKIGE
+      // Taste (Haken/Plus, auf breiten Kacheln zusaetzlich beschriftet), kein Kippschalter.
+      function mrRow(rr,inGrp,isMaster){
+        var lvl=(inGrp||isMaster);
+        var st=isMaster?'':(inGrp?'synchron':(rr.role==='member'?'andere Gruppe':(rr.playing?'spielt eigenes':'frei')));
+        var v=Math.max(0,Math.min(100,rr.volume||0));
+        return '<div class="r'+(lvl?'':' off')+(isMaster?' me':'')+'">'
+          +'<span class="nm">'+esc(hsStripDomain(rr.name))+'</span>'
+          +(lvl
+              ? '<div class="afbar" data-afrvol="'+rr.id+'"><i style="width:'+v+'%;pointer-events:none"></i></div>'
+                +'<span class="afvolnum">'+v+'</span>'
+              : '<span class="stt">'+esc(st)+'</span><span class="afvolnum"></span>')
+          // Der Master kann die eigene Gruppe nicht verlassen -> Abzeichen statt Schein-Schalter.
+          +(isMaster ? '<span class="master">Master</span>'
+                     : '<button class="grp'+(inGrp?' on':'')+'" data-afgrp="'+rr.id+'" data-afin="'+(inGrp?1:0)+'" title="'+(inGrp?'Aus der Gruppe nehmen':'Zur Gruppe hinzufügen')+'">'
+                       +'<span class="ic">'+(inGrp?'✓':'+')+'</span><span class="tx">'+(inGrp?'Verbunden':'Beitreten')+'</span></button>')
+          +'</div>';
+      }
+      // VERBUNDEN zuerst (Master an der Spitze), danach die uebrigen Raeume.
+      var rows='<div class="sec">'+(hasGrp?('Verbunden · '+(members.length+1)+' Räume'):'Dieser Raum')+'</div>'
+        +mrRow(cur,true,true)+members.map(function(rr){return mrRow(rr,true,false);}).join('')
+        +(free.length?('<div class="sec">Weitere Räume</div>'
+          +free.map(function(rr){return mrRow(rr,false,false);}).join('')):'');
       return '<div class="afw afmr">'+head+gvol+'<div class="rows">'+rows+'</div></div>';},
     mount:afMount,
     _bind:function(w,el){var s=afSess(w);var cur=afCur(s);if(!cur)return;
@@ -381,6 +558,22 @@
           afManage(w,cur.id,{op:'setGroupVolume',args:{volume:p}});};
         gv.onpointercancel=function(){gd=false;s.dragging=false;};
       }
+      // Lautstaerke EINES verbundenen Raums (eigener Pegel trotz Gruppe).
+      $$('[data-afrvol]',el).forEach(function(bar){
+        var rid=+bar.getAttribute('data-afrvol');var fill=bar.querySelector('i');
+        function pct(x){var b=bar.getBoundingClientRect();return Math.max(0,Math.min(100,Math.round((x-b.left)/b.width*100)));}
+        var dg=false;
+        bar.onpointerdown=function(e){dg=true;s.dragging=true;try{bar.setPointerCapture(e.pointerId);}catch(_){}var p=pct(e.clientX);if(fill)fill.style.width=p+'%';e.preventDefault();};
+        bar.onpointermove=function(e){if(!dg)return;var p=pct(e.clientX);if(fill)fill.style.width=p+'%';};
+        bar.onpointerup=function(e){if(!dg)return;dg=false;s.dragging=false;var p=pct(e.clientX);if(fill)fill.style.width=p+'%';
+          if(typeof DOKU!=='undefined'&&DOKU){toast('Demo: Raum-Vol '+p);return;}
+          var rr=s.rooms.filter(function(x){return x.id===rid;})[0];
+          var vid=(rr&&rr.vars&&rr.vars.Volume)||0;
+          if(vid){fetch('?api=setvar&id='+vid+'&value='+p+'&key='+encodeURIComponent(TOKEN),{cache:'no-store'})
+            .then(function(){afLoad(w,function(){afEmit(w);});});}
+          else afManage(w,rid,{op:'setVolume',args:{volume:p}});};
+        bar.onpointercancel=function(){dg=false;s.dragging=false;};
+      });
       // Master-UID (RINCON) des aktuellen Raums als coordinator; members = aktuelle Gruppe +/- toggle.
       function currentMembers(){var m=[];s.rooms.forEach(function(rr){if(rr.role==='member'&&rr.coordinator===cur.coordinator)m.push(rr);});return m;}
       $$('[data-afgrp]',el).forEach(function(b){b.onclick=function(){var rid=+b.getAttribute('data-afgrp');var wasIn=b.getAttribute('data-afin')==='1';
@@ -397,4 +590,106 @@
         s.rooms.forEach(function(rr){ if(rr.role==='member'&&rr.coordinator===cur.coordinator) afManage(w,rr.id,{op:'ungroup'}); });
       };},
     props:function(w){return afSessRow(w);}, wire:function(w){afSessWire(w);}
+  });
+
+  // ---------- audioqueue: Warteschlange der aktuellen Zone ----------
+  //
+  //  Liest ?api=audio&op=queue fuer den Raum, den die Sitzung gerade zeigt, und stellt die
+  //  laufende Spur ueber die kommenden. Ein Klick auf eine Zeile springt sie an (op=queueplay).
+  //  Nicht jeder Zuspieler fuehrt eine Warteschlange (Radio, Direktstream) - dann meldet das
+  //  Backend supported=false und die Kachel sagt das ruhig, statt eine leere Liste zu zeigen.
+
+  // Dauer "4:29" bzw. "1:02:11" -> Sekunden. Unlesbares zaehlt als 0 (die Summe bleibt ehrlich klein).
+  function aqSec(t){var p=String(t||'').split(':');if(p.length<2)return 0;var n=0;
+    for(var i=0;i<p.length;i++){n=n*60+(parseInt(p[i],10)||0);}return n;}
+  // Sekunden -> Gesamtdauer in Worten ("58 min", "1 h 12 min"). Kurz genug fuer die Kopfzeile.
+  function aqTotal(sec){sec=Math.max(0,Math.round(sec||0));var m=Math.round(sec/60);
+    if(m<60)return m+' min';var h=Math.floor(m/60);return h+' h '+(m%60)+' min';}
+  // Mini-Cover: Bild wenn vorhanden, sonst der Anfangsbuchstabe als ruhiger Platzhalter.
+  function aqCov(it,cls){
+    return '<span class="aq-cov '+cls+'"><span class="aq-ph">'+esc(_alibInit(it&&it.title))+'</span>'
+      +((it&&it.cover)?('<img src="'+esc(it.cover)+'" loading="lazy" onerror="this.remove()">'):'')+'</span>';}
+
+  function aqDemo(){return {ok:true,supported:true,current:1,total:6,items:[
+    {idx:0,title:'Gloria',artist:'Patti Smith Group',album:'Horses',cover:'',duration:'5:57'},
+    {idx:1,title:'Redondo Beach',artist:'Patti Smith Group',album:'Easter',cover:'',duration:'4:29'},
+    {idx:2,title:'Because the Night',artist:'Patti Smith Group',album:'Easter',cover:'',duration:'3:23'},
+    {idx:3,title:'Dancing Barefoot',artist:'Patti Smith Group',album:'Wave',cover:'',duration:'4:16'},
+    {idx:4,title:'Frederick',artist:'Patti Smith Group',album:'Wave',cover:'',duration:'3:03'},
+    {idx:5,title:'People Have the Power',artist:'Patti Smith',album:'Dream of Life',cover:'',duration:'5:10'}
+  ]};}
+
+  // Warteschlange laden. Der Stand haengt an der SITZUNG (nicht am Widget), damit mehrere
+  // Kacheln derselben Session sich eine Abfrage teilen. limit kommt aus dem Widget.
+  function afLoadQueue(w,lim){var s=afSess(w),c=afCur(s);if(!c)return;
+    if(s.qLoading)return;s.qLoading=true;s.qPend=false;
+    if(typeof DOKU!=='undefined'&&DOKU){var d=aqDemo();d.roomId=c.id;s.queue=d;s.qLoading=false;afEmit(w);return;}
+    fetch('?api=audio&op=queue&id='+c.id+'&limit='+Math.max(1,Math.min(200,lim||60)),{cache:'no-store'})
+      .then(function(r){return r.json();}).then(function(j){
+        j=j||{};j.roomId=c.id;s.queue=j;s.qLoading=false;afEmit(w);
+      }).catch(function(){s.queue={ok:false,roomId:c.id,err:'Verbindungsfehler'};s.qLoading=false;afEmit(w);});}
+  // Auffrischen im Sitzungs-Takt - aber nur, wenn ueberhaupt eine Warteschlangen-Kachel laeuft.
+  function afQueueTick(w){var s=afSess(w);if(!s.queue)return;afLoadQueue(w,s.qLim||60);}
+
+  defWidget('audioqueue',{
+    label:'Audio · Warteschlange', cat:'HomeSuite · Audio', paletteIcon:'wlist', size:[420,360],
+    defaults:function(w){w.session='audio';w.qLimit=60;},
+    render:function(w){var r=afReady(w);if(r.err)return afMsg(r.err);if(r.loading)return afMsg('lädt …');
+      var s=r.s,c=afCur(s);if(!c)return afMsg('kein Raum');
+      s.qLim=Math.max(1,Math.min(200,parseInt(w.qLimit,10)||60));
+      // Raumwechsel: der alte Stand gehoert einem anderen Raum und wird verworfen.
+      if(!s.queue||s.queue.roomId!==c.id){
+        if(!s.qLoading&&!s.qPend){s.qPend=true;setTimeout(function(){afLoadQueue(w,s.qLim);},0);}
+        return afMsg('Warteschlange lädt …'); }
+      var q=s.queue,head='<span class="aftag">Warteschlange · '+esc(hsStripDomain(c.name))+'</span>';
+      function shell(inner,meta){return '<div class="afw aq"><div class="aq-hd">'+head
+        +'<span class="aq-meta">'+(meta||'')+'</span></div>'+inner+'</div>';}
+      if(q.ok===false&&q.supported!==false)return shell('<div class="aq-none">Warteschlange nicht lesbar.'
+        +'<span>'+esc(q.err||q.error||'Der Zuspieler hat nicht geantwortet.')+'</span></div>','');
+      if(q.supported===false)return shell('<div class="aq-none">Diese Quelle führt keine Warteschlange.'
+        +'<span>Radio und Direktstreams laufen ohne Titelliste.</span></div>','');
+      var items=q.items||[];
+      if(!items.length)return shell('<div class="aq-none">Die Warteschlange ist leer.'
+        +'<span>Über Bibliothek oder Quelle lässt sich etwas hinzufügen.</span></div>','0 Titel');
+      var sum=0;items.forEach(function(it){sum+=aqSec(it.duration);});
+      var total=q.total||items.length;
+      // Gesamtdauer bezieht sich auf die GELADENEN Titel - bei gekuerzter Liste ehrlich kennzeichnen.
+      var meta=esc(total+' Titel · '+aqTotal(sum)+(items.length<total?' (erste '+items.length+')':''));
+      var cur=Math.max(0,Math.min(items.length-1,q.current||0));
+      var ci=items[cur];
+      var curBlk='<div class="aq-cur">'+aqCov(ci,'lg')
+        +'<div class="aq-m"><div class="aq-lbl">'+(c.playing?'Läuft gerade':'Angehalten')+'</div>'
+        +'<div class="aq-t">'+esc(ci.title||'—')+'</div>'
+        +'<div class="aq-a">'+esc([ci.artist,ci.album].filter(Boolean).join(' · '))+'</div></div>'
+        +'<span class="aq-d">'+esc(ci.duration||'')+'</span></div>';
+      var next=items.slice(cur+1);
+      var list=next.length
+        ? '<div class="aq-list">'+next.map(function(it){
+            return '<button class="aq-row" data-aqidx="'+(it.idx!=null?it.idx:'')+'">'
+              +'<span class="aq-n">'+((it.idx!=null?it.idx:0)+1)+'</span>'+aqCov(it,'sm')
+              +'<div class="aq-m"><div class="aq-t">'+esc(it.title||'—')+'</div>'
+              +'<div class="aq-a">'+esc(it.artist||'')+'</div></div>'
+              +'<span class="aq-d">'+esc(it.duration||'')+'</span></button>';}).join('')+'</div>'
+        : '<div class="aq-none">Danach ist die Warteschlange zu Ende.<span></span></div>';
+      return shell(curBlk+'<div class="aq-sec">Als Nächstes</div>'+list,meta);},
+    mount:afMount,
+    _bind:function(w,el){var s=afSess(w);
+      $$('[data-aqidx]',el).forEach(function(b){b.onclick=function(){
+        var idx=parseInt(b.getAttribute('data-aqidx'),10);if(isNaN(idx))return;
+        var c=afCur(s);if(!c)return;
+        if(typeof DOKU!=='undefined'&&DOKU){toast('Demo: Spur '+(idx+1));return;}
+        fetch('?api=audio&op=queueplay&id='+c.id+'&index='+idx+'&key='+encodeURIComponent(TOKEN),{cache:'no-store'})
+          .then(function(r){return r.json();}).then(function(j){
+            if(j&&j.note)toast(j.note);
+            // Kurz warten: der Player braucht einen Moment, bis Position und Spur stimmen.
+            setTimeout(function(){afLoad(w,function(){afEmit(w);});afLoadQueue(w,s.qLim||60);},1200);
+          }).catch(function(){toast('Warteschlange: Verbindungsfehler');});
+      };});},
+    props:function(w){return afSessRow(w)
+      +row('Titel laden','<input id="aqLimInp" type="number" min="1" max="200" value="'+(parseInt(w.qLimit,10)||60)+'">')
+      +'<div style="font-size:11px;color:var(--muted);margin:2px 2px 4px">Wie viele Einträge der Warteschlange geholt werden (1 bis 200).</div>';},
+    wire:function(w){afSessWire(w);
+      if($('#aqLimInp'))$('#aqLimInp').onchange=function(){
+        w.qLimit=Math.max(1,Math.min(200,parseInt(this.value,10)||60));commit();
+        var s=afSess(w);s.qLim=w.qLimit;s.queue=null;afEmit(w);};}
   });

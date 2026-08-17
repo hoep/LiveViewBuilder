@@ -1085,9 +1085,13 @@
   .hwp2t{font-family:var(--fm);font-size:26px;font-weight:600;line-height:1}
   .hwp2sub{font-size:11px;color:var(--muted);display:block;margin-top:2px}
   .hwp2days{flex:1;display:flex;flex-direction:column;gap:2px;min-height:0;overflow:hidden}
-  .hwp2day{flex:1 1 0;min-height:0;display:grid;grid-template-columns:26px 20px auto minmax(16px,1fr) auto 34px;align-items:center;gap:6px;font-size:clamp(8px,7cqh,12px)}
+  .hwp2day{flex:1 1 0;min-height:0;display:grid;grid-template-columns:26px clamp(11px,7cqh,20px) auto minmax(16px,1fr) auto 34px;align-items:center;gap:6px;font-size:clamp(8px,7cqh,12px)}
   .hwp2day .d{color:var(--muted)}
-  .hwp2day .ic{width:18px;height:18px;color:var(--warm);display:inline-flex}
+  /* Symbol MIT der Zeile skalieren. Es stand fix auf 18 px - sobald die Karte eine Zeile
+     mehr traegt (z. B. die Zusatzzeile fuer Gewitter/Regen/Nebel), schrumpfen die Zeilen,
+     das Symbol aber nicht: die Reihen ueberlappten und die letzte wurde abgeschnitten. */
+  .hwp2day .ic{width:clamp(9px,6.5cqh,18px);height:clamp(9px,6.5cqh,18px);color:var(--warm);display:inline-flex;align-items:center}
+  .hwp2day .ic svg{width:100%;height:100%}
   .hwp2day .lo{font-family:var(--fm);color:var(--faint);text-align:right}
   .hwp2day .hi{font-family:var(--fm);font-weight:600;text-align:right}
   .hwp2day .pq{font-size:9.5px;color:var(--info);text-align:right;white-space:nowrap}
@@ -2448,59 +2452,164 @@
        container-type:size;display:flex;flex-direction:column;justify-content:center;
        gap:clamp(5px,3.2cqmin,12px);padding:clamp(7px,4cqmin,14px);overflow:hidden}
   .afw.afw-scroll{overflow:auto;justify-content:center}
-  /* Transportleiste */
-  .aftrans{display:flex;border:1px solid var(--line);border-radius:999px;
-           background:var(--surface-2);overflow:hidden;flex:none}
-  .aftrans button{flex:1;display:flex;align-items:center;justify-content:center;
-           height:clamp(30px,15cqmin,50px);background:transparent;color:var(--text);
-           border:0;cursor:pointer;padding:0}
-  .aftrans button.on{background:linear-gradient(135deg,var(--accent),var(--accent-2));color:#fff}
-  .aftrans svg{width:clamp(15px,7.5cqmin,26px);height:clamp(15px,7.5cqmin,26px)}
-  /* breite Schalter (Shuffle/Repeat) */
-  .afwide{display:flex;gap:clamp(5px,3cqmin,12px);flex:none}
-  .afwide button{flex:1;display:flex;align-items:center;justify-content:center;
-           gap:clamp(4px,2cqmin,8px);height:clamp(28px,13cqmin,46px);
-           border:1px solid var(--line);border-radius:var(--r-s,9px);background:var(--tile);
-           color:var(--text);font-size:clamp(10px,4.4cqmin,14px);cursor:pointer;min-width:0;padding:0 6px}
-  .afwide button.on{border-color:var(--accent);color:var(--accent);
-           background:color-mix(in oklab,var(--accent) 14%,transparent)}
-  .afwide svg{width:clamp(13px,6cqmin,20px);height:clamp(13px,6cqmin,20px);flex:none}
-  .afwide span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  /* ---- audioctl: EIN zusammenhaengender Bedienblock ----
+     Transport, Lautstaerke und Sleep stehen als drei Zeilen untereinander, getrennt nur
+     durch feine Linien - die Kachel selbst ist die Karte (.w traegt Rahmen und Flaeche).
+     Jede Zeile traegt flex:0 0 auto, damit sich auf flachen Kacheln nichts zerdrueckt. */
+  .afctl{justify-content:center;gap:clamp(4px,2.6cqmin,12px)}
+  .afdiv{flex:0 0 auto;height:1px;background:var(--line)}
+  /* Stumm/Ein-Aus in derselben Tonlage wie die Transporttasten. */
+  .afctl .afibtn{background:var(--surface-2)}
+  /* Transport: EINZELNE eckige Tasten mit Abstand statt einer Pillen-Segmentleiste.
+     Auflage des Betreibers: die Oberflaeche kennt keine runden Schaltflaechen. Runde Formen
+     bleiben Zustandspunkten (reine Anzeige) und Reglergriffen vorbehalten. */
+  .aftrans{display:flex;align-items:center;justify-content:center;
+           gap:clamp(3px,2.2cqmin,10px);flex:0 0 auto;min-width:0}
+  .aftb{display:flex;align-items:center;justify-content:center;flex:0 1 auto;min-width:0;padding:0;
+           width:clamp(26px,13cqmin,44px);height:clamp(26px,13cqmin,44px);
+           background:var(--surface-2);color:var(--text);
+           border:1px solid var(--line);border-radius:clamp(5px,3cqmin,9px);cursor:pointer}
+  .aftb svg{width:clamp(13px,6cqmin,20px);height:clamp(13px,6cqmin,20px)}
+  .aftb:hover{border-color:var(--accent-2)}
+  /* Start/Pause ist die einzige gefuellte Aktivflaeche der Zeile: IMMER --accent-2 + weisse
+     Schrift (nie dunkle Schrift auf Akzent). */
+  .aftb.pri{width:clamp(32px,17cqmin,58px);height:clamp(32px,17cqmin,58px);border-radius:clamp(7px,3.6cqmin,12px);
+           background:var(--accent-2);border-color:var(--accent-2);color:#fff}
+  .aftb.pri svg{width:clamp(16px,8cqmin,26px);height:clamp(16px,8cqmin,26px)}
+  .aftb.pri:hover{filter:brightness(1.06)}
+  /* Shuffle und Repeat: gleichwertig, gleiche Form, nur zurueckgenommen (Betriebsart statt Aktion). */
+  .aftb.gh{position:relative;width:clamp(22px,10.5cqmin,36px);height:clamp(22px,10.5cqmin,36px);
+           background:transparent;border-color:var(--line-soft);color:var(--faint)}
+  .aftb.gh svg{width:clamp(11px,5cqmin,17px);height:clamp(11px,5cqmin,17px)}
+  .aftb.gh.on{color:var(--accent);border-color:var(--accent);background:var(--surface-2)}
+  .afrep1{position:absolute;right:clamp(2px,1.2cqmin,5px);bottom:clamp(1px,.8cqmin,4px);
+           font-family:var(--fm);font-weight:700;line-height:1;font-size:clamp(6px,2.4cqmin,9px)}
   /* Lautstaerkezeile */
   .afvolrow{display:flex;align-items:center;gap:clamp(5px,3cqmin,12px);flex:none}
   .afibtn{width:clamp(28px,13cqmin,46px);height:clamp(28px,13cqmin,46px);flex:none;
            border:1px solid var(--line);border-radius:var(--r-s,9px);background:var(--tile);
            color:var(--muted);display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0}
-  .afibtn.on{border-color:var(--accent);color:var(--accent);
-           background:color-mix(in oklab,var(--accent) 14%,transparent)}
+  /* Stumm und Ein/Aus sind echte Schaltzustaende -> gefuellte Aktivflaeche in --accent-2. */
+  .afibtn.on{background:var(--accent-2);border-color:var(--accent-2);color:#fff}
   .afibtn svg{width:clamp(13px,6cqmin,22px);height:clamp(13px,6cqmin,22px)}
   .afbar{position:relative;flex:1;height:clamp(6px,2.6cqmin,11px);border-radius:999px;
            background:var(--surface-2);border:1px solid var(--line);cursor:pointer;min-width:0}
   .afbar>i{position:absolute;left:0;top:0;bottom:0;border-radius:999px;background:var(--accent);display:block}
+  /* Regler mit Griff: der runde Knubbel ist als Reglergriff ausdruecklich erlaubt. */
+  .afbar-k{height:clamp(6px,3cqmin,10px);touch-action:none}
+  .afbar-k>i{background:var(--accent-2)}
+  .afbar-k>b{position:absolute;top:50%;transform:translate(-50%,-50%);border-radius:50%;
+           width:clamp(11px,5cqmin,18px);height:clamp(11px,5cqmin,18px);background:#fff;
+           border:clamp(2px,1cqmin,3px) solid var(--accent-2);box-shadow:0 2px 6px rgba(0,0,0,.3);
+           pointer-events:none}
   .afvolnum{font-family:var(--fm);width:clamp(24px,10cqmin,40px);text-align:right;
-           font-size:clamp(9px,3.6cqmin,13px);flex:none}
-  /* Sleep-Zeile */
-  .afsleep{display:flex;align-items:center;gap:clamp(3px,2cqmin,7px);flex:none}
-  .afsleep>span.lbl{width:clamp(28px,12cqmin,50px);font-size:clamp(8px,3.2cqmin,12px);
-           color:var(--faint);flex:none}
-  .afsleep button{flex:1;height:clamp(22px,9cqmin,34px);border:1px solid var(--line);border-radius:7px;
-           background:var(--tile);color:var(--muted);font-size:clamp(8px,3.2cqmin,12px);cursor:pointer;
-           min-width:0;padding:0}
-  .afsleep button.arm{flex:none;padding:0 clamp(6px,3cqmin,12px)}
-  .afsleep button.arm.on{border-color:var(--accent);color:var(--accent);
-           background:color-mix(in oklab,var(--accent) 14%,transparent)}
-  /* Now-Playing */
-  .afnow{flex-direction:row;align-items:center;gap:clamp(7px,4cqmin,16px)}
-  .afnow .cov{width:min(40%,42cqmin);aspect-ratio:1;flex:none;border-radius:var(--r-s,9px);overflow:hidden}
-  .afnow .txt{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:clamp(1px,.8cqmin,4px)}
+           font-size:clamp(9px,3.6cqmin,13px);font-variant-numeric:tabular-nums;flex:none}
+  .afctl .afvolnum{font-weight:700}
+  /* Sleep-Zeile: Beschriftung links, Wahl rechts - ruhiger als die Zeilen darueber. */
+  .afsleep{display:flex;align-items:center;justify-content:space-between;
+           gap:clamp(5px,3cqmin,12px);flex:0 0 auto;min-width:0}
+  .afsleep>span.lbl{font-size:clamp(7px,2.9cqmin,11px);font-weight:700;letter-spacing:.07em;
+           text-transform:uppercase;color:var(--faint);white-space:nowrap;overflow:hidden;
+           text-overflow:ellipsis;min-width:0}
+  .afsleepopts{display:flex;align-items:center;gap:clamp(3px,1.8cqmin,7px);flex:0 1 auto;min-width:0}
+  .afchip{height:clamp(20px,9cqmin,30px);padding:0 clamp(4px,3cqmin,13px);flex:0 1 auto;min-width:0;
+           border:1px solid var(--line);border-radius:clamp(4px,3cqmin,9px);background:var(--tile);
+           color:var(--muted);font-family:inherit;font-weight:700;font-size:clamp(8px,3.2cqmin,12px);
+           display:flex;align-items:center;justify-content:center;white-space:nowrap;cursor:pointer}
+  .afchip.on{background:var(--accent-2);border-color:var(--accent-2);color:#fff}
+  /* Scharf/Schatten gehoert nicht zur Sleep-Wahl - deutlicher Abstand statt Verwechslungsgefahr. */
+  .afarm{margin-left:clamp(4px,2.6cqmin,12px)}
+  /* Enge Kacheln: zuerst fallen die Trennlinien und die Abstaende, erst danach die
+     Beschriftung der Sleep-Zeile. Bedienbar bleibt alles - die Mindestmasse der Tasten
+     stehen in den clamp()-Untergrenzen und werden hier NICHT unterschritten.
+     Bezug ist .w (container-type:size), also die Kachel selbst. */
+  @container (max-height:118px){
+    .afctl{gap:clamp(3px,1.8cqmin,7px);padding:clamp(5px,3cqmin,10px)}
+    .afctl>.afdiv{display:none}
+  }
+  @container (max-height:100px){ .afctl>.afsleep>span.lbl{display:none} }
+  @container (max-width:230px){
+    .afctl>.afsleep>span.lbl{display:none}
+    .afctl .afchip{padding:0 clamp(3px,2cqmin,8px)}
+    .afctl .afarm{margin-left:clamp(3px,1.6cqmin,8px)}
+  }
+  /* ---- Now-Playing (audionow) ----
+     Aufbau: Cover links (der Held der Kachel), rechts die Textspalte aus Kopfzeile
+     (Raum + Zustandsabzeichen), Titel, Interpret, Album/Quelle und Fuss (Fortschritt
+     oder LIVE-Kennzeichnung). JEDE Zeile der Textspalte traegt flex:0 0 auto - sonst
+     zerdruecken sie sich auf flachen Kacheln gegenseitig. Alle Groessen folgen der
+     KACHEL (clamp + cq-Einheiten), nicht dem Fenster. */
+  .afnow{flex-direction:row;align-items:center;gap:clamp(8px,4.4cqmin,20px)}
+  /* Cover: Kantenlaenge folgt der KACHELHOEHE (cqh), nicht der kleineren Seite - sonst
+     schrumpft es auf breiten, flachen Kacheln auf Briefmarkengroesse (Ausgangslage: rund
+     90 px auf einer 1050 px breiten Kachel). Die Breitengrenze verhindert, dass es bei
+     sehr hohen, schmalen Kacheln den Text verdraengt. */
+  .afnow .cov{width:min(44%,96cqh);aspect-ratio:1;flex:0 0 auto;border-radius:var(--r-s,9px);
+           overflow:hidden;position:relative;align-self:center;box-sizing:border-box;
+           border:1px solid var(--line-soft)}
+  .afnow .txt{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;justify-content:center;
+           gap:clamp(1px,.9cqmin,5px)}
+  /* Kopfzeile: Raum links, Zustand rechts - damit rechts neben dem Titel keine tote
+     Flaeche stehen bleibt. Beide Enden kuerzen mit Ellipse. */
+  .afnow .hd{display:flex;align-items:center;gap:clamp(4px,2.4cqmin,10px);flex:0 0 auto;min-width:0}
   .afnow .tag{font-size:clamp(7px,2.6cqmin,11px);letter-spacing:.7px;text-transform:uppercase;
-           font-weight:700;color:var(--faint);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .afnow .l1{font-size:clamp(12px,6.5cqmin,24px);font-weight:700;line-height:1.15}
-  .afnow .l2{font-size:clamp(9px,4.2cqmin,16px);color:var(--muted)}
-  .afnow .l3{font-size:clamp(8px,3.4cqmin,13px);color:var(--faint)}
-  .afnow .l1,.afnow .l2,.afnow .l3{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .afnow .tm{display:flex;justify-content:space-between;font-family:var(--fm);
-           font-size:clamp(8px,3.2cqmin,12px);color:var(--muted)}
+           font-weight:700;color:var(--faint);flex:1 1 auto;min-width:0;
+           overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .afnow .bdg{flex:0 0 auto;display:inline-flex;align-items:center;gap:.45em;white-space:nowrap;
+           font-size:clamp(7px,2.6cqmin,11px);font-weight:700;letter-spacing:.6px;text-transform:uppercase;
+           color:var(--muted);background:var(--tile);border:1px solid var(--line);
+           border-radius:var(--r-s,9px);padding:.2em .55em}
+  /* Zustandspunkt: rund ist hier erlaubt, weil er nur ANZEIGT und nichts schaltet. */
+  .afnow .bdg>i{width:.5em;height:.5em;border-radius:50%;background:currentColor;flex:none}
+  .afnow .bdg.live,.afnow .bdg.play{color:var(--accent);
+           border-color:color-mix(in oklab,var(--accent) 45%,transparent);
+           background:color-mix(in oklab,var(--accent) 14%,transparent)}
+  .afnow .bdg.off{color:var(--faint)}
+  .afnow .l1{font-size:clamp(13px,max(9cqmin,2.4cqi),32px);font-weight:700;line-height:1.14;letter-spacing:-.01em}
+  .afnow .l1.dim{color:var(--muted);font-weight:600}
+  .afnow .l2{font-size:clamp(10px,max(5.2cqmin,1.45cqi),19px);color:var(--muted);line-height:1.25}
+  .afnow .l3{font-size:clamp(8px,max(3.8cqmin,1.05cqi),14px);color:var(--faint);line-height:1.25}
+  .afnow .l1,.afnow .l2,.afnow .l3{flex:0 0 auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  /* Fuss: Fortschritt ODER Live-Kennzeichnung, immer ueber die volle Textbreite. */
+  .afnow .ft{flex:0 0 auto;margin-top:clamp(2px,1.6cqmin,8px)}
+  .afnow .ft .afbar{width:100%;flex:none}
+  /* Ziehbarer Fortschritt bekommt einen Griff am Ende der Fuellung. Rund ist hier
+     erlaubt: es ist ein Reglergriff, keine Schaltflaeche. */
+  .afnow .afbar[data-afseek]>i::after{content:'';position:absolute;right:0;top:50%;
+           width:clamp(9px,3.8cqmin,16px);height:clamp(9px,3.8cqmin,16px);transform:translate(50%,-50%);
+           border-radius:50%;background:var(--accent);border:2px solid var(--surface);box-sizing:border-box}
+  .afnow .tm{display:flex;justify-content:space-between;gap:clamp(4px,2cqmin,10px);
+           font-family:var(--fm);font-size:clamp(8px,3.2cqmin,12px);color:var(--muted);
+           font-variant-numeric:tabular-nums;margin-top:clamp(2px,1.2cqmin,5px)}
+  .afnow .tm>span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  /* LIVE statt erfundenem Fortschritt: Radio kennt keine Spielzeit. Der Sender steht
+     rechts und schiebt sich per margin-left:auto an den Rand - kein Leerraum dazwischen. */
+  .afnow .lv{display:flex;align-items:center;gap:clamp(4px,2.4cqmin,10px);min-width:0;
+           font-size:clamp(8px,3.6cqmin,14px);color:var(--accent)}
+  .afnow .lv .stn{min-width:0;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .afnow .lv .src{margin-left:auto;min-width:0;color:var(--muted);
+           overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .afnow .eq{display:flex;align-items:flex-end;gap:.18em;height:1.05em;flex:none}
+  .afnow .eq>i{display:block;width:.22em;height:45%;background:currentColor;border-radius:1px}
+  .afnow .lv.on .eq>i{animation:afeq 1.15s ease-in-out infinite}
+  .afnow .lv.on .eq>i:nth-child(2){animation-delay:-.35s}
+  .afnow .lv.on .eq>i:nth-child(3){animation-delay:-.7s}
+  .afnow .lv.on .eq>i:nth-child(4){animation-delay:-.15s}
+  @keyframes afeq{0%,100%{height:30%}50%{height:100%}}
+  @media (prefers-reduced-motion:reduce){.afnow .lv.on .eq>i{animation:none}}
+  /* Wenig KACHELHOEHE: erst Album/Quelle, dann der Interpret weichen. Titel, Kopfzeile
+     und Fuss bleiben - sie tragen die eigentliche Aussage. */
+  @container (max-height:104px){.afnow .l3{display:none}}
+  @container (max-height:78px){.afnow .l2{display:none}}
+  /* Wenig BREITE: die Art der Quelle ist die entbehrlichste Angabe im Fuss. */
+  @container (max-width:250px){.afnow .lv .src{display:none}}
+  /* Hochformat: Cover nach oben, Text darunter - nebeneinander bliebe fuer den Titel
+     keine brauchbare Breite. */
+  @container (max-aspect-ratio:3/4){
+    .afnow{flex-direction:column;align-items:stretch;justify-content:center}
+    .afnow .cov{width:min(100%,54cqh);align-self:center}
+    .afnow .txt{flex:0 1 auto;justify-content:flex-start}
+  }
   /* Zeilen mit Stepper (Quelle) */
   .afsrow{display:flex;align-items:center;gap:clamp(4px,2.6cqmin,10px);min-width:0}
   .afsrow>span.lbl{width:clamp(42px,18cqmin,86px);font-size:clamp(9px,3.6cqmin,13px);
@@ -2527,18 +2636,194 @@
          font-size:clamp(9px,3.6cqmin,13px);padding:clamp(4px,2cqmin,8px) clamp(8px,4cqmin,15px);cursor:pointer}
   .afchip.on{border-color:var(--accent);color:var(--accent);
          background:color-mix(in oklab,var(--accent) 14%,transparent)}
-  /* Multiroom */
-  .afmr .hd{display:flex;justify-content:space-between;align-items:center;gap:8px;flex:none}
-  .afmr .hd button{font-size:clamp(9px,3.4cqmin,12px);color:var(--accent);background:none;border:0;cursor:pointer;padding:0}
-  .afmr .rows{flex:1;min-height:0;overflow:auto}
-  .afmr .r{display:flex;align-items:center;gap:clamp(5px,3cqmin,12px);
-         padding:clamp(4px,2.4cqmin,10px) 2px;border-top:1px solid var(--line-soft)}
+  /* ---- Multiroom ----
+     Spaltenlayout der Kachel: Kopfzeile, Verbund-Pegel, danach die scrollende Raumliste.
+     Alle Groessen haengen an der KACHEL (cqmin), nicht am Fenster. Die beiden festen
+     Zeilen tragen flex:0 0 auto, nur .rows darf wachsen und schrumpfen. */
+  .afmr{gap:clamp(4px,2.4cqmin,10px)}
+  /* Kopfzeile bricht NIE um: der Raumname kuerzt mit Ellipse, der Knopf behaelt seine Breite. */
+  .afmr .hd{display:flex;flex-wrap:nowrap;justify-content:space-between;align-items:center;
+         gap:clamp(4px,2.6cqmin,12px);flex:0 0 auto;min-width:0}
+  .afmr .hd>.aftag{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .afmr .hd .ung{flex:0 0 auto;white-space:nowrap;font-family:inherit;cursor:pointer;
+         min-height:clamp(19px,8cqmin,30px);padding:0 clamp(4px,2.2cqmin,10px);
+         border:1px solid var(--line);border-radius:clamp(5px,2.4cqmin,9px);
+         background:var(--tile);color:var(--accent);font-size:clamp(8px,3.2cqmin,12px)}
+  /* Pegel des Verbunds */
+  .afmr .gv{flex:0 0 auto}
+  /* Die Beschriftung bekommt KEINE aus cqmin gerechnete Breite: auf einer breiten, flachen
+     Kachel ist cqmin die Hoehe - "Gruppe" waere dort auf "Gru…" gekuerzt worden. */
+  .afmr .gv>.lbl{width:auto;max-width:40%;flex:0 0 auto;color:var(--faint);
+         font-size:clamp(8px,3.2cqmin,12px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .afmr .rows{flex:1 1 auto;min-height:0;overflow:auto;overscroll-behavior:contain}
+  /* Raumzeile als Raster: Name | Pegel bzw. Status | Zahl | Taste. Verbundene und getrennte
+     Zeilen bekommen dadurch dieselben Kanten, statt je nach Inhalt zu verrutschen. */
+  .afmr .r{display:grid;align-items:center;
+         grid-template-columns:minmax(0,1fr) minmax(0,clamp(46px,20cqi,190px)) clamp(18px,8cqmin,32px) auto;
+         gap:clamp(4px,2.6cqmin,12px);min-height:clamp(20px,10cqmin,42px);
+         padding:clamp(3px,2cqmin,9px) clamp(2px,1.4cqmin,6px);border-top:1px solid var(--line-soft)}
+  /* Spalten fest zuweisen. Sonst rutscht alles eine Spalte nach links, sobald der Pegel auf
+     schmalen Kacheln entfaellt - die Zahl landete dann unter dem Pegel und wurde beschnitten. */
+  .afmr .r>.nm{grid-column:1}
+  .afmr .r>.afbar,.afmr .r>.stt{grid-column:2}
+  .afmr .r>.afvolnum{grid-column:3}
+  .afmr .r>.grp,.afmr .r>.master{grid-column:4}
+  .afmr .sec+.r{border-top:0}
+  /* Der Raum, dem die Gruppe gehoert, liegt ruhig getoent unter den Mitgliedern. */
+  .afmr .r.me{background:color-mix(in oklab,var(--accent) 7%,transparent);border-radius:clamp(5px,2.4cqmin,9px)}
   /* Der Punkt in der Multiroom-Zeile benutzt dieselbe Klasse .sw wie der Schieber. Damit der
      Rueckfall-Knubbel (.sw:not(:has(.swk))::after) nicht groesser wird als dieses Kaestchen,
      muessen hier auch die Groessen-Variablen mitgezogen werden. */
   .afmr .sw{--sww:clamp(16px,7cqmin,26px);--swh:clamp(16px,7cqmin,26px);width:var(--sww);height:var(--swh);border-radius:6px;flex:none}
-  .afmr .nm{flex:1;min-width:0;font-size:clamp(9px,3.8cqmin,14px);overflow:hidden;
+  .afmr .nm{min-width:0;font-weight:600;font-size:clamp(9px,3.8cqmin,14px);overflow:hidden;
          text-overflow:ellipsis;white-space:nowrap}
+  .afmr .stt{min-width:0;justify-self:end;color:var(--faint);font-size:clamp(8px,3cqmin,12px);
+         overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .afmr .r>.afvolnum{width:auto;justify-self:end}
+  /* Gruppenzugehoerigkeit: eckige Taste statt Kippschalter. Verbundene Raeume stehen oben,
+     getrennte darunter unter einer eigenen Zwischenueberschrift und zurueckgenommen. */
+  .afmr .grp{min-width:clamp(24px,10cqmin,36px);height:clamp(20px,9cqmin,32px);padding:0 clamp(3px,1.6cqmin,8px);
+         border:1px solid var(--line);border-radius:clamp(5px,2.4cqmin,9px);background:var(--tile);
+         color:var(--muted);cursor:pointer;display:flex;align-items:center;justify-content:center;
+         gap:clamp(3px,1.6cqmin,7px);font-family:inherit;font-size:clamp(10px,4cqmin,15px);line-height:1}
+  .afmr .grp.on{background:var(--accent-2);border-color:var(--accent-2);color:#fff}
+  .afmr .grp .tx{font-size:clamp(8px,3.2cqmin,12px);font-weight:600}
+  .afmr .sec{font-size:clamp(7px,2.6cqmin,10px);letter-spacing:.7px;text-transform:uppercase;
+         font-weight:700;color:var(--faint);margin:clamp(3px,1.8cqmin,9px) 0 clamp(1px,.8cqmin,3px);flex:none}
+  .afmr .rows>.sec:first-child{margin-top:0}
+  .afmr .r.off .nm{color:var(--muted)}
+  .afmr .master{font-family:var(--fm);font-size:clamp(7px,2.6cqmin,10px);font-weight:700;letter-spacing:.4px;
+         text-transform:uppercase;color:#fff;background:var(--accent-2);border-radius:clamp(4px,2cqmin,9px);
+         padding:clamp(1px,.8cqmin,3px) clamp(4px,2cqmin,8px);justify-self:end;white-space:nowrap}
+  /* Schmale Kachel: Beschriftungen weichen den Symbolen, der Pegel je Raum entfaellt zugunsten
+     des Raumnamens. Breite Kachel: die Tasten sagen im Klartext, was sie tun. */
+  .afmr .grp .tx,.afmr .hd .ung .tx{display:none}
+  @container (max-width:260px){
+    .afmr .r{grid-template-columns:minmax(0,1fr) auto clamp(16px,8cqmin,26px) auto}
+    .afmr .r .afbar{display:none}
+  }
+  @container (min-width:360px){
+    .afmr .grp .tx,.afmr .hd .ung .tx{display:inline}
+    .afmr .hd .ung .ic{display:none}
+  }
+  /* ---- Radio-Senderliste (audioradio) ----
+     Volle Zeilen statt duenner Pillen (Auflage: gut treffbar am Wandtablet). Spaltenlayout:
+     Kopfzeile fest (flex:0 0 auto), darunter die Liste als EINZIGES wachsendes Element -
+     sie scrollt innerhalb der Kachel, die Kachel selbst scrollt nie. Alle Groessen haengen
+     an der Kachel (cqmin/cqi), damit dieselbe Kachel klein wie gross bedienbar bleibt. */
+  .afrad{justify-content:flex-start;gap:clamp(4px,2.4cqmin,9px)}
+  .afr-hd{display:flex;align-items:baseline;justify-content:space-between;
+         gap:clamp(5px,3cqmin,12px);flex:0 0 auto;min-width:0}
+  /* Der Raumname weicht zuerst (Ellipse), damit die Anzahl rechts nicht abgeschnitten wird -
+     .aftag traegt sonst flex:none und schiebt die Anzahl aus der schmalen Kachel. */
+  .afr-hd>.aftag{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .afr-meta{font-family:var(--fm);font-size:clamp(8px,3cqmin,12px);color:var(--muted);
+         font-variant-numeric:tabular-nums;white-space:nowrap;flex:none}
+  .afrlist{flex:1 1 auto;min-height:0;overflow:auto;overscroll-behavior:contain;
+         display:flex;flex-direction:column;gap:clamp(3px,1.6cqmin,7px);
+         scrollbar-width:thin;padding-right:clamp(0px,.8cqmin,4px)}
+  .afr-row{display:flex;align-items:center;flex:0 0 auto;min-width:0;width:100%;text-align:left;
+         gap:clamp(5px,2.6cqmin,11px);min-height:clamp(30px,12cqmin,54px);
+         padding:clamp(3px,1.8cqmin,9px) clamp(6px,3cqmin,13px);
+         border:1px solid var(--line);border-radius:var(--r-s,9px);background:var(--tile);
+         color:var(--text);cursor:pointer;font-family:inherit}
+  .afr-row:hover{border-color:color-mix(in oklab,var(--accent) 45%,var(--line));
+         background:color-mix(in oklab,var(--accent) 8%,var(--tile))}
+  /* Laufender Sender: gefuellte Aktivflaeche IMMER --accent-2 mit weisser Schrift. */
+  .afr-row.on,.afr-row.on:hover{background:var(--accent-2);border-color:var(--accent-2);color:#fff}
+  /* Kennzeichen: Anfangsbuchstabe des Senders, beim laufenden das Pegel-Symbol. Eckig. */
+  .afr-badge{flex:none;display:flex;align-items:center;justify-content:center;
+         width:clamp(20px,9cqmin,42px);height:clamp(20px,9cqmin,42px);border-radius:var(--r-s,9px);
+         border:1px solid var(--line);background:var(--surface-2);color:var(--muted);
+         font-weight:800;line-height:1;font-size:clamp(9px,3.6cqmin,16px)}
+  .afr-badge.on{color:#fff;border-color:color-mix(in oklab,#fff 45%,transparent);
+         background:color-mix(in oklab,#fff 18%,transparent)}
+  .afr-m{flex:1;min-width:0;display:flex;flex-direction:column;gap:clamp(0px,.5cqmin,3px)}
+  .afr-nm{font-size:clamp(10px,4cqmin,17px);font-weight:600;
+         overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .afr-row.on .afr-nm{font-weight:700}
+  .afr-sub{font-size:clamp(8px,3.1cqmin,13px);opacity:.85;
+         overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .afr-tag{flex:none;white-space:nowrap;font-size:clamp(7px,2.6cqmin,11px);letter-spacing:.7px;
+         text-transform:uppercase;font-weight:700;color:#fff;border-radius:var(--r-s,9px);
+         border:1px solid color-mix(in oklab,#fff 55%,transparent);
+         padding:clamp(1px,.7cqmin,3px) clamp(3px,1.6cqmin,8px)}
+  .afr-go{flex:none;display:flex;align-items:center;color:var(--faint)}
+  .afr-row:hover .afr-go{color:var(--accent)}
+  .afr-go svg{width:clamp(10px,4cqmin,17px);height:clamp(10px,4cqmin,17px);display:block}
+  .afr-eqs{width:clamp(11px,4.8cqmin,22px);height:clamp(11px,4.8cqmin,22px);fill:currentColor;display:block}
+  /* Pegel: reine Anzeige. Animiert wird die BALKENHOEHE (Geometrie), kein transform:scale.
+     Steht die Wiedergabe, bleiben die Balken stehen - Laufen und Pause sind unterscheidbar. */
+  .afr-badge.live .afr-eqs rect{animation:afeq 1.05s ease-in-out infinite}
+  .afr-badge.live .afr-eqs .b2{animation-delay:-.35s}
+  .afr-badge.live .afr-eqs .b3{animation-delay:-.7s}
+  @keyframes afeq{0%,100%{y:14px;height:7px}50%{y:4px;height:17px}}
+  @media (prefers-reduced-motion:reduce){.afr-badge.live .afr-eqs rect{animation:none}}
+  /* Ruhige Aussage statt leerer Liste (keine Sender konfiguriert). */
+  .afr-none{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;align-items:center;
+         justify-content:center;gap:clamp(2px,1.4cqmin,6px);text-align:center;
+         font-size:clamp(9px,3.6cqmin,14px);color:var(--muted);padding:clamp(4px,3cqmin,14px)}
+  .afr-none>span{font-size:clamp(8px,3cqmin,12px);color:var(--faint)}
+  /* Schmale Kachel: Kennzeichen und Marke weichen, der Sendername behaelt den Platz. */
+  @container (max-width:190px){.afrad .afr-badge,.afrad .afr-tag{display:none}}
+  /* Sehr schmale Kachel: auch die Anzahl weicht - der Raumname ist die wichtigere Angabe. */
+  @container (max-width:145px){.afrad .afr-meta{display:none}}
+  /* Flache Kachel: die Titelzeile des laufenden Senders entfaellt, die Zeilen bleiben treffbar. */
+  @container (max-height:118px){.afrad .afr-sub{display:none}}
+  /* Breite Kachel: Zeilen nebeneinander, statt einzelne Namen ueber die ganze Breite zu ziehen. */
+  @container (min-width:560px){.afrad .afrlist{display:grid;align-content:start;
+         grid-template-columns:repeat(auto-fill,minmax(clamp(210px,26cqi,330px),1fr))}}
+  /* ---- Warteschlange (audioqueue) ----
+     Spaltenlayout: Kopfzeile, laufender Titel, Abschnittsmarke und die scrollende Liste.
+     JEDE feste Zeile traegt flex:0 0 auto, nur .aq-list darf wachsen und schrumpfen -
+     sonst zerdruecken sich Kopf und laufender Titel auf flachen Kacheln gegenseitig. */
+  .aq{justify-content:flex-start;gap:clamp(4px,2.4cqmin,9px)}
+  .aq-hd{display:flex;align-items:baseline;justify-content:space-between;
+         gap:clamp(5px,3cqmin,12px);flex:0 0 auto;min-width:0}
+  .aq-hd>.aftag{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .aq-meta{font-family:var(--fm);font-size:clamp(8px,3cqmin,12px);color:var(--muted);
+         font-variant-numeric:tabular-nums;white-space:nowrap;flex:none}
+  /* Laufender Titel: hervorgehoben ueber die Flaeche und einen Akzentstreifen - NICHT
+     durch eine gefuellte Akzentflaeche, denn die ist den echten Schaltzustaenden vorbehalten. */
+  .aq-cur{display:flex;align-items:center;gap:clamp(6px,3.4cqmin,14px);flex:0 0 auto;min-width:0;
+         background:var(--tile);border:1px solid var(--line);border-left:3px solid var(--accent);
+         border-radius:var(--r-s,9px);padding:clamp(5px,2.6cqmin,11px) clamp(6px,3cqmin,13px)}
+  .aq-sec{font-size:clamp(7px,2.6cqmin,10px);letter-spacing:.7px;text-transform:uppercase;
+         font-weight:700;color:var(--faint);flex:0 0 auto;margin-top:clamp(1px,1cqmin,4px)}
+  .aq-list{flex:1 1 auto;min-height:0;overflow:auto;display:flex;flex-direction:column}
+  .aq-row{display:flex;align-items:center;gap:clamp(5px,2.8cqmin,12px);width:100%;text-align:left;
+         min-height:clamp(28px,11cqmin,46px);padding:clamp(3px,1.8cqmin,8px) clamp(4px,2cqmin,9px);
+         border:0;border-top:1px solid var(--line-soft);background:none;color:var(--text);
+         cursor:pointer;font-family:inherit;min-width:0}
+  .aq-row:first-child{border-top:0}
+  .aq-row:hover{background:color-mix(in oklab,var(--accent) 9%,transparent)}
+  .aq-n{font-family:var(--fm);width:clamp(14px,6cqmin,26px);text-align:right;flex:none;
+         font-size:clamp(8px,3cqmin,12px);color:var(--faint);font-variant-numeric:tabular-nums}
+  .aq-m{flex:1;min-width:0;display:flex;flex-direction:column;gap:clamp(0px,.6cqmin,3px)}
+  .aq-lbl{font-size:clamp(7px,2.6cqmin,10px);letter-spacing:.7px;text-transform:uppercase;
+         font-weight:700;color:var(--accent)}
+  .aq-t{font-size:clamp(9px,3.8cqmin,15px);font-weight:600;
+         overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .aq-cur .aq-t{font-size:clamp(11px,4.8cqmin,19px);font-weight:700}
+  .aq-a{font-size:clamp(8px,3.2cqmin,13px);color:var(--muted);
+         overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .aq-d{font-family:var(--fm);font-size:clamp(8px,3cqmin,12px);color:var(--muted);flex:none;
+         font-variant-numeric:tabular-nums}
+  /* Mini-Cover: Bild oder Anfangsbuchstabe. Eckig mit kleinem Radius - keine runde Flaeche. */
+  .aq-cov{position:relative;display:block;flex:none;overflow:hidden;border-radius:6px;
+         background:var(--surface-2);border:1px solid var(--line)}
+  .aq-cov img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+  .aq-cov .aq-ph{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+         font-weight:800;font-size:.9em;color:color-mix(in oklab,var(--muted) 70%,transparent);
+         background:linear-gradient(135deg,color-mix(in oklab,var(--accent) 16%,var(--surface-2)),var(--surface-2))}
+  .aq-cov.lg{width:clamp(34px,15cqmin,68px);height:clamp(34px,15cqmin,68px)}
+  .aq-cov.sm{width:clamp(22px,9cqmin,40px);height:clamp(22px,9cqmin,40px)}
+  /* Ruhige Aussage statt leerer Liste (Radio, leere Queue, Lesefehler). */
+  .aq-none{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;align-items:center;
+         justify-content:center;gap:clamp(2px,1.4cqmin,6px);text-align:center;
+         font-size:clamp(9px,3.6cqmin,14px);color:var(--muted);padding:clamp(4px,3cqmin,14px)}
+  .aq-none>span{font-size:clamp(8px,3cqmin,12px);color:var(--faint)}
+
   /* Bibliothek: Groessen an die Kachel koppeln */
   .alib{container-type:size}
   .alib .alib-rail{width:clamp(96px,24cqmin,220px)}
@@ -2598,3 +2883,16 @@
   .shd-block.sev-crit{color:var(--crit);background:color-mix(in oklab,var(--crit) 12%,transparent)}
   .shd-block.sev-warn{color:var(--warn);background:color-mix(in oklab,var(--warn) 12%,transparent)}
   .shd-block.sev-muted{color:var(--muted);background:color-mix(in oklab,var(--muted) 10%,transparent)}
+
+  /* ---- Wetter: Zusatzzeile (Gewitter / Regenrate / Nebel) ----
+     Erscheint nur, wenn ein Zustand sie hergibt (das Widget schaltet display).
+     Farbe kommt ueber --bc vom Widget, damit dieselbe Zeile alle drei Faelle traegt. */
+  .hwband{display:flex;align-items:center;gap:clamp(4px,2.2cqmin,9px);margin-top:clamp(5px,2.4cqmin,10px);
+          padding:clamp(4px,2cqmin,8px) clamp(6px,3cqmin,12px);border-radius:var(--r-s,9px);
+          border:1px solid var(--bc,var(--line));background:color-mix(in oklab,var(--bc,var(--line)) 13%,transparent);
+          color:var(--bc,var(--text));font-size:clamp(9px,3cqmin,12.5px);line-height:1.25;flex:0 0 auto;min-width:0}
+  .hwband .ic{flex:0 0 auto;display:inline-flex;align-items:center;font-size:clamp(10px,3.4cqmin,14px)}
+  .hwband .tx{color:var(--text);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .hwband .tx b{font-weight:700;font-variant-numeric:tabular-nums;color:var(--bc,var(--text))}
+  .hwband .sx{margin-left:auto;flex:0 0 auto;color:var(--faint);font-size:clamp(8px,2.6cqmin,11px);
+              font-variant-numeric:tabular-nums;white-space:nowrap}
