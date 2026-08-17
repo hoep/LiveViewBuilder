@@ -1,9 +1,16 @@
   // ===== Widget: Regen-Intensität 48 h (rainintensity) =====
   //
-  //  Binarisierte Regen-Leiste ueber ein Zeitfenster (Default 48 h): je Slot 0/1 (Regen ja/nein
-  //  nach Schwelle in mm/h), zusammenhaengende 1er als Phase. Kopf: Titel + Kurz-Zusammenfassung
-  //  „<Intensitaet> gegen HH:00 · N Phasen". Zeitachse mit 6h-Ticks. Datenquelle: RadarMeta-JSON
-  //  (forecast:[{t,v}]) — dieselbe Variable wie das rainradar-Widget.
+  //  Regen-Leiste ueber ein Zeitfenster (Default 48 h): je Slot die staerkste erwartete
+  //  Intensitaet in mm/h, eingefaerbt in der FARBSKALA DES RADARS. Zusammenhaengende
+  //  Regenslots gelten als Phase. Kopf: Titel + Kurz-Zusammenfassung „<Intensitaet> gegen
+  //  HH:00 · N Phasen". Zeitachse mit 6h-Ticks. Datenquelle: RadarMeta-JSON (forecast:[{t,v}])
+  //  — dieselbe Variable wie das rainradar-Widget.
+  //
+  //  Frueher zeigte die Leiste nur 0 oder 1, also Regen ja/nein. Die Intensitaet wurde zwar
+  //  berechnet, aber nur fuer die Ueberschrift benutzt und danach weggeworfen: zehn Millimeter
+  //  Starkregen sahen aus wie Niesel. Die Farbskala ist aus dem Radarmodul uebernommen
+  //  (WeatherRadar::getRainColor), damit Leiste und Karte dasselbe Blau fuer dasselbe Wetter
+  //  zeigen — zwei Skalen fuer dieselbe Groesse waeren schlimmer als gar keine Farbe.
 
   (function(){
     function riDemo(){var out=[],base=Math.floor(Date.now()/3600000)*3600;
@@ -14,10 +21,26 @@
       var d=w.varId&&_lastVals[w.varId]; if(!d)return null;
       try{var m=JSON.parse(d.v);return (m&&m.forecast)||[];}catch(e){return null;}
     }
-    function riWord(v){ // mm/h -> Intensitaetstext
-      if(v<0.5)return 'Sehr leichter Regen'; if(v<1)return 'Leichter Regen'; if(v<3)return 'Mäßiger Regen';
-      if(v<5)return 'Regen'; if(v<10)return 'Intensiver Regen'; if(v<15)return 'Starker Regen';
-      if(v<20)return 'Sehr starker Regen'; return 'Extremer Regen'; }
+    // Stufen des Radars (WeatherRadar::getRainColor / rainDefinitions). Text UND Farbe kommen
+    // aus derselben Tabelle, sonst widersprechen sich Ueberschrift und Leiste.
+    var RI_SKALA=[
+      {bis:0.5, farbe:'rgb(166,204,253)', wort:'Sehr leichter Regen'},
+      {bis:1,   farbe:'rgb(140,153,253)', wort:'Leichter Regen'},
+      {bis:3,   farbe:'rgb(115,102,254)', wort:'Mäßiger Regen'},
+      {bis:5,   farbe:'rgb(88,51,254)',   wort:'Regen'},
+      {bis:10,  farbe:'rgb(53,0,183)',    wort:'Intensiver Regen'},
+      {bis:15,  farbe:'rgb(112,31,128)',  wort:'Starker Regen'},
+      {bis:1e9, farbe:'rgb(140,17,170)',  wort:'Sehr starker Regen'}];
+    function riStufe(v){for(var i=0;i<RI_SKALA.length;i++)if(v<=RI_SKALA[i].bis)return RI_SKALA[i];
+      return RI_SKALA[RI_SKALA.length-1];}
+    function riWord(v){return riStufe(v).wort;}
+    // Dunkle Radarblaus brauchen weisse Schrift, das helle Hellblau eine dunkle — sonst ist
+    // die Zahl auf der eigenen Zelle nicht mehr zu lesen.
+    function riInk(farbe){var m=farbe.match(/(\d+),(\d+),(\d+)/); if(!m)return '#fff';
+      var l=(0.299*(+m[1])+0.587*(+m[2])+0.114*(+m[3]));
+      return l>150?'#17242a':'#fff';}
+    function riNum(v){ // knapp halten: die Zellen sind schmal
+      return v>=10?String(Math.round(v)):(Math.round(v*10)/10).toString().replace('.',',');}
     function riEl(w){return $('.w[data-id="'+w.id+'"]',canvas)||$('.w[data-id="'+w.id+'"]',$('#ovcanvas'));}
 
     function riBuild(w){
@@ -56,9 +79,12 @@
       // Zellen
       h+='<div class="rint-cells" style="display:flex;gap:clamp(2px,1.2cqmin,5px);margin-top:clamp(5px,3cqmin,12px);flex:1;align-items:stretch">';
       b.slots.forEach(function(s){
-        var on=s.on;
-        h+='<div style="flex:1 1 0;min-width:0;display:flex;align-items:center;justify-content:center;border-radius:clamp(4px,2.5cqmin,9px);font-size:clamp(8px,4cqmin,15px);font-variant-numeric:tabular-nums;'
-          +(on?('background:'+accent+';color:#fff;font-weight:600'):'background:var(--surface-2);color:var(--faint)')+'">'+(on?1:0)+'</div>';
+        var on=s.on, st=on?riStufe(s.max):null;
+        h+='<div title="'+(on?riNum(s.max)+' mm/h · '+esc(st.wort):'kein Regen')+'"'
+          +' style="flex:1 1 0;min-width:0;display:flex;align-items:center;justify-content:center;border-radius:clamp(4px,2.5cqmin,9px);font-size:clamp(8px,4cqmin,15px);font-variant-numeric:tabular-nums;'
+          +(on?('background:'+st.farbe+';color:'+riInk(st.farbe)+';font-weight:600')
+              :'background:var(--surface-2);color:var(--faint)')+'">'
+          +(on?riNum(s.max):'0')+'</div>';
       });
       h+='</div>';
       // Zeitachse (6h-Ticks)
