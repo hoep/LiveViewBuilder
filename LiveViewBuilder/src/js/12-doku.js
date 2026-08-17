@@ -35,11 +35,12 @@
     ['Werte & Zahlen',          ['value','valuecard','cval','sval','kpi','delta','calc','chip','icon','bar','meterlist','infolist']],
     ['Schalten & Bedienen',     ['switch','light','button','tile','checkbox','select','slider','stepper','colorpick','textbox','cover','shadingpanel','shading','shadeprofile','thermostat','heatplan','weekedit','alarm','alarmpanel','bot','timer','eventctl']],
     ['HomeSuite – Zeitplan (Heizung/Beschattung)', ['rooms','curve','week','slots','slotedit','variantbox','transfer','save']],
-    ['HomeSuite – Navigation & Sonne', ['homesuite','roomnav','zonesync','shadesun','shadeprofiles']],
+    ['HomeSuite – Navigation & Sonne', ['homesuite','roomnav','zonesync','shadesun','shadeprofiles','shadecal','shadedoors','shadesens','shadearm','shadelog']],
     ['Zustand & Listen',        ['assoc','statusgrid','statuslist','devlist','statusimage','table','objinfo','msglog','battlist','statelog','statetl']],
     ['Diagramme',               ['chart','heatmap','gauge','gaugepro','multiring','doubledonut','sankey','flow','flowline','windrose','tempbar']],
     ['Chart-Typen (Beispiele)', ['chartbar','chartbarstack','chartrace','chartscatter','chartspark','chartpie','chartdonut','chartrose','chartwf']],
     ['Wetter, Sonne & Termine', ['weather','weatherpro','meteogram','sun','suncard','raincard','rainintensity','rainradar','calendar','weekplan','weekstrip','clock']],
+    ['HomeSuite – Audio',       ['audioroom','audionow','audioctl','audioqueue','audiosrc','audioradio','audiolib','multiroom','mediasources']],
     ['Medien & Inhalte',        ['camera','campro','camarray','media','image','html','webview','marquee','ticker']],
     ['Struktur & Layout',       ['text','shape','line','blank','component','container','room','chromebar','chromesidebar','skinswitch']],
     ['System & Diagnose',       ['wsmon']]
@@ -64,7 +65,11 @@
     //   heatmap    Matrix + Farbleiste
     //   meterlist  Kachelraster, vier Metriken = zwei Reihen (braucht ~166 px)
     //   chart      Legende + Marken-Fahne + Perioden-Navigation belegen feste Baender
-    var DOKU_MAXH = {meteogram:340, heatmap:240, meterlist:190, chart:190};
+    //   audioqueue Kopfzeile + laufender Titel + Abschnittsmarke belegen schon ~110 px,
+    //              bei 140 px bliebe fuer die eigentliche Liste keine einzige Zeile uebrig
+    //   audioradio Kopfzeile + Senderzeilen: bei 140 px blieben zwei Zeilen, die Liste waere
+    //              in der Doku nicht als scrollende Liste erkennbar
+    var DOKU_MAXH = {meteogram:340, heatmap:240, meterlist:190, chart:190, audioqueue:300, audioradio:280};
     var maxH = DOKU_MAXH[t] || 140;
     var maxW = (t === 'meteogram' || t === 'heatmap') ? 460 : DOKU_PREV;
     return [Math.max(150, Math.min(maxW, parseInt(s[0]) || 240)),

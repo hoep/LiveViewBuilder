@@ -148,6 +148,47 @@
   }
   // --- füllt das Widget aus der JSON-Variable ---
   var _dropSVG='<svg class="hwmic" style="fill:currentColor;stroke:none" viewBox="0 0 24 24"><path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/></svg>';
+  /**
+   * Zusatzzeile fuellen. Vorrang nach Auffaelligkeit: Gewitter, dann Regen, dann Nebel -
+   * dieselbe Reihenfolge, nach der auch die Wetterlage getextet wird. Es gibt bewusst nur
+   * EINE Zeile: stapelt man sie, waechst die Karte je nach Wetter unterschiedlich hoch und
+   * verschiebt darunterliegende Kacheln.
+   */
+  var _WB_IC={
+    storm:'<svg viewBox="0 0 24 24" width="1em" height="1em" fill="currentColor"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8z"/></svg>',
+    rain :'<svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M8 13l-2 6M12 13l-2 6M16 13l-2 6"/><path d="M5 10a6 6 0 0 1 11-3 5 5 0 0 1 8 3" opacity=".6"/></svg>',
+    fog  :'<svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M3 12h18M5 17h14M7 22h10"/></svg>'
+  };
+  function wBand(w,el,_ln,_lt){
+    var box=el.querySelector('[data-role=wband]'); if(!box) return;
+    var ic=el.querySelector('[data-role=wbic]'), tx=el.querySelector('[data-role=wbtx]'), sx=el.querySelector('[data-role=wbsx]');
+    var kind='', main='', side='';
+    var st=_ln(w.vStorm), rr=_ln(w.vRainRate), fg=_ln(w.vFog);
+    if(st!=null && st>0){
+      kind=(st>=3)?'crit':((st>=2)?'warn':'faint');
+      var d=_ln(w.vStormDist), n=_ln(w.vStormRate), age=_ln(w.vStormAge);
+      main=(st>=3)?'Gewitter in der Nähe':((st>=2)?'Gewitter':'Wetterleuchten');
+      if(d!=null&&d>0) main+=' · <b>'+_wtxt(d)+' km</b>';
+      // Alter aus dem Zeitstempel des letzten Blitzes - in Minuten, das liest sich am schnellsten.
+      if(age!=null&&age>1e9){var m=Math.max(0,Math.round((Date.now()/1000-age)/60));main+=' vor <b>'+m+' min</b>';}
+      if(n!=null&&n>1) side=n+' Blitze in 30 min';
+      box.setAttribute('data-k','storm');
+    } else if(rr!=null && rr>0){
+      kind='info'; box.setAttribute('data-k','rain');
+      main='Regenrate <b>'+_wtxt(rr,1)+' mm/h</b>';
+      var dd=_ln(w.vRainDay); if(dd!=null&&dd>0) side='heute '+_wtxt(dd,1)+' mm';
+    } else if(fg!=null && fg>0){
+      kind='info'; box.setAttribute('data-k','fog');
+      main=(fg>=3)?'Dichter Nebel':((fg>=2)?'Nebel':'Diesig');
+      var fs=_ln(w.vFogFsi); if(fs!=null&&fs>0) main+=' · <b>FSI '+_wtxt(fs)+'</b>';
+    }
+    if(kind===''){ box.style.display='none'; return; }
+    box.style.display='';
+    box.style.setProperty('--bc', kind==='crit'?'var(--crit)':(kind==='warn'?'var(--warm)':(kind==='faint'?'var(--muted)':'var(--info)')));
+    if(ic) ic.innerHTML=_WB_IC[box.getAttribute('data-k')]||'';
+    if(tx) tx.innerHTML=main;
+    if(sx) sx.textContent=side;
+  }
   function applyWeather(w){
     var el=$('.w[data-id="'+w.id+'"]',canvas);if(!el)return;
     var cl=w.varId&&_lastVals[w.varId],cData=cl?parseWeatherJSON(cl.v,w.wfmt):null;              // Aktuell = Variable
@@ -169,6 +210,7 @@
     var cs=el.querySelector('[data-role=sub]');if(cs)cs.textContent=(condTxt)?wTrans(condTxt):((cData||condHasVar)?'':'keine/ungültige Daten');
     var hu=el.querySelector('[data-role=hum]');if(hu)hu.innerHTML=(hum!=null)?(_dropSVG+_wtxt(hum)+' %'):'';
     var wi=el.querySelector('[data-role=wind]');if(wi)wi.innerHTML=(wind!=null)?('<svg class="hwmic" style="fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24">'+((ICONS.wind||[])[1]||'')+'</svg>'+_wtxt(wind)+' km/h'):'';
+    wBand(w,el,_ln,_lt);
     if(!wExt(w))return;
     // Stundenmodus nutzt DIESELBEN Slots wie der Tagesmodus. Die Beschriftung wird zur
     // Uhrzeit, hi und lo sind beide die Stundentemperatur - der Balken wird damit zum Punkt
@@ -209,6 +251,11 @@
       +row('Temp-Einheit','<input id="pWUnit" value="'+esc(w.wunit!=null?w.wunit:'°')+'" style="width:60px" placeholder="°">')
       +'<div class="pgh">Aktuelle Werte (optional als Variable)</div>'
       +fieldPick(w,'vTemp','Temperatur')+fieldPick(w,'vCond','Zustand')+fieldPick(w,'vHum','Feuchte %')+fieldPick(w,'vWind','Wind km/h')+fieldPick(w,'vRain','Regen (bool)')
+      +'<div class="pgh">Zusatzzeile (erscheint nur bei Bedarf)</div>'
+      +fieldPick(w,'vStorm','Gewitter-Stufe 0-3')+fieldPick(w,'vStormDist','Gewitter km')+fieldPick(w,'vStormAge','letzter Blitz (Zeit)')+fieldPick(w,'vStormRate','Blitze/30 min')
+      +fieldPick(w,'vRainRate','Regenrate mm/h')+fieldPick(w,'vRainDay','Regen heute mm')
+      +fieldPick(w,'vFog','Nebel-Stufe 0-3')+fieldPick(w,'vFogFsi','Nebel FSI')
+      +'<div class="hint" style="font-size:11px;color:var(--muted)">Vorrang: <b>Gewitter</b> vor <b>Regen</b> vor <b>Nebel</b> - es wird immer nur EINE Zeile gezeigt. Ohne Bindung bleibt sie weg.</div>'
       +'<div class="hint" style="font-size:11px;color:var(--muted)">Leer = Wert aus dem JSON. Zustand-Variable liefert Text → Icon automatisch. <b>Regen</b>: ist die Variable wahr (true/1/&gt;0), wird die aktuelle Anzeige auf Regen gesetzt.</div>'
       +row('Datenquelle anzeigen','<input type="checkbox" id="pWShowSrc"'+((w.showSrc!==false)?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">kleiner Hinweis in der Ecke (z.&nbsp;B. Tempest)</span>');
   }
@@ -222,6 +269,11 @@
   // Erweiterter Stil (Aktuell + Vorhersage): via w.wstyle oder Alt-Typ 'weatherpro'
   function wExt(w){return w.wstyle==='extended'||w.type==='weatherpro';}
   function wEnsureExt(w){if(w.days==null)w.days=5;if(w.fcStart==null)w.fcStart=0;if(w.showPq===undefined)w.showPq=true;if(!w.tgrad)w.tgrad=[{t:-5,color:'#4aa3ff'},{t:4,color:'#3bd6c6'},{t:14,color:'#39d08a'},{t:22,color:'#f2b441'},{t:32,color:'#f2685a'}];}
+  // Zusatzzeile ("Band") unter dem Ist-Zustand: Gewitter, Regenrate oder Nebel - je nachdem,
+  // was gerade zutrifft. Sie ist NUR da, wenn es etwas zu sagen gibt (sonst display:none),
+  // damit die Karte bei ruhigem Wetter nicht mit einer leeren Zeile dasteht.
+  var _wBand='<div class="hwband" data-role="wband" style="display:none"><span class="ic" data-role="wbic"></span>'
+           + '<span class="tx" data-role="wbtx"></span><span class="sx" data-role="wbsx"></span></div>';
   var _wCurBlock='<div class="hwp2cur"><span class="hwp2ic" data-role="cico"></span><span class="hwp2ci"><span class="hwp2t" data-role="val">–</span><span class="hwp2sub"><span data-role="sub"></span></span><span class="hwmetrow"><span class="hwmet" data-role="wind"></span><span class="hwmet" data-role="hum"></span></span></span></div>';
   function wRenderFn(w){
     if(wExt(w)){wEnsureExt(w);var n=Math.max(1,Math.min(12,w.days||5)),i;
@@ -231,14 +283,14 @@
         var cols='';for(i=0;i<n;i++){var ms='';mspec.forEach(function(m){ms+='<span class="m '+m+'" data-m="'+m+'"></span>';});cols+='<div class="hwp2hr" data-i="'+i+'"><span class="h">–</span><span class="ic"></span><span class="t">–</span>'+ms+'</div>';}
         var strip='<div class="hwp2hrs">'+cols+'</div>';
         if(w.hideCur)return '<div class="hwp2">'+strip+'</div>';
-        return '<div class="hwp2">'+_wCurBlock.replace('data-role="cico">','data-role="cico">'+iconSVG(w.icon||'cloudsun'))+strip+'</div>';}
+        return '<div class="hwp2">'+_wCurBlock.replace('data-role="cico">','data-role="cico">'+iconSVG(w.icon||'cloudsun'))+_wBand+strip+'</div>';}
       // Tagesmodus: eine Zeile je Tag mit Temperatur-Bereichsbalken (unverändert).
       var slots='';for(i=0;i<n;i++)slots+='<div class="hwp2day" data-i="'+i+'"><span class="d">–</span><span class="ic"></span><span class="lo">–</span><div class="trk"><i class="fill"></i><i class="cnow"></i></div><span class="hi">–</span><span class="pq"></span></div>';
       // Der Aktuell-Block laesst sich abschalten: Stehen zwei Vorhersagekarten nebeneinander,
       // zeigen beide denselben Ist-Zustand - einmal genuegt, und die Zeilen bekommen den Platz.
       if(w.hideCur)return '<div class="hwp2"><div class="hwp2grid">'+slots+'</div></div>';
-      return '<div class="hwp2">'+_wCurBlock.replace('data-role="cico">','data-role="cico">'+iconSVG(w.icon||'cloudsun'))+'<div class="hwp2days">'+slots+'</div></div>';}
-    return '<div class="hwf hwf-cur"><div class="hwbig"><div class="hwbigico" data-role="cico">'+iconSVG(w.icon||'cloudsun')+'</div><div class="hwbigci"><div class="hwbigt" data-role="val">–</div><div class="hwbigsub"><span data-role="sub"></span></div><div class="hwmetrow"><span class="hwmet" data-role="wind"></span><span class="hwmet" data-role="hum"></span></div></div></div></div>';
+      return '<div class="hwp2">'+_wCurBlock.replace('data-role="cico">','data-role="cico">'+iconSVG(w.icon||'cloudsun'))+_wBand+'<div class="hwp2days">'+slots+'</div></div>';}
+    return '<div class="hwf hwf-cur"><div class="hwbig"><div class="hwbigico" data-role="cico">'+iconSVG(w.icon||'cloudsun')+'</div><div class="hwbigci"><div class="hwbigt" data-role="val">–</div><div class="hwbigsub"><span data-role="sub"></span></div><div class="hwmetrow"><span class="hwmet" data-role="wind"></span><span class="hwmet" data-role="hum"></span></div></div></div>'+_wBand+'</div>';
   }
   function wPropsFn(w){
     var ext=wExt(w);
