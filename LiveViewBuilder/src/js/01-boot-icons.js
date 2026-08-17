@@ -201,6 +201,7 @@
     signal:['Netzwerk','<path d="M6 18l0 -3" /> <path d="M10 18l0 -6" /> <path d="M14 18l0 -9" /> <path d="M18 18l0 -12" />'],
     fog:['Wetter','<path d="M7 16a4.6 4.4 0 0 1 0 -9a5 4.5 0 0 1 11 2h1a3.5 3.5 0 0 1 0 7h-12" /> <path d="M5 20l14 0" />','nebel dunst diesig sicht'],
     storm:['Wetter','<path d="M7 15a4.6 4.4 0 0 1 0 -9a5 4.5 0 0 1 11 2h1a3.5 3.5 0 0 1 0 7" /> <path d="M13 13l-3 5h4l-3 5" />','gewitter blitz unwetter donner'],
+    stormrain:['Wetter','<path d="M7 15a4.6 4.4 0 0 1 0 -9a5 4.5 0 0 1 11 2h1a3.5 3.5 0 0 1 0 7" /> <path d="M13 12.5l-2.6 4.5h3.4l-2.6 5" /> <path d="M8 17.5v1.8m0 2.2v1M17 17.5v1.8m0 2.2v1" />','gewitter regen blitz unwetter gewitterregen'],
     compass:['Wetter','<path d="M8 16l2 -6l6 -2l-2 6l-6 2" /> <path d="M3 12a9 9 0 1 0 18 0a9 9 0 1 0 -18 0" /> <path d="M12 3l0 2" /> <path d="M12 19l0 2" /> <path d="M3 12l2 0" /> <path d="M19 12l2 0" />'],
     bus:['Fahrzeug','<path d="M4 17a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /> <path d="M16 17a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /> <path d="M4 17h-2v-11a1 1 0 0 1 1 -1h14a5 7 0 0 1 5 7v5h-2m-4 0h-8" /> <path d="M16 5l1.5 7l4.5 0" /> <path d="M2 10l15 0" /> <path d="M7 5l0 5" /> <path d="M12 5l0 5" />'],
     truck:['Fahrzeug','<path d="M5 17a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /> <path d="M15 17a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /> <path d="M5 17h-2v-11a1 1 0 0 1 1 -1h9v12m-4 0h6m4 0h2v-6h-8m0 -5h5l3 5" />'],

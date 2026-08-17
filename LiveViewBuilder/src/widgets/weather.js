@@ -207,8 +207,15 @@
     // Regelfall - zeigte die Karte einen harmlosen Regenschauer, obwohl es blitzt. Die Stufe
     // kommt direkt aus der gebundenen Variablen, nicht aus dem Zustandstext: Text ist Auslegung,
     // die Stufe ist gemessen.
-    if(w.vStorm&&(_ln(w.vStorm)||0)>=2){icon='storm';if(!condHasVar)condTxt='Gewitter';}
-    else if(!w.vStorm&&/gewitter|thunder|storm/i.test(''+(condTxt||''))){icon='storm';}
+    // Regnet es waehrend des Gewitters, zeigt das kombinierte Symbol beides. Der Regensensor
+    // zaehlt mit: die Regenrate faellt zwischen zwei Schauern auf null, nass ist es trotzdem.
+    var _regnet=((w.vRainRate&&_ln(w.vRainRate))>0.01)||(w.vRain&&_lb(w.vRain));
+    if(w.vStorm&&(_ln(w.vStorm)||0)>=2){
+      icon=_regnet?'stormrain':'storm';
+      if(!condHasVar)condTxt=_regnet?'Gewitter mit Regen':'Gewitter';
+    } else if(!w.vStorm&&/gewitter|thunder|storm/i.test(''+(condTxt||''))){
+      icon=_regnet?'stormrain':'storm';
+    }
     var hum=(w.vHum&&_ln(w.vHum)!=null)?_ln(w.vHum):(cur?cur.humidity:null);
     var wind=(w.vWind&&_ln(w.vWind)!=null)?_ln(w.vWind):(cur?cur.wind:null);
     var ci=el.querySelector('[data-role=cico]');if(ci)ci.innerHTML=iconSVG(icon);
