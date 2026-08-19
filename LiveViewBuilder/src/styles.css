@@ -412,6 +412,11 @@
   .hl2bar .hl2rng{position:absolute;inset:0;width:100%;height:100%;margin:0;padding:0;opacity:0;
     cursor:ns-resize;background:transparent;-webkit-appearance:slider-vertical;appearance:slider-vertical;
     writing-mode:vertical-lr;direction:rtl;z-index:2}
+  /* Waagrechter Regler in der flachen Kachel: die senkrechten Angaben oben muessen
+     ausdruecklich zurueckgenommen werden, sonst bleibt der Regler vertikal und zieht
+     in die falsche Richtung. */
+  .hl2bar .hl2rng[data-dir="h"]{cursor:ew-resize;-webkit-appearance:auto;appearance:auto;
+    writing-mode:horizontal-tb;direction:ltr}
   .stage.edit .hl2bar .hl2rng{pointer-events:none}
   /* Breite und Rundung sind einstellbar (--lgbw / --lgbr). Vorgabe wie bisher: 20 % breit,
      vollrund. Bei voller Rundung wird die Fuellung auf halber Hoehe so breit wie hoch und
@@ -425,6 +430,32 @@
   .hl2bar i::after{content:"";position:absolute;left:14%;right:14%;top:4%;min-height:4px;height:5%;
                    border-radius:999px;background:color-mix(in oklab,var(--text) 92%,transparent)}
   /* Rahmen der Kachel nimmt im eingeschalteten Zustand die Akzentfarbe an (wie in der Vorlage) */
+  /* FLACHE FORM (lgFlat). Die hohe Kachel gibt der Zustandszeile die groesste Schrift und
+     dem Namen die kleinste - bei 39 Lampen ist aber der NAME die Frage und der Zustand die
+     Antwort. Flach heisst: Name gross oben, Wert rechts daneben, darunter ein waagrechter
+     Balken, der zugleich Zustand UND Dimmer ist. Damit sieht eine dimmbare Lampe genauso
+     aus wie eine einfache - der Sonderfall verschwindet. */
+  .hl2.flat{display:flex;flex-direction:column;justify-content:space-between;
+         padding:clamp(6px,9cqh,13px) clamp(8px,5cqw,14px);gap:clamp(4px,6cqh,10px)}
+  .hl2.flat .hl2main{position:static;left:auto;top:auto;right:auto;bottom:auto;
+         display:flex;flex-direction:row;align-items:center;gap:clamp(5px,3cqw,10px);min-width:0}
+  .hl2.flat .hl2top{flex:1;min-width:0}
+  .hl2.flat .hl2name{font-size:clamp(11px,17cqh,16px)}
+  .hl2.flat .hl2sub{display:none}
+  .hl2.flat .hl2vrow{margin-top:0;flex:none;align-items:baseline}
+  .hl2.flat .hl2val{font-size:clamp(10px,15cqh,15px);font-weight:600}
+  .hl2.flat .hl2state{display:none}
+  .hl2.flat.on .hl2val{color:var(--accent)}
+  /* Balken waagrecht ueber die volle Breite. Der unsichtbare Regler liegt darueber und
+     wird auf waagrecht gestellt - das Widget setzt dafuer data-dir="h". */
+  /* RELATIVE, nicht static: die Fuellung ist absolut positioniert und bezoege sich sonst
+     auf die Kachel (.hl2 ist position:relative) - sie wuerde als riesiger Klecks ueber das
+     ganze Feld laufen, sobald die Helligkeit ueber null liegt. */
+  .hl2.flat .hl2bar{position:relative;width:auto;right:auto;top:auto;bottom:auto;
+         height:clamp(7px,13cqh,13px);border-radius:var(--lgbr,999px);flex:none}
+  .hl2.flat .hl2bar i{left:0;right:auto;top:0;bottom:0;height:auto;width:0;
+         border-radius:var(--lgbr,999px)}
+  .hl2.flat .hl2bar i::after{display:none}
   .w.t-light:has(.hl2.on){border-color:color-mix(in oklab,var(--accent) 55%,var(--line))}
   .stage:not(.edit) .w.t-light{cursor:pointer}
   .hchip{height:100%;display:flex;align-items:center;gap:clamp(5px,3cqmin,10px);padding:0 clamp(7px,5cqmin,14px);border-radius:999px}.hchipic{width:clamp(12px,45cqh,22px);height:clamp(12px,45cqh,22px);flex:none;color:var(--wicon,var(--accent))}.hchip [data-role=val]{font-family:var(--fm);font-size:var(--wf-txt);font-weight:600;white-space:nowrap}
@@ -3101,3 +3132,54 @@
       -webkit-backdrop-filter:none;backdrop-filter:none;
     }
   }
+
+/* ---- lightband: Licht-Zeitsteuerung als Tagesbaender ------------------- */
+.lb{display:flex;flex-direction:column;gap:clamp(3px,.8cqmin,6px);height:100%;padding:2px}
+.lb-kopf{display:flex;align-items:center;gap:8px;flex:none}
+.lb-tt{font-size:clamp(11px,2.1cqmin,14px);font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+.lb-z{font-size:clamp(10px,1.7cqmin,12px);color:var(--muted);opacity:.75}
+.lb-sp{flex:1}
+.lb-warn{font-size:clamp(10px,1.7cqmin,12px);color:var(--warn)}
+.lb-b{border:1px solid var(--line);border-radius:7px;background:var(--panel);color:var(--text);
+      padding:3px 9px;font-size:clamp(10px,1.7cqmin,12px);cursor:pointer}
+.lb-b.on{background:var(--accent-2);border-color:transparent;color:#fff;font-weight:600}
+.lb-b.pri{border-color:var(--accent);color:var(--accent)}
+.lb-b.dan{border-color:var(--crit);color:var(--crit)}
+.lb-seg2{display:inline-flex;gap:4px}
+.lb-tog{width:34px;height:19px;border-radius:10px;background:var(--line);position:relative;flex:none;cursor:pointer}
+.lb-tog::after{content:"";position:absolute;top:2px;left:2px;width:15px;height:15px;border-radius:50%;
+               background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.25);transition:left .12s}
+.lb-tog.on{background:var(--accent-2)} .lb-tog.on::after{left:17px}
+.lb-skala{display:flex;align-items:center;gap:6px;flex:none}
+.lb-std{position:relative;flex:1;height:12px}
+.lb-std span{position:absolute;top:0;transform:translateX(-50%);font-size:9px;color:var(--muted);opacity:.7}
+.lb-row{display:flex;align-items:center;gap:6px;flex:1;min-height:0}
+.lb-tag{width:clamp(20px,3.4cqmin,28px);flex:none;font-size:clamp(9px,1.6cqmin,11px);
+        color:var(--muted);font-weight:600;text-align:right}
+.lb-track{position:relative;flex:1;height:100%;min-height:22px;border-radius:6px;
+          background:var(--panel);border:1px solid var(--line);overflow:hidden}
+.lb-seg{position:absolute;top:0;bottom:0;display:flex;flex-direction:column;justify-content:center;
+        padding:0 5px;overflow:hidden;cursor:grab;touch-action:none;color:#fff;
+        box-shadow:inset 1px 0 0 rgba(255,255,255,.35)}
+.lb-seg:active{cursor:grabbing}
+.lb-seg.sel{outline:2px solid var(--text);outline-offset:-2px}
+.lb-seg.vor{background:var(--line)!important;color:var(--muted);cursor:default;
+            box-shadow:none;opacity:.55}
+.lb-seg.sun .lb-st{opacity:.95;font-style:italic}
+.lb-kante{position:absolute;left:0;top:0;bottom:0;width:3px;background:rgba(255,255,255,.55)}
+.lb-sn{font-size:clamp(9px,1.6cqmin,11.5px);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lb-st{font-size:clamp(8px,1.4cqmin,10px);opacity:.85;white-space:nowrap;overflow:hidden;
+       font-variant-numeric:tabular-nums}
+.lb-leer{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+         font-size:clamp(9px,1.6cqmin,11px);color:var(--muted);opacity:.6}
+.lb-plus{flex:none;width:20px;height:20px;border-radius:6px;border:1px solid var(--line);
+         background:var(--panel);color:var(--muted);cursor:pointer;font-size:13px;line-height:1;padding:0}
+.lb-ed{display:flex;align-items:center;gap:6px;flex:none;flex-wrap:wrap;
+       padding-top:5px;border-top:1px solid var(--line)}
+.lb-edl{font-size:clamp(9px,1.6cqmin,11px);color:var(--muted)}
+.lb-in{border:1px solid var(--line);border-radius:6px;background:var(--panel);color:var(--text);
+       padding:3px 6px;font-size:clamp(10px,1.7cqmin,12px);width:82px}
+.lb-sel{border:1px solid var(--line);border-radius:6px;background:var(--panel);color:var(--text);
+        padding:3px 6px;font-size:clamp(10px,1.7cqmin,12px)}
+.lb-hint{flex:none;padding-top:5px;border-top:1px solid var(--line);
+         font-size:clamp(9px,1.6cqmin,11px);color:var(--muted);opacity:.8}

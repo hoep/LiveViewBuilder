@@ -48,7 +48,12 @@
     if(ic)ic.innerHTML=iconSVG(w.icon||'bulb',_lgLevel(w));   // Icon folgt der Helligkeit
     var pct=Math.max(0,Math.min(100,(n==null?0:n)));
     var f=$('[data-role=lfill]',el);
-    if(f)f.style.height=pct+'%';
+    if(f){
+      // Flache Kachel fuellt waagrecht, hohe senkrecht. Die jeweils andere Achse wird
+      // ausdruecklich zurueckgesetzt, sonst bleibt beim Umschalten der alte Wert stehen.
+      if(box&&box.classList.contains('flat')){f.style.width=pct+'%';f.style.height='';}
+      else{f.style.height=pct+'%';f.style.width='';}
+    }
     // Reglerstellung mitfuehren - sonst stuende er beim Anfassen auf 0 und die Helligkeit
     // spraenge. Waehrend des Ziehens NICHT ueberschreiben, sonst kaempft die Anzeige
     // gegen die Hand des Benutzers.
@@ -80,8 +85,8 @@
       var _bst=_bs.length?(' style="'+_bs.join(';')+'"'):'';
       var bar=w.varId2?('<div class="hl2bar"'+_bst+'><i data-role="lfill"></i>'
         +'<input class="hl2rng" type="range" data-role="range" min="0" max="100" step="1" value="0"'
-        +' aria-label="Helligkeit"></div>'):'';
-      return '<div class="hl2'+(w.varId2?' hasbar':'')+'">'
+        +' aria-label="Helligkeit"'+(w.lgFlat?' data-dir="h"':'')+'></div>'):'';
+      return '<div class="hl2'+(w.varId2?' hasbar':'')+(w.lgFlat?' flat':'')+'">'
         +'<div class="hl2main">'
           +'<div class="hl2top"><span class="hl2ic">'+iconSVG(w.icon||'bulb',_lgLevel(w))+'</span>'
           +'<span class="hl2name">'+escL(w.label||'')+'</span></div>'
@@ -113,7 +118,8 @@
       return false;
     },
     props:function(w){
-      return row('Untertitel','<input id="pLgSub" value="'+esc(w.sub||'')+'" placeholder="z. B. Erdgeschoss">')
+      return row('Flache Darstellung','<input type="checkbox" id="pLgFlat"'+(w.lgFlat?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">Name gross, Balken waagrecht darunter (schaltet und dimmt)</span>')
+        +row('Untertitel','<input id="pLgSub" value="'+esc(w.sub||'')+'" placeholder="z. B. Erdgeschoss">')
         +row('Status anzeigen','<input type="checkbox" id="pLgState"'+(w.showState!==false?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">Ein / Aus</span>')
         +row('Zeit anzeigen','<input type="checkbox" id="pLgSince"'+(w.showSince!==false?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">seit HH:MM</span>')
         +row('Balkenbreite (%)','<input id="pLgBW" type="number" min="4" max="60" step="1" value="'+(w.barW!=null?w.barW:'')+'" placeholder="20">')
@@ -121,6 +127,7 @@
         +'<div style="font-size:11px;color:var(--muted);margin:2px 2px 5px">Der Balken erscheint nur, wenn eine Helligkeits-Variable gesetzt ist. Ohne Statusvariable schaltet ein Klick auf die Kachel zwischen 100 % und 0 %.</div>';
     },
     wire:function(w){
+      if($('#pLgFlat'))$('#pLgFlat').onchange=function(){w.lgFlat=this.checked||undefined;render();renderProps();commit();};
       if($('#pLgSub'))$('#pLgSub').onchange=function(){w.sub=this.value||undefined;render();commit();};
       if($('#pLgState'))$('#pLgState').onchange=function(){w.showState=this.checked?undefined:false;render();commit();};
       if($('#pLgSince'))$('#pLgSince').onchange=function(){w.showSince=this.checked?undefined:false;render();commit();};
