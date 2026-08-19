@@ -987,8 +987,18 @@
         if(!s.qLoading&&!s.qPend){s.qPend=true;setTimeout(function(){afLoadQueue(w,s.qLim);},0);}
         return afMsg('Warteschlange lädt …'); }
       var q=s.queue,head='<span class="aftag">Warteschlange · '+esc(hsStripDomain(c.name))+'</span>';
-      function shell(inner,meta){return '<div class="afw aq"><div class="aq-hd">'+head
-        +'<span class="aq-meta">'+(meta||'')+'</span></div>'+inner+'</div>';}
+      // Kopfzeile: Kennzahlen rechts, daneben das Leeren. Die Rueckfrage ersetzt die
+      // Kennzahlen (statt einen Dialog aufzumachen) - gleiches Muster wie beim
+      // Loeschen einer Playlist in der Bibliothek.
+      function shell(inner,meta,leerbar){
+        var rechts=s.qClear
+          ? '<span class="aq-ask">Alles löschen?'
+            +'<button class="aq-ab warn" data-aqclearyes="1">Ja</button>'
+            +'<button class="aq-ab" data-aqclearno="1">Nein</button></span>'
+          : '<span class="aq-meta">'+(meta||'')+'</span>'
+            +(leerbar?'<button class="aq-clr" data-aqclear="1" title="Warteschlange leeren">'
+              +'<svg class="i"><use href="#ic-trash"/></svg></button>':'');
+        return '<div class="afw aq"><div class="aq-hd">'+head+rechts+'</div>'+inner+'</div>';}
       if(q.ok===false&&q.supported!==false)return shell('<div class="aq-none">Warteschlange nicht lesbar.'
         +'<span>'+esc(q.err||q.error||'Der Zuspieler hat nicht geantwortet.')+'</span></div>','');
       if(q.supported===false)return shell('<div class="aq-none">Diese Quelle führt keine Warteschlange.'
@@ -1008,17 +1018,50 @@
         +'<div class="aq-a">'+esc([ci.artist,ci.album].filter(Boolean).join(' · '))+'</div></div>'
         +'<span class="aq-d">'+esc(ci.duration||'')+'</span></div>';
       var next=items.slice(cur+1);
+      // Zeile = Anspringen (Flaeche) + Entfernen (kleiner Knopf). Beides sind Knoepfe,
+      // deshalb NEBENeinander in einer Huelle - ein Knopf im Knopf ist kein gueltiges HTML
+      // und der innere Klick kaeme nie sauber an.
       var list=next.length
         ? '<div class="aq-list">'+next.map(function(it){
-            return '<button class="aq-row" data-aqidx="'+(it.idx!=null?it.idx:'')+'">'
-              +'<span class="aq-n">'+((it.idx!=null?it.idx:0)+1)+'</span>'+aqCov(it,'sm')
+            var i=(it.idx!=null?it.idx:0);
+            return '<div class="aq-item">'
+              +'<button class="aq-row" data-aqidx="'+(it.idx!=null?it.idx:'')+'">'
+              +'<span class="aq-n">'+(i+1)+'</span>'+aqCov(it,'sm')
               +'<div class="aq-m"><div class="aq-t">'+esc(it.title||'—')+'</div>'
               +'<div class="aq-a">'+esc(it.artist||'')+'</div></div>'
-              +'<span class="aq-d">'+esc(it.duration||'')+'</span></button>';}).join('')+'</div>'
+              +'<span class="aq-d">'+esc(it.duration||'')+'</span></button>'
+              // Kreuz als eigenes SVG statt "#ic-minus" aus dem Sprite: ein Minus ist in
+              // einer Liste mit Trennlinien nicht als Knopf zu erkennen.
+              +'<button class="aq-del" data-aqdel="'+i+'" title="Aus der Warteschlange entfernen">'
+              +'<svg class="i" viewBox="0 0 16 16" aria-hidden="true">'
+              +'<path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" '
+              +'stroke-width="1.8" stroke-linecap="round"/></svg></button></div>';}).join('')+'</div>'
         : '<div class="aq-none">Danach ist die Warteschlange zu Ende.<span></span></div>';
-      return shell(curBlk+'<div class="aq-sec">Als Nächstes</div>'+list,meta);},
+      return shell(curBlk+'<div class="aq-sec">Als Nächstes</div>'+list,meta,true);},
     mount:afMount,
     _bind:function(w,el){var s=afSess(w);
+      // Warteschlange am Zuspieler aendern: schicken, kurz warten, dann NEU LESEN.
+      // Optimistisch aus der Liste nehmen waere schneller, aber die Indizes verschieben
+      // sich beim Entfernen - eine falsch geratene Liste laesst den naechsten Klick den
+      // falschen Titel treffen. Die Wahrheit steht im Player.
+      function aqSend(op,zusatz,gemeldet){
+        var c=afCur(s);if(!c)return;
+        if(typeof DOKU!=='undefined'&&DOKU){toast('Demo: '+gemeldet);return;}
+        fetch('?api=audio&op='+op+'&id='+c.id+(zusatz||'')+'&key='+encodeURIComponent(TOKEN),{cache:'no-store'})
+          .then(function(r){return r.json();}).then(function(j){
+            if(j&&j.ok===false)toast(j.note||j.error||j.err||'Warteschlange: abgelehnt');
+            else toast(gemeldet);
+            setTimeout(function(){s.queue=null;afLoadQueue(w,s.qLim||60);},700);
+          }).catch(function(){toast('Warteschlange: Verbindungsfehler');});
+      }
+      $$('[data-aqdel]',el).forEach(function(b){b.onclick=function(ev){
+        ev.stopPropagation();
+        var idx=parseInt(b.getAttribute('data-aqdel'),10);if(isNaN(idx))return;
+        aqSend('queueremove','&index='+idx,'Titel entfernt');
+      };});
+      var ce=$('[data-aqclear]',el);   if(ce)ce.onclick=function(){s.qClear=true;afEmit(w);};
+      var cn=$('[data-aqclearno]',el); if(cn)cn.onclick=function(){s.qClear=false;afEmit(w);};
+      var cy=$('[data-aqclearyes]',el);if(cy)cy.onclick=function(){s.qClear=false;aqSend('queueclear','','Warteschlange geleert');};
       $$('[data-aqidx]',el).forEach(function(b){b.onclick=function(){
         var idx=parseInt(b.getAttribute('data-aqidx'),10);if(isNaN(idx))return;
         var c=afCur(s);if(!c)return;

@@ -27,6 +27,11 @@
     if(op){if(isNaN(n))return false;var t=num(op[2]);switch(op[1]){case '>':return n>t;case '<':return n<t;case '>=':return n>=t;case '<=':return n<=t;case '!=':case '<>':return n!==t;case '=':return n===t;}}
     var rg=p.match(/^(-?\d+(?:[.,]\d+)?)\s*(?:\.\.|:)\s*(-?\d+(?:[.,]\d+)?)$/);
     if(rg){if(isNaN(n))return false;var a=num(rg[1]),b=num(rg[2]);return n>=Math.min(a,b)&&n<=Math.max(a,b);}
+    // Zusammengesetzter Bereich in Operator-Schreibweise, z. B. ">=3<6" oder ">0<=100".
+    // Ohne das lief eine so geschriebene Stufe ins Leere (kein Treffer) statt zu greifen.
+    var cp=p.match(/^(>=|>)\s*(-?\d+(?:[.,]\d+)?)\s*(<=|<)\s*(-?\d+(?:[.,]\d+)?)$/);
+    if(cp){if(isNaN(n))return false;var lo=num(cp[2]),hi=num(cp[4]);
+      return (cp[1]==='>='?n>=lo:n>lo)&&(cp[3]==='<='?n<=hi:n<hi);}
     return _assocEq(pat,v);
   }
   /**
@@ -69,6 +74,37 @@
       val:  col,
       lab:  'color-mix(in oklab,' + col + ' 60%,var(--muted))'
     };
+  }
+
+  /**
+   * FARBE AUS EINER VERGLEICHSTABELLE. Eine Liste [{v, color}, ...] beschreibt, welche Farbe
+   * ab welchem Wert gilt. Zwei Schreibweisen sind erlaubt und mischbar:
+   *   - Muster wie ">=3<6", ">8", "0..25", "*"  -> ueber stateHit (denselben Vergleich wie
+   *     die Zustandslisten, damit im Editor ueberall dasselbe gilt)
+   *   - eine reine Zahl                         -> gilt "ab diesem Wert" (letzte Stufe <= Wert)
+   * Liegt der Wert unter der kleinsten Zahl, gilt die unterste Stufe. Leere Liste -> ''.
+   *
+   * Lag zuerst als private Funktion in der Wertkarte. Sobald ein zweites Widget dieselbe
+   * Tabelle braucht (Metrik-Liste), gehoert sie hierher - sonst laufen zwei Kopien mit
+   * unterschiedlichen Feinheiten auseinander.
+   */
+  function gradColor(list, val, key) {
+    list = list || []; var k = key || 'v';
+    if (!list.length || isNaN(val)) return '';
+    var m = stateHit(list, val, k);
+    if (m && m.color) return _skinColor(m.color) || m.color;
+    var num = [];
+    list.forEach(function (g) {
+      if (!g || !g.color) return;
+      var roh = String(g[k] == null ? '' : g[k]);
+      var q = parseFloat(roh.replace(',', '.'));
+      if (!isNaN(q) && /^\s*-?[\d.,]+\s*$/.test(roh)) num.push({ v: q, c: g.color });
+    });
+    if (!num.length) return '';
+    num.sort(function (a, b) { return a.v - b.v; });
+    var pick = num[0], i;
+    for (i = 0; i < num.length; i++) if (val >= num[i].v) pick = num[i];
+    return _skinColor(pick.c) || pick.c;
   }
 
   /** Ersten passenden Eintrag einer Zustandsliste finden: exakt zuerst, dann Muster. */
