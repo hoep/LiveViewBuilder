@@ -35,7 +35,19 @@
       if($('#pVaFill'))$('#pVaFill').onchange=function(){w.vaFill=this.checked||undefined;relive();};
       if($('#pFillMode'))$('#pFillMode').onchange=function(){w.fillMode=this.value||undefined;render();commit();};
     },
-    live:function(w,el,id,d,base,txt,on){var v=$('[data-role=val]',el);if(!v)return;v.textContent=txt;
+    live:function(w,el,id,d,base,txt,on){
+      // NUR DIE HAUPTVARIABLE zaehlt hier.
+      //
+      // Die Live-Schleife ruft live() fuer JEDE Daten-ID auf, die das Widget bindet
+      // (06-live.js: widgetDataId) - also auch fuer varId2/varId3, die eine Wertkarte fuer
+      // Formeln oder Vergleiche gebunden haben kann. Die Karte hat aber nur EIN Wertfeld:
+      // ohne diese Sperre schrieb der zuletzt eingetroffene Wert Text UND Farbe, und die
+      // Farbstufen bezogen sich sichtbar auf die zweite Variable statt auf die erste.
+      //
+      // Ist keine Hauptvariable gesetzt, bleibt es beim alten Verhalten - sonst wuerde eine
+      // Karte, die absichtlich nur ueber varId2 gebunden ist, gar nichts mehr anzeigen.
+      if(w.varId&&id!==w.varId)return;
+      var v=$('[data-role=val]',el);if(!v)return;v.textContent=txt;
       // Mit dem FARBWORT arbeiten, nicht mit der aufgeloesten Farbe: erst daraus kann
       // stateLook() die Darstellung ableiten (crit fuellt, sonst toenen) - dieselbe Regel
       // wie im Zustands-Widget, je Widget ueber "Darstellung" uebersteuerbar.
