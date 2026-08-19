@@ -17,9 +17,14 @@
     mount:function(w){if(w.cmpOn)computeCompare(w);}, // Vergleich sofort nach Render berechnen (nicht auf ersten Poll warten)
     live:function(w,el,id,d,base,txt,on){
       var v=el.querySelector('[data-role=val]'); // txt enthält bereits Präfix/Suffix (aus applyVal in js/06-live.js)
-      if(w.cmpOn){computeCompare(w);if(!w.cmpCounter&&v)v.textContent=txt;} // Zähler: Hauptwert kommt aus computeCompare (Perioden-Verbrauch)
-      else if(v)v.textContent=txt;
-      if(v){if(w.colThr){var _n=parseFloat(String(d.v).replace(',','.'));if(!isNaN(_n)){var _t1=(w.t1!=null?w.t1:0),_t2=(w.t2!=null?w.t2:0),_c=_n<=_t1?'--ok':(_n<=_t2?'--warm':'--crit');if(w.thrInvert)_c=(_n<=_t1?'--crit':(_n<=_t2?'--warm':'--ok'));v.style.color=cssv(_c);}}else v.style.color='';}
+      // Anzeige und Farbe gehoeren der HAUPTVARIABLE. live() laeuft fuer jede gebundene
+      // Daten-ID (06-live.js: widgetDataId), also auch fuer die Vergleichsvariable - ohne diese
+      // Unterscheidung faerbte die zuletzt eingetroffene ID die Karte. Der Vergleich selbst
+      // wird weiterhin bei JEDER ID nachgerechnet, sonst haengt er dem Wert hinterher.
+      var _main=(!w.varId||id===w.varId);
+      if(w.cmpOn){computeCompare(w);if(!w.cmpCounter&&v&&_main)v.textContent=txt;} // Zähler: Hauptwert kommt aus computeCompare (Perioden-Verbrauch)
+      else if(v&&_main)v.textContent=txt;
+      if(v&&_main){if(w.colThr){var _n=parseFloat(String(d.v).replace(',','.'));if(!isNaN(_n)){var _t1=(w.t1!=null?w.t1:0),_t2=(w.t2!=null?w.t2:0),_c=_n<=_t1?'--ok':(_n<=_t2?'--warm':'--crit');if(w.thrInvert)_c=(_n<=_t1?'--crit':(_n<=_t2?'--warm':'--ok'));v.style.color=cssv(_c);}}else v.style.color='';}
       return true;
     }
   });

@@ -131,7 +131,13 @@
   function assignIcon(id){
     if(_iconPick){var wp=widget(_iconPick.wid);if(wp){if(_iconPick.path)setPath(wp,_iconPick.path,id);else wp[_iconPick.field]=id;render();select(wp.id);renderProps();toast('Icon: '+id);}_iconPick=null;return;}
     if(_assocPick){var wa=widget(_assocPick.wid);if(wa){if(!wa.assocMap)wa.assocMap={};if(!wa.assocMap[_assocPick.key])wa.assocMap[_assocPick.key]={};wa.assocMap[_assocPick.key].icon=id;wa.assocOn=true;render();select(wa.id);renderProps();refreshAssocLive(wa);toast('Status-Icon: '+id);}_assocPick=null;return;}
-    var ICONABLE=['icon','value','switch','bar','tile','button','light','chip','weather','weatherpro','room','kpi','assoc','alarm']; // wie die Icon-Zeile in renderProps
+    // EINE Quelle statt einer handgepflegten Kopie: UNIV_ICON_TYPES bestimmt, wer eine
+    // Icon-Eigenschaft hat; dazu die Typen, die hier historisch schon per Klick ein Icon
+    // annahmen. Die frueher hier stehende Zweitliste war der Kommentar "wie die Icon-Zeile
+    // in renderProps" - sie war es aber nicht mehr: 'valuecard' und 'bot' fehlten darin.
+    // Folge: Wertkarte auswaehlen, Icon anklicken - und statt das Icon der Karte zu setzen,
+    // legte der Builder ein NEUES Icon-Widget an.
+    var ICONABLE=UNIV_ICON_TYPES.concat(['bar','weather','weatherpro','alarm']);
     var ids=Object.keys(sel);if(!ids.length&&selId)ids=[selId];
     var targets=ids.map(widget).filter(function(w){return w&&ICONABLE.indexOf(w.type)>=0;});
     if(targets.length){targets.forEach(function(w){w.icon=id;});render();renderProps();toast('Icon: '+id);}

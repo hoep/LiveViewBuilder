@@ -20,11 +20,41 @@
     {id:3,name:'Bad',title:'',artist:'',album:'',coverUrl:'',playing:false,volume:20,mute:false,power:false,repeat:0,shuffle:false,positionPct:0,position:'',duration:'',online:true,role:'standalone',coordinator:'',vars:{}}
   ];}
 
+  // Sofortiges Echo -------------------------------------------------------------
+  //
+  //  Ein Player braucht bis zu ein paar Sekunden, bis er den neuen Zustand meldet. Ohne
+  //  Echo passiert auf der Kachel bis dahin nichts und man drueckt ein zweites Mal. Wir
+  //  schreiben den erwarteten Wert deshalb sofort lokal und merken ihn vor: beim naechsten
+  //  Laden bleibt er stehen, bis der Player ihn bestaetigt oder die Frist ablaeuft - sonst
+  //  wuerde der 8-Sekunden-Takt die Taste sichtbar zurueckspringen lassen.
+  var AF_ECHO_MS=9000;
+  function afEcho(s,raum,feld,wert){ if(!raum)return; raum[feld]=wert;
+    (s.echo||(s.echo={}))[raum.id+'|'+feld]={v:wert,t:Date.now()}; }
+  function afEchoHalten(s,raeume){ var e=s.echo; if(!e)return raeume; var jetzt=Date.now();
+    raeume.forEach(function(r){ Object.keys(e).forEach(function(k){
+      var teil=k.split('|'); if(+teil[0]!==r.id)return; var eintrag=e[k];
+      if(r[teil[1]]===eintrag.v||(jetzt-eintrag.t)>AF_ECHO_MS){delete e[k];return;}
+      r[teil[1]]=eintrag.v; }); });
+    return raeume; }
+  // Steuer-Ident -> angezeigtes Feld. Was hier fehlt (Vor/Zurueck), hat keinen vorhersagbaren
+  // Zustand - dafuer wird nichts vorgegaukelt.
+  function afEchoAusIdent(s,c,ident,val){
+    if(ident==='Mute')return afEcho(s,c,'mute',val);
+    if(ident==='Power')return afEcho(s,c,'power',val);
+    if(ident==='Shuffle')return afEcho(s,c,'shuffle',val);
+    if(ident==='Repeat')return afEcho(s,c,'repeat',val);
+    if(ident==='Volume')return afEcho(s,c,'volume',val);
+    if(ident==='Position')return afEcho(s,c,'positionPct',val);
+    if(ident==='Transport'){var t=String(val);
+      if(t==='1')return afEcho(s,c,'playing',true);
+      if(t==='2'||t==='3')return afEcho(s,c,'playing',false);}
+  }
+
   function afLoad(w,cb){var s=afSess(w);
     if(typeof DOKU!=='undefined'&&DOKU){s.rooms=afDemo();s.loaded=true;s.err='';cb&&cb();return;}
     fetch('?api=audio&op=getall',{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
       if(!j||!j.ok){s.err='Audio nicht lesbar';cb&&cb();return;}
-      s.rooms=j.rooms||[];s.err='';if(s.roomIdx>=s.rooms.length)s.roomIdx=0;
+      s.rooms=afEchoHalten(s,j.rooms||[]);s.err='';if(s.roomIdx>=s.rooms.length)s.roomIdx=0;
       // Optionaler Deep-Link ?room=<Name> (einmalig beim ersten Laden).
       if(!s._initRoom){s._initRoom=true;try{var rp=(new URLSearchParams(location.search)).get('room');
         if(rp){for(var i=0;i<s.rooms.length;i++){if((s.rooms[i].name||'').toLowerCase()===rp.toLowerCase()){s.roomIdx=i;break;}}}}catch(e){}}
@@ -37,7 +67,12 @@
     afLoad(w,function(){s.loaded=true;s.loading=false;afEmit(w);afLoadRadio(w);afStartPoll(w);});
   }
   function afStartPoll(w){var s=afSess(w);if(s.pollId||(typeof DOKU!=='undefined'&&DOKU))return;
-    s.pollId=setInterval(function(){ if(s.dragging)return; afLoad(w,function(){afEmit(w);afLoadRadio(w);afQueueTick(w);}); },8000);
+    s.pollId=setInterval(function(){
+      if(s.dragging)return;
+      // Offenes Eingabefeld (neue Playlist) nicht wegzeichnen - dasselbe Zugestaendnis
+      // wie beim Ziehen eines Reglers.
+      try{ if(afLib(w).plPanel)return; }catch(_){}
+      afLoad(w,function(){afEmit(w);afLoadRadio(w);afQueueTick(w);}); },8000);
   }
   // Radio "was laeuft": laufender Titel + Song-Cover fuer den aktuellen Raum (RadioNow, IPSSonos-frei).
   function afLoadRadio(w){var s=afSess(w);var c=afCur(s);if(!c){return;}
@@ -56,6 +91,7 @@
   function afSet(w,ident,val,cb){var s=afSess(w),c=afCur(s);if(!c)return;
     if(typeof DOKU!=='undefined'&&DOKU){cb&&cb();return;}
     var id=(c.vars&&c.vars[ident])||0;if(!id){toast('Keine Bindung: '+ident);return;}
+    afEchoAusIdent(s,c,ident,val); afEmit(w);   // Kachel zeigt den Druck sofort
     var v=(val===true?'1':(val===false?'0':String(val)));
     fetch('?api=setvar&id='+id+'&value='+encodeURIComponent(v)+'&key='+encodeURIComponent(TOKEN),{cache:'no-store'})
       .then(function(r){return r.json();}).then(function(){ afLoad(w,function(){afEmit(w);}); cb&&cb(); })
@@ -443,18 +479,125 @@
       if(au!==cur){flush();cur=au;out+='<div class="alib-band">'+esc(au)+'</div>';}
       buf.push(_alibTile(e));});
     flush();return out;}
+  // --- Wiederverwendbare Audio-Bausteine ------------------------------------
+  //
+  //  Diese drei Helfer gehoeren KEINEM Widget: die Bibliothek, die Sammlungskachel und
+  //  spaeter die Warteschlange benutzen dieselbe Leiste, dieselbe Zusatztaste und
+  //  denselben Weg zum Server. Wer die Beschriftung aendert, aendert sie ueberall.
+  var ACTA_MAX=200;                         // Deckel je Aufruf; darueber wird gekuerzt UND gesagt
+  function actaBar(mode2,label1,label2){    // Aktionsleiste: erste Taste gefuellt (Hauptweg)
+    return '<div class="acta"><button class="acta-b on" data-acta="replace">'+esc(label1||'Alles abspielen')+'</button>'
+      +(mode2===false?'':'<button class="acta-b" data-acta="append">'+esc(label2||'Anhängen')+'</button>')+'</div>';
+  }
+  function actaAdd(idx){                    // Zusatztaste am Zeilenende
+    return '<button class="acta-add" data-actaadd="'+idx+'" title="An die Warteschlange anhängen">+</button>';
+  }
+  /**
+   * Eine ganze Sammlung an die aktuelle Zone schicken.
+   * ref = Container-Datensatz, mode 'replace'|'append'. Der Server loest die Titelliste
+   * auf (Hub) und reiht sie ein (Zone) - das Widget haelt keine Titelliste vor.
+   */
+  function actaSend(w,ref,mode,titel,cb){
+    var s=afSess(w),c=afCur(s);
+    if(!c){toast('Kein Raum gewählt');return;}
+    if(typeof DOKU!=='undefined'&&DOKU){toast('Demo: '+(mode==='append'?'angehängt':'abgespielt'));cb&&cb();return;}
+    toast(mode==='append'?'Wird angehängt …':'Wird geladen …');
+    fetch('?api=audio&op=playcontainer&id='+c.id+'&provider='+encodeURIComponent(ref.provider||'')
+        +'&key='+encodeURIComponent(TOKEN),
+      {method:'POST',cache:'no-store',headers:{'Content-Type':'text/plain'},
+       body:JSON.stringify({ref:ref,mode:mode,title:titel||ref.title||'',max:ACTA_MAX})})
+      .then(function(r){return r.json();}).then(function(j){
+        if(!j||!j.ok){toast('Nicht möglich: '+((j&&(j.note||j.err||j.error))||'unbekannt'));cb&&cb();return;}
+        var t=(j.note?j.note:((j.count||0)+' Titel '+(mode==='append'?'angehängt':'gestartet')));
+        if(j.truncated)t+=' · nur die ersten '+ACTA_MAX;
+        if(j.skipped)t+=' · '+j.skipped+' Ordner übersprungen';
+        toast(t); afLoad(w,function(){afEmit(w);}); cb&&cb();
+      }).catch(function(){toast('Verbindungsfehler');cb&&cb();});
+  }
+
+  // --- Playlists anlegen: Auswahl in der Bibliothek --------------------------
+  //
+  //  Die Liste entsteht IM ANBIETER (Plex/Audiobookshelf), nicht bei uns - sie kommt
+  //  danach ueber den normalen Browse-Weg zurueck. Deshalb gibt es hier keinen Speicher,
+  //  nur eine Auswahl und zwei Aufrufe.
+  function _plKey(it){return String(it&&it.id||'');}
+  function _plSelCount(L){var n=0,k;for(k in (L.sel||{}))n++;return n;}
+  function _plSelRefs(L){var o=[],k;for(k in (L.sel||{}))o.push(L.sel[k]);return o;}
+  function _plCanWrite(w,cb){                       // je Sitzung einmal fragen
+    var L=afLib(w);
+    if(L.canWrite){cb(L.canWrite);return;}
+    if(typeof DOKU!=='undefined'&&DOKU){L.canWrite={plex:true};cb(L.canWrite);return;}
+    fetch('?api=audio&op=playlist&sub=canwrite&key='+encodeURIComponent(TOKEN),{cache:'no-store'})
+      .then(function(r){return r.json();}).then(function(j){
+        var m={};((j&&j.quellen)||[]).forEach(function(q){m[q.provider]=!!q.schreibbar;});
+        L.canWrite=m;cb(m);}).catch(function(){cb(L.canWrite={});});
+  }
+  /**
+   * Playlists ALLER schreibfaehigen Anbieter sammeln.
+   *
+   * Die Seitenleiste zeigte zuerst nur die des gerade gewaehlten Anbieters - stand man auf
+   * Audiobookshelf, war das Segment leer, obwohl unter Plex eine Liste lag. "Meine
+   * Playlists" ist aber eine Sache, nicht eine je Anbieter.
+   */
+  function _plLoadAll(w,cb){
+    var L=afLib(w);
+    _plCanWrite(w,function(m){
+      var ids=Object.keys(m||{}).filter(function(k){return m[k];});
+      if(!ids.length){L.plAll=[];cb&&cb();return;}
+      var offen=ids.length, alle=[];
+      ids.forEach(function(pid){
+        fetch('?api=audio&op=playlist&sub=list&provider='+encodeURIComponent(pid)
+             +'&key='+encodeURIComponent(TOKEN),{cache:'no-store'})
+          .then(function(r){return r.json();}).then(function(j){
+            ((j&&j.playlists)||[]).forEach(function(p){p._prov=pid;alle.push(p);});
+          }).catch(function(){}).then(function(){
+            if(--offen===0){L.plAll=alle;cb&&cb();}
+          });
+      });
+    });
+  }
+  function _plLoadLists(w,cb){
+    var L=afLib(w);
+    fetch('?api=audio&op=playlist&sub=list&provider='+encodeURIComponent(L.provider||'')
+         +'&key='+encodeURIComponent(TOKEN),{cache:'no-store'})
+      .then(function(r){return r.json();}).then(function(j){L.plList=(j&&j.playlists)||[];cb();})
+      .catch(function(){L.plList=[];cb();});
+  }
+  function _plSend(w,sub,body,fertig){
+    fetch('?api=audio&op=playlist&sub='+sub+'&key='+encodeURIComponent(TOKEN),
+      {method:'POST',cache:'no-store',headers:{'Content-Type':'text/plain'},body:JSON.stringify(body)})
+      .then(function(r){return r.json();}).then(function(j){
+        if(!j||!j.ok){toast('Nicht möglich: '+((j&&(j.note||j.error||j.err))||'unbekannt'));return;}
+        toast(sub==='create'?('Playlist angelegt: '+((j.playlist||{}).title||''))
+             :sub==='delete'?'Playlist gelöscht'
+             :((j.uebernommen||0)+' Titel angehängt'));
+        fertig&&fertig(j.playlist||null);
+      }).catch(function(){toast('Verbindungsfehler');});
+  }
+
   function _alibBody(w,L){
     if(L.loading)return '<div class="alib-empty">lädt …</div>';
     var items=L.items||[];
     if(!items.length)return '<div class="alib-empty">Nichts gefunden</div>';
     var isABS=(L.provider==='audiobookshelf'),g=_alibGroups(items),html='';
-    if(g.folders.length)html+='<div class="alib-folders">'+g.folders.map(function(e){return '<button class="alib-folder" data-afitem="'+e.idx+'"><span>'+esc(e.it.title)+'</span><span class="alib-chev">›</span></button>';}).join('')+'</div>';
+    if(g.folders.length)html+='<div class="alib-folders">'+g.folders.map(function(e){var sub=e.it.artist||'';
+      var eigen=(L.plOwn&&L.plOwn[e.it.id]);
+      return '<button class="alib-folder" data-afitem="'+e.idx+'"><span>'+esc(e.it.title)+'</span>'
+        +(eigen?'<span class="pl-own">eigene</span>':'')
+        +(sub?'<span class="acta-cnt">'+esc(sub)+'</span>':'<span class="acta-cnt"></span>')
+        +'<span class="alib-chev">›</span></button>';}).join('')+'</div>';
     if(g.cards.length){
       if(isABS)html+=_alibBooks(g.cards,L);
       else html+='<div class="alib-grid">'+g.cards.map(_alibTile).join('')+'</div>';
     }
     if(g.plays.length)html+='<div class="alib-rows">'+g.plays.map(function(e){var it=e.it;return '<button class="alib-row" data-afitem="'+e.idx+'">'+_alibCov(it,'sm')+'<div class="alib-rmeta"><div class="alib-tt">'+esc(it.title)+'</div><div class="alib-ts">'+esc(it.artist||'Playlist')+'</div></div><span class="alib-pbtn">▶</span></button>';}).join('')+'</div>';
-    if(g.tracks.length)html+='<div class="alib-tracks">'+g.tracks.map(function(e,i){var it=e.it;return '<button class="alib-trk" data-afitem="'+e.idx+'"><span class="alib-n">'+(i+1)+'</span><div class="alib-rmeta"><div class="alib-tt">'+esc(it.title)+'</div><div class="alib-ts">'+esc(it.artist||'')+'</div></div><span class="alib-dur">'+_alibDur(it.durationSec)+'</span></button>';}).join('')+'</div>';
+    if(g.tracks.length)html+='<div class="alib-tracks">'+g.tracks.map(function(e,i){var it=e.it;
+      // Aussen div, innen die Flaechentaste: eine Taste IN einer Taste waere ungueltiges HTML.
+      var _sel=!!L.selMode, _mk=_sel&&L.sel&&L.sel[_plKey(it)];
+      return '<div class="alib-trk hasadd'+(_mk?' mark':'')+'">'
+        +(_sel?('<span class="selbox'+(_mk?' on':'')+'" data-afsel="'+e.idx+'">'+(_mk?'✓':'')+'</span>'):'')
+        +'<button class="trkmain" data-af'+(_sel?'sel':'item')+'="'+e.idx+'"><span class="alib-n">'+(i+1)+'</span><div class="alib-rmeta"><div class="alib-tt">'+esc(it.title)+'</div><div class="alib-ts">'+esc(it.artist||'')+'</div></div><span class="alib-dur">'+_alibDur(it.durationSec)+'</span></button>'
+        +(_sel?'':actaAdd(e.idx))+'</div>';}).join('')+'</div>';
     return html;}
   defWidget('audiolib',{
     label:'Audio · Bibliothek', cat:'HomeSuite · Audio', paletteIcon:'wlist', size:[900,560],
@@ -472,25 +615,216 @@
       var provs=L.providers.map(function(p){return '<button class="alib-prov'+(L.provider===p.id?' on':'')+'" data-afprov="'+esc(p.id)+'"><span class="alib-pic">'+esc(_alibInit(p.label))+'</span>'+esc(p.label)+'</button>';}).join('');
       var pths='<button class="alib-pth'+(!L.stack.length?' on':'')+'" data-afpath="-1">'+esc(plabel(L.provider))+'</button>'
         +L.stack.map(function(st,i){return '<button class="alib-pth'+(i===L.stack.length-1?' on':'')+'" data-afpath="'+i+'">'+esc(st.title||'…')+'</button>';}).join('');
+      // Eigene Playlists gehoeren in die Seitenleiste, nicht drei Ebenen tief zwischen die
+      // zehn automatischen Listen von Plex. Gezeigt werden nur die beschreibbaren - also
+      // genau die, die man selbst angelegt hat.
+      var plseg='';
+      if((L.plAll||[]).length){
+        plseg='<div class="alib-rh">Playlists</div><div class="alib-pths">'
+          +L.plAll.map(function(p,i){
+              var an=(L.stack.length&&L.stack[L.stack.length-1].id===p.id&&L.provider===p._prov);
+              // Anbieter-Kuerzel nur, wenn es MEHRERE Quellen mit Listen gibt - sonst Ballast.
+              var mehr=L.plAll.some(function(q){return q._prov!==p._prov;});
+              return '<button class="alib-pth pl-item'+(an?' on':'')+'" data-afplgo="'+i+'">'
+                +'<span class="pl-ic">♫</span>'+escL(p.title)
+                +(mehr?('<span class="pl-prov">'+esc(_alibInit(plabel(p._prov)))+'</span>'):'')
+                +(p.artist?('<span class="pl-cnt">'+esc(p.artist)+'</span>'):'')+'</button>';}).join('')
+          +'</div>';
+      }
       var rail='<aside class="alib-rail"><div class="alib-rh">Anbieter</div><div class="alib-provs">'+provs+'</div>'
-        +'<div class="alib-rh">Pfad</div><div class="alib-pths">'+pths+'</div><div class="alib-spacer"></div>'
+        +'<div class="alib-rh">Pfad</div><div class="alib-pths">'+pths+'</div>'+plseg+'<div class="alib-spacer"></div>'
         +'<div class="alib-anchor"><span class="alib-dot"></span><span>Spielt auf</span><b>'+esc(c.name)+'</b></div></aside>';
       var title=L.stack.length?(L.stack[L.stack.length-1].title||''):('Bibliothek · '+plabel(L.provider));
       var isBooks=(L.provider==='audiobookshelf')&&(L.items||[]).some(function(it){return it.isContainer&&it.cover;});
       var sort=isBooks?('<div class="alib-sort"><button class="alib-sg'+(L.bookSort!=='title'?' on':'')+'" data-afsort="artist">Autor</button><button class="alib-sg'+(L.bookSort==='title'?' on':'')+'" data-afsort="title">Titel</button></div>'):'';
-      var head='<div class="alib-head">'+(L.stack.length?'<button class="alib-back" data-afback="1">◀ zurück</button>':'<span></span>')+'<div class="alib-title">'+esc(title)+'</div>'+sort+'</div>';
+      // Die Sammlungstasten erscheinen NUR, wenn man in einem Container steht und die
+      // geladene Liste mindestens einen echten Titel enthaelt. Eine Serienliste enthaelt
+      // nur Container - dort waere "Alles abspielen" eine Falle, kein Dienst.
+      var spielbar=L.stack.length&&(L.items||[]).some(function(it){return !it.isContainer;});
+      var darfSchreiben=!!(L.canWrite&&L.canWrite[L.provider]);
+      var akt='';
+      if(L.selMode){
+        var _n=_plSelCount(L);
+        akt='<div class="acta"><span class="selcnt">'+_n+' gewählt</span>'
+           +'<button class="acta-b'+(_n?' on':'')+'" data-afplopen="1"'+(_n?'':' disabled')+'>In Playlist …</button>'
+           +'<button class="acta-b" data-afselend="1">Abbrechen</button></div>';
+      }else if(spielbar){
+        // Loeschen gibt es NUR in einer eigenen Liste - Plex' regelbasierte Listen (All
+        // Music, Zuletzt gespielt) gehoeren dem Server, die duerfen wir nicht wegraeumen.
+        var offen=L.stack.length?L.stack[L.stack.length-1]:null;
+        var eigeneListe=!!(offen&&L.plOwn&&L.plOwn[offen.id]);
+        var extra='';
+        if(L.plDel&&eigeneListe){
+          extra='<div class="acta"><span class="selcnt">Playlist löschen?</span>'
+              +'<button class="acta-b warn" data-afpldel="1">Ja, löschen</button>'
+              +'<button class="acta-b" data-afpldelno="1">Abbrechen</button></div>';
+        }else{
+          extra=(darfSchreiben?'<div class="acta"><button class="acta-b" data-afselstart="1">Auswählen</button>'
+                 +(eigeneListe?'<button class="acta-b" data-afpldelask="1">Löschen</button>':'')
+                 +'</div>':'');
+        }
+        akt=(L.plDel&&eigeneListe?'':actaBar())+extra;
+      }
+      var head='<div class="alib-head">'+(L.stack.length?'<button class="alib-back" data-afback="1">◀ zurück</button>':'<span></span>')+'<div class="alib-title">'+esc(title)+'</div>'+sort+akt+'</div>';
       var top='<div class="alib-topbar">'+(L.stack.length?'<button class="alib-back" data-afback="1">◀</button>':'')+'<div class="alib-tprovs">'+provs+'</div></div>';
-      return '<div class="alib">'+rail+'<section class="alib-main">'+top+head+'<div class="alib-scroll">'+_alibBody(w,L)+'</div></section></div>';},
+      // Ziel-Feld: neue Liste anlegen oder an eine bestehende anhaengen. Regelbasierte
+      // Listen (Plex "Zuletzt gespielt" & Co.) liefert der Server gar nicht erst - an die
+      // laesst sich nichts anhaengen, sie waeren nur ein Ziel, das scheitert.
+      var pan='';
+      if(L.plPanel){
+        var lst=(L.plList||[]);
+        pan='<div class="pl-panel"><div class="pl-hd">'+_plSelCount(L)+' Titel übernehmen nach …</div>'
+           +'<div class="pl-new"><input data-afplname placeholder="Name der neuen Playlist" value="'+esc(L.plName||'')+'">'
+           +'<button class="acta-b on" data-afplcreate="1">Neu anlegen</button></div>'
+           +(lst.length
+              ?('<div class="pl-sep">oder an eine bestehende anhängen</div>'
+                +lst.map(function(p,i){return '<button class="pl-row" data-afpladd="'+i+'"><span class="pl-ic">♫</span>'
+                    +esc(p.title)+(p.artist?('<span class="pl-cnt">'+esc(p.artist)+'</span>'):'')+'</button>';}).join(''))
+              :'<div class="pl-sep">Es gibt hier noch keine Liste, an die sich anhängen lässt.</div>')
+           +'<div class="pl-note">Wird bei '+esc(plabel(L.provider))+' gespeichert und erscheint auch dort.</div></div>';
+      }
+      return '<div class="alib">'+rail+'<section class="alib-main">'+top+head+'<div class="alib-scroll">'+_alibBody(w,L)+'</div></section>'+pan+'</div>';},
     mount:afMount,
     _bind:function(w,el){var L=afLib(w);
-      $$('[data-afprov]',el).forEach(function(b){b.onclick=function(){L.stack=[];afLibBrowse(w,b.getAttribute('data-afprov'),'','');};});
+      // Eigene Listen aller Quellen: fuer die Seitenleiste UND fuer die Marke "eigene".
+      if(!L.plAll){
+        L.plAll=[];
+        _plLoadAll(w,function(){
+          var m={};(L.plAll||[]).forEach(function(p){m[p.id]=1;});
+          L.plOwn=m;
+          var d=WIDGETS[w.type];var host=el.querySelector('.winner')||el;
+          host.innerHTML=d.render(w);if(d._bind)d._bind(w,el);});
+      }
+      if(!L.canWrite)_plCanWrite(w,function(){var d=WIDGETS[w.type];var host=el.querySelector('.winner')||el;
+        host.innerHTML=d.render(w);if(d._bind)d._bind(w,el);});
+      $$('[data-afprov]',el).forEach(function(b){b.onclick=function(){L.stack=[];L.selMode=false;L.sel={};L.plPanel=false;afLibBrowse(w,b.getAttribute('data-afprov'),'','');};});
       $$('[data-afpath]',el).forEach(function(b){b.onclick=function(){var i=+b.getAttribute('data-afpath');
         if(i<0){L.stack=[];afLibBrowse(w,L.provider,'','');}else{var st=L.stack[i];L.stack=L.stack.slice(0,i+1);afLibBrowse(w,L.provider,st.id,st.title);}};});
       $$('[data-afsort]',el).forEach(function(b){b.onclick=function(){L.bookSort=b.getAttribute('data-afsort');afEmit(w);};});
       $$('[data-afback]',el).forEach(function(b){b.onclick=function(){L.stack.pop();var t=L.stack.length?L.stack[L.stack.length-1]:{id:'',title:''};afLibBrowse(w,L.provider,t.id||'',t.title||'');};});
       $$('[data-afitem]',el).forEach(function(d){d.onclick=function(){var it=(L.items||[])[+d.getAttribute('data-afitem')];if(!it)return;
-        if(it.isContainer){L.stack.push({id:it.id,title:it.title});afLibBrowse(w,L.provider,it.id,it.title);}else afLibPlay(w,it);};});},
+        if(it.isContainer){L.stack.push({id:it.id,title:it.title,ref:it});afLibBrowse(w,L.provider,it.id,it.title);}else afLibPlay(w,it);};});
+      // Ganze Sammlung: der offene Container ist der oberste Eintrag im Pfad. Er muss den
+      // Sprung hinein ueberlebt haben - darum legt afLibBrowse den Datensatz mit ab.
+      $$('[data-acta]',el).forEach(function(b){b.onclick=function(){
+        var st=L.stack[L.stack.length-1]; if(!st){return;}
+        var ref=st.ref||{provider:L.provider,id:st.id,title:st.title,isContainer:true,uri:'',kind:'container'};
+        actaSend(w,ref,b.getAttribute('data-acta'),st.title);};});
+      $$('[data-actaadd]',el).forEach(function(b){b.onclick=function(ev){ev.stopPropagation();
+        var it=(L.items||[])[+b.getAttribute('data-actaadd')]; if(!it)return;
+        actaSend(w,it,'append',it.title);};});
+      // --- Auswahlmodus ---------------------------------------------------
+      function neu(){var d=WIDGETS[w.type];var host=el.querySelector('.winner')||el;
+        host.innerHTML=d.render(w);if(d._bind)d._bind(w,el);}
+      $$('[data-afplgo]',el).forEach(function(b){b.onclick=function(){
+        var p=(L.plAll||[])[+b.getAttribute('data-afplgo')]; if(!p)return;
+        L.selMode=false;L.sel={};L.plPanel=false;L.plDel=false;
+        L.provider=p._prov||L.provider;               // Liste kann bei einem anderen Anbieter liegen
+        L.stack=[{id:p.id,title:p.title,ref:p}];      // Playlists sind ein eigener Einstieg
+        afLibBrowse(w,L.provider,p.id,p.title);};});
+      var da=$('[data-afpldelask]',el);
+      if(da)da.onclick=function(){L.plDel=true;neu();};
+      var dn=$('[data-afpldelno]',el);
+      if(dn)dn.onclick=function(){L.plDel=false;neu();};
+      var dj=$('[data-afpldel]',el);
+      if(dj)dj.onclick=function(){
+        var offen=L.stack.length?L.stack[L.stack.length-1]:null; if(!offen)return;
+        L.plDel=false;
+        _plSend(w,'delete',{provider:L.provider,id:offen.id},function(){
+          // Nach dem Loeschen nicht in der leeren Liste stehen bleiben.
+          L.plAll=null;L.plOwn=null;L.stack=[];
+          afLibBrowse(w,L.provider,'','');});
+      };
+      var sb=$('[data-afselstart]',el);
+      if(sb)sb.onclick=function(){L.selMode=true;L.sel={};L.plPanel=false;neu();};
+      var se=$('[data-afselend]',el);
+      if(se)se.onclick=function(){L.selMode=false;L.sel={};L.plPanel=false;neu();};
+      $$('[data-afsel]',el).forEach(function(b){b.onclick=function(ev){ev.stopPropagation();
+        var it=(L.items||[])[+b.getAttribute('data-afsel')]; if(!it||it.isContainer)return;
+        var k=_plKey(it); L.sel=L.sel||{};
+        if(L.sel[k])delete L.sel[k]; else L.sel[k]=it;
+        neu();};});
+      var po=$('[data-afplopen]',el);
+      if(po)po.onclick=function(){
+        if(!_plSelCount(L))return;
+        L.plPanel=true; neu();
+        _plLoadLists(w,function(){neu();});      // Listen nachladen, Feld ist sofort da
+      };
+      // Der Getippte gehoert in den Zustand, nicht nur ins Feld: das Widget zeichnet sich
+      // im Datentakt neu, und dabei entstuende das Feld sonst leer - der Name waere weg,
+      // sobald man kurz nichts tut.
+      var pn=$('[data-afplname]',el);
+      if(pn){pn.oninput=function(){L.plName=this.value;};
+             if(L.plPanel&&document.activeElement!==pn){try{pn.focus();
+               pn.setSelectionRange(pn.value.length,pn.value.length);}catch(_){}}}
+      var pc=$('[data-afplcreate]',el);
+      if(pc)pc.onclick=function(){
+        var inp=$('[data-afplname]',el);
+        var nm=String((inp?inp.value:L.plName)||'').trim();
+        if(!nm){toast('Bitte einen Namen eingeben');return;}
+        _plSend(w,'create',{provider:L.provider,name:nm,refs:_plSelRefs(L)},function(pl){
+          L.selMode=false;L.sel={};L.plPanel=false;L.plList=null;L.plAll=null;L.plName='';
+          // GLEICH HINEINSPRINGEN. Vorher landete man wieder im Album und sah nichts von
+          // der neuen Liste - sie lag zwar in der Bibliothek, aber drei Ebenen entfernt
+          // zwischen den zehn automatischen Listen von Plex.
+          if(pl&&pl.id){L.stack.push({id:pl.id,title:pl.title||nm,ref:pl});
+                        afLibBrowse(w,L.provider,pl.id,pl.title||nm);}
+          else neu();});
+      };
+      $$('[data-afpladd]',el).forEach(function(b){b.onclick=function(){
+        var p=(L.plList||[])[+b.getAttribute('data-afpladd')]; if(!p)return;
+        _plSend(w,'add',{provider:L.provider,id:p.id,refs:_plSelRefs(L)},function(){
+          L.selMode=false;L.sel={};L.plPanel=false;L.plList=null;L.plAll=null;L.plName='';
+          L.stack.push({id:p.id,title:p.title,ref:p});
+          afLibBrowse(w,L.provider,p.id,p.title);});
+      };});},
     props:function(w){return afSessRow(w);}, wire:function(w){afSessWire(w);}
+  });
+
+  // ---------- audiocollection: Sammlungskachel (fest gebunden) ----------
+  //
+  //  Zeigt auf GENAU eine Sammlung - ein Album, eine Playlist, eine Hoerbuchserie - und
+  //  spielt sie auf dem Raum der Sitzung. Gespeichert wird nur der Zeiger (Anbieter +
+  //  Kennung + Anzeigename + Cover), nie eine aufgeloeste Adresse: in den Adressen von
+  //  Plex und Audiobookshelf stecken Zugangstokens, die ablaufen. Dadurch veraltet die
+  //  Kachel nie und laesst sich beliebig oft auf beliebigen Seiten ablegen.
+  defWidget('audiocollection',{
+    label:'Audio · Sammlung', cat:'HomeSuite · Audio', paletteIcon:'wlist', size:[320,132],
+    defaults:function(w){w.session='audio';w.colProvider='';w.colId='';w.colTitle='';w.colSub='';w.colCover='';w.colMode='replace';},
+    render:function(w){
+      if(!w.colId&&!(typeof DOKU!=='undefined'&&DOKU))
+        return afMsg('Keine Sammlung gewählt (Eigenschaften)');
+      var t=w.colTitle||'Sammlung', sub=w.colSub||'', cov=w.colCover||'';
+      var bild=cov?('<img class="acol-cov" src="'+esc(cov)+'" alt="">')
+                  :('<div class="acol-cov acol-ph">'+esc((t||'?').slice(0,1).toUpperCase())+'</div>');
+      var marke=w.colProvider?('<div class="acol-badge">'+esc(w.colProvider)+'</div>'):'';
+      return '<div class="acol">'+bild+'<div class="acol-body">'+marke
+        +'<div class="acol-t">'+esc(t)+'</div>'
+        +(sub?'<div class="acol-s">'+esc(sub)+'</div>':'')
+        +actaBar(true,'Abspielen','Anhängen')+'</div></div>';},
+    mount:afMount,
+    _bind:function(w,el){
+      $$('[data-acta]',el).forEach(function(b){b.onclick=function(){
+        if(!w.colId){toast('Keine Sammlung gewählt');return;}
+        actaSend(w,{provider:w.colProvider,id:w.colId,title:w.colTitle,isContainer:true,uri:'',kind:'container'},
+          b.getAttribute('data-acta'),w.colTitle);};});},
+    props:function(w){
+      function f(k,l,ph){return row(l,'<input id="ac_'+k+'" value="'+esc(w[k]||'')+'" placeholder="'+esc(ph||'')+'">');}
+      return afSessRow(w)
+        +f('colProvider','Anbieter','plex, audiobookshelf, spotify')
+        +f('colId','Kennung','Container-Kennung aus der Bibliothek')
+        +f('colTitle','Titel','')
+        +f('colSub','Unterzeile','z. B. Album · 10 Titel')
+        +f('colCover','Cover-Adresse','leer = Platzhalter mit Anfangsbuchstabe')
+        +'<div style="font-size:11px;color:var(--muted);margin:2px 2px 4px">Anbieter und Kennung stehen in der '
+        +'Bibliothek: Sammlung öffnen, die Angaben stehen im Pfad. Gespeichert wird nur der Zeiger, nie eine '
+        +'aufgelöste Adresse — deshalb veraltet die Kachel nicht.</div>';},
+    wire:function(w){afSessWire(w);
+      ['colProvider','colId','colTitle','colSub','colCover'].forEach(function(k){
+        var el=$('#ac_'+k); if(!el)return;
+        el.onchange=function(){w[k]=this.value||'';commit();
+          var box=$('.w[data-id="'+w.id+'"]',canvas);
+          if(box){var d=WIDGETS[w.type];var host=box.querySelector('.winner')||box;host.innerHTML=d.render(w);if(d._bind)d._bind(w,box);}};});}
   });
 
   // ---------- multiroom: Gruppen-Manager (N-zu-1) ----------
@@ -575,19 +909,30 @@
         bar.onpointercancel=function(){dg=false;s.dragging=false;};
       });
       // Master-UID (RINCON) des aktuellen Raums als coordinator; members = aktuelle Gruppe +/- toggle.
-      function currentMembers(){var m=[];s.rooms.forEach(function(rr){if(rr.role==='member'&&rr.coordinator===cur.coordinator)m.push(rr);});return m;}
       $$('[data-afgrp]',el).forEach(function(b){b.onclick=function(){var rid=+b.getAttribute('data-afgrp');var wasIn=b.getAttribute('data-afin')==='1';
-        // coordinatorUid des Masters ist cur.coordinator (bei standalone = eigene UID); wir gruppieren AUF cur.
-        var coord=cur.coordinator||('SELF_'+cur.id);
-        var members=currentMembers().map(function(x){return x.coordinator;}); // UIDs; vereinfachte Sicht
-        // Ziel-Mitglied ist die Zone rid -> deren eigene UID kennen wir nicht direkt; wir schalten ueber deren Instanz per manage group/ungroup.
         var target=s.rooms.filter(function(x){return x.id===rid;})[0];if(!target)return;
-        if(wasIn){ afManage(w,rid,{op:'ungroup'}); }
-        else { afManage(w,rid,{op:'group',args:{coordinatorUid:coord,memberUids:[coord]}}); }
+        // Beitritt und Austritt laufen beide ueber die Instanz des MITGLIEDS: ihm wird gesagt,
+        // welchem Koordinator es folgt (coordinatorUid) und dass es selbst dazugehoert
+        // (memberUids). Frueher stand in memberUids die UID des MASTERS - das Mitglied fand
+        // sich in seiner eigenen Liste also nicht wieder, und der Treiber las das als
+        // "verlassen". Deshalb liess sich nie jemand hinzufuegen. Beide UIDs kommen aus
+        // ?api=audio (Feld uid je Raum); fehlt eine, wird gar nicht erst geschaltet.
+        var coord=cur.uid||cur.coordinator||'';
+        var self=target.uid||'';
+        if(wasIn){
+          afEcho(s,target,'role','standalone'); afEcho(s,target,'coordinator',self||target.coordinator);
+          afEmit(w); afManage(w,rid,{op:'ungroup',args:{}});
+        } else if(!coord||!self){ toast('Gruppe: Player-Kennung fehlt'); }
+        else {
+          afEcho(s,target,'role','member'); afEcho(s,target,'coordinator',coord);
+          afEmit(w); afManage(w,rid,{op:'group',args:{coordinatorUid:coord,memberUids:[self]}});
+        }
       };});
       var ug=$('[data-afungroup]',el);if(ug)ug.onclick=function(){ // alle Mitglieder trennen
-        currentMembers().forEach(function(m){ /* per Instanz ungroup */ });
-        s.rooms.forEach(function(rr){ if(rr.role==='member'&&rr.coordinator===cur.coordinator) afManage(w,rr.id,{op:'ungroup'}); });
+        s.rooms.forEach(function(rr){ if(rr.role==='member'&&rr.coordinator===cur.coordinator){
+          afEcho(s,rr,'role','standalone'); afEcho(s,rr,'coordinator',rr.uid||rr.coordinator);
+          afManage(w,rr.id,{op:'ungroup',args:{}}); } });
+        afEmit(w);
       };},
     props:function(w){return afSessRow(w);}, wire:function(w){afSessWire(w);}
   });

@@ -975,6 +975,18 @@
   .rtc:focus-visible{outline:none}
   /* Norm-Skala (pH/Redox): statischer Farbverlauf als Leiste, Marker zeigt den aktuellen Wert */
   .hvcscale{position:relative;height:clamp(5px,5cqh,10px);border-radius:999px;margin-top:5px;opacity:.92;box-shadow:inset 0 0 0 1px rgba(0,0,0,.10)}
+  /* Skalenmarken: Striche IM Balken an den Zonengrenzen, Zahlen darunter. Sie machen aus
+     dem Verlauf eine lesbare Skala - ohne sie sieht man die Farbe, aber nicht, wo man steht. */
+  .hvcscale u{position:absolute;top:0;bottom:0;width:1px;background:rgba(0,0,0,.38);transform:translateX(-.5px)}
+  :root[data-theme="dark"] .hvcscale u{background:rgba(255,255,255,.34)}
+  .hvcticks{position:relative;height:clamp(9px,3.4cqmin,14px);margin-top:2px}
+  .hvcticks span{position:absolute;transform:translateX(-50%);font-family:var(--fm);
+    font-size:clamp(8px,2.6cqmin,11px);color:var(--faint);line-height:1;font-variant-numeric:tabular-nums}
+  /* Zonenzeile: Name in der Zonenfarbe, Handlungshinweis daneben in Grau. */
+  .hvczone{display:flex;align-items:baseline;gap:.5em;margin-top:.25em;min-width:0}
+  .hvczone b{font-size:clamp(10px,3.4cqmin,15px);font-weight:700;white-space:nowrap}
+  .hvczone span{font-size:clamp(9px,2.9cqmin,12px);color:var(--muted);overflow:hidden;
+    text-overflow:ellipsis;white-space:nowrap}
   .hvcscale .sdot{position:absolute;top:50%;left:0;width:clamp(9px,9cqmin,16px);height:clamp(9px,9cqmin,16px);border-radius:50%;
     background:var(--surface);border:2px solid var(--text);transform:translate(-50%,-50%);box-shadow:0 0 0 1px var(--line),0 1px 3px rgba(0,0,0,.3)}
   /* Doku-Seite: Erklaerungsblock ueber den Einstellungen */
@@ -1179,10 +1191,13 @@
   .hscarcwrap .hscsvg{flex:1;height:100%}
   .hscnow{position:absolute;left:0;top:0;transform:translate(-50%,-150%);font-family:var(--fm);font-size:var(--wf-lbl);font-weight:600;color:var(--warm);white-space:nowrap;pointer-events:none;text-shadow:0 1px 3px rgba(0,0,0,.5)}
   .hscsvg{flex:1;width:100%;min-height:0;overflow:visible}
-  .hscarc{fill:none;stroke:var(--line);stroke-width:1.5;stroke-dasharray:3 4}
-  .hschoriz{stroke:var(--line);stroke-width:1}
+  /* Der Tagbogen ist die Bahn, an der die Sonne entlanglaeuft - er darf nicht raten lassen,
+     wo sie herkommt. --line ist eine TRENNLINIENfarbe und auf dunklem Grund fast unsichtbar
+     (#25333a auf #0d1315); --muted ist der Ton fuer Nebeninformation und traegt in jedem Skin. */
+  .hscarc{fill:none;stroke:color-mix(in oklab,var(--muted) 78%,transparent);stroke-width:1.8;stroke-dasharray:3 4}
+  .hschoriz{stroke:color-mix(in oklab,var(--muted) 55%,transparent);stroke-width:1}
   .hscsun{fill:var(--sun);filter:drop-shadow(0 0 5px color-mix(in oklab,var(--sun) 70%,transparent))}
-  .hscarcn{opacity:.55;stroke-dasharray:2 5} /* Nachtkurve etwas dezenter */
+  .hscarcn{opacity:.7;stroke-dasharray:2 5} /* Nachtkurve etwas dezenter, aber sichtbar */
   .hscmoon path{fill:var(--moon);filter:drop-shadow(0 0 5px color-mix(in oklab,var(--moon) 60%,transparent))}
   .hscnowdot{fill:var(--text);opacity:.85}
   .hscfill{fill:var(--sky-day);opacity:.32}                    /* Tagesfläche bis zur Sonne */
@@ -2199,8 +2214,64 @@
   .alib-trk:first-child{border-top:0}
   .alib-trk:hover{background:color-mix(in oklab,var(--accent) 8%,transparent)}
   .alib-n{width:1.7em;text-align:center;color:var(--faint);font-family:var(--fm);font-size:.92em;flex:none}
+  /* --- Audio: wiederverwendbare Bausteine (kein Widget-Praefix) --------------
+     .acta* wird von der Bibliothek, der Sammlungskachel und spaeter der Warteschlange
+     gleichermassen benutzt. Nur Skin-Marken, keine festen Farben - der Skinwechsel
+     zieht dadurch mit. Aktive Flaeche IMMER accent-2 mit weisser Schrift. */
+  .acta{display:flex;gap:.46em;flex:none}
+  .acta-b{padding:.38em .77em;border-radius:7px;border:1px solid var(--line);background:var(--surface-2);color:var(--text);font-size:.92em;font-family:var(--fu);cursor:pointer;white-space:nowrap}
+  .acta-b:hover{border-color:color-mix(in oklab,var(--accent) 40%,var(--line))}
+  .acta-b.on{background:var(--accent-2);color:#fff;border-color:transparent;font-weight:650}
+  .acta-b.warn{background:var(--crit);color:#fff;border-color:transparent;font-weight:650}
+  .acta-b[disabled]{opacity:.45;cursor:default}
+  .acta-add{width:1.7em;height:1.7em;flex:none;border:1px solid var(--line-soft);border-radius:6px;background:none;color:var(--faint);font-size:1em;line-height:1;cursor:pointer;padding:0}
+  .acta-add:hover{color:var(--accent);border-color:color-mix(in oklab,var(--accent) 45%,var(--line))}
+  .acta-q{display:block;font-size:.85em;color:var(--faint);margin-top:.15em}
+  .acta-cnt{margin-left:auto;font-size:.85em;color:var(--faint);font-family:var(--fm);padding-right:.6em;white-space:nowrap;font-weight:400}
+  .acta-note{margin:0 0 .62em;padding:.54em .77em;border-radius:8px;background:var(--surface-2);border:1px solid var(--line-soft);color:var(--muted);font-size:.88em}
+  /* Zeile mit Zusatztaste: aussen div (verschachtelte Tasten waeren ungueltig),
+     innen die Flaechentaste. Optik bleibt exakt wie bisher. */
+  .alib-trk.hasadd{padding-right:.62em}
+  .alib-trk .trkmain{display:flex;align-items:center;gap:1.08em;flex:1;min-width:0;border:0;background:none;color:inherit;font:inherit;text-align:left;cursor:pointer;padding:0}
+  /* --- Playlist anlegen: Auswahl in der Bibliothek --------------------------
+     Die Liste entsteht beim ANBIETER; hier gibt es nur Auswahl und Ziel. */
+  .selbox{width:1.25em;height:1.25em;flex:none;margin-left:.2em;border:1px solid var(--line);border-radius:6px;
+    display:inline-flex;align-items:center;justify-content:center;color:#fff;font-size:.92em;
+    background:var(--surface-2);cursor:pointer}
+  .selbox.on{background:var(--accent-2);border-color:transparent}
+  .alib-trk.mark{background:color-mix(in oklab,var(--accent) 9%,transparent)}
+  .selcnt{font-size:.95em;font-weight:600;color:var(--muted);align-self:center;margin-right:.2em}
+  .acta-b[disabled]{opacity:.45;cursor:default}
+  .pl-panel{position:absolute;right:1em;top:3.4em;width:min(330px,60cqi);background:var(--surface);
+    border:1px solid var(--line);border-radius:11px;box-shadow:0 18px 48px rgba(0,0,0,.42);padding:.85em;z-index:6}
+  .pl-hd{font-size:.98em;font-weight:650;color:var(--text);margin-bottom:.65em}
+  .pl-new{display:flex;gap:.45em;margin-bottom:.7em}
+  .pl-new input{flex:1;min-width:0;padding:.45em .65em;border-radius:7px;border:1px solid var(--line);
+    background:var(--tile);color:var(--text);font:inherit;font-size:.95em}
+  .pl-sep{font-size:.82em;color:var(--faint);margin:0 0 .45em}
+  .pl-row{display:flex;align-items:center;gap:.6em;width:100%;padding:.5em .65em;border-radius:8px;
+    border:1px solid transparent;background:var(--tile);color:var(--text);font-size:.95em;font-weight:500;
+    margin-bottom:.3em;cursor:pointer;text-align:left}
+  .pl-row:hover{border-color:color-mix(in oklab,var(--accent) 40%,var(--line))}
+  .pl-ic{color:var(--accent);flex:none}
+  .pl-cnt{margin-left:auto;font-family:var(--fm);font-size:.82em;color:var(--faint)}
+  .alib-pth.pl-item{display:flex;align-items:center;gap:.45em}
+  .pl-item .pl-cnt{margin-left:auto}
+  .pl-prov{font-family:var(--fm);font-size:.72em;color:var(--faint);border:1px solid var(--line-soft);
+    border-radius:4px;padding:0 .3em;margin-left:.35em}
+  .pl-own{font-size:.72em;letter-spacing:.06em;text-transform:uppercase;color:#fff;
+    background:var(--accent-2);border-radius:5px;padding:.12em .45em;margin-left:.5em;font-weight:650}
+  .pl-note{font-size:.78em;color:var(--faint);margin-top:.6em;line-height:1.4}
+  /* Sammlungskachel: eigenes Widget, zeigt fest auf Playlist/Album/Serie */
+  .acol{display:flex;gap:.92em;padding:.92em;align-items:center;height:100%;box-sizing:border-box}
+  .acol-cov{width:clamp(54px,26cqmin,104px);aspect-ratio:1/1;flex:none;border-radius:8px;object-fit:cover;border:1px solid var(--line-soft);background:var(--surface-2)}
+  .acol-ph{display:flex;align-items:center;justify-content:center;font-size:2em;font-weight:700;color:var(--accent);background:linear-gradient(160deg,color-mix(in oklab,var(--accent) 18%,transparent),var(--surface-2))}
+  .acol-body{min-width:0;display:flex;flex-direction:column;gap:.2em;flex:1}
+  .acol-badge{font-size:.72em;letter-spacing:.09em;text-transform:uppercase;color:var(--faint);font-family:var(--fm)}
+  .acol-t{font-size:1.15em;font-weight:650;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .acol-s{font-size:.92em;color:var(--muted);margin-bottom:.3em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .alib-folders{display:flex;flex-direction:column;gap:.62em;padding:.62em 0}
-  .alib-folder{display:flex;align-items:center;justify-content:space-between;border:1px solid var(--line);border-radius:10px;background:var(--tile);padding:1em 1.15em;cursor:pointer;color:var(--text);font-size:1.08em;font-weight:600;width:100%}
+  .alib-folder{display:flex;align-items:center;justify-content:flex-start;gap:.7em;text-align:left;border:1px solid var(--line);border-radius:10px;background:var(--tile);padding:1em 1.15em;cursor:pointer;color:var(--text);font-size:1.08em;font-weight:600;width:100%}
   .alib-folder:hover{border-color:color-mix(in oklab,var(--accent) 40%,var(--line))}
   .alib-chev{color:var(--faint);font-size:1.31em}
   @container (max-width:640px){
@@ -2897,6 +2968,18 @@
   .hwband .sx{margin-left:auto;flex:0 0 auto;color:var(--faint);font-size:clamp(8px,2.6cqmin,11px);
               font-variant-numeric:tabular-nums;white-space:nowrap}
 
+  /* Im grossen Wetter+ sitzt die Zusatzzeile OBEN RECHTS, unter der Quellenkennung.
+     Unter dem Ist-Zustand hat sie die Tageszeilen zusammengedrueckt: die Karte teilt ihre
+     Hoehe auf die Balken auf, jede zusaetzliche Zeile geht dort ab. Rechts oben ist ohnehin
+     Platz — dort steht nur die Quelle. Deshalb aus dem Fluss genommen und dorthin gesetzt.
+     Die Breite ist gedeckelt, damit sie dem Ist-Zustand links nicht in die Zahl faehrt. */
+  .hwp2 .hwband{position:absolute;top:clamp(22px,7.5cqmin,34px);right:clamp(6px,2.4cqmin,11px);
+                margin-top:0;max-width:min(56%,320px);z-index:5}
+  /* Sehr schmale Karten haben rechts keinen Platz — dort bleibt sie im Fluss unter dem Zustand. */
+  @container (max-width:340px){
+    .hwp2 .hwband{position:static;max-width:none;margin-top:clamp(5px,2.4cqmin,10px)}
+  }
+
   /* ===== Rollo-Kachel: Wetterlage im freien Glasausschnitt =====================
      Gezeichnet wird NUR unterhalb der Lamellen — so weit, wie das Rollo offen ist.
      Bei geschlossenem Rollo bleibt die Schicht leer, wie in Wirklichkeit.
@@ -2929,4 +3012,51 @@
   @media (prefers-reduced-motion:reduce){
     .hc2wx i,.hc2wx b,.hc2wx .wxbolt{animation:none}
     .hc2wx .wxbolt{opacity:.9}
+  }
+
+  /* ===== Skin „Milchglas" =====================================================
+     Ein Skin setzt sonst nur Farben. Milchglas braucht mehr: durchscheinende
+     Flaechen wirken erst, wenn dahinter etwas UNSCHARF wird und die Kante Licht
+     faengt. Beides steht hier, eingeschaltet ueber die Klasse .skin-frost, die
+     applySkin() aus `fx:'frost'` setzt.
+
+     Kosten: backdrop-filter rechnet je Flaeche. Auf der Beschattungsseite liegen
+     siebzehn Kacheln — auf aelteren Tablets merkt man das. Wer es fluessig braucht,
+     bleibt bei einem der deckenden Skins. */
+  .skin-frost{
+    background:
+      radial-gradient(58% 44% at 12% 8%,  color-mix(in oklab,var(--accent) 30%,transparent) 0%, transparent 60%),
+      radial-gradient(52% 40% at 88% 14%, color-mix(in oklab,var(--info)   26%,transparent) 0%, transparent 62%),
+      radial-gradient(64% 50% at 72% 92%, color-mix(in oklab,var(--warm)   20%,transparent) 0%, transparent 66%),
+      var(--bg);
+    background-attachment:fixed;
+  }
+  /* Flaechen: Glas statt Farbe. -webkit- fuer Safari, das die Eigenschaft bis heute praefixt. */
+  .skin-frost .w,
+  .skin-frost .hbar,.skin-frost .hside,
+  .skin-frost .card,.skin-frost .pitem{
+    -webkit-backdrop-filter:blur(16px) saturate(150%);
+    backdrop-filter:blur(16px) saturate(150%);
+  }
+  /* Lichtkante oben, Schatten unten — ohne die schwimmt eine Glasflaeche haltlos im Bild. */
+  .skin-frost .w{
+    box-shadow:inset 0 1px 0 color-mix(in oklab,#fff 22%,transparent),
+               0 8px 24px -12px rgba(0,0,0,.55);
+  }
+  :root[data-theme="light"] .skin-frost .w{
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.85),
+               0 8px 22px -14px rgba(20,40,70,.35);
+  }
+  /* Gefuellte Aktivflaechen bleiben DECKEND: durchscheinende Schaltflaechen sind
+     huebsch und unlesbar. Der Akzent traegt weisse Schrift wie ueberall sonst. */
+  .skin-frost button.on,.skin-frost .btn.on,.skin-frost .seg .on{
+    -webkit-backdrop-filter:none;backdrop-filter:none;
+    background:var(--accent-2);color:#fff;
+  }
+  /* Zeichenflaechen und Bilder nicht verwischen — sie sind der Inhalt, nicht der Hintergrund. */
+  .skin-frost canvas,.skin-frost img,.skin-frost svg{-webkit-backdrop-filter:none;backdrop-filter:none}
+  @media (prefers-reduced-transparency:reduce){
+    .skin-frost .w,.skin-frost .hbar,.skin-frost .hside,.skin-frost .card,.skin-frost .pitem{
+      -webkit-backdrop-filter:none;backdrop-filter:none;
+    }
   }

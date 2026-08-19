@@ -1,6 +1,6 @@
   // C1: nutzt das Widget diese Variablen-ID als Daten-Bindung? (spiegelt pollVals, ohne visVar)
   function widgetDataId(w,id){
-    if(w.varId===id||w.varId2===id||w.varId3===id||w.cvActId===id||w.cvAzB===id||w.cvAzE===id||w.cvElv===id||w.cvBlockVid===id||w.cmpVid===id||w.ackVid===id||w.condVar===id||w.vTemp===id||w.vCond===id||w.vHum===id||w.vWind===id||w.vRain===id||w.ssAz===id||w.ssEl===id||w.ssRad===id||w.ssRainV===id||w.ssSnowV===id||w.ssPtypeV===id||w.ssFogV===id||w.ssWindV===id||w.ssRainSensV===id||w.ssTempV===id||w.ssDewV===id||w.ssHumV===id||w.ssWetV===id||w.ssCloudV===id||w.vStorm===id||w.vStormDist===id||w.vStormAge===id||w.vStormRate===id||w.vRainRate===id||w.vRainDay===id||w.vFog===id||w.vFogFsi===id||w.ssStormV===id||w.ssStormDistV===id||w.ssWxJson===id)return true;
+    if(w.varId===id||w.varId2===id||w.varId3===id||w.cvActId===id||w.cvAzB===id||w.cvAzE===id||w.cvElv===id||w.cvBlockVid===id||w.cmpVid===id||w.ackVid===id||w.condVar===id||w.vTemp===id||w.vCond===id||w.vHum===id||w.vWind===id||w.vRain===id||w.ssAz===id||w.ssEl===id||w.ssRad===id||w.ssRainV===id||w.ssSnowV===id||w.ssPtypeV===id||w.ssFogV===id||w.ssFogStateV===id||w.ssWindV===id||w.ssRainSensV===id||w.ssTempV===id||w.ssDewV===id||w.ssHumV===id||w.ssWetV===id||w.ssCloudV===id||w.vStorm===id||w.vStormDist===id||w.vStormAge===id||w.vStormRate===id||w.vRainRate===id||w.vRainDay===id||w.vFog===id||w.vFogFsi===id||w.ssStormV===id||w.ssStormDistV===id||w.wxFogState===id||w.ssWxJson===id)return true;
     var A=['items','links','rows','src','snk','fc','elements','stages','steps','series'],i,j,o;
     for(i=0;i<A.length;i++){var a=w[A[i]];if(a)for(j=0;j<a.length;j++){o=a[j];if(o&&(o.vid===id||o.subvid===id||o.hi===id||o.lo===id||o.pq===id||o.cond===id||o.speedVid===id||o.socVid===id))return true;}}
     // Alarm-Karte: nur im Text (title/sub/notify) referenzierte Formel-IDs treiben live() ebenfalls
@@ -112,7 +112,7 @@
   var _vidx=null;
   function _vidxAdd(id,w,root){if(!id)return;(_vidx[id]=_vidx[id]||[]).push({w:w,root:root});}
   function _collectIds(w,add){ // alle Variablen-IDs eines Widgets an add() geben
-    add(w.varId);add(w.varId2);add(w.varId3);add(w.cvActId);add(w.cvAzB);add(w.cvAzE);add(w.cvElv);add(w.cvBlockVid);add(w.cmpVid);add(w.ackVid);add(w.visVar);add(w.condVar);add(w.vTemp);add(w.vCond);add(w.vHum);add(w.vWind);add(w.vRain);add(w.ssAz);add(w.ssEl);add(w.ssRad);add(w.ssRainV);add(w.ssSnowV);add(w.ssPtypeV);add(w.ssFogV);add(w.ssWindV);add(w.ssRainSensV);add(w.ssTempV);add(w.ssDewV);add(w.ssHumV);add(w.ssWetV);add(w.ssCloudV);add(w.ssWxJson);add(w.vStorm);add(w.vStormDist);add(w.vStormAge);add(w.vStormRate);add(w.vRainRate);add(w.vRainDay);add(w.vFog);add(w.vFogFsi);add(w.ssStormV);add(w.ssStormDistV);add(w.wxFog);add(w.wxPrecip);add(w.wxRainRate);add(w.wxStorm);add(w.wxStormDist);add(w.wxSnow);
+    add(w.varId);add(w.varId2);add(w.varId3);add(w.cvActId);add(w.cvAzB);add(w.cvAzE);add(w.cvElv);add(w.cvBlockVid);add(w.cmpVid);add(w.ackVid);add(w.visVar);add(w.condVar);add(w.vTemp);add(w.vCond);add(w.vHum);add(w.vWind);add(w.vRain);add(w.ssAz);add(w.ssEl);add(w.ssRad);add(w.ssRainV);add(w.ssSnowV);add(w.ssPtypeV);add(w.ssFogV);add(w.ssFogStateV);add(w.ssWindV);add(w.ssRainSensV);add(w.ssTempV);add(w.ssDewV);add(w.ssHumV);add(w.ssWetV);add(w.ssCloudV);add(w.ssWxJson);add(w.vStorm);add(w.vStormDist);add(w.vStormAge);add(w.vStormRate);add(w.vRainRate);add(w.vRainDay);add(w.vFog);add(w.vFogFsi);add(w.ssStormV);add(w.ssStormDistV);add(w.wxFog);add(w.wxFogState);add(w.wxPrecip);add(w.wxRainRate);add(w.wxStorm);add(w.wxStormDist);add(w.wxSnow);
     if(w.fc)w.fc.forEach(function(r){add(r.hi);add(r.lo);add(r.pq);add(r.cond);});
     ['links','src','snk','items','rows','steps','series'].forEach(function(k){if(w[k])w[k].forEach(function(o){if(o)add(o.vid);});});
     if(w.stages)w.stages.forEach(function(o){if(o){add(o.vid);add(o.subvid);add(o.sv);}}); // Pipeline-Stationen (Wert + Zusatzwert + Status-Var fuer bedingten Fluss)
@@ -407,6 +407,19 @@
     'Bernstein':{fu:SKIN_FU,fm:SKIN_FM,
       dark:{bg:'#141110',surface:'#1e1a17','surface-2':'#262019',tile:'#1a1613',line:'#39301f','line-soft':'#241d16',text:'#f0e9df',muted:'#a89b88',faint:'#77685a',accent:'#f5a524','accent-2':'#d98a1a',ok:'#39d08a',warn:'#f2b441',crit:'#f2685a',info:'#5ab6ff',warm:'#f5a524'},
       light:{bg:'#f5f1ea',surface:'#fffdf9','surface-2':'#f3ede2',tile:'#faf6ef',line:'#e2d7c4','line-soft':'#efe8db',text:'#2a2115',muted:'#6f6250',faint:'#a2917a',accent:'#c8871a','accent-2':'#a56f14',ok:'#1a9c6b',warn:'#c8871a',crit:'#d64535',info:'#2f7fd6',warm:'#c8871a'}},
+    // „Milchglas" — durchscheinende Kacheln vor einem farbigen Grund. Der Skin setzt nicht nur
+    // Farben: `fx:'frost'` schaltet zusaetzlich die Unschaerfe hinter den Flaechen ein (siehe
+    // .skin-frost in styles.css). Die Flaechentoken sind deshalb RGBA — ohne Alpha gaebe es
+    // nichts zu verwischen, und der Skin saehe aus wie ein gewoehnlicher dunkler.
+    'Milchglas':{fu:SKIN_FU,fm:SKIN_FM,fx:'frost',
+      dark:{bg:'#0b1020',surface:'rgba(255,255,255,.07)','surface-2':'rgba(255,255,255,.13)',
+            tile:'rgba(255,255,255,.06)',line:'rgba(255,255,255,.15)','line-soft':'rgba(255,255,255,.08)',
+            text:'#eef3f9',muted:'#b2c1d2',faint:'#7d8da2',accent:'#7dd3fc','accent-2':'#38bdf8',
+            ok:'#4ade80',warn:'#fbbf24',crit:'#fb7185',info:'#93c5fd',warm:'#fdba74'},
+      light:{bg:'#e6edf6',surface:'rgba(255,255,255,.62)','surface-2':'rgba(255,255,255,.8)',
+            tile:'rgba(255,255,255,.55)',line:'rgba(18,38,64,.12)','line-soft':'rgba(18,38,64,.07)',
+            text:'#14202c',muted:'#4c5c6d',faint:'#8496a8',accent:'#0284c7','accent-2':'#0369a1',
+            ok:'#059669',warn:'#b45309',crit:'#be123c',info:'#1d4ed8',warm:'#c2410c'}},
     // „Claude" — Anthropic-Clay/Creme: warmes Off-White (hell) bzw. warmes Anthrazit (dunkel), Akzent = Claude-Terrakotta, Serifen-UI (Lora)
     'Claude':{fu:SKIN_SERIF,fm:SKIN_FM,
       dark:{bg:'#201e1a',surface:'#2a2723','surface-2':'#322e29',tile:'#24211c',line:'#3b362e','line-soft':'#2b2721',text:'#ece7dd',muted:'#a69e90',faint:'#6f685b',accent:'#d9805c','accent-2':'#c4613e',ok:'#5cb682',warn:'#e0a83e',crit:'#e8705c',info:'#6fa8db',warm:'#cc785c'},
@@ -435,6 +448,9 @@
     rs.setProperty('--ring','0 0 0 3px color-mix(in oklab,'+(toks.accent||'#00cdab')+' 38%,transparent)');
     document.documentElement.setAttribute('data-theme',th);rs.colorScheme=th;
     document.body.classList.toggle('wglow',!!(store.cfg&&store.cfg.wglow)); // optionaler Widget-Glow (Akzentfarbe)
+    // Skin-Effekt: mehr als Farbe. 'frost' legt Unschaerfe hinter die durchscheinenden Flaechen —
+    // ohne die waere ein Milchglas-Skin nur ein blasser dunkler.
+    document.body.classList.toggle('skin-frost', sk.fx==='frost');
     updateSkinSwitches();
     // HTML-Inhalte neu rendern -> Skin-Enforcer zieht Schrift/Farben ans neue Theme nach (Shadow/iframe rechnen Farben beim Rendern)
     // Widgets nachziehen, die den Skin nicht ueber CSS bekommen:

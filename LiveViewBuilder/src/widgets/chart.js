@@ -89,8 +89,12 @@
       }
       // ---- Diagramm-Optionen ----
       h+='<div class="pgh">'+(V.wf?'Optionen':(V.hm?'Datenreihe':(V.race?'Balken':'Diagramm-Optionen')))+'</div>';
-      if(V.spark)h+=row('Linienfarbe',selOf('pSpLine',w.lineColor,['accent','ok','warn','crit','info']))
-        +row('Füllung','<input type="checkbox" id="pSpFill"'+((w.fill!==false)?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">Fläche unter der Linie</span>');
+      if(V.spark)h+=row('Darstellung','<select id="pSpStyle">'
+          +'<option value="spline"'+((w.spStyle||'spline')==='spline'?' selected':'')+'>Spline (glatt)</option>'
+          +'<option value="line"'+(w.spStyle==='line'?' selected':'')+'>Linie (eckig)</option>'
+          +'<option value="bar"'+(w.spStyle==='bar'?' selected':'')+'>Balken</option></select>')
+        +row('Linienfarbe',selOf('pSpLine',w.lineColor,['accent','ok','warn','crit','info']))
+        +row('Füllung','<input type="checkbox" id="pSpFill"'+((w.fill!==false)?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">Fläche unter der Linie (bei Balken ohne Wirkung)</span>');
       if(V.lineOpt)h+=row('Glätten (Spline)','<input type="checkbox" id="pSmooth"'+(w.smooth!==false?' checked':'')+'>')+row('Punkte','<input type="checkbox" id="pSym"'+(w.symbols?' checked':'')+'> <input id="pSymS" type="number" style="width:52px" value="'+(w.symSize||5)+'" title="Größe">')+row('Linienbreite','<input id="pLw" type="number" step="0.5" value="'+(w.lw||2)+'">')+row('Flächen-Verlauf','<input type="checkbox" id="pGrad"'+(w.grad?' checked':'')+'>');
       if(V.symOpt)h+=row('Punkte-Größe','<input id="pSymS" type="number" style="width:52px" value="'+(w.symSize||7)+'">');
       if(V.wf)h+=row('Y-Einheit','<input id="pWfUnit" value="'+esc(_wfUnit(w))+'" style="width:80px" placeholder="z. B. €">')
@@ -156,6 +160,7 @@
       if($('#pDlFill'))$('#pDlFill').onchange=function(){w.dlFill=this.value||undefined;reChart();};
       if($('#pDlOp'))$('#pDlOp').oninput=function(){w.dlOpacity=this.value===''?undefined:parseInt(this.value);reChart();};
       // --- Sparkline ---
+      if($('#pSpStyle'))$('#pSpStyle').onchange=function(){w.spStyle=(this.value==='spline')?undefined:this.value;reChart();};
       if($('#pSpLine'))$('#pSpLine').onchange=function(){w.lineColor=this.value||undefined;reChart();};
       if($('#pSpFill'))$('#pSpFill').onchange=function(){w.fill=this.checked?undefined:false;reChart();};
       // --- Wasserfall ---

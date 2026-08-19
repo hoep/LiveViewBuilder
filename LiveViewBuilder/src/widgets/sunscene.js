@@ -1332,6 +1332,24 @@
           fog *= Math.max(0, Math.min(1, (25 - wkmh) / 15));
         }
       }
+      // ZUSTAND SCHLAEGT DICHTE.
+      //
+      // Eine "Nebeldichte" ist eine Neigung, kein Wetter: bei 90 % Luftfeuchte und 1,6 K
+      // Taupunktabstand steht sie berechtigt bei 28 %, draussen ist es trotzdem klar. Wer die
+      // Dichte allein bindet, sieht deshalb Nebel, wo keiner ist - das Widget zeichnet ab 2 %.
+      // Ist eine Zustandsvariable gebunden (die Nebel-Entscheidung der Wetterstation), hat sie
+      // das letzte Wort: meldet sie "kein Nebel", bleibt die Szene klar; meldet sie Nebel,
+      // bestimmt die Dichte weiterhin, WIE dicht gezeichnet wird - und wenn keine Dichte
+      // gebunden ist, steht die Stufe selbst fuer die Staerke.
+      var fogState = ssVal(w.ssFogStateV);
+      if (fogState != null) {
+        var an = (typeof fogState === 'boolean') ? (fogState ? 1 : 0) : Number(fogState);
+        if (!(an > 0)) {
+          fog = 0;
+        } else if (fogRaw == null) {
+          fog = Math.max(0, Math.min(1, an > 1 ? an / 3 : an));   // Stufe 1..3 als Staerke
+        }
+      }
       // Bewoelkung aus der besten verfuegbaren Quelle. Reihenfolge bewusst so:
       //  1. aus der gemessenen Strahlung - der oertlichste Wert ueberhaupt, direkt vom
       //     eigenen Dach, ohne jede Fremdquelle. Geht nur bei Sonne ueber 5 Grad.
@@ -1354,7 +1372,17 @@
       if (cloud == null && (mode === 'auto' || mode === 'fc')) {
         var fc = ssWxForecast(w);
         if (fc && fc.cloud != null) { cloud = fc.cloud; cloudSrc = 'Vorhersage'; }
-        if (fc) {
+        // MESSUNG SCHLAEGT VORHERSAGE.
+        //
+        // Der Rueckfall auf die Vorhersage ist fuer den Fall gedacht, dass gar nichts gemessen
+        // wird - dann ist eine Vorhersage besser als ein leerer Himmel. Er darf aber nicht
+        // greifen, wenn ein gebundener Sensor ausdruecklich "kein Niederschlag" meldet: dann
+        // zeichnete die Szene Nieselregen, waehrend Station, Regendetektor und Niederschlagsart
+        // uebereinstimmend trocken sagten - und die Wetterkarte daneben "klar" anzeigte.
+        // Genau dieser Widerspruch war am 18.08.2026 zu sehen.
+        var gemessen = (ssVal(w.ssRainV) != null) || (ssVal(w.ssRainSensV) != null)
+                    || (ssVal(w.ssPtypeV) != null) || (ssVal(w.ssSnowV) != null);
+        if (fc && !gemessen) {
           if (!(rain > 0.01) && fc.rain > 0.01) { rain = fc.rain; }
           if (!(snow > 0.01) && fc.snow > 0.01) { snow = fc.snow; }
         }
@@ -1973,6 +2001,7 @@
         h += fieldPick(w, 'ssSnowV', 'Schnee mm/h');
         h += fieldPick(w, 'ssPtypeV', 'Niederschlagsart');
         h += fieldPick(w, 'ssFogV', 'Sicht / Nebel');
+        h += fieldPick(w, 'ssFogStateV', 'Nebel (Zustand)');
         // Gewitter aus der eigenen Ableitung (HomeSuite\\Wetter): Stufe 0 kein, 1 Wetterleuchten,
         // 2 Gewitter, 3 in der Naehe. Ohne Bindung zeichnet die Szene kein Gewitter.
         h += fieldPick(w, 'ssStormV', 'Gewitter-Stufe 0-3');
