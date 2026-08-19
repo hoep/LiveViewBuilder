@@ -997,11 +997,25 @@ if ($api === 'audio') {
         return (bool) ($d['config']['armed'] ?? false);
     };
 
+    // Eigene Player-Kennung (RINCON_...) einer Zone. Sie steht in der Treiber-Konfiguration
+    // und ist die einzige Groesse, mit der sich Sonos-Zonen gruppieren lassen - Namen und
+    // Instanz-IDs kennt das Geraet nicht. Ohne sie kann das Frontend nur ANZEIGEN, wer mit
+    // wem spielt, aber nichts zusammenschalten.
+    $uidOf = function ($iid) use ($pfx) {
+        static $cache = [];
+        if (isset($cache[$iid])) return $cache[$iid];
+        $fn = $pfx($iid) . '_Manage';
+        if (!function_exists($fn)) return $cache[$iid] = '';
+        $d = json_decode((string) @$fn($iid, json_encode(['op' => 'getConfig'])), true);
+        return $cache[$iid] = (string) ($d['config']['rincon'] ?? $d['config']['uid'] ?? '');
+    };
+
     if ($op === 'list') {
         $out = [];
         foreach ($list as $iid) {
             $st = $stateOf($iid);
             $out[] = ['id' => $iid, 'name' => IPS_GetName($iid),
+                'uid' => $uidOf($iid),
                 'role' => (string) ($st['GroupRole'] ?? 'standalone'),
                 'coordinator' => (string) ($st['GroupCoordinator'] ?? '')];
         }
@@ -1030,6 +1044,7 @@ if ($api === 'audio') {
                 'playlist' => (int) ($st['SourcePlaylist'] ?? 0),
                 'role' => (string) ($st['GroupRole'] ?? 'standalone'),
                 'coordinator' => (string) ($st['GroupCoordinator'] ?? ''),
+                'uid' => $uidOf($iid),
                 // Control-Variablen-IDs zum Steuern via ?api=setvar (billige Ident-Aufloesung).
                 'vars' => [
                     'Transport'      => (int) (@IPS_GetObjectIDByIdent('Transport', $iid) ?: 0),
@@ -1046,6 +1061,66 @@ if ($api === 'audio') {
             ];
         }
         echo json_encode(['ok' => true, 'rooms' => $out]);
+        return;
+    }
+
+    // ---- SCHREIBEND: Zonen zusammenschalten / trennen -------------------------
+    //
+    //   ?api=audio&op=group&coord=<InstanzID>&members=<InstanzIDs,kommagetrennt>&key=TOKEN
+    //   ?api=audio&op=ungroup&id=<InstanzID>&key=TOKEN
+    //
+    // Bei Sonos tritt JEDES MITGLIED dem Koordinator bei; der Koordinator selbst tut nichts.
+    // Deshalb wird je Mitglied ein eigener Aufruf abgesetzt. Zonen, die nicht genannt sind,
+    // bleiben unangetastet - ein Gruppenwechsel soll nicht stillschweigend andere Gruppen
+    // aufloesen.
+    if ($op === 'group' || $op === 'ungroup') {
+        if (!hash_equals($TOKEN, (string) ($_GET['key'] ?? ''))) {
+            http_response_code(403);
+            echo json_encode(['error' => 'forbidden']);
+            return;
+        }
+        $call = function ($iid, array $payload) use ($pfx) {
+            $fn = $pfx($iid) . '_Manage';
+            if (!function_exists($fn)) return ['ok' => false, 'error' => 'kein Manage'];
+            $r = json_decode((string) @$fn($iid, json_encode($payload)), true);
+            return is_array($r) ? $r : ['ok' => false, 'error' => 'keine Antwort'];
+        };
+
+        if ($op === 'ungroup') {
+            $id = (int) ($_GET['id'] ?? 0);
+            if (!in_array($id, $list, true)) {
+                http_response_code(404);
+                echo json_encode(['error' => 'keine Audiozone']);
+                return;
+            }
+            echo json_encode(['ok' => true, 'id' => $id, 'result' => $call($id, ['op' => 'ungroup'])]);
+            return;
+        }
+
+        $coord = (int) ($_GET['coord'] ?? 0);
+        if (!in_array($coord, $list, true)) {
+            http_response_code(404);
+            echo json_encode(['error' => 'Koordinator ist keine Audiozone']);
+            return;
+        }
+        $coordUid = $uidOf($coord);
+        if ($coordUid === '') {
+            echo json_encode(['ok' => false, 'error' => 'Koordinator ohne Player-Kennung (rincon fehlt)']);
+            return;
+        }
+        $members = array_values(array_filter(array_map('intval',
+            explode(',', (string) ($_GET['members'] ?? ''))), function ($m) use ($list, $coord) {
+                return $m > 0 && $m !== $coord && in_array($m, $list, true);
+            }));
+
+        $res = [];
+        foreach ($members as $m) {
+            $mu = $uidOf($m);
+            if ($mu === '') { $res[$m] = ['ok' => false, 'error' => 'ohne Player-Kennung']; continue; }
+            $res[$m] = $call($m, ['op' => 'group', 'coordinatorUid' => $coordUid, 'memberUids' => [$mu]]);
+        }
+        echo json_encode(['ok' => true, 'coordinator' => $coord, 'coordinatorUid' => $coordUid,
+                          'members' => $members, 'result' => $res]);
         return;
     }
 
@@ -1127,8 +1202,13 @@ if ($api === 'audio') {
         $sub = (string) ($_GET['sub'] ?? 'providers');
         $map = ['providers' => 'mediaProviders', 'browse' => 'mediaBrowse', 'search' => 'mediaSearch'];
         $hop = $map[$sub] ?? 'mediaProviders';
+        // limit MUSS durchgereicht werden: ohne greift stumm der Hub-Standard, und eine
+        // grosse Playlist sprengt dann den 1-MB-Ausgabepuffer des Symcon-Hooks - die Antwort
+        // kommt gar nicht erst an. Nach oben gedeckelt, damit das auch niemand aushebelt.
+        $lim  = (int) ($_GET['limit'] ?? 100);
         $args = ['provider' => (string) ($_GET['provider'] ?? ''), 'container' => (string) ($_GET['container'] ?? ''),
-            'query' => (string) ($_GET['query'] ?? ''), 'offset' => (int) ($_GET['offset'] ?? 0)];
+            'query' => (string) ($_GET['query'] ?? ''), 'offset' => (int) ($_GET['offset'] ?? 0),
+            'limit' => max(1, min(300, $lim))];
         echo HSH_Manage($hub, json_encode(['op' => $hop, 'args' => $args]));
         return;
     }
@@ -1150,6 +1230,62 @@ if ($api === 'audio') {
         $fn = $pfx($iid) . '_Manage';
         echo function_exists($fn) ? $fn($iid, json_encode(['op' => 'playContent', 'args' => ['ref' => $resolved]]))
             : json_encode(['ok' => false, 'err' => 'prefix']);
+        return;
+    }
+
+    if ($op === 'playlist') {                            // Playlist anlegen/erweitern/loeschen (token)
+        if (!hash_equals($TOKEN, (string) ($_GET['key'] ?? ''))) {
+            http_response_code(403); echo json_encode(['ok' => false, 'err' => 'forbidden']); return;
+        }
+        $hub = (int) (@IPS_GetInstanceListByModuleID('{A0C082B4-9E74-430E-BD97-F9CEBB364257}')[0] ?? 0);
+        if ($hub <= 0 || !function_exists('HSH_Manage')) { echo json_encode(['ok' => false, 'err' => 'hub']); return; }
+        $sub = (string) ($_GET['sub'] ?? 'canwrite');
+        $map = ['canwrite' => 'mediaCanWrite', 'list' => 'mediaPlaylistList',
+                'create' => 'mediaPlaylistCreate',
+                'add' => 'mediaPlaylistAdd', 'delete' => 'mediaPlaylistDelete'];
+        $hop = $map[$sub] ?? 'mediaCanWrite';
+        $args = [];
+        if ($sub === 'list') {
+            $args = ['provider' => (string) ($_GET['provider'] ?? '')];
+        } elseif ($sub !== 'canwrite') {
+            $body = (string) ($_POST['data'] ?? ''); if ($body === '') $body = (string) file_get_contents('php://input');
+            $in = json_decode($body, true);
+            if (!is_array($in)) { echo json_encode(['ok' => false, 'err' => 'body']); return; }
+            $args = ['provider' => (string) ($in['provider'] ?? ''), 'name' => (string) ($in['name'] ?? ''),
+                     'id' => (string) ($in['id'] ?? ''), 'refs' => (array) ($in['refs'] ?? [])];
+        }
+        echo HSH_Manage($hub, json_encode(['op' => $hop, 'args' => $args]));
+        return;
+    }
+
+    if ($op === 'playcontainer') {                       // ganze Sammlung -> Zone (token)
+        if (!hash_equals($TOKEN, (string) ($_GET['key'] ?? ''))) {
+            http_response_code(403); echo json_encode(['ok' => false, 'err' => 'forbidden']); return;
+        }
+        $iid = (int) ($_GET['id'] ?? 0);
+        if (!in_array($iid, $list, true)) { echo json_encode(['ok' => false, 'err' => 'instance']); return; }
+        $hub = (int) (@IPS_GetInstanceListByModuleID('{A0C082B4-9E74-430E-BD97-F9CEBB364257}')[0] ?? 0);
+        if ($hub <= 0 || !function_exists('HSH_Manage')) { echo json_encode(['ok' => false, 'err' => 'hub']); return; }
+        $body = (string) ($_POST['data'] ?? ''); if ($body === '') $body = (string) file_get_contents('php://input');
+        $in = json_decode($body, true);
+        if (!is_array($in) || !isset($in['ref'])) { echo json_encode(['ok' => false, 'err' => 'ref']); return; }
+        $prov = (string) ($_GET['provider'] ?? ($in['ref']['provider'] ?? ''));
+        $max  = max(1, min(500, (int) ($in['max'] ?? 200)));
+        // 1) Hub loest den Container in die geordnete Titelliste auf
+        $tr = json_decode((string) @HSH_Manage($hub, json_encode(['op' => 'mediaTracks',
+            'args' => ['provider' => $prov, 'ref' => $in['ref'], 'max' => $max]])), true);
+        if (!is_array($tr) || empty($tr['ok'])) {
+            echo json_encode(['ok' => false, 'err' => 'tracks', 'detail' => $tr['error'] ?? '']); return;
+        }
+        // 2) die Zone reiht sie ein
+        $fn = $pfx($iid) . '_Manage';
+        if (!function_exists($fn)) { echo json_encode(['ok' => false, 'err' => 'prefix']); return; }
+        $res = json_decode((string) $fn($iid, json_encode(['op' => 'playContainer', 'args' => [
+            'tracks' => $tr['tracks'], 'mode' => (string) ($in['mode'] ?? 'replace'),
+            'dryRun' => (bool) ($in['dryRun'] ?? false), 'title' => (string) ($in['title'] ?? ''),
+        ]])), true);
+        if (is_array($res)) { $res['truncated'] = (bool) ($tr['truncated'] ?? false); $res['skipped'] = (int) ($tr['skipped'] ?? 0); }
+        echo json_encode($res ?: ['ok' => false, 'err' => 'zone']);
         return;
     }
 

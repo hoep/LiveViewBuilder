@@ -202,7 +202,13 @@
     var temp=(w.vTemp&&_ln(w.vTemp)!=null)?_ln(w.vTemp):(cur?cur.temp:null);
     var condHasVar=(w.vCond&&_lt(w.vCond)!=null),condTxt=condHasVar?_lt(w.vCond):(cur?cur.cond:null);
     var icon=condHasVar?wCondIcon(condTxt):((cur&&cur.icon)||w.icon||'cloudsun');
-    if(w.vRain&&_lb(w.vRain)){icon='rain';if(!condHasVar)condTxt='Regen';}   // Regen-Variable true -> Aktuell auf Regen erzwingen
+    // Regen-Variable true -> Aktuell auf Regen erzwingen. Der TEXT wird jetzt ebenfalls
+    // nachgezogen, sonst zeigte die Karte das Regensymbol und schrieb daneben "bedeckt":
+    // ein optischer Sensor meldet sofort, die Wetterlage der Station folgt erst, wenn die
+    // Messwippe ausschlaegt. Nur wenn der Zustandstext den Niederschlag schon benennt
+    // (Regen, Schnee, Gewitter), bleibt er stehen - er ist dann der genauere.
+    if(w.vRain&&_lb(w.vRain)){icon='rain';
+      if(!condHasVar||!/regen|schnee|graupel|gewitter|hagel/i.test(''+(condTxt||'')))condTxt='Regen';}
     // Gewitter schlaegt alles. Vorher gewann der Regensensor: bei Gewitter MIT Regen - also im
     // Regelfall - zeigte die Karte einen harmlosen Regenschauer, obwohl es blitzt. Die Stufe
     // kommt direkt aus der gebundenen Variablen, nicht aus dem Zustandstext: Text ist Auslegung,

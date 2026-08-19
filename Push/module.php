@@ -62,6 +62,18 @@ class LiveViewBuilderPush extends IPSModule
         }
         if ($Message === VM_UPDATE) {
             $id = (int) $SenderID;
+            // Die Geraetemodule schreiben ihre Variablen bei JEDEM Abruf neu, auch wenn sich
+            // nichts geaendert hat (VariableUpdated wandert, VariableChanged nicht). Ungefiltert
+            // waeren das bei elf Audiozonen im 5-Sekunden-Takt rund zwanzig Meldungen je Sekunde
+            // ueber den WebSocket - fuer Werte, die gleich geblieben sind. Fuer die abonnierten
+            // Geraetevariablen zaehlt deshalb nur die echte Aenderung; alle uebrigen Bindungen
+            // verhalten sich unveraendert.
+            if ($this->istEntityVar($id)) {
+                $v = @IPS_GetVariable($id);
+                if (is_array($v) && (int) $v['VariableUpdated'] !== (int) $v['VariableChanged']) {
+                    return;
+                }
+            }
             $this->broadcast(json_encode([
                 'ts'     => time(),
                 'values' => [(string) $id => ['v' => GetValue($id), 'f' => @GetValueFormatted($id), 'id' => $id]],
@@ -207,12 +219,16 @@ class LiveViewBuilderPush extends IPSModule
         foreach ($this->layoutIDs() as $id) {
             $wantVar[$id] = true;
         }
-        // HomeSuite-Licht (HSLT): Steuervariablen IMMER abonnieren, damit die entity-gebundenen
-        // Licht-Widgets (lightgrid/lightroom) ihre Werte per WebSocket statt Poll bekommen —
-        // auch fuer Aenderungen von Handschaltern/Automatik/anderen Clients (self-maintaining).
-        foreach ($this->hsLightVars() as $id) {
+        // HomeSuite-Geraetemodule: Zustandsvariablen IMMER abonnieren. Die zugehoerigen Widgets
+        // binden ueber eine Sitzung statt ueber eine Variablen-ID, tauchen also im Layout nicht
+        // mit einer ID auf — ohne diese Liste bekaemen sie nie einen Push.
+        $entity = [];
+        foreach ($this->hsEntityVars() as $id) {
             $wantVar[$id] = true;
+            $entity[$id]  = 1;
         }
+        // Merkzettel fuer MessageSink: fuer diese IDs wird nur bei echter Aenderung gesendet.
+        $this->SetBuffer('entityIds', json_encode($entity));
         $wantMedia = [];
         foreach ($this->mediaIDs() as $id) {
             $wantMedia[$id] = true;
@@ -256,15 +272,53 @@ class LiveViewBuilderPush extends IPSModule
     }
 
     /** Steuervariablen aller HomeSuite-LightDevice-Instanzen (Power/Brightness/ColorTemp). */
-    private function hsLightVars(): array
+    /**
+     * Zustandsvariablen ALLER Instanzen der eigenen Bibliotheken.
+     *
+     * Warum bibliotheksweit statt einer Liste je Modul: die zugehoerigen Widgets binden ueber
+     * eine Sitzung (session=audio/shade/heatEG …) statt ueber eine Variablen-ID - im Layout
+     * steht also nichts, was layoutIDs() finden koennte. Eine handgepflegte Liste je Modul war
+     * der erste Versuch und schon nach einer Stunde unvollstaendig: Maeher, Gardena, Pool und
+     * die Audio-Bruecke fehlten, und jedes kuenftige Modul haette sie erneut gebraucht.
+     *
+     * Genommen werden die DIREKTEN Variablen jeder Instanz. Was tiefer im Baum haengt (die
+     * mehreren hundert Konfigurationswerte des Poolcontrollers etwa), ist Konfiguration und
+     * wird ohnehin ueber die Layout-Bindungen erfasst, wenn eine Kachel es anzeigt.
+     *
+     * Die Menge ist unkritisch, weil MessageSink fuer genau diese IDs nur bei ECHTER Aenderung
+     * sendet - die Module schreiben ihre Werte bei jedem Abruf neu.
+     */
+    private const EIGENE_LIBS = [
+        '{0F66F23F-ED50-4CD5-AB44-5FC961C7733A}',   // HomeSuite
+        '{3E7A64C1-58D2-4B09-9F13-6C2A85E4D770}',   // WeatherStation
+    ];
+
+    /** Gehoert die Variable zu den eigenen Modulen (dann: nur bei echter Aenderung senden)? */
+    private function istEntityVar(int $id): bool
+    {
+        static $set = null;
+        if ($set === null) {
+            $j   = json_decode((string) $this->GetBuffer('entityIds'), true);
+            $set = is_array($j) ? $j : [];
+        }
+        return isset($set[$id]) || isset($set[(string) $id]);
+    }
+
+    private function hsEntityVars(): array
     {
         $out = [];
-        $ins = @IPS_GetInstanceListByModuleID('{B7E1C3A4-5D62-4F08-9A1E-2C7D6B4F0E93}') ?: [];
-        foreach ($ins as $iid) {
-            foreach (['Power', 'Brightness', 'ColorTemp'] as $ident) {
-                $v = (int) (@IPS_GetObjectIDByIdent($ident, $iid) ?: 0);
-                if ($v > 0 && @IPS_VariableExists($v)) {
-                    $out[] = $v;
+        foreach (IPS_GetInstanceList() as $iid) {
+            $mid = (string) (@IPS_GetInstance($iid)['ModuleInfo']['ModuleID'] ?? '');
+            if ($mid === '') {
+                continue;
+            }
+            $m = @IPS_GetModule($mid);
+            if (!is_array($m) || !in_array((string) ($m['LibraryID'] ?? ''), self::EIGENE_LIBS, true)) {
+                continue;
+            }
+            foreach (@IPS_GetChildrenIDs($iid) ?: [] as $ch) {
+                if (@IPS_GetObject($ch)['ObjectType'] === 2) {
+                    $out[] = (int) $ch;
                 }
             }
         }
@@ -286,38 +340,72 @@ class LiveViewBuilderPush extends IPSModule
         return array_keys($ids);
     }
 
+    /**
+     * Alle Variablen-IDs, die IRGENDEIN Widget bindet.
+     *
+     * Frueher stand hier eine feste Liste von Schluesseln (varId, varId2, varId3, visVar,
+     * tankVid). Damit bekamen genau die Widgets keinen Push, die viele Einzelwerte binden -
+     * Wetter, Sonnenszene, Rollo-Kacheln nutzen eigene Schluessel (vTemp, ssRad, wxFog …).
+     * Sie hingen am Sicherheits-Poll und aktualisierten erst nach bis zu fuenf Sekunden,
+     * waehrend danebenliegende Kacheln sofort umsprangen.
+     *
+     * Statt die Liste bei jedem neuen Widget nachzuziehen - was zuverlaessig vergessen wird -
+     * werden jetzt ALLE Felder eingesammelt, deren NAME nach einer Variablenbindung aussieht.
+     * Die Struktur wird dabei rekursiv durchlaufen, damit auch Zeilen, Kinder und Elemente
+     * mitkommen. Ein Fehltreffer ist unschaedlich: registriert wird nur, was eine Variable ist
+     * (IPS_VariableExists), alles andere faellt hinten heraus.
+     */
     private function layoutIDs(): array
     {
         $j = $this->layoutJson();
         $ids = [];
-        $add = function ($v) use (&$ids) {
-            $v = (int) $v;
-            if ($v > 0) {
-                $ids[$v] = true;
+
+        // Namensmuster einer Bindung: varId/varId2/…, visVar, condVar, cmpVid, ackVid,
+        // die Praefixe v/ss/wx/cv mit folgendem Grossbuchstaben (vTemp, ssRad, wxFog, cvAzB)
+        // sowie alles, was auf Id/Vid/VarId endet.
+        //
+        // Die ENDUNGEN werden ohne Ruecksicht auf Gross-/Kleinschreibung geprueft (/i):
+        // klein geschriebenes "vid" faellt sonst durch alle drei Muster, und genau dieses
+        // Feld benutzen die Listen-Widgets.
+        // Genau dieses Feld benutzen aber die Listen-Widgets: die Energieebene der
+        // Sonnenszene, die Zellen der Regeltabellen. Am 19.08.2026 waren dadurch 541 von
+        // 577 solcher Bindungen NICHT abonniert - sie aktualisierten sich nur im Abfragetakt,
+        // nicht ueber die Verbindung. Sichtbar wurde es an den PV-Werten, die minutenlang
+        // standen, obwohl sie sich im Sekundentakt aendern.
+        //
+        // Bewusst NICHT aufgenommen: mediaId, mowerId, eventId, rootId, houseId, locId,
+        // astroId - das sind Medien-, Instanz-, Ereignis- und Kategoriekennungen, keine
+        // Variablen. Sie zu abonnieren brächte nichts und verschleierte den Zweck der Liste.
+        $istBindung = static function (string $k): bool {
+            // Feste Namen und Endungen: Schreibweise egal.
+            // Die PRAEFIX-Regel bleibt bewusst schreibungsempfindlich - der Grossbuchstabe
+            // IST dort das Signal. Ohne ihn wuerden "value", "visible" oder "version"
+            // ploetzlich als Variablenbindung gelten und irgendeine Zahl abonniert.
+            return (bool) preg_match('/^(varId\d*|visVar|condVar|cmpVid|ackVid|tankVid)$/i', $k)
+                || (bool) preg_match('/^(v|ss|wx|cv)[A-Z]/', $k)
+                || (bool) preg_match('/(Vid|VarId|VariableID)$/i', $k);
+        };
+
+        $sammle = function ($node) use (&$sammle, &$ids, $istBindung): void {
+            if (!is_array($node)) {
+                return;
+            }
+            foreach ($node as $k => $v) {
+                if (is_array($v)) {
+                    $sammle($v);
+                    continue;
+                }
+                if (!is_string($k) || !$istBindung($k)) {
+                    continue;
+                }
+                $id = (int) $v;                 // Formel-Token wie "=0" werden zu 0 und fallen weg
+                if ($id > 0) {
+                    $ids[$id] = true;
+                }
             }
         };
-        foreach (($j['views'] ?? []) as $vw) {
-            foreach (($vw['widgets'] ?? []) as $w) {
-                foreach (['varId', 'varId2', 'varId3', 'visVar', 'tankVid'] as $k) {
-                    if (!empty($w[$k])) {
-                        $add($w[$k]);
-                    }
-                }
-                foreach (['items', 'rows', 'links', 'src', 'snk', 'fc', 'stages', 'elements'] as $k) {
-                    if (!empty($w[$k]) && is_array($w[$k])) {
-                        foreach ($w[$k] as $o) {
-                            if (is_array($o)) {
-                                foreach (['vid', 'subvid', 'hi', 'lo', 'pq', 'speedVid', 'socVid'] as $kk) {
-                                    if (!empty($o[$kk])) {
-                                        $add($o[$kk]);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
+        $sammle($j['views'] ?? []);
+
         return array_keys($ids);
     }
 

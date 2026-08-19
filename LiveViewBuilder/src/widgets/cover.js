@@ -96,13 +96,13 @@
   // Widget-Eigenschaften, eine erst spaeter ermittelte ID wuerde nie abgefragt — die Kachel
   // bliebe stumm, obwohl alles "zugewiesen" aussieht.
   function _covWxBind(w){
-    var st=$('#pCovWxSt'), keys=['wxFog','wxPrecip','wxRainRate','wxStorm','wxStormDist','wxSnow'];
+    var st=$('#pCovWxSt'), keys=['wxFog','wxFogState','wxPrecip','wxRainRate','wxStorm','wxStormDist','wxSnow'];
     if(!w.wxInst){keys.forEach(function(k){delete w[k];});
       if(st)st.textContent='noch nicht zugewiesen';commit();return;}
     if(st)st.textContent='wird gelesen …';
     fetch(API+'&api=wxvars&inst='+w.wxInst).then(function(r){return r.json();}).then(function(d){
       if(!d||!d.vars){if(st)st.textContent='keine Variablen gefunden';return;}
-      var m={wxFog:'FogPct',wxPrecip:'PrecipType',wxRainRate:'RainRate',
+      var m={wxFog:'FogPct',wxFogState:'FogLevel',wxPrecip:'PrecipType',wxRainRate:'RainRate',
              wxStorm:'StormLevel',wxStormDist:'StormDist',wxSnow:'SnowCover'}, n=0;
       for(var k in m){ if(d.vars[m[k]]){w[k]=d.vars[m[k]].id;n++;} else delete w[k]; }
       if(st)st.textContent=n?(n+' Werte von "'+(d.name||'')+'"'):'passt nicht — ist das eine Wetter-Instanz?';
@@ -124,7 +124,7 @@
     var _n=function(id){var d=id&&_lastVals[id];if(!d)return null;
       var v=parseFloat(String(d.v).replace(',','.'));return isNaN(v)?null:v;};
     var storm=_n(w.wxStorm)||0, art=_n(w.wxPrecip)||0, rate=_n(w.wxRainRate)||0,
-        fog=_n(w.wxFog)||0, snow=_n(w.wxSnow);
+        fog=_n(w.wxFog)||0, snow=_n(w.wxSnow), fogSt=_n(w.wxFogState);
     // Freier Ausschnitt: von der Rollounterkante bis zum Fensterboden.
     var offen=Math.max(0,Math.min(100,openPct==null?0:openPct));
     if(offen<4){lay.style.display='none';return;}       // praktisch zu: nichts zeigen
@@ -134,7 +134,11 @@
     if(storm>=2) modus='storm';
     else if(art>=2||snow===true||snow===1) modus='snow';
     else if(rate>0.01||art===1) modus='rain';
-    else if(fog>=35) modus='fog';                        // Nebeldichte in Prozent
+    // Nebel: die ENTSCHEIDUNG der Wetterstation schlaegt die Dichte. Eine Nebeldichte ist
+    // eine Neigung, kein Wetter - bei 90 % Luftfeuchte steht sie berechtigt bei 28 %, draussen
+    // ist es trotzdem klar. Ist die Stufe gebunden, gilt allein sie; ohne sie bleibt die alte
+    // Prozentschwelle als Notbehelf.
+    else if(fogSt!=null ? fogSt>0 : fog>=35) modus='fog';
     if(!modus){lay.className='hc2wx';lay.innerHTML='';lay.dataset.wx='';return;}
 
     // Bewegung: 0 ohne, 1 ruhig, 2 normal, 3 lebendig. Die Anzahl der Teilchen haengt an der

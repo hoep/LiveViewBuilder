@@ -599,9 +599,19 @@
     var _cs=(w.series&&w.series[0]&&w.series[0].color)||'';                 // Merge-Fallback: Farbe aus dem Serien-Editor
     var _lc=_skinColor(w.lineColor||_cs||''),_m=_lc&&_lc.match(/^var\((--[\w-]+)\)$/),acc=_m?cssv(_m[1]):(_lc||cssv('--accent'));
     var s0=chartSeries(w)[0]||{data:[]};var data=s0.data;
-    var ser={type:'line',showSymbol:false,smooth:true,lineStyle:{color:acc,width:1.8},
-      data:data,markPoint:{silent:true,symbol:'circle',symbolSize:5,itemStyle:{color:acc},label:{show:false},data:data.length?[{coord:data[data.length-1]}]:[]}};
-    if(w.fill!==false)ser.areaStyle={color:accA(.16,acc)};
+    // Darstellung: Spline (Vorgabe), eckige Linie oder Balken. Balken sind fuer Groessen
+    // gedacht, die in Portionen anfallen - Niederschlag, Verbrauch je Intervall: dort taeuscht
+    // eine durchgezogene Linie einen stetigen Verlauf vor, den es nicht gibt.
+    var _st=w.spStyle||'spline', ser;
+    if(_st==='bar'){
+      // Schmale Balken mit Mindestbreite, damit sie auf einer 140 px breiten Kachel nicht
+      // zu Haarlinien werden; keine Flaeche, kein Endpunkt-Marker.
+      ser={type:'bar',data:data,itemStyle:{color:acc},barMaxWidth:6,barMinWidth:1,barCategoryGap:'20%',large:true};
+    }else{
+      ser={type:'line',showSymbol:false,smooth:(_st!=='line'),lineStyle:{color:acc,width:1.8},
+        data:data,markPoint:{silent:true,symbol:'circle',symbolSize:5,itemStyle:{color:acc},label:{show:false},data:data.length?[{coord:data[data.length-1]}]:[]}};
+      if(w.fill!==false)ser.areaStyle={color:accA(.16,acc)};
+    }
     // KEIN Tooltip auf der Sparkline. Sie ist bewusst winzig (auf einer Wertkarte oft nur
     // 142x30 px) und traegt keine Achsen - der Tooltip von ECharts rechnet seine Schrift aber
     // in absoluten Pixeln und wird zusaetzlich von der Seitenskalierung mitgezogen. Ueber einer
