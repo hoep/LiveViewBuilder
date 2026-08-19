@@ -923,7 +923,46 @@
     // (Art), an WELCHER Reihe, WIE dargestellt und in welcher Farbe.
     _annApply(w,series);
     if(w.barHoriz&&(ct==='bar'||ct==='barstack'))_hbLine(opt,w);   // liegende Balken
+    _segApply(w,opt);                                              // Farbsegmentierung nach Wert
     ec.setOption(opt,true);
+  }
+  // ===== FARBSEGMENTIERUNG ====================================================
+  // Faerbt die KURVE nach ihrem Wert statt nach ihrer Serie: kalt blau, heiss rot.
+  // Umgesetzt als visualMap ueber der ersten Serie - ECharts faerbt damit Linie,
+  // Flaeche und Punkte segmentweise ein.
+  //
+  // Die Stufen sind dieselbe Bauform wie die Vergleichstabellen von Wertkarte und
+  // Metrik-Liste: "ab diesem Wert gilt diese Skin-Farbe". Bewusst Skin-Farben statt
+  // fester Hexwerte - so folgt die Kurve dem Thema und passt zu allem anderen auf
+  // der Seite.
+  var SEG_VORGABE=[{v:-100,color:'info'},{v:0,color:'accent'},{v:10,color:'ok'},
+                   {v:20,color:'warn'},{v:28,color:'crit'}];
+  function _segStufen(w){
+    var l=(w.segSteps&&w.segSteps.length)?w.segSteps:SEG_VORGABE;
+    return l.map(function(s){return {v:parseFloat(String(s.v).replace(',','.')),color:s.color};})
+            .filter(function(s){return !isNaN(s.v);})
+            .sort(function(a,b){return a.v-b.v;});
+  }
+  function _segApply(w,opt){
+    if(!w.segOn)return;
+    var st=_segStufen(w);if(st.length<2)return;
+    var pieces=st.map(function(s,i){
+      var p={color:(_skinToCss(s.color)||cssv('--accent'))};
+      if(i>0)p.gte=s.v;                       // erste Stufe faengt alles darunter mit ab
+      if(i<st.length-1)p.lt=st[i+1].v;        // letzte Stufe laeuft nach oben offen
+      return p;
+    });
+    opt.visualMap={show:false,type:'piecewise',dimension:1,seriesIndex:0,pieces:pieces,
+                   outOfRange:{color:cssv('--muted')}};
+    // Die Serie muss ihre feste Farbe hergeben, sonst gewinnt lineStyle.color gegen die
+    // visualMap und die Kurve bleibt einfarbig. Die Flaeche behaelt nur ihre Deckkraft und
+    // uebernimmt die Segmentfarbe.
+    var s0=opt.series&&opt.series[0];
+    if(s0){
+      if(s0.lineStyle)delete s0.lineStyle.color;
+      if(s0.itemStyle)delete s0.itemStyle.color;
+      if(s0.areaStyle)s0.areaStyle={opacity:(w.grad?0.22:0.14)};
+    }
   }
   // Kalenderjahr-Modus (Balken, Monatlich): x = Jän–Dez, exaktes Jahr (+ Vorjahr bei Vergleich), via generische ?api=aggregated
   function setCalBar(w){

@@ -134,6 +134,16 @@
         if(V.axPlus)h+=row('Zoom/Scroll','<input type="checkbox" id="pZoom"'+(w.zoom?' checked':'')+'>')+row('Marken-Textfarbe',skinSel(w.annFg||'','id="pAnnFg"')+' <span style="font-size:11px;color:var(--muted)">leer = wei&szlig;</span>')+listEditor(w,'anns','Marken: Art · Reihe · Text · Stil · Farbe · Einheit · Schwelle',[{k:'kind',type:'select',def:'max',options:[['max','Maximum'],['min','Minimum'],['last','Aktuell'],['first','Erster'],['avg','Mittel'],['value','Schwelle']]},{k:'ser',ph:'Reihe'},{k:'text',ph:'Text {v}'},{k:'style',type:'select',def:'pin',options:[['pin','Marke'],['line','Linie'],['both','beides']]},{k:'color',type:'skincolor'},{k:'unit',ph:'Einh.'},{k:'val',ph:'Wert'}])+row('Perioden-Navigation','<input type="checkbox" id="pPnav"'+(w.pnav?' checked':'')+'>');
       }
       if(V.cmp)h+='<div class="pgh">Vergleich (Zeitversatz)</div>'+row('Aktiv','<input type="checkbox" id="pCmpOn"'+(w.cmpOn?' checked':'')+'>')+(w.cmpOn?(row('Versatz',offSel('pCmpOff',w.cmpOff))+(V.bar?row('Vorperiode als Strich','<input type="checkbox" id="pCmpMark"'+(w.cmpMark?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">Marke statt Balken</span>'):'')+((V.bar&&w.cmpMark)?row('Strichfarbe',skinSel(w.cmpMarkColor||'','id="pCmpMarkColor"')+' <span style="font-size:11px;color:var(--muted)">leer = grau</span>'):row('Schatten %','<input id="pCmpShade" type="number" min="0" max="90" value="'+(w.cmpShade!=null?w.cmpShade:55)+'">'))):'');
+      // Farbsegmentierung: nur fuer Zeitreihen sinnvoll (dort, wo es auch Achsen-Extras gibt).
+      if(V.axPlus){
+        h+='<div class="pgh">Farbsegmentierung (Kurve nach Wert einfärben)</div>'
+          +row('Aktiv','<input type="checkbox" id="pSegOn"'+(w.segOn?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">färbt die ERSTE Reihe nach ihrem Wert statt nach der Serienfarbe</span>');
+        if(w.segOn)h+='<div style="font-size:11px;color:var(--muted);margin:-2px 2px 5px">'
+          +'Je Zeile „ab diesem Wert gilt diese Farbe" — dieselbe Bauform wie die Vergleichstabellen '
+          +'von Wertkarte und Metrik-Liste. Leer = Vorgabe für Temperatur (unter 0 Info, ab 0 Akzent, '
+          +'ab 10 OK, ab 20 Warnung, ab 28 Kritisch).</div>'
+          +listEditor(w,'segSteps','Ab Wert · Farbe',[{k:'v',ph:'ab'},{k:'color',type:'skincolor'}]);
+      }
       if(V.ser)h+=seriesEditor(w,(V.spark||V.hm)?{max:1,simple:1}:null); // Sparkline/Heatmap nutzen nur die erste Serie
       if(V.yax)h+=axesEditor(w);
       return h;
@@ -214,6 +224,7 @@
       if($('#pZoom'))$('#pZoom').onchange=function(){w.zoom=this.checked;reChart();};
       if($('#pAnnFg'))$('#pAnnFg').onchange=function(){w.annFg=this.value||undefined;reChart();};
       if($('#pPnav'))$('#pPnav').onchange=function(){w.pnav=this.checked||undefined;render();commit();};
+      if($('#pSegOn'))$('#pSegOn').onchange=function(){w.segOn=this.checked||undefined;renderProps();render();commit();};
       $$('#props [data-sf]').forEach(function(inp){inp.oninput=inp.onchange=function(){var pr=inp.getAttribute('data-sf').split('.'),i=parseInt(pr[0]),k=pr[1];_ensureSeries(w);w.series[i]=w.series[i]||{};w.series[i][k]=(k==='vid'?(parseInt(inp.value)||0):(k==='axis'?parseInt(inp.value):inp.value));delete _hist[w.id];fetchHist(w);commit();if(inp.tagName==='SELECT')renderProps();};});
       $$('#props [data-spick]').forEach(function(b){b.onclick=function(){showTab('vars');toast('Variable im Baum anklicken');_bindSeries={wid:w.id,idx:parseInt(b.getAttribute('data-spick'))};};});
       $$('#props [data-sdel]').forEach(function(b){b.onclick=function(){_ensureSeries(w);w.series.splice(parseInt(b.getAttribute('data-sdel')),1);delete _hist[w.id];renderProps();fetchHist(w);commit();};});
