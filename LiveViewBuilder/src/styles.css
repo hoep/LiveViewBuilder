@@ -3183,3 +3183,21 @@
         padding:3px 6px;font-size:clamp(10px,1.7cqmin,12px)}
 .lb-hint{flex:none;padding-top:5px;border-top:1px solid var(--line);
          font-size:clamp(9px,1.6cqmin,11px);color:var(--muted);opacity:.8}
+
+/* ---- statmatrix: Kennzahlen-Matrix ------------------------------------ */
+.mx{display:flex;flex-direction:column;height:100%;gap:4px}
+.mx-kopf{display:flex;align-items:center;gap:8px;flex:none;padding:2px 2px 0}
+.mx-tt{font-size:clamp(11px,2.1cqmin,14px);font-weight:700;letter-spacing:.05em;
+       text-transform:uppercase;color:var(--muted)}
+.mx-sp{flex:1}
+.mx-seg{display:inline-flex;gap:0;border:1px solid var(--line);border-radius:7px;overflow:hidden}
+.mx-b{border:0;background:var(--panel);color:var(--muted);cursor:pointer;
+      padding:3px 10px;font-size:clamp(10px,1.7cqmin,12px)}
+.mx-b.on{background:var(--accent-2);color:#fff;font-weight:600}
+.mx-nav{display:inline-flex;align-items:center;gap:4px}
+.mx-c{border:1px solid var(--line);border-radius:6px;background:var(--panel);color:var(--text);
+      cursor:pointer;padding:1px 8px;font-size:13px;line-height:1.3}
+.mx-c[disabled]{opacity:.35;pointer-events:none}
+.mx-rng{font-size:clamp(10px,1.7cqmin,12px);color:var(--muted);
+        font-family:ui-monospace,Menlo,monospace;min-width:78px;text-align:center}
+.mx-ch{flex:1;min-height:0}

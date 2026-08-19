@@ -37,7 +37,7 @@
     ['HomeSuite – Zeitplan (Heizung/Beschattung)', ['rooms','curve','week','slots','slotedit','variantbox','transfer','save']],
     ['HomeSuite – Licht-Automatik', ['lightband','autolist','autoedit','autocard','autotimeline']],
     ['HomeSuite – Navigation & Sonne', ['homesuite','roomnav','zonesync','shadesun','shadeprofiles','shadecal','shadedoors','shadesens','shadearm','shadelog']],
-    ['Zustand & Listen',        ['assoc','statusgrid','statuslist','devlist','statusimage','table','objinfo','msglog','battlist','statelog','statetl']],
+    ['Zustand & Listen',        ['assoc','statusgrid','statuslist','devlist','statusimage','table','statmatrix','objinfo','msglog','battlist','statelog','statetl']],
     ['Diagramme',               ['chart','heatmap','gauge','gaugepro','multiring','doubledonut','sankey','flow','flowline','windrose','tempbar']],
     ['Chart-Typen (Beispiele)', ['chartbar','chartbarstack','chartrace','chartscatter','chartspark','chartpie','chartdonut','chartrose','chartwf']],
     ['Wetter, Sonne & Termine', ['weather','weatherpro','meteogram','sun','suncard','raincard','rainintensity','rainradar','calendar','weekplan','weekstrip','clock']],

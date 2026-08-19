@@ -130,7 +130,7 @@
   // der Seite anfassen - Popup-Widgets tragen dieselben IDs wie die Seiten-Widgets.
   function rootOfEl(el){var oc=$('#ovcanvas');return (el&&oc&&oc.contains(el))?oc:canvas;}
   function activateWidget(w,root){
-    if(w.type==='gauge'||w.type==='chart'||w.type==='spark'||w.type==='sankey'||w.type==='gaugepro'||w.type==='waterfall'||w.type==='meteogram'||w.type==='multiring')initEChart(w,root);
+    if(w.type==='gauge'||w.type==='chart'||w.type==='spark'||w.type==='sankey'||w.type==='gaugepro'||w.type==='waterfall'||w.type==='meteogram'||w.type==='multiring'||w.type==='statmatrix')initEChart(w,root);
     if(w.type==='camera'||w.type==='campro'||w.type==='camarray')refreshCam(w,root);
     if(w.type==='html'){if(w.htmlSrc==='custom')setHtmlContent(w,w.html||'',root);else fetchHtml(w,root);}
     if(w.type==='weekplan')fetchWeekplan(w,root);
@@ -344,6 +344,7 @@
     else if(w.type==='sankey'){setSankey(w);}
     else if(w.type==='meteogram'){setMeteogram(w);}
     else if(w.type==='multiring'){setMultiring(w);}
+    else if(w.type==='statmatrix'){setStatMatrix(w);}   // Daten holt das Widget selbst (mount)
     else if(w.type==='waterfall'||w.ctype==='waterfall'){setWaterfall(w);} // Live-Werte, KEINE Historie
     else if(w.ctype==='pie'||w.ctype==='donut'){renderChartData(w);}
     else{ fetchHist(w); } // immer frisch laden (auch ctype 'spark') (Query ~2ms); _hist-Cache ist wegen seiten-kollidierender IDs nicht verlaesslich
@@ -866,7 +867,11 @@
     // Stapelung ausschliesslich auf die Balken (siehe _mkSer).
     var _kinds={};hs.forEach(function(s,i){_kinds[_resolveType((defs[i]&&defs[i].type)||ct).kind]=1;});
     var _mixed=(!!_kinds.bar&&(!!_kinds.line||!!_kinds.scatter));
-    var lbl=w.labels?{show:true,fontSize:_ecF(w,'label',9),color:cssv('--muted'),position:'top'}:{show:false};
+    // Datenbeschriftung MIT Zahlenformat: ohne formatter zeigt ECharts den Rohwert, aus dem
+    // Jahresmittel 11,1 also "11.139640759766229". Dieselbe Formatierung wie Achse/Tooltip.
+    var lbl=w.labels?{show:true,fontSize:_ecF(w,'label',9),color:cssv('--muted'),position:'top',
+      formatter:function(p){var v=(p.value&&p.value.length!=null)?p.value[p.value.length-1]:p.value;
+        return _chNum(w,v,false);}}:{show:false};
     function _rt(d){return (d&&d.type)?d.type:ct;} // effektiver Typ: Serie-Override oder Chart-Default (Mixed-Chart)
     var series=hs.map(function(s,i){
       var d=defs[i]||{},col=_chColor(d.color,i),nm=d.name||s.name||(i===0?(w.label||'Serie 1'):'Serie '+(i+1)),ax=Math.min(Math.max(parseInt(d.axis)||0,0),yaxes.length-1);
