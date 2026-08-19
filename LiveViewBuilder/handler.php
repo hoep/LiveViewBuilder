@@ -1175,6 +1175,20 @@ if ($api === 'audio') {
         return;
     }
 
+    // op=queueremove / queueclear: Titel aus der Warteschlange werfen bzw. alles leeren
+    // (Token, schaltend). index ist 0-basiert wie in op=queue.
+    if ($op === 'queueremove' || $op === 'queueclear') {
+        if (!hash_equals($TOKEN, (string) ($_GET['key'] ?? ''))) { echo json_encode(['ok' => false, 'err' => 'forbidden']); return; }
+        $iid = (int) ($_GET['id'] ?? 0);
+        if (!in_array($iid, $list, true)) { echo json_encode(['ok' => false, 'err' => 'instance']); return; }
+        $fn = $pfx($iid) . '_Manage';
+        if (!function_exists($fn)) { echo json_encode(['ok' => false, 'err' => 'prefix']); return; }
+        echo ($op === 'queueclear')
+            ? $fn($iid, json_encode(['op' => 'queueClear', 'args' => []]))
+            : $fn($iid, json_encode(['op' => 'queueRemove', 'args' => ['index' => (int) ($_GET['index'] ?? -1)]]));
+        return;
+    }
+
     if ($op === 'radiostations') {                       // Radio: Senderliste (fuer Direkt-Auswahl)
         $iid = (int) ($_GET['id'] ?? ($list[0] ?? 0));
         $fn = $pfx($iid) . '_Manage';

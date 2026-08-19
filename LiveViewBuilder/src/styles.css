@@ -842,6 +842,22 @@
   .hsrow .hsn{color:var(--muted);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   /* Metrik-Liste */
   /* auto-fit statt fester 1fr 1fr: auf schmalen Kacheln bleibt eine Spalte lesbar */
+  /* KOMPAKTE ZEILENFORM (mlDense). Die Kachelform oben ist richtig fuer wenige, wichtige
+     Kennzahlen; fuer eine Liste gleichartiger Fuehler braucht es Zeilen: Bezeichner, Balken,
+     Wert - so vergleicht man auf einen Blick, statt vier Kacheln nebeneinander zu lesen. */
+  .hmeters.dense{display:flex;flex-direction:column;gap:clamp(1px,0.8cqmin,4px);
+         padding:clamp(4px,2.2cqmin,10px);height:100%;overflow:auto;box-sizing:border-box}
+  .hmeters.dense .hmeter{flex:0 0 auto;display:grid;
+         grid-template-columns:minmax(0,7.5em) 1fr auto;align-items:center;
+         gap:clamp(5px,2.4cqmin,10px);background:none;border:0;border-radius:0;
+         padding:clamp(2px,1.2cqmin,5px) clamp(2px,1.2cqmin,6px)}
+  .hmeters.dense .hmk{font-size:var(--wf-lbl);color:var(--text);display:block;
+         overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .hmeters.dense .hmk span{color:var(--faint);margin-left:.4em}
+  .hmeters.dense .hmtr{order:2;height:clamp(4px,2cqmin,9px);border-radius:5px;
+         background:var(--surface-2);overflow:hidden}
+  .hmeters.dense .hmv{order:3;font-size:var(--wf-lbl);white-space:nowrap;text-align:right;
+         min-width:4.5em}
   .hmeters{display:grid;grid-template-columns:repeat(auto-fit,minmax(clamp(120px,40cqmin,200px),1fr));gap:clamp(5px,3cqmin,12px);padding:clamp(5px,3cqmin,12px);height:100%;align-content:start;box-sizing:border-box;overflow:auto}
   .hmeter{background:var(--tile);border:1px solid var(--line);border-radius:var(--r-s);padding:clamp(5px,3cqmin,12px) clamp(7px,4cqmin,14px);display:flex;flex-direction:column;gap:clamp(3px,2cqmin,7px)}
   .hmeter .hmk{font-size:var(--wf-lbl);color:var(--muted);display:flex;align-items:center;justify-content:space-between;gap:clamp(4px,2.4cqmin,8px)}
@@ -1374,8 +1390,8 @@
   .t-table .ph-right{display:flex;align-items:center;gap:clamp(7px,3cqmin,16px);flex-wrap:wrap;justify-content:flex-end}
   .t-table .tbl-scroll{flex:1;overflow:auto;-webkit-overflow-scrolling:touch}
   .t-table table.tbl{width:100%;border-collapse:collapse;font-size:clamp(11px,3cqmin,15px)}
-  .t-table table.tbl thead th{text-align:left;font-family:var(--fm);font-size:clamp(9px,2.4cqmin,12px);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:500;padding:clamp(6px,2.4cqmin,12px) clamp(11px,4cqmin,22px);border-bottom:1px solid var(--line);white-space:nowrap;position:sticky;top:0;background:var(--surface);z-index:1}
-  .t-table table.tbl tbody td{padding:clamp(8px,3cqmin,16px) clamp(11px,4cqmin,22px);border-bottom:1px solid var(--line);color:var(--text);vertical-align:top}
+  .t-table table.tbl thead th{text-align:left;font-family:var(--fm);font-size:clamp(9px,2.4cqmin,12px);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:500;padding:clamp(6px,2.4cqmin,12px) var(--tblpadx,clamp(11px,4cqmin,22px));border-bottom:1px solid var(--line);white-space:nowrap;position:sticky;top:0;background:var(--surface);z-index:1}
+  .t-table table.tbl tbody td{padding:clamp(8px,3cqmin,16px) var(--tblpadx,clamp(11px,4cqmin,22px));border-bottom:1px solid var(--line);color:var(--text);vertical-align:top}
   .t-table table.tbl tbody tr:last-child td{border-bottom:0}
   .t-table table.tbl tbody tr:hover td{background:rgba(127,140,150,.06)}
   /* Pro-Spalte Breiten (w.colW): Tabelle bleibt bei width:100% (kein Scrollen). Umbruch/nowrap steuert
@@ -2868,6 +2884,31 @@
          cursor:pointer;font-family:inherit;min-width:0}
   .aq-row:first-child{border-top:0}
   .aq-row:hover{background:color-mix(in oklab,var(--accent) 9%,transparent)}
+  /* Zeile = anspringen + entfernen. Der Entfernen-Knopf traegt den Trennstrich der Zeile
+     mit, damit die Liste eine durchgehende Kante behaelt. */
+  .aq-item{display:flex;align-items:stretch;min-width:0}
+  .aq-item .aq-row{flex:1 1 auto}
+  .aq-del{flex:none;display:flex;align-items:center;justify-content:center;
+         width:clamp(22px,9cqmin,38px);border:0;border-top:1px solid var(--line-soft);
+         background:none;color:var(--muted);cursor:pointer;padding:0}
+  .aq-item:first-child .aq-del{border-top:0}
+  .aq-del .i{width:clamp(9px,3.6cqmin,15px);height:clamp(9px,3.6cqmin,15px)}
+  .aq-del:hover{color:var(--crit);background:color-mix(in oklab,var(--crit) 12%,transparent)}
+  .aq-item:hover .aq-row{background:color-mix(in oklab,var(--accent) 9%,transparent)}
+  /* Leeren: im Kopf neben den Kennzahlen, Rueckfrage ersetzt die Kennzahlen. */
+  .aq-clr{flex:none;display:flex;align-items:center;justify-content:center;border:0;
+         background:none;color:var(--text);cursor:pointer;padding:0 2px;margin-left:6px}
+  /* Die Sprite-Symbole sind STRICHzeichnungen ohne eigene Farbattribute - ohne diese Regel
+     nimmt der Browser den SVG-Standard (schwarze Fuellung, kein Strich). Im dunklen Design
+     ist der Muellkuebel damit ein schwarzer Klumpen auf dunklem Grund, also unsichtbar. */
+  .aq-clr .i{width:clamp(10px,3.6cqmin,15px);height:clamp(10px,3.6cqmin,15px);
+         fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+  .aq-clr:hover{color:var(--crit)}
+  .aq-ask{display:flex;align-items:center;gap:5px;flex:none;
+         font-size:clamp(8px,3cqmin,12px);color:var(--muted);white-space:nowrap}
+  .aq-ab{border:1px solid var(--line);background:var(--tile);color:var(--text);cursor:pointer;
+         border-radius:6px;padding:2px 7px;font:inherit;font-size:clamp(8px,3cqmin,12px)}
+  .aq-ab.warn{background:var(--crit);border-color:var(--crit);color:#fff}
   .aq-n{font-family:var(--fm);width:clamp(14px,6cqmin,26px);text-align:right;flex:none;
          font-size:clamp(8px,3cqmin,12px);color:var(--faint);font-variant-numeric:tabular-nums}
   .aq-m{flex:1;min-width:0;display:flex;flex-direction:column;gap:clamp(0px,.6cqmin,3px)}

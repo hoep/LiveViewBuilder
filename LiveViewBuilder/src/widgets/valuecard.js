@@ -57,12 +57,33 @@
    *   {ab, farbe, name, info} - "ab diesem Wert gilt". Die erste Zeile hat kein 'ab',
    * sie gilt vom Anfang der Skala an. Anfang und Ende kommen aus w.vcVon / w.vcBis.
    */
+  /**
+   * Zonenfarbe zu echtem Hex aufloesen. Die Skala rechnet mit Zahlenwerten (Verlauf,
+   * Farbmischung zwischen zwei Stuetzstellen) - ein "var(--u-stufe2)" waere dort nicht
+   * mischbar. Damit die Zonen trotzdem aus dem Skin kommen koennen, wird ein Skin-Name
+   * hier einmal in seinen Hex-Wert uebersetzt. Unbekannt/leer -> Vorgabegruen.
+   */
+  function _vcHex(c){
+    var s=String(c==null?'':c).trim();
+    if(!s)return '';
+    if(/^#[0-9a-fA-F]{3,8}$/.test(s))return s;
+    var v=_skinColor(s),m=v.match(/^var\((--[\w-]+)\)$/);
+    if(m){
+      try{
+        var g=getComputedStyle(document.documentElement).getPropertyValue(m[1]).trim();
+        if(/^#[0-9a-fA-F]{3,8}$/.test(g))return g;
+        if(g)return g;
+      }catch(e){}
+      return '';
+    }
+    return /^#[0-9a-fA-F]{3,8}$/.test(v)?v:s;
+  }
   function _vcDef(w){
     if(!w||!w.vcScale)return null;
     if(w.vcScale!=='eigen')return VC_SCALES[w.vcScale]||null;
     var z=(w.vcZonen||[]).map(function(r){
       return {ab:(r.ab===''||r.ab==null)?null:parseFloat(String(r.ab).replace(',','.')),
-              c:String(r.farbe||'#22c55e'),name:String(r.name||''),info:String(r.info||'')};
+              c:(_vcHex(r.farbe)||'#22c55e'),name:String(r.name||''),info:String(r.info||'')};
     }).filter(function(r){return r.c;});
     if(!z.length)return null;
     // Erste Zeile gilt immer ab Skalenanfang, egal was dort steht.
@@ -104,11 +125,36 @@
     if(w.varId2&&!w.v2acc)return 'toggle';
     return 'value';
   }
+  /**
+   * Farbe aus den Farbstufen (rngGrad) fuer einen Wert. Zwei Schreibweisen sind erlaubt,
+   * beide in derselben Liste mischbar:
+   *   - Muster wie ">=3<6", ">8", "0..25", "*"  -> ueber den zentralen Musterabgleich
+   *   - eine reine Zahl                         -> gilt "ab diesem Wert" (letzte Stufe <= Wert)
+   * Liegt der Wert unter der kleinsten Zahl, gilt die unterste Stufe.
+   */
+  function _vcGradColor(w,val){ return gradColor(w.rngGrad||[], val); }
+
   function _vcState(w,el){ // Farbe nach Zustand: Var2 (Status) bevorzugt, sonst Hauptwert; true/false -> 1/0
-    if(!(w.vassoc&&w.vassoc.length))return;
-    var srcs=[w.varId2,w.varId],m=null,i;
-    for(i=0;i<srcs.length&&!m;i++){if(!srcs[i]||!_lastVals[srcs[i]])continue;m=stateHit(w.vassoc,_lastVals[srcs[i]].v);}
-    var v=$('[data-role=val]',el),c=(m&&m.color)?(_skinColor(m.color)||m.color):'';
+    var ausGrad=(w.colFrom==='grad');
+    if(!ausGrad&&!(w.vassoc&&w.vassoc.length))return;
+    var c='';
+    if(ausGrad){
+      // Quelle ist hier IMMER der Hauptwert - die Farbstufen beschreiben ihn, nicht Var 2.
+      // Gemessen wird an der ANGEZEIGTEN Zahl: steht die Karte auf 0 Nachkommastellen und
+      // zeigt aus 2,5 eine 3, waere eine Farbe nach 2,5 ein Widerspruch zum eigenen Text.
+      var lv=w.varId?_lastVals[w.varId]:null;
+      var n=lv?parseFloat(String(lv.v).replace(',','.')):NaN;
+      if(!isNaN(n)&&w.dec!=null&&w.dec!==''){
+        var _d=Math.max(0,Math.min(6,w.dec|0));
+        n=(n<0?-1:1)*parseFloat(Math.abs(n).toFixed(_d));
+      }
+      c=_vcGradColor(w,n);
+    }else{
+      var srcs=[w.varId2,w.varId],m=null,i;
+      for(i=0;i<srcs.length&&!m;i++){if(!srcs[i]||!_lastVals[srcs[i]])continue;m=stateHit(w.vassoc,_lastVals[srcs[i]].v);}
+      c=(m&&m.color)?(_skinColor(m.color)||m.color):'';
+    }
+    var v=$('[data-role=val]',el);
     if(w.vaFill){el.classList.remove('vc-acc');
       if(c){var _t=stateTint(c);el.style.background=_t.bg;el.style.borderColor=_t.bd;if(v)v.style.color=_t.val;}
       else{el.style.background=w.bg||'';el.style.borderColor='';if(v)v.style.color='';}
@@ -270,11 +316,20 @@
         +(w.barOn?('<div style="font-size:11px;color:var(--muted);margin:-2px 2px 4px">Quelle = Balken-Var (Var 3), sonst Hauptwert.'+(w.varId3?'':' <span style="color:var(--warm)">— keine Balken-Var gesetzt.</span>')+'</div>'
           +row('Balken min/max','<input id="pVcBarMin" type="number" style="width:74px" value="'+(w.barMin!=null?w.barMin:0)+'"> <input id="pVcBarMax" type="number" style="width:74px" value="'+(w.barMax!=null?w.barMax:100)+'">')
           +row('Text rechts','<input id="pVcBarCap" value="'+esc(w.barCap||'')+'" placeholder="z. B. 81 % Kanister">')):'');
-      // Farbe nach Zustand + Kachel füllen
+      // Farbe der Kachel/des Werts: entweder aus der Zustandsliste oder aus den Farbstufen
+      var _grad=(w.colFrom==='grad');
       s+='<div class="pgh">Farbe nach Zustand</div>'
-        +'<div style="font-size:11px;color:var(--muted);margin:-2px 2px 4px">Quelle: Var 2 (Status), sonst Hauptwert. true/false = 1/0.'+(w.vaFill&&w.v2acc?' <span style="color:var(--warm)">— „Var 2 = Akzent" deaktivieren, sonst überlagern!</span>':'')+'</div>'
+        +row('Farbquelle','<select id="pVcColFrom"><option value="">Zustandsliste (unten)</option>'
+            +'<option value="grad"'+(_grad?' selected':'')+'>Farbstufen (Wert · Farbe)</option></select>')
+        +(_grad
+          ?('<div style="font-size:11px;color:var(--muted);margin:-2px 2px 5px">Kachel und Wert folgen den Farbstufen — gemessen am <b>Hauptwert</b> (Var 1), nicht an Var 2. '
+            +'Je Zeile entweder ein Muster (<code>&gt;=3&lt;6</code>, <code>&gt;8</code>, <code>0..25</code>, <code>*</code>) oder eine reine Zahl, die „ab diesem Wert" gilt. Die Zustandsliste unten wirkt dann nicht.'
+            +(w.dec!=null&&w.dec!==''?(' Gemessen wird an der <b>angezeigten</b> Zahl (auf '+(w.dec|0)+' Stellen gerundet), damit Farbe und Text zusammenpassen.'):'')+'</div>'
+            +(w.rngOn?'':listEditor(w,'rngGrad','Farbstufen: Wert · Farbe',[{k:'v',ph:'z. B. >=3<6'},{k:'color',type:'skincolor'}]))
+            +((w.rngGrad&&w.rngGrad.length)?'':'<div style="font-size:11px;color:var(--warm);margin:2px 2px 5px">Noch keine Farbstufen angelegt — ohne sie bleibt die Kachel ungefärbt.</div>'))
+          :'<div style="font-size:11px;color:var(--muted);margin:-2px 2px 4px">Quelle: Var 2 (Status), sonst Hauptwert. true/false = 1/0.'+(w.vaFill&&w.v2acc?' <span style="color:var(--warm)">— „Var 2 = Akzent" deaktivieren, sonst überlagern!</span>':'')+'</div>')
         +listEditor(w,'vassoc','Zustand · Farbe',[{k:'v',ph:'z. B. 1 / true'},{k:'color',type:'skincolor'}])
-        +row('Ganze Kachel einfärben','<input type="checkbox" id="pVcVaFill"'+(w.vaFill?' checked':'')+'>');
+        +row('Ganze Kachel einfärben','<input type="checkbox" id="pVcVaFill"'+(w.vaFill?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">aus = nur die Zahl</span>');
       return s;
     },
     wire:function(w){
@@ -302,6 +357,7 @@
       if($('#pVcSwOffIco'))$('#pVcSwOffIco').onclick=function(){_iconPick={wid:w.id,field:'swOffIcon'};showTab('icons');toast('Aus-Icon wählen');};
       if($('#pVcSwOffIcoX'))$('#pVcSwOffIcoX').onclick=function(){delete w.swOffIcon;render();renderProps();commit();};
       if($('#pVcVaFill'))$('#pVcVaFill').onchange=function(){w.vaFill=this.checked||undefined;render();if(w.varId&&_lastVals[w.varId])applyVal(w.varId,_lastVals[w.varId]);commit();};
+      if($('#pVcColFrom'))$('#pVcColFrom').onchange=function(){w.colFrom=this.value||undefined;render();renderProps();if(w.varId&&_lastVals[w.varId])applyVal(w.varId,_lastVals[w.varId]);commit();};
       if($('#pVcScale'))$('#pVcScale').onchange=function(){w.vcScale=this.value||undefined;if(!w.vcScale)w.scaleFill=undefined;render();renderProps();if(w.varId&&_lastVals[w.varId])applyVal(w.varId,_lastVals[w.varId]);commit();};
       // Eigene Skala: Felder, Liste und das Uebernehmen einer eingebauten Vorlage.
       function _vcFrisch(){render();if(w.varId&&_lastVals[w.varId])applyVal(w.varId,_lastVals[w.varId]);commit();}

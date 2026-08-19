@@ -248,7 +248,7 @@
     $$('[data-fc]',p).forEach(function(inp){inp.oninput=inp.onchange=function(){var pr=inp.dataset.fc.split('.'),i=+pr[0],k=pr[1];if(!w.fc||!w.fc[i])return;w.fc[i][k]=(k==='hi'||k==='lo'||k==='pq')?(parseInt(inp.value)||0):inp.value;render();};});
     $$('[data-fcdel]',p).forEach(function(b){b.onclick=function(){w.fc.splice(+b.dataset.fcdel,1);render();renderProps();};});
     if($('#fcAdd'))$('#fcAdd').onclick=function(){if(!w.fc)w.fc=[];w.fc.push({d:'',ic:'cloudsun',hi:0,lo:0,pq:0});render();renderProps();};
-    $$('[data-le]',p).forEach(function(inp){inp.oninput=inp.onchange=function(){var pr=inp.dataset.le.split('.'),key=pr[0],i=+pr[1],k=pr[2];if(!w[key]||!w[key][i])return;w[key][i][k]=(/vid$/i.test(k))?(parseInt(inp.value)||0):inp.value;render();};});
+    $$('[data-le]',p).forEach(function(inp){inp.oninput=inp.onchange=function(){var pr=inp.dataset.le.split('.'),key=pr[0],i=+pr[1],k=pr[2];if(!w[key]||!w[key][i])return;w[key][i][k]=(inp.getAttribute('data-lechk'))?(inp.checked||undefined):((/vid$/i.test(k))?(parseInt(inp.value)||0):inp.value);render();};});
     $$('[data-ledel]',p).forEach(function(b){b.onclick=function(){var pr=b.dataset.ledel.split('.');w[pr[0]].splice(+pr[1],1);render();renderProps();};});
     // Eintrag verschieben: mit dem Nachbarn tauschen. Das erhaelt alle Felder der Zeile,
     // im Gegensatz zu Loeschen-und-neu-Anlegen. Gilt fuer JEDE Liste im Builder.
@@ -385,6 +385,10 @@
           if((r[c.k]==null||r[c.k]==='')&&c.def!=null&&c.def!=='')r[c.k]=c.def;
           var sv=String(r[c.k]!=null?r[c.k]:(c.def||''));return '<select data-le="'+key+'.'+i+'.'+c.k+'">'+(c.options||[]).map(function(o){return '<option value="'+o[0]+'"'+(sv===o[0]?' selected':'')+'>'+esc(o[1])+'</option>';}).join('')+'</select>';}/* skincolor: Auswahl der Skin-Farben statt Freitext - verhindert Tippfehler, die
            still verworfen wuerden, und laesst unbekannte Altwerte als "Eigene" stehen. */
+        // Ja/Nein-Spalte. Vorher gab es nur Text, Farbe, Auswahl und Icon - fuer ein Flag
+        // wie "Skala umkehren" blieb nur ein Textfeld, in das man 1 tippt.
+        if(c.type==='check'){return '<input type="checkbox" data-le="'+key+'.'+i+'.'+c.k+'" data-lechk="1"'
+          +(r[c.k]?' checked':'')+' title="'+esc(c.ph||'')+'">';}
         if(c.type==='skincolor'){return skinSel(String(r[c.k]!=null?r[c.k]:''),'data-le="'+key+'.'+i+'.'+c.k+'"');}
         if(c.type==='icon'){var iv=String(r[c.k]!=null?r[c.k]:'');return '<button class="btn" data-leico="'+key+'.'+i+'.'+c.k+'" title="'+esc(c.ph||'Icon wählen')+(iv?(' ('+esc(iv)+')'):'')+'" style="padding:3px;display:flex;align-items:center;justify-content:center"><span style="width:16px;height:16px;display:inline-flex;align-items:center;justify-content:center;color:var(--accent)">'+(iv?iconSVG(iv):'+')+'</span></button>';}
         return '<input data-le="'+key+'.'+i+'.'+c.k+'" value="'+esc(String(r[c.k]!=null?r[c.k]:''))+'" placeholder="'+c.ph+'">';}).join('')
