@@ -92,10 +92,22 @@
       // Pro-Spalte Breite (w.colW[ci]: Zahl=px oder String wie "20%"/"120px") via colgroup, AUTO-Layout:
       // nicht gesetzte Spalten bleiben inhaltsbasiert konstant; eine Aenderung zieht Platz nur aus der
       // flexiblen (breitesten) Spalte statt aus allen (kein table-layout:fixed).
-      var colgroup=anyW?('<colgroup>'+head.map(function(h,ci){var cw=w.colW&&w.colW[ci];var wv=cw?(/^\d+$/.test(String(cw))?cw+'px':String(cw)):'';return '<col'+(wv?' style="width:'+wv+'"':'')+'>';}).join('')+'</colgroup>'):'';
+      // Die flexible Spalte bekommt width:100%. Im AUTO-Layout heisst das nicht "so breit wie
+      // die Tabelle", sondern "nimm den gesamten Rest": alle uebrigen Spalten schrumpfen auf
+      // ihre Inhaltsbreite, der Ueberschuss landet vollstaendig hier. Ohne das verteilt der
+      // Browser den freien Platz anteilig auf ALLE Spalten - dann steht neben "23:53" viel
+      // Leerraum, waehrend der lange Sendungstitel unnoetig umbricht.
+      var colgroup='<colgroup>'+head.map(function(h,ci){
+        var cw=w.colW&&w.colW[ci];
+        var wv=cw?(/^\d+$/.test(String(cw))?cw+'px':String(cw)):(ci===flex?'100%':'');
+        return '<col'+(wv?' style="width:'+wv+'"':'')+'>';}).join('')+'</colgroup>';
       bodyHtml='<div class="tbl-scroll"><table class="tbl">'+colgroup+thead+tbody+'</table></div>';
     }
-    root.innerHTML='<div class="panel">'+ph+bodyHtml+'</div>';
+    // Zellabstand nach Spaltenzahl. Der grosszuegige Standard (bis 22 px je Seite) ist bei
+    // vier Spalten richtig und bei neun eine Platzverschwendung: 9 x 2 x 22 px sind ueber
+    // 390 px, die dem Textinhalt fehlen. Deshalb ab 6 Spalten enger, ab 8 noch enger.
+    var padx=(cols>=8)?'clamp(5px,1.6cqmin,10px)':((cols>=6)?'clamp(7px,2.4cqmin,14px)':'');
+    root.innerHTML='<div class="panel"'+(padx?(' style="--tblpadx:'+padx+'"'):'')+'>'+ph+bodyHtml+'</div>';
   }
   var _tblT={};
   defWidget('table',{

@@ -390,6 +390,11 @@
       var nachtBahn = (sun.elev < -0.833);
       var track = nachtBahn ? ssMoonTrack(g.lat, g.lon, ssNow(w), 6)
                             : LVSUN.dayTrack(g.lat, g.lon, ssNow(w), 6);
+      // Auf-/Untergang in der Kopfzeile meint IMMER die SONNE. Nachts traegt `track` die
+      // Mondbahn - riseSet() daraus lieferte Mondauf- und -untergang, gezeigt mit denselben
+      // Pfeilen wie die Sonnenzeiten. Am 19.08.2026 abends stand so "auf 14:36 / unter 22:36"
+      // in der Kopfzeile, waehrend die Sonne um 06:01 auf- und um 20:10 untergegangen war.
+      var sonnenBahn = nachtBahn ? LVSUN.dayTrack(g.lat, g.lon, ssNow(w), 6) : track;
       ssArc(ctx, cam, K, track, sun, day, w, pal, nachtBahn);
       var mn = ssMoonDisc(ctx, cam, K, sun, day, w, cloud);
       // Gewitter: dunkle Wolkenbank. Sie gehoert in den gepufferten Teil - nur das
@@ -404,8 +409,12 @@
       // als Text neben dem W/m2-Wert war es irrefuehrend: 310 von 423 W/m2 sind 73 % klar,
       // angezeigt wurden aber 26 %, weil daraus 74 % Bedeckung zurueckgerechnet werden
       // (Kasten & Czeplak: kt = 1 - 0,75*N^3,4 - eine dichte Decke laesst immer noch viel durch).
-      ssLabels(ctx, W, Hs, K, sun, ssVal(w.ssRad), clr, track, w, mn, pal, wx);
-      ssStrip(ctx, W, H, Hs, K, w, track, pal);
+      ssLabels(ctx, W, Hs, K, sun, ssVal(w.ssRad), clr, track, w, mn, pal, wx, cam, sonnenBahn);
+      // Das Band zeigt die TAGESKURVE DER SONNE samt Auf-/Untergang - so steht es auch in
+      // seiner Beschreibung. Nachts trug `track` die Mondbahn, damit stand im Band der
+      // Mondaufgang unter denselben Pfeilen wie sonst die Sonnenzeiten (19.08.2026:
+      // "14:05 / 22:36" statt 06:01 / 20:12). Der Mondbogen bleibt oben in der Szene.
+      ssStrip(ctx, W, H, Hs, K, w, sonnenBahn, pal);
       return cv;
     }
 
@@ -1137,8 +1146,47 @@
         ctx.lineWidth = Math.max(1, K / 420); ctx.setLineDash([K / 150, K / 60]); ctx.stroke(); ctx.restore();
       }
     }
+    /**
+     * Kleiner Kompass: Ring, Nadel nach Norden, N an der Spitze, dazu drei feine Marken
+     * fuer Ost/Sued/West. Dreht sich MIT der Szene - dieselbe Rechnung wie der Umgebungs-
+     * ring (Winkel minus Kameradrehung), sonst zeigte er beim Ziehen woanders hin als
+     * das Haus. Ohne ihn ist nach ein paar Drehungen nicht mehr klar, wo Norden liegt.
+     */
+    function ssCompass(ctx, cx, cy, r, bearing, pal) {
+      var D = Math.PI / 180, rot = bearing * D;
+      var nx = Math.sin(-rot), ny = -Math.cos(-rot);
+      var px = -ny, py = nx, br = r * 0.24;                 // Querachse der Nadel
+      ctx.save();
+      ctx.lineWidth = Math.max(0.7, r / 19);
+      ctx.beginPath(); ctx.arc(cx, cy, r, 0, 7);
+      ctx.strokeStyle = ssA(pal.line, pal.light ? 0.7 : 0.55); ctx.stroke();
+      [90, 180, 270].forEach(function (a) {                 // Ost / Sued / West
+        var t = (a - bearing) * D, sx = Math.sin(t), sy = -Math.cos(t);
+        ctx.beginPath();
+        ctx.moveTo(cx + sx * (r - r * 0.16), cy + sy * (r - r * 0.16));
+        ctx.lineTo(cx + sx * r, cy + sy * r);
+        ctx.strokeStyle = ssA(pal.muted, 0.6); ctx.stroke();
+      });
+      ctx.beginPath();                                      // Nadel nach Norden
+      ctx.moveTo(cx + nx * r * 0.66, cy + ny * r * 0.66);
+      ctx.lineTo(cx + px * br, cy + py * br);
+      ctx.lineTo(cx - px * br, cy - py * br);
+      ctx.closePath(); ctx.fillStyle = pal.accent; ctx.fill();
+      ctx.beginPath();                                      // Gegenspitze, dezent
+      ctx.moveTo(cx - nx * r * 0.50, cy - ny * r * 0.50);
+      ctx.lineTo(cx + px * br * 0.8, cy + py * br * 0.8);
+      ctx.lineTo(cx - px * br * 0.8, cy - py * br * 0.8);
+      ctx.closePath(); ctx.fillStyle = ssA(pal.muted, 0.55); ctx.fill();
+      // Das N sitzt INNEN an der Spitze - aussen stiess es an die Uhrzeiten darueber.
+      ctx.font = '700 ' + Math.max(7, Math.round(r * 0.52)) + 'px ' + (pal.ff || 'system-ui');
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillStyle = pal.accent;
+      ctx.fillText('N', cx + nx * r * 1.02, cy + ny * r * 1.02);
+      ctx.restore();
+    }
+
     // Beschriftung: alles in Bezug auf K -> skaliert mit der Kachel
-    function ssLabels(ctx, W, H, K, sun, rad, clr, track, w, mn, pal, wx) {
+    function ssLabels(ctx, W, H, K, sun, rad, clr, track, w, mn, pal, wx, cam, sonnenBahn) {
       if (!_covOn2(w, 'ssInfo', true)) return;
       var f = Math.max(9, K / 22), pad = K / 26;
       ctx.save();
@@ -1172,12 +1220,17 @@
         if (np) t2 += '  ·  ' + np;
       }
       ctx.fillText(t2, pad, pad + f * 1.15);
-      var rs = LVSUN.riseSet(track);
+      var rs = LVSUN.riseSet(sonnenBahn || track);
       if (rs.rise != null && rs.set != null) {
         ctx.font = ssFont(w, 'Rs', f * 0.72, pal);
         var hm = function (m) { return String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(Math.round(m % 60)).padStart(2, '0'); };
         var t3 = '↑ ' + hm(rs.rise) + '   ↓ ' + hm(rs.set);
         ctx.textAlign = 'right'; ctx.fillText(t3, W - pad, pad);
+        // Kompass direkt darunter, rechtsbuendig zur Zeitzeile.
+        if (cam && _covOn2(w, 'ssCompass', true)) {
+          var cr = Math.max(9, f * 0.80);
+          ssCompass(ctx, W - pad - cr, pad + f * 0.72 + f * 0.45 + cr, cr, cam.bearing, pal);
+        }
       }
       ctx.restore();
     }
@@ -2060,6 +2113,8 @@
         h += '<div style="font-size:11px;color:var(--muted);margin:2px 2px 6px">Der Mond steht an seinem berechneten Platz am Himmel und zeigt die echte Phase; die beleuchtete Seite weist zur Sonne. Ab Dämmerung blendet er ein, tagsüber aus.</div>';
         h += row('Einfallstrahl', '<input type="checkbox" id="ssRay"' + (_covOn2(w, 'ssRay', true) ? ' checked' : '') + '>');
         h += row('Infozeile', '<input type="checkbox" id="ssInfo"' + (_covOn2(w, 'ssInfo', true) ? ' checked' : '') + '>');
+        h += row('Kompass', '<input type="checkbox" id="ssCompass"' + (_covOn2(w, 'ssCompass', true) ? ' checked' : '') + '>')
+           + '<div style="font-size:11px;color:var(--muted);margin:-2px 2px 5px">Kleiner Nordpfeil unter der Auf-/Untergangszeit; dreht sich mit der Szene. Braucht die Infozeile.</div>';
         h += row('Hausfarbe', skinSel(w.ssHouseColor || '', 'id="ssHouseColor"'));
         return h;
       },
@@ -2092,7 +2147,7 @@
             up();
           };
         });
-        [['ssRay', 'ssRay'], ['ssInfo', 'ssInfo'], ['ssPlot', 'ssPlot'],
+        [['ssRay', 'ssRay'], ['ssInfo', 'ssInfo'], ['ssCompass', 'ssCompass'], ['ssPlot', 'ssPlot'],
          ['ssBuildings', 'ssBuildings'], ['ssOwnFromOsm', 'ssOwnFromOsm'], ['ssBldRoof', 'ssBldRoof'],
          ['ssMoon', 'ssMoon'], ['ssStars', 'ssStars'], ['ssStrip', 'ssStrip'], ['ssEnChip', 'ssEnChip'], ['ssEnAnim', 'ssEnAnim'], ['ssWeather', 'ssWeather']].forEach(function (o) {
           var e = $('#' + o[0]); if (e) e.onchange = function () { w[o[1]] = this.checked; up(); };
