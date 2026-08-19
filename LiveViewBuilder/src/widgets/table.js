@@ -107,7 +107,12 @@
     // vier Spalten richtig und bei neun eine Platzverschwendung: 9 x 2 x 22 px sind ueber
     // 390 px, die dem Textinhalt fehlen. Deshalb ab 6 Spalten enger, ab 8 noch enger.
     var padx=(cols>=8)?'clamp(5px,1.6cqmin,10px)':((cols>=6)?'clamp(7px,2.4cqmin,14px)':'');
-    root.innerHTML='<div class="panel"'+(padx?(' style="--tblpadx:'+padx+'"'):'')+'>'+ph+bodyHtml+'</div>';
+    // Kompakte Zeilen: der grosszuegige Standard (bis 16 px oben und unten) ergibt rund
+    // 50 px Zeilenhoehe - bei einer Kennzahlen-Tabelle mit zwoelf Zeilen passt damit die
+    // Haelfte nicht mehr in die Kachel. Dicht gesetzt sind es rund 26 px.
+    var pady=w.tblDense?'clamp(3px,1.1cqmin,7px)':'';
+    var st=(padx?'--tblpadx:'+padx+';':'')+(pady?'--tblpady:'+pady+';':'');
+    root.innerHTML='<div class="panel"'+(st?(' style="'+st+'"'):'')+'>'+ph+bodyHtml+'</div>';
   }
   var _tblT={};
   defWidget('table',{
@@ -118,7 +123,8 @@
     props:function(w){var s=row('Zeilen/Seite','<input id="pTblPS" type="number" min="0" value="'+(w.pageSize>0?w.pageSize:0)+'" title="0 = keine Paginierung">')
       +row('Start-Ansicht','<select id="pTblView"><option value="table"'+((w.tblView||'table')==='table'?' selected':'')+'>Tabelle</option><option value="cards"'+(w.tblView==='cards'?' selected':'')+'>Karten</option></select>')
       +row('Umschalter ausblenden','<input type="checkbox" id="pTblNoSw"'+(w.hideToggle?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">feste Start-Ansicht</span>')
-      +row('Status-Stil','<input type="checkbox" id="pTblSev"'+(w.sevStyle?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">Severity-Streifen + Status-Chip + Ladebalken (erkennt „Status"- und „%"-Spalte)</span>');
+      +row('Status-Stil','<input type="checkbox" id="pTblSev"'+(w.sevStyle?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">Severity-Streifen + Status-Chip + Ladebalken (erkennt „Status"- und „%"-Spalte)</span>')
+      +row('Kompakte Zeilen','<input type="checkbox" id="pTblDense"'+(w.tblDense?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">enge Zeilen — mehr Zeilen ohne Scrollen</span>');
       // Pro-Spalte: Ausrichtung + Roh-HTML (Kopf aus geladenen Daten)
       var head=(w._tblRows&&w._tblRows[0])||[];
       if(head.length){
@@ -139,6 +145,7 @@
       if($('#pTblView'))$('#pTblView').onchange=function(){w.tblView=this.value;w._tblView=this.value;_tblDraw(w);commit();};
       if($('#pTblNoSw'))$('#pTblNoSw').onchange=function(){w.hideToggle=this.checked||undefined;_tblDraw(w);commit();};
       if($('#pTblSev'))$('#pTblSev').onchange=function(){w.sevStyle=this.checked||undefined;_tblDraw(w);commit();};
+      if($('#pTblDense'))$('#pTblDense').onchange=function(){w.tblDense=this.checked||undefined;_tblDraw(w);commit();};
       [].forEach.call(document.querySelectorAll('[data-tcol-al]'),function(sel){sel.onchange=function(){var ci=+sel.getAttribute('data-tcol-al');w.colAlign=w.colAlign||[];w.colAlign[ci]=this.value||undefined;_tblDraw(w);commit();};});
       [].forEach.call(document.querySelectorAll('[data-tcol-html]'),function(cb){cb.onchange=function(){var ci=+cb.getAttribute('data-tcol-html');w.colRaw=w.colRaw||[];w.colRaw[ci]=this.checked||undefined;_tblDraw(w);commit();};});
       [].forEach.call(document.querySelectorAll('[data-tcol-w]'),function(inp){inp.oninput=function(){var ci=+inp.getAttribute('data-tcol-w');w.colW=w.colW||[];var v=this.value.trim();w.colW[ci]=v||undefined;_tblDraw(w);commit();};});

@@ -1421,8 +1421,8 @@
   .t-table .ph-right{display:flex;align-items:center;gap:clamp(7px,3cqmin,16px);flex-wrap:wrap;justify-content:flex-end}
   .t-table .tbl-scroll{flex:1;overflow:auto;-webkit-overflow-scrolling:touch}
   .t-table table.tbl{width:100%;border-collapse:collapse;font-size:clamp(11px,3cqmin,15px)}
-  .t-table table.tbl thead th{text-align:left;font-family:var(--fm);font-size:clamp(9px,2.4cqmin,12px);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:500;padding:clamp(6px,2.4cqmin,12px) var(--tblpadx,clamp(11px,4cqmin,22px));border-bottom:1px solid var(--line);white-space:nowrap;position:sticky;top:0;background:var(--surface);z-index:1}
-  .t-table table.tbl tbody td{padding:clamp(8px,3cqmin,16px) var(--tblpadx,clamp(11px,4cqmin,22px));border-bottom:1px solid var(--line);color:var(--text);vertical-align:top}
+  .t-table table.tbl thead th{text-align:left;font-family:var(--fm);font-size:clamp(9px,2.4cqmin,12px);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:500;padding:var(--tblpady,clamp(6px,2.4cqmin,12px)) var(--tblpadx,clamp(11px,4cqmin,22px));border-bottom:1px solid var(--line);white-space:nowrap;position:sticky;top:0;background:var(--surface);z-index:1}
+  .t-table table.tbl tbody td{padding:var(--tblpady,clamp(8px,3cqmin,16px)) var(--tblpadx,clamp(11px,4cqmin,22px));border-bottom:1px solid var(--line);color:var(--text);vertical-align:top}
   .t-table table.tbl tbody tr:last-child td{border-bottom:0}
   .t-table table.tbl tbody tr:hover td{background:rgba(127,140,150,.06)}
   /* Pro-Spalte Breiten (w.colW): Tabelle bleibt bei width:100% (kein Scrollen). Umbruch/nowrap steuert
