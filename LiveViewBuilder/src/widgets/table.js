@@ -115,8 +115,13 @@
         var cnt={},ord=[],v;
         for(i=0;i<rows.length;i++){v=_tblTxt(w,aci,rows[i][aci]).trim();if(!v)continue;if(cnt[v]==null){cnt[v]=0;ord.push(v);}cnt[v]++;}
         var mx=(w.tblPillAutoMax>0?w.tblPillAutoMax:12);
+        // Aufgeklappt gilt kein Deckel. Ohne diesen Weg sind die selteneren Werte NUR ueber
+        // die Suche erreichbar - bei 39 Serien fehlten 25 im Filter, und wer seine Serie
+        // nicht sieht, haelt sie fuer nicht gesendet statt fuer abgeschnitten.
+        if(w._tblPillMehr)mx=ord.length;
         var keep={};ord.slice().sort(function(a,b){return cnt[b]-cnt[a]||_tblCmp(a,b);}).slice(0,mx).forEach(function(x){keep[x]=1;});
         ord.forEach(function(x){if(keep[x])out.push({k:'a:'+x,lab:x,ci:aci,op:'is',val:x,grp:'auto',color:'',def:false});});
+        w._tblPillRest=Math.max(0,ord.length-mx);
       }
     }
     return out;}
@@ -251,6 +256,10 @@
         var cvar=p.color?(/^[a-z][a-z0-9-]*$/i.test(p.color)?('var(--'+p.color+')'):esc(p.color)):'var(--accent)';
         return '<span class="tbl-pill'+(pst[p.k]?'':' off')+'" data-tbl-pill="'+esc(p.k)+'" style="--pc:'+cvar+'">'+esc(p.lab)
           +((w.tblPillCount!==0)?('<b>'+(cnt[p.k]||0)+'</b>'):'')+'</span>';}).join('');
+      // Abgeschnittene Werte bleiben erreichbar: eine Pille macht den Rest sichtbar und
+      // wieder unsichtbar. Reine Anzeige-Umschaltung, sie filtert selbst nichts.
+      if(w._tblPillRest>0)pillsHtml+='<span class="tbl-pill tbl-pill-mehr off" data-tbl-pillmore="1" title="alle Werte dieser Spalte zeigen">+'+w._tblPillRest+' weitere</span>';
+      else if(w._tblPillMehr)pillsHtml+='<span class="tbl-pill tbl-pill-mehr off" data-tbl-pillmore="0" title="Liste wieder kürzen">weniger</span>';
     }
     var toolsHtml='';
     if(w.tblQ||pills.length){
@@ -433,6 +442,8 @@
       if(qc){w._tblQ='';w._tblPillSt=null;
         if(typeof RUN!=='undefined'&&RUN){try{localStorage.removeItem('lvtbl_'+w.id);localStorage.removeItem('lvtblq_'+w.id);}catch(e2){}}
         w._tblPage=0;_tblDraw(w);return true;}
+      var pm=e.target.closest('[data-tbl-pillmore]');
+      if(pm){w._tblPillMehr=(pm.getAttribute('data-tbl-pillmore')==='1');_tblBody(w);return true;}
       var pl=e.target.closest('[data-tbl-pill]');
       if(pl){
         var k=pl.getAttribute('data-tbl-pill');
