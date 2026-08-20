@@ -18,7 +18,14 @@
   // Quelle ist eine Tabelle im Zeilenformat (Zeile 0 = Kopf, Spalte 0 = Bezeichner) -
   // dasselbe JSON, das auch das Tabellen-Widget liest.
 
-  function _mxSrc(w){return (w._mxSrc===1&&w.varId2)?1:0;}
+  /**
+   * Aktive Quelle. Ohne Zutun gilt die eingestellte Standardansicht (mxDef) - erst ein Klick
+   * auf den Umschalter setzt _mxSrc und ueberstimmt sie fuer diese Sitzung.
+   */
+  function _mxSrc(w){
+    var s=(w._mxSrc!=null)?w._mxSrc:(String(w.mxDef)==='1'?1:0);
+    return (s===1&&w.varId2)?1:0;
+  }
   function _mxRows(w){var s=_mxSrc(w);return (s===1?w._mxRows2:w._mxRows1)||[];}
   function _mxLoad(w,cb){
     var ids=[w.varId,w.varId2],got=0,need=0;
@@ -211,6 +218,10 @@
         +row('Beschriftung A','<input id="pMxLab" value="'+esc(w.srcLabel||'Ganze Jahre')+'">')
         +row('Variable B','<input id="pMxVar2" type="number" value="'+(w.varId2||'')+'">')
         +row('Beschriftung B','<input id="pMxLab2" value="'+esc(w.srcLabel2||'Bis heute')+'">')
+        +(w.varId2?row('Standardansicht','<select id="pMxStart">'
+          +'<option value="0"'+(String(w.mxDef)==='1'?'':' selected')+'>'+escL(w.srcLabel||'Ganze Jahre')+'</option>'
+          +'<option value="1"'+(String(w.mxDef)==='1'?' selected':'')+'>'+escL(w.srcLabel2||'Bis heute')+'</option>'
+          +'</select> <span style="font-size:11px;color:var(--muted)">beim Öffnen aktiv</span>'):'')
         +'<div class="pgh">Darstellung</div>'
         +row('Sichtbare Spalten','<input id="pMxCols" type="number" min="0" max="40" value="'+(w.mxCols!=null?w.mxCols:5)+'"> <span style="font-size:11px;color:var(--muted)">0 = alle; sonst blättern die Pfeile im Kopf</span>')
         +row('Verlaufsspalte','<input type="checkbox" id="pMxSpark"'+((w.mxSpark!==false)?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">Sparkline über ALLE Spalten, auch die ausgeblendeten</span>')
@@ -237,6 +248,10 @@
       if($('#pMxLbW'))$('#pMxLbW').onchange=function(){w.mxLbW=parseInt(this.value)||132;render();commit();};
       if($('#pMxDec'))$('#pMxDec').onchange=function(){w.mxDec=(this.value===''?undefined:parseInt(this.value));nur();};
       if($('#pMxDef'))$('#pMxDef').onchange=function(){w.mxDefColor=this.value;nur();};
+      if($('#pMxStart'))$('#pMxStart').onchange=function(){
+        w.mxDef=(this.value==='1')?1:undefined;
+        delete w._mxSrc;   // Vorschau soll die neue Vorgabe sofort zeigen
+        w._mxOff=0;nur();};
     },
     live:function(w,el,id,d){
       if(String(id)===String(w.varId)||String(id)===String(w.varId2))_mxLoad(w,function(){_mxPaint(w);});
