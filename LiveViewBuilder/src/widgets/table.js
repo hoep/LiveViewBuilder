@@ -425,13 +425,10 @@
       [].forEach.call(document.querySelectorAll('[data-tcol-w]'),function(inp){inp.oninput=function(){var ci=+inp.getAttribute('data-tcol-w');w.colW=w.colW||[];var v=this.value.trim();w.colW[ci]=v||undefined;_tblDraw(w);commit();};});
     },
     click:function(w,el,e){
-      // Jeder Klick IN die Werkzeugleiste gehoert der Leiste - auch der ins leere Suchfeld.
-      // Ohne das arbeitet der allgemeine Klickpfad danach popupTo/navTo/scriptId ab: ein Tipp
-      // ins Suchfeld haette auf einer Kachel mit Sprungziel die Seite gewechselt.
-      if(e.target.closest('.tbl-tools'))return true;
-      // Zuruecksetzen und Pillen VOR der Sortierabfrage: die Werkzeugleiste liegt zwar nicht
-      // im thead, aber die Reihenfolge haelt den Klickpfad eindeutig, auch wenn spaeter eine
-      // Pille in die Kopfzeile wandert.
+      // Reihenfolge ist hier entscheidend: die bedienbaren Teile der Werkzeugleiste ZUERST,
+      // der pauschale Schluck fuer die Leiste ganz zuletzt. Andersherum landet jeder
+      // Pillenklick im Schluck - die Pillen liegen ja selbst in .tbl-tools - und die Leiste
+      // sieht bedienbar aus, filtert aber nichts.
       var qc=e.target.closest('[data-tbl-qclear]');
       if(qc){w._tblQ='';w._tblPillSt=null;
         if(typeof RUN!=='undefined'&&RUN){try{localStorage.removeItem('lvtbl_'+w.id);localStorage.removeItem('lvtblq_'+w.id);}catch(e2){}}
@@ -454,6 +451,10 @@
         // sofort umfaerben, damit der Tipp quittiert wird, bevor gerechnet wird
         pl.classList.toggle('off',(k==='_all')?false:!st[k]);
         w._tblPillSt=st;_tblPillSave(w,st);w._tblPage=0;_tblBody(w);return true;}
+      // Alles Uebrige in der Leiste (Suchfeld, Leerraum) bleibt bei der Leiste: ohne das
+      // arbeitet der allgemeine Klickpfad danach popupTo/navTo/scriptId ab - ein Tipp ins
+      // Suchfeld haette auf einer Kachel mit Sprungziel die Seite gewechselt.
+      if(e.target.closest('.tbl-tools'))return true;
       var sb=e.target.closest('[data-tbl-sort]');if(sb){var i2=parseInt(sb.getAttribute('data-tbl-sort'));if(w._tblSortCol===i2){w._tblSortDir=(w._tblSortDir==='asc')?'desc':'asc';}else{w._tblSortCol=i2;w._tblSortDir='asc';}w._tblPage=0;_tblBody(w);return true;}
       var pg=e.target.closest('[data-tbl-page]');if(pg){if(pg.hasAttribute('disabled'))return true;w._tblPage=Math.max(0,(w._tblPage||0)+(pg.getAttribute('data-tbl-page')==='next'?1:-1));_tblBody(w);return true;}
       var vb=e.target.closest('[data-tbl-view]');if(vb){w._tblView=vb.getAttribute('data-tbl-view');_tblBody(w);return true;}
