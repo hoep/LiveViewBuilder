@@ -3185,19 +3185,40 @@
          font-size:clamp(9px,1.6cqmin,11px);color:var(--muted);opacity:.8}
 
 /* ---- statmatrix: Kennzahlen-Matrix ------------------------------------ */
-.mx{display:flex;flex-direction:column;height:100%;gap:4px}
-.mx-kopf{display:flex;align-items:center;gap:8px;flex:none;padding:2px 2px 0}
-.mx-tt{font-size:clamp(11px,2.1cqmin,14px);font-weight:700;letter-spacing:.05em;
+.mx{display:flex;flex-direction:column;height:100%;overflow:hidden}
+.mx>[data-role=mxroot]{display:flex;flex-direction:column;height:100%;min-height:0}
+.mx-kopf{display:flex;align-items:center;gap:8px;flex:none;padding:0 2px 8px}
+.mx-tt{font-size:clamp(11px,2cqmin,13px);font-weight:700;letter-spacing:.06em;
        text-transform:uppercase;color:var(--muted)}
-.mx-sp{flex:1}
-.mx-seg{display:inline-flex;gap:0;border:1px solid var(--line);border-radius:7px;overflow:hidden}
+.mx-fl{flex:1}
+.mx-seg{display:inline-flex;border:1px solid var(--line);border-radius:7px;overflow:hidden}
 .mx-b{border:0;background:var(--panel);color:var(--muted);cursor:pointer;
-      padding:3px 10px;font-size:clamp(10px,1.7cqmin,12px)}
+      padding:3px 10px;font-size:clamp(10px,1.6cqmin,11.5px)}
 .mx-b.on{background:var(--accent-2);color:#fff;font-weight:600}
 .mx-nav{display:inline-flex;align-items:center;gap:4px}
 .mx-c{border:1px solid var(--line);border-radius:6px;background:var(--panel);color:var(--text);
-      cursor:pointer;padding:1px 8px;font-size:13px;line-height:1.3}
+      cursor:pointer;padding:0 8px;font-size:13px;line-height:1.5}
 .mx-c[disabled]{opacity:.35;pointer-events:none}
-.mx-rng{font-size:clamp(10px,1.7cqmin,12px);color:var(--muted);
-        font-family:ui-monospace,Menlo,monospace;min-width:78px;text-align:center}
-.mx-ch{flex:1;min-height:0}
+.mx-rng{font-size:clamp(10px,1.6cqmin,11.5px);color:var(--muted);
+        font-family:ui-monospace,Menlo,monospace;min-width:74px;text-align:center}
+/* Raster: Bezeichner | Jahre | Verlauf. Die Spaltenzahl kommt vom Widget. */
+.mx-tab{flex:1;min-height:0;display:grid;align-content:space-evenly;
+        gap:clamp(1px,.35cqmin,3px);font-variant-numeric:tabular-nums}
+.mx-hz{font-size:clamp(9px,1.5cqmin,11px);color:var(--muted);text-align:center;
+       font-family:ui-monospace,Menlo,monospace;padding-bottom:2px}
+.mx-hz.jetzt{color:var(--accent-2);font-weight:700}
+.mx-hz.vl{text-transform:uppercase;letter-spacing:.06em;font-family:inherit;font-size:clamp(8px,1.3cqmin,9.5px)}
+/* Zwischenueberschrift je Gruppe - beginnt immer eine neue Rasterzeile. */
+.mx-grp{grid-column:1/-1;font-size:clamp(8px,1.3cqmin,9.5px);letter-spacing:.1em;
+        text-transform:uppercase;color:var(--muted);opacity:.75;line-height:1.1;
+        padding:clamp(2px,.7cqmin,5px) 0 1px;border-top:1px solid var(--line)}
+.mx-lb{display:flex;align-items:center;gap:5px;font-size:clamp(9px,1.6cqmin,11.5px);
+       color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mx-lb i{font-style:normal;font-size:.82em;color:var(--muted);opacity:.8}
+.mx-z{display:flex;align-items:center;justify-content:center;border-radius:5px;
+      font-family:ui-monospace,Menlo,monospace;font-size:clamp(9px,1.6cqmin,12px);
+      color:var(--text);min-height:0;padding:clamp(2px,.6cqmin,5px) 0;line-height:1.15}
+.mx-z.jetzt{box-shadow:inset 0 0 0 1.5px var(--accent-2)}
+.mx-vl{display:flex;align-items:center;justify-content:flex-end;color:var(--muted)}
+.mx-leer{flex:1;display:flex;align-items:center;justify-content:center;
+         font-size:12px;color:var(--muted);opacity:.7}
