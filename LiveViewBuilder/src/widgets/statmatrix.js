@@ -62,17 +62,22 @@
     var g=werte.filter(function(v){return !isNaN(v);});
     if(g.length<2)return '';
     var lo=Math.min.apply(null,g),hi=Math.max.apply(null,g),sp=(hi-lo)||1;
-    var W=54,H=20,n=werte.length,pts=[];
+    var W=84,H=22,n=werte.length,pts=[];
     werte.forEach(function(v,i){
       if(isNaN(v))return;
       pts.push((i/(n-1)*W).toFixed(1)+','+(H-2-((v-lo)/sp)*(H-4)).toFixed(1));
     });
     if(pts.length<2)return '';
     var last=pts[pts.length-1].split(',');
-    return '<svg width="'+W+'" height="'+H+'" viewBox="0 0 '+W+' '+H+'" aria-hidden="true">'
-      +'<polyline points="'+pts.join(' ')+'" fill="none" stroke="'+hex+'" stroke-width="1.4" '
-      +'stroke-linecap="round" stroke-linejoin="round"/>'
-      +'<circle cx="'+last[0]+'" cy="'+last[1]+'" r="1.9" fill="'+hex+'"/></svg>';
+    // Gestrichelte Linie auf Hoehe des Zeilen-Mittels: erst dadurch sagt die Sparkline,
+    // ob ein Jahr ueber oder unter dem Schnitt der Reihe lag.
+    var mit=g.reduce(function(a3,b3){return a3+b3;},0)/g.length;
+    var my=(H-2-((mit-lo)/sp)*(H-6)).toFixed(1);
+    return '<svg width="'+W+'" height="'+H+'" viewBox="0 0 '+W+' '+H+'" aria-hidden="true" style="display:block">'
+      +'<line x1="0" y1="'+my+'" x2="'+W+'" y2="'+my+'" stroke="'+cssv('--line')+'" stroke-width="1" stroke-dasharray="3 3"/>'
+      +'<polyline points="'+pts.join(' ')+'" fill="none" stroke="'+hex+'" stroke-width="1.5" '
+      +'stroke-linecap="round" stroke-linejoin="round" opacity=".85"/>'
+      +'<circle cx="'+last[0]+'" cy="'+last[1]+'" r="2.6" fill="'+hex+'"/></svg>';
   }
   function _mxTabelle(w){
     var rows=_mxRows(w);
@@ -83,7 +88,7 @@
     for(ci=F.von;ci<F.bis;ci++)spalten.push(String(kopf[ci+1]));
     var jetzt=String(new Date().getFullYear());
     var spark=(w.mxSpark!==false);
-    var gtc='var(--mxlb) repeat('+spalten.length+',1fr)'+(spark?' 64px':'');
+    var gtc='var(--mxlb) repeat('+spalten.length+',1fr)'+(spark?' 92px':'');
     var h='<div class="mx-tab" style="grid-template-columns:'+gtc+'">';
     h+='<div class="mx-hz"></div>'
       +spalten.map(function(s){return '<div class="mx-hz'+(s===jetzt?' jetzt':'')+'">'+esc(s)+'</div>';}).join('')
@@ -117,8 +122,12 @@
       for(k=F.von;k<F.bis;k++){
         var v=alle[k],t=isNaN(v)?0:(v-lo)/sp;
         var jz=(String(kopf[k+1])===jetzt)?' jetzt':'';
-        h+='<div class="mx-z'+jz+'" style="background:'+(isNaN(v)?'transparent':accA(0.10+0.72*t,hex))+'">'
-          +_mxFmt(w,v)+'</div>';
+        // Rampe bis zum Vollton - eine Heatmap lebt davon, dass das Maximum wirklich
+        // kraeftig ist. Ab etwa der Haelfte kippt die Schrift auf Weiss, sonst verliert
+        // sie auf der dunklen Zelle den Kontrast.
+        var hell=(t>0.5);
+        h+='<div class="mx-z'+jz+(hell?' hell':'')+'" style="background:'
+          +(isNaN(v)?'transparent':accA(0.09+0.91*t,hex))+'">'+_mxFmt(w,v)+'</div>';
       }
       if(spark)h+='<div class="mx-vl">'+_mxSpark(alle,hex)+'</div>';
     });
@@ -136,8 +145,9 @@
       ? '<span class="mx-nav"><button class="mx-c" data-mxnav="-1" title="früher">‹</button>'
         +'<span class="mx-rng">'+esc(String(kopf[F.von+1]||''))+'–'+esc(String(kopf[F.bis]||''))+'</span>'
         +'<button class="mx-c" data-mxnav="1" title="später"'+(((w._mxOff||0)<=0)?' disabled':'')+'>›</button></span>' : '';
+    var lgd='<span class="mx-lgd">Skala je Zeile<i class="mx-ramp"></i></span>';
     return '<div class="mx-kopf"><span class="mx-tt">'+escL(w.label||'Kennzahlen')+'</span>'
-      +'<span class="mx-fl"></span>'+seg+nav+'</div>';
+      +'<span class="mx-fl"></span>'+lgd+seg+nav+'</div>';
   }
   function _mxEl(w){
     var sel='.w[data-id="'+w.id+'"] [data-role=mxroot]';
