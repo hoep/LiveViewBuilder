@@ -185,7 +185,10 @@
       add({type:'text', x:DOKU_PAD, y:y, w:DOKU_W-2*DOKU_PAD, h:kopfH, bgT:true, fsz:21, label:kopfL});
       y += kopfH + 6;
       var introL = 'Je Widget: oben die Vorschau (läuft mit echten Werten, bedienbar), darunter Zweck und '
-                 + 'sämtliche Optionen. Über die Ansichtsauswahl oben zu den anderen Themen.';
+                 + 'sämtliche Optionen. Über die Ansichtsauswahl oben zu den anderen Themen.\n'
+                 + 'Für JEDES Widget gibt es unten in den Eigenschaften neben X/Y/Breite/Höhe einen Rand '
+                 + '(oben, rechts, unten, links, in Pixeln). Er rückt die Kachel in ihrem eigenen Platz ein: '
+                 + 'die Kachel wird kleiner, ihre Position im Raster bleibt, und Nachbarn verschieben sich nicht.';
       var introH = dokuTextH(introL, 11, DOKU_W-2*DOKU_PAD, 36);
       add({type:'text', x:DOKU_PAD, y:y, w:DOKU_W-2*DOKU_PAD, h:introH, bgT:true, fsz:11, fg:'#7d9099', label:introL});
       y += introH + 10;

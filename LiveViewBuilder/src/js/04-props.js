@@ -165,6 +165,8 @@
       +row('Ebene','<button class="btn" id="pZFront" style="padding:4px 9px">nach vorn</button> <button class="btn" id="pZBack" style="padding:4px 9px">nach hinten</button>')
       +posSection(w)
       +'<div class="xy">'+cell('X','pX',w.x)+cell('Y','pY',w.y)+cell('B','pW',w.w)+cell('H','pH',w.h)+'</div>'
+      +'<div style="font-size:11px;color:var(--muted);margin:6px 2px 3px">Rand (rückt die Kachel im eigenen Platz ein)</div>'
+      +'<div class="xy">'+cell('O','pMT',w.mT||0)+cell('R','pMR',w.mR||0)+cell('U','pMB',w.mB||0)+cell('L','pML',w.mL||0)+'</div>'
       +'<button class="btn danger" id="pDel">Löschen</button>'
       +'</div>'
     $('#pType').value=w.type;
@@ -238,6 +240,15 @@
     if($('#pPick2'))$('#pPick2').onclick=function(){showTab('vars');toast('Variable im Baum anklicken');_bindTarget2=w.id;};
     if($('#pVar3'))$('#pVar3').onchange=function(){var _v=(this.value||'').trim();w.varId3=(_v.charAt(0)==='=')?_v:(parseInt(_v)||0);delete _hist[w.id];render();};
     if($('#pPick3'))$('#pPick3').onclick=function(){showTab('vars');toast('Untergang-Variable im Baum anklicken');_bindTarget3=w.id;};
+    // Raender: gelten fuer JEDES Widget und wirken nur auf die Kachel, nicht auf das Raster.
+    ['pMT','pMR','pMB','pML'].forEach(function(k){var el=$('#'+k);if(!el)return;
+      el.oninput=function(){
+        var v=Math.max(0,parseInt(el.value)||0),key='m'+k.charAt(3);
+        function setOne(t){if(v)t[key]=v;else delete t[key];}
+        // Bei Mehrfachauswahl auf ALLE gewaehlten anwenden - Raender setzt man selten
+        // fuer eine Kachel allein, sondern fuer eine ganze Reihe.
+        if(sel[w.id]&&Object.keys(sel).length>1)selWidgets().forEach(setOne);else setOne(w);
+        render();};});
     ['pX','pY','pW','pH'].forEach(function(k){var el=$('#'+k);el.oninput=function(){var v=parseInt(el.value)||0;
       function setOne(t){if(k==='pX')t.x=v;if(k==='pY')t.y=v;if(k==='pW')t.w=Math.max(40,v);if(k==='pH')t.h=Math.max(28,v);}
       // Breite/Höhe bei Mehrfachauswahl auf ALLE selektierten Widgets anwenden (X/Y bleiben pro Element – dafür gibt es Ausrichten)
@@ -492,7 +503,7 @@
 
   // ---------- Drag / Resize / Marquee / Ausricht-Guides ----------
   var drag=null,marq=null;
-  function applyGeom(w){var el=$('.w[data-id="'+w.id+'"]',canvas);if(el){el.style.left=w.x+'px';el.style.top=w.y+'px';el.style.width=w.w+'px';el.style.height=w.h+'px';if(_ec[w.id])_ec[w.id].resize();if(w.type==='html'&&(w.htmlFit==='width'||w.htmlFit==='both'))applyHtmlScale(w);}}
+  function applyGeom(w){var el=$('.w[data-id="'+w.id+'"]',canvas);if(el){applyGeomTo(el,w);if(_ec[w.id])_ec[w.id].resize();if(w.type==='html'&&(w.htmlFit==='width'||w.htmlFit==='both'))applyHtmlScale(w);}}
   function clearGuides(){$$('.guide',canvas).forEach(function(e){e.remove();});}
   // Hilfslinie zeichnen — wahlweise in eine Leiste (dann relativ zu ihr) statt auf die Seite
   function drawGuide(dir,pos,host,lw,lh){var g=document.createElement('div');g.className='guide '+dir;
