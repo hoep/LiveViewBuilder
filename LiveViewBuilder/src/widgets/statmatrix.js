@@ -1,21 +1,24 @@
   // ===== Widget: statmatrix (Kennzahlen-Matrix) =====
   //
-  // Eine Matrix aus Kennzahlen (Zeilen) und Zeitabschnitten (Spalten) als ECharts-Heatmap:
-  // die Zahl bleibt lesbar, die Farbe macht die Reihe vergleichbar.
+  // Eine Kennzahlen-Tabelle als Farbmatrix: Zeilen sind die Kennzahlen, Spalten die
+  // Zeitabschnitte. Die Zahl bleibt lesbar, die Faerbung macht die Reihe vergleichbar,
+  // rechts zeigt eine Sparkline den ganzen Verlauf - auch die Jahre ausserhalb des
+  // sichtbaren Fensters.
   //
-  // DER DATENADAPTER ist der eigentliche Kern. Zwoelf Kennzahlen mit voellig
-  // verschiedenen Wertebereichen (Regen 190…1504 mm, Tropennaechte 0…14, T min −14…−7)
-  // vertragen KEINE gemeinsame Farbskala - eine globale visualMap wuerde die halbe Matrix
-  // einfarbig lassen. Deshalb wird JE ZEILE normiert (Minimum … Maximum der Zeile) und die
-  // Zellfarbe einzeln gesetzt, statt ECharts eine Skala ueber alles legen zu lassen.
+  // DER DATENADAPTER ist der Kern. Zwoelf Kennzahlen mit voellig verschiedenen
+  // Wertebereichen (Regen 190…1504 mm, Tropennaechte 0…14, T min −14…−7) vertragen KEINE
+  // gemeinsame Farbskala - eine Skala ueber alles liesse die halbe Matrix einfarbig.
+  // Deshalb wird JE ZEILE auf ihr eigenes Minimum und Maximum normiert.
   //
-  // Quelle sind Tabellen im Zeilenformat (Zeile 0 = Kopf, Spalte 0 = Bezeichner) - dasselbe
-  // JSON, das auch das Tabellen-Widget liest. Zwei Quellen sind vorgesehen (z. B. ganze
-  // Jahre und dieselben Zeitraeume bis heute), zwischen denen der Kopf umschaltet.
+  // Bewusst HTML statt einer ECharts-Heatmap: die Matrix braucht Zwischenueberschriften je
+  // Gruppe, eine Einheit am Bezeichner, eine Sparkline-Spalte und einen Rahmen um das
+  // laufende Jahr. Das alles in eine Heatmap zu zwingen ergaebe mehr Notloesung als Nutzen;
+  // die Sparklines sind Inline-SVG, die Zellfarben kommen aus dem Skin.
+  //
+  // Quelle ist eine Tabelle im Zeilenformat (Zeile 0 = Kopf, Spalte 0 = Bezeichner) -
+  // dasselbe JSON, das auch das Tabellen-Widget liest.
 
-  function _mxSrc(w){ // aktive Quelle: 0 = erste, 1 = zweite
-    return (w._mxSrc===1&&w.varId2)?1:0;
-  }
+  function _mxSrc(w){return (w._mxSrc===1&&w.varId2)?1:0;}
   function _mxRows(w){var s=_mxSrc(w);return (s===1?w._mxRows2:w._mxRows1)||[];}
   function _mxLoad(w,cb){
     var ids=[w.varId,w.varId2],got=0,need=0;
@@ -34,114 +37,121 @@
     var n=parseFloat(String(v).replace(/\s/g,'').replace(',','.'));
     return isNaN(n)?NaN:n;
   }
-  /** Skin-Farbe der Skala fuer eine Zeile (Vorgabe aus der Liste mxScale, sonst Akzent). */
+  function _mxFmt(w,v){
+    if(isNaN(v))return '';
+    var d=(w.mxDec!=null&&w.mxDec!=='')?Math.max(0,Math.min(3,parseInt(w.mxDec))):null;
+    var s=(d!=null)?v.toFixed(d):((v%1!==0)?(Math.round(v*10)/10).toFixed(1):String(v));
+    return s.replace('.',',');
+  }
+  /** Zeilen-Einstellung ueber den ANFANG des Bezeichners (haelt auch bei leicht anderem Wortlaut). */
+  function _mxCfg(w,label){
+    return (w.mxScale||[]).filter(function(x){
+      return x.row&&String(label).toLowerCase().indexOf(String(x.row).toLowerCase())===0;})[0]||{};
+  }
   function _mxFarbe(w,label){
-    var l=(w.mxScale||[]).filter(function(x){
-      return x.row&&String(label).toLowerCase().indexOf(String(x.row).toLowerCase())===0;})[0];
-    return _skinToCss((l&&l.color)||w.mxDefColor||'accent')||cssv('--accent');
+    return _skinToCss(_mxCfg(w,label).color||w.mxDefColor||'accent')||cssv('--accent');
   }
-  /** Farbe mit Deckkraft aus dem normierten Anteil - unten blass, oben Vollton. */
-  function _mxZelle(hex,t){
-    var a=0.10+0.75*Math.max(0,Math.min(1,t));
-    return accA(a,hex);
-  }
-  /** Sichtbarer Spaltenausschnitt: n Spalten, um _mxOff nach links verschoben. */
-  function _mxFenster(w,anzSpalten){
+  function _mxFenster(w,anz){
     var n=(w.mxCols>0?parseInt(w.mxCols):0);
-    if(!n||n>=anzSpalten)return {von:0,bis:anzSpalten};
-    var off=Math.max(0,Math.min(anzSpalten-n,(w._mxOff||0)));
-    return {von:anzSpalten-n-off,bis:anzSpalten-off};
+    if(!n||n>=anz)return {von:0,bis:anz};
+    var off=Math.max(0,Math.min(anz-n,(w._mxOff||0)));
+    return {von:anz-n-off,bis:anz-off};
   }
-  function setStatMatrix(w){
-    var ec=_ec[w.id];if(!ec)return;
-    var rows=_mxRows(w);
-    if(!rows.length||!rows[0]||rows[0].length<2){
-      ec.setOption({backgroundColor:'transparent',
-        title:{text:(w.varId?'Keine Daten':'Variable wählen'),left:'center',top:'middle',
-               textStyle:{color:cssv('--muted'),fontSize:_ecF(w,'title',12),fontWeight:'normal'}},
-        xAxis:{show:false},yAxis:{show:false},series:[]},true);
-      return;
-    }
-    var kopf=rows[0],leib=rows.slice(1);
-    var F=_mxFenster(w,kopf.length-1);
-    var spalten=[],ci;
-    for(ci=F.von;ci<F.bis;ci++)spalten.push(String(kopf[ci+1]));
-    // Zeilen von unten nach oben: ECharts zaehlt die Kategorie-Achse von unten,
-    // die erste Tabellenzeile soll aber oben stehen.
-    var zeilen=leib.map(function(r){return String(r[0]);}).reverse();
-    var daten=[],max=0;
-    leib.forEach(function(r,ri){
-      var werte=[],k;
-      for(k=F.von;k<F.bis;k++)werte.push(_mxNum(r[k+1]));
-      var gueltig=werte.filter(function(v){return !isNaN(v);});
-      // Normierung JE ZEILE - das ist der Punkt, an dem ungleiche Groessen vergleichbar werden.
-      var lo=Math.min.apply(null,gueltig),hi=Math.max.apply(null,gueltig);
-      var spanne=(hi-lo)||1;
-      var hex=_mxFarbe(w,r[0]);
-      var y=zeilen.length-1-ri;
-      werte.forEach(function(v,xi){
-        if(isNaN(v))return;
-        daten.push({value:[xi,y,v],itemStyle:{color:_mxZelle(hex,(v-lo)/spanne)}});
-        if(Math.abs(v)>max)max=Math.abs(v);
-      });
+  /** Sparkline ueber ALLE Spalten der Zeile - der Verlauf soll nicht am Fenster enden. */
+  function _mxSpark(werte,hex){
+    var g=werte.filter(function(v){return !isNaN(v);});
+    if(g.length<2)return '';
+    var lo=Math.min.apply(null,g),hi=Math.max.apply(null,g),sp=(hi-lo)||1;
+    var W=54,H=20,n=werte.length,pts=[];
+    werte.forEach(function(v,i){
+      if(isNaN(v))return;
+      pts.push((i/(n-1)*W).toFixed(1)+','+(H-2-((v-lo)/sp)*(H-4)).toFixed(1));
     });
-    var fs=_ecF(w,'label',10);
-    var dez=(w.mxDec!=null&&w.mxDec!=='')?Math.max(0,Math.min(3,parseInt(w.mxDec))):null;
-    // Gebrochene Werte behalten eine Nachkommastelle, ganze bleiben ganz - sonst wurde aus
-    // einem Jahresmittel von 12,3 Grad die Zahl "12", waehrend 1504 mm unveraendert blieb.
-    function zahl(v){
-      var s=(dez!=null)?v.toFixed(dez):((v%1!==0)?(Math.round(v*10)/10).toFixed(1):String(v));
-      return s.replace('.',',');
-    }
-    ec.setOption({backgroundColor:'transparent',animation:!!bcfg().chartAnim,
-      grid:{left:10,right:8,top:6,bottom:6,containLabel:true},
-      tooltip:{trigger:'item',confine:true,formatter:function(p){
-        return zeilen[p.value[1]]+' · '+spalten[p.value[0]]+'<br><b>'+zahl(p.value[2])+'</b>';}},
-      xAxis:{type:'category',data:spalten,position:'top',splitArea:{show:false},
-        axisLine:{show:false},axisTick:{show:false},
-        axisLabel:{color:cssv('--muted'),fontSize:_ecF(w,'axis',10),fontFamily:'ui-monospace,Menlo,monospace'}},
-      yAxis:{type:'category',data:zeilen,splitArea:{show:false},
-        axisLine:{show:false},axisTick:{show:false},
-        axisLabel:{color:cssv('--text'),fontSize:_ecF(w,'axis',10),margin:8}},
-      series:[{type:'heatmap',data:daten,
-        label:{show:(w.mxVals!==false),color:cssv('--text'),fontSize:fs,
-               fontFamily:'ui-monospace,Menlo,monospace',
-               formatter:function(p){return zahl(p.value[2]);}},
-        itemStyle:{borderColor:cssv('--surface'),borderWidth:2,borderRadius:4},
-        emphasis:{itemStyle:{borderColor:cssv('--text'),borderWidth:1}}}]},true);
+    if(pts.length<2)return '';
+    var last=pts[pts.length-1].split(',');
+    return '<svg width="'+W+'" height="'+H+'" viewBox="0 0 '+W+' '+H+'" aria-hidden="true">'
+      +'<polyline points="'+pts.join(' ')+'" fill="none" stroke="'+hex+'" stroke-width="1.4" '
+      +'stroke-linecap="round" stroke-linejoin="round"/>'
+      +'<circle cx="'+last[0]+'" cy="'+last[1]+'" r="1.9" fill="'+hex+'"/></svg>';
+  }
+  function _mxTabelle(w){
+    var rows=_mxRows(w);
+    if(!rows.length||!rows[0]||rows[0].length<2)
+      return '<div class="mx-leer">'+(w.varId?'Keine Daten':'Variable wählen')+'</div>';
+    var kopf=rows[0],leib=rows.slice(1),anz=kopf.length-1;
+    var F=_mxFenster(w,anz),spalten=[],ci;
+    for(ci=F.von;ci<F.bis;ci++)spalten.push(String(kopf[ci+1]));
+    var jetzt=String(new Date().getFullYear());
+    var spark=(w.mxSpark!==false);
+    var gtc='var(--mxlb) repeat('+spalten.length+',1fr)'+(spark?' 64px':'');
+    var h='<div class="mx-tab" style="grid-template-columns:'+gtc+'">';
+    h+='<div class="mx-hz"></div>'
+      +spalten.map(function(s){return '<div class="mx-hz'+(s===jetzt?' jetzt':'')+'">'+esc(s)+'</div>';}).join('')
+      +(spark?'<div class="mx-hz vl">Verlauf</div>':'');
+    // Zeilen nach Gruppen ordnen. Die Quelle bringt sie in ihrer eigenen Reihenfolge - dort
+    // steht "Heiztage" hinter den Tropennaechten, und die Ueberschrift "Kaelte" erschiene ein
+    // zweites Mal. Massgeblich ist die Reihenfolge der Gruppen in der Zeilen-Liste; innerhalb
+    // einer Gruppe bleibt die Reihenfolge der Quelle erhalten.
+    var grpOrd={},ord=0;
+    (w.mxScale||[]).forEach(function(x){
+      if(x.grp&&grpOrd[x.grp]==null)grpOrd[x.grp]=ord++;
+    });
+    leib=leib.map(function(r,i){
+      var gp=_mxCfg(w,String(r[0])).grp||'';
+      return {r:r,i:i,g:(grpOrd[gp]!=null?grpOrd[gp]:999)};
+    }).sort(function(a2,b2){return (a2.g-b2.g)||(a2.i-b2.i);}).map(function(x){return x.r;});
+
+    var letzteGruppe=null;
+    leib.forEach(function(r){
+      var label=String(r[0]),cfg=_mxCfg(w,label),hex=_mxFarbe(w,label);
+      if(cfg.grp&&cfg.grp!==letzteGruppe){
+        h+='<div class="mx-grp">'+escL(cfg.grp)+'</div>';
+        letzteGruppe=cfg.grp;
+      }
+      var alle=[],k;
+      for(k=0;k<anz;k++)alle.push(_mxNum(r[k+1]));
+      var g=alle.filter(function(v){return !isNaN(v);});
+      // Normierung JE ZEILE - hier werden ungleiche Groessen ueberhaupt erst vergleichbar.
+      var lo=g.length?Math.min.apply(null,g):0,hi=g.length?Math.max.apply(null,g):1,sp=(hi-lo)||1;
+      h+='<div class="mx-lb">'+escL(label)+(cfg.unit?'<i>'+escL(cfg.unit)+'</i>':'')+'</div>';
+      for(k=F.von;k<F.bis;k++){
+        var v=alle[k],t=isNaN(v)?0:(v-lo)/sp;
+        var jz=(String(kopf[k+1])===jetzt)?' jetzt':'';
+        h+='<div class="mx-z'+jz+'" style="background:'+(isNaN(v)?'transparent':accA(0.10+0.72*t,hex))+'">'
+          +_mxFmt(w,v)+'</div>';
+      }
+      if(spark)h+='<div class="mx-vl">'+_mxSpark(alle,hex)+'</div>';
+    });
+    return h+'</div>';
   }
   function _mxKopf(w){
     var rows=_mxRows(w),n=rows.length?rows[0].length-1:0;
     var F=_mxFenster(w,n),kopf=rows.length?rows[0]:[];
-    var von=kopf[F.von+1],bis=kopf[F.bis];
-    var eng=(w.mxCols>0&&w.mxCols<n);
-    var s=_mxSrc(w);
+    var eng=(w.mxCols>0&&w.mxCols<n),s=_mxSrc(w);
     var seg=w.varId2
       ? '<span class="mx-seg"><button class="mx-b'+(s===0?' on':'')+'" data-mxsrc="0">'
         +escL(w.srcLabel||'Ganze Jahre')+'</button><button class="mx-b'+(s===1?' on':'')+'" data-mxsrc="1">'
         +escL(w.srcLabel2||'Bis heute')+'</button></span>' : '';
     var nav=eng
       ? '<span class="mx-nav"><button class="mx-c" data-mxnav="-1" title="früher">‹</button>'
-        +'<span class="mx-rng">'+esc(String(von||''))+'–'+esc(String(bis||''))+'</span>'
+        +'<span class="mx-rng">'+esc(String(kopf[F.von+1]||''))+'–'+esc(String(kopf[F.bis]||''))+'</span>'
         +'<button class="mx-c" data-mxnav="1" title="später"'+(((w._mxOff||0)<=0)?' disabled':'')+'>›</button></span>' : '';
     return '<div class="mx-kopf"><span class="mx-tt">'+escL(w.label||'Kennzahlen')+'</span>'
-      +'<span class="mx-sp"></span>'+seg+nav+'</div>';
+      +'<span class="mx-fl"></span>'+seg+nav+'</div>';
+  }
+  function _mxEl(w){
+    var sel='.w[data-id="'+w.id+'"] [data-role=mxroot]';
+    var oc=document.getElementById('ovcanvas');
+    return (oc&&oc.querySelector(sel))||(typeof canvas!=='undefined'&&canvas&&canvas.querySelector(sel))||null;
   }
   function _mxPaint(w){
-    var el=$('.w[data-id="'+w.id+'"] [data-role=mxroot]',canvas)
-         ||$('.w[data-id="'+w.id+'"] [data-role=mxroot]',$('#ovcanvas'));
-    if(!el)return;
-    el.innerHTML=_mxKopf(w);
-    _mxWire(w,el);
-    if(_ec[w.id])setStatMatrix(w);
-  }
-  function _mxWire(w,el){
+    var el=_mxEl(w);if(!el)return;
+    el.innerHTML=_mxKopf(w)+_mxTabelle(w);
     el.querySelectorAll('[data-mxsrc]').forEach(function(b){b.onclick=function(){
       w._mxSrc=parseInt(b.getAttribute('data-mxsrc'));w._mxOff=0;_mxPaint(w);};});
     el.querySelectorAll('[data-mxnav]').forEach(function(b){b.onclick=function(){
       var rows=_mxRows(w),n=rows.length?rows[0].length-1:0,cols=(w.mxCols>0?parseInt(w.mxCols):n);
       var d=parseInt(b.getAttribute('data-mxnav'));
-      // "‹" geht in die Vergangenheit, also Fenster nach links = Offset groesser.
       w._mxOff=Math.max(0,Math.min(Math.max(0,n-cols),(w._mxOff||0)+(d<0?1:-1)));
       _mxPaint(w);};});
   }
@@ -149,10 +159,10 @@
     label:'Kennzahlen-Matrix',
     cat:'Anzeige',
     paletteIcon:'wtable',
-    size:[760,430],
-    defaults:function(w){w.label='Kennzahlen je Jahr';w.mxCols=5;w.mxVals=true;w.mxDefColor='accent';},
-    render:function(w){return '<div class="mx"><div data-role="mxroot"></div>'
-      +'<div data-role="chart" class="mx-ch"></div></div>';},
+    size:[720,760],
+    defaults:function(w){w.label='Kennzahlen je Jahr';w.mxCols=5;w.mxDefColor='accent';w.mxLbW=132;},
+    render:function(w){return '<div class="panel mx" style="--mxlb:'+(w.mxLbW||132)+'px">'
+      +'<div data-role="mxroot"></div></div>';},
     mount:function(w){_mxLoad(w,function(){_mxPaint(w);});},
     props:function(w){
       return '<div class="pgh">Datenquellen (Tabelle im Zeilenformat)</div>'
@@ -164,31 +174,34 @@
         +row('Variable B','<input id="pMxVar2" type="number" value="'+(w.varId2||'')+'">')
         +row('Beschriftung B','<input id="pMxLab2" value="'+esc(w.srcLabel2||'Bis heute')+'">')
         +'<div class="pgh">Darstellung</div>'
-        +row('Sichtbare Spalten','<input id="pMxCols" type="number" min="0" max="40" value="'+(w.mxCols!=null?w.mxCols:5)+'" title="0 = alle"> <span style="font-size:11px;color:var(--muted)">0 = alle; sonst blättern die Pfeile im Kopf</span>')
-        +row('Werte in den Zellen','<input type="checkbox" id="pMxVals"'+((w.mxVals!==false)?' checked':'')+'>')
+        +row('Sichtbare Spalten','<input id="pMxCols" type="number" min="0" max="40" value="'+(w.mxCols!=null?w.mxCols:5)+'"> <span style="font-size:11px;color:var(--muted)">0 = alle; sonst blättern die Pfeile im Kopf</span>')
+        +row('Verlaufsspalte','<input type="checkbox" id="pMxSpark"'+((w.mxSpark!==false)?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">Sparkline über ALLE Spalten, auch die ausgeblendeten</span>')
+        +row('Breite Bezeichner','<input id="pMxLbW" type="number" min="70" max="300" value="'+(w.mxLbW||132)+'"> px')
         +row('Nachkommastellen','<input id="pMxDec" type="number" min="0" max="3" value="'+(w.mxDec!=null?w.mxDec:'')+'" placeholder="auto">')
         +row('Farbe (Vorgabe)',skinSel(w.mxDefColor||'accent','id="pMxDef"'))
-        +'<div class="pgh">Farbe je Zeile</div>'
+        +'<div class="pgh">Zeilen: Gruppe, Einheit, Farbe</div>'
         +'<div style="font-size:11px;color:var(--muted);margin:-2px 2px 5px">'
-        +'Jede Zeile wird EINZELN normiert (Minimum … Maximum der Zeile) — nur so sind Größen '
-        +'mit ganz verschiedenen Bereichen vergleichbar. Hier steht, in welcher Skin-Farbe die '
-        +'Skala läuft: Anfang des Bezeichners eintragen (z. B. <code>Frost</code>), blass = '
-        +'wenig, Vollton = viel.</div>'
-        +listEditor(w,'mxScale','Zeile beginnt mit · Farbe',[{k:'row',ph:'Bezeichner'},{k:'color',type:'skincolor'}]);
+        +'Getroffen wird über den ANFANG des Bezeichners (<code>Frost</code> trifft '
+        +'„Frosttage"). Die Gruppe setzt eine Zwischenüberschrift, sobald sie wechselt. '
+        +'Jede Zeile wird EINZELN normiert — blass ist wenig, Vollton viel.</div>'
+        +listEditor(w,'mxScale','Zeile beginnt mit · Gruppe · Einheit · Farbe',
+          [{k:'row',ph:'Bezeichner'},{k:'grp',ph:'Gruppe'},{k:'unit',ph:'Einh'},{k:'color',type:'skincolor'}]);
     },
     wire:function(w){
       function neu(){_mxLoad(w,function(){_mxPaint(w);});commit();}
+      function nur(){_mxPaint(w);commit();}
       if($('#pMxVar'))$('#pMxVar').onchange=function(){w.varId=parseInt(this.value)||0;neu();};
       if($('#pMxVar2'))$('#pMxVar2').onchange=function(){w.varId2=parseInt(this.value)||0;neu();};
-      if($('#pMxLab'))$('#pMxLab').oninput=function(){w.srcLabel=this.value;_mxPaint(w);commit();};
-      if($('#pMxLab2'))$('#pMxLab2').oninput=function(){w.srcLabel2=this.value;_mxPaint(w);commit();};
-      if($('#pMxCols'))$('#pMxCols').onchange=function(){w.mxCols=parseInt(this.value)||0;w._mxOff=0;_mxPaint(w);commit();};
-      if($('#pMxVals'))$('#pMxVals').onchange=function(){w.mxVals=this.checked;_mxPaint(w);commit();};
-      if($('#pMxDec'))$('#pMxDec').onchange=function(){w.mxDec=(this.value===''?undefined:parseInt(this.value));_mxPaint(w);commit();};
-      if($('#pMxDef'))$('#pMxDef').onchange=function(){w.mxDefColor=this.value;_mxPaint(w);commit();};
+      if($('#pMxLab'))$('#pMxLab').oninput=function(){w.srcLabel=this.value;nur();};
+      if($('#pMxLab2'))$('#pMxLab2').oninput=function(){w.srcLabel2=this.value;nur();};
+      if($('#pMxCols'))$('#pMxCols').onchange=function(){w.mxCols=parseInt(this.value)||0;w._mxOff=0;nur();};
+      if($('#pMxSpark'))$('#pMxSpark').onchange=function(){w.mxSpark=this.checked;nur();};
+      if($('#pMxLbW'))$('#pMxLbW').onchange=function(){w.mxLbW=parseInt(this.value)||132;render();commit();};
+      if($('#pMxDec'))$('#pMxDec').onchange=function(){w.mxDec=(this.value===''?undefined:parseInt(this.value));nur();};
+      if($('#pMxDef'))$('#pMxDef').onchange=function(){w.mxDefColor=this.value;nur();};
     },
     live:function(w,el,id,d){
-      if(String(id)===String(w.varId)||String(id)===String(w.varId2)){_mxLoad(w,function(){_mxPaint(w);});}
+      if(String(id)===String(w.varId)||String(id)===String(w.varId2))_mxLoad(w,function(){_mxPaint(w);});
       return true;
     }
   });
