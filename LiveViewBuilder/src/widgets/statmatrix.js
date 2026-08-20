@@ -22,6 +22,28 @@
    * Aktive Quelle. Ohne Zutun gilt die eingestellte Standardansicht (mxDef) - erst ein Klick
    * auf den Umschalter setzt _mxSrc und ueberstimmt sie fuer diese Sitzung.
    */
+  /**
+   * Umschalt-Bus: die Matrix sagt an, welche Quelle gerade gilt, damit andere Kacheln
+   * denselben Zeitraum zeigen koennen. Ohne das vergleicht die Seite Aepfel mit Birnen -
+   * Matrix auf "ganze Jahre", die Kennzahl-Kacheln daneben weiter auf year to date.
+   * Nur im Speicher, je Sitzung: eine Symcon-Variable waere geraeteuebergreifend und wuerde
+   * bei jedem Tipp auch alle anderen Bildschirme umschalten.
+   */
+  var _mxBus = {};
+  function mxOn(session, fn) {
+    if (!session) return;
+    (_mxBus[session] || (_mxBus[session] = [])).push(fn);
+  }
+  function mxSrcOf(session) {
+    var b = _mxBus[session];
+    return (b && b._src === 1) ? 1 : 0;
+  }
+  function _mxEmit(w) {
+    var ses = w.mxSession; if (!ses) return;
+    var b = _mxBus[ses] || (_mxBus[ses] = []);
+    b._src = _mxSrc(w);
+    b.forEach(function (fn) { try { fn(b._src); } catch (e) {} });
+  }
   function _mxSrc(w){
     var s=(w._mxSrc!=null)?w._mxSrc:(String(w.mxDef)==='1'?1:0);
     return (s===1&&w.varId2)?1:0;
@@ -193,7 +215,7 @@
     var el=_mxEl(w);if(!el)return;
     el.innerHTML=_mxKopf(w)+_mxTabelle(w);
     el.querySelectorAll('[data-mxsrc]').forEach(function(b){b.onclick=function(){
-      w._mxSrc=parseInt(b.getAttribute('data-mxsrc'));w._mxOff=0;_mxPaint(w);};});
+      w._mxSrc=parseInt(b.getAttribute('data-mxsrc'));w._mxOff=0;_mxPaint(w);_mxEmit(w);};});
     el.querySelectorAll('[data-mxnav]').forEach(function(b){b.onclick=function(){
       var rows=_mxRows(w),n=rows.length?rows[0].length-1:0,cols=(w.mxCols>0?parseInt(w.mxCols):n);
       var d=parseInt(b.getAttribute('data-mxnav'));
@@ -208,7 +230,7 @@
     defaults:function(w){w.label='Kennzahlen je Jahr';w.mxCols=5;w.mxDefColor='accent';w.mxLbW=132;},
     render:function(w){return '<div class="panel mx" style="--mxlb:'+(w.mxLbW||132)+'px">'
       +'<div data-role="mxroot"></div></div>';},
-    mount:function(w){_mxLoad(w,function(){_mxPaint(w);});},
+    mount:function(w){_mxLoad(w,function(){_mxPaint(w);_mxEmit(w);});},
     props:function(w){
       return '<div class="pgh">Datenquellen (Tabelle im Zeilenformat)</div>'
         +'<div style="font-size:11px;color:var(--muted);margin:-2px 2px 5px">'
@@ -223,6 +245,7 @@
           +'<option value="1"'+(String(w.mxDef)==='1'?' selected':'')+'>'+escL(w.srcLabel2||'Bis heute')+'</option>'
           +'</select> <span style="font-size:11px;color:var(--muted)">beim Öffnen aktiv</span>'):'')
         +'<div class="pgh">Darstellung</div>'
+        +row('Kopplung (Kennung)','<input id="pMxSes" value="'+esc(w.mxSession||'')+'" placeholder="z. B. wxstat"> <span style="font-size:11px;color:var(--muted)">Kacheln mit derselben Kennung schalten mit um</span>')
         +row('Sichtbare Spalten','<input id="pMxCols" type="number" min="0" max="40" value="'+(w.mxCols!=null?w.mxCols:5)+'"> <span style="font-size:11px;color:var(--muted)">0 = alle; sonst blättern die Pfeile im Kopf</span>')
         +row('Verlaufsspalte','<input type="checkbox" id="pMxSpark"'+((w.mxSpark!==false)?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">Sparkline über ALLE Spalten, auch die ausgeblendeten</span>')
         +row('Breite Bezeichner','<input id="pMxLbW" type="number" min="70" max="300" value="'+(w.mxLbW||132)+'"> px')
@@ -243,6 +266,7 @@
       if($('#pMxVar2'))$('#pMxVar2').onchange=function(){w.varId2=parseInt(this.value)||0;neu();};
       if($('#pMxLab'))$('#pMxLab').oninput=function(){w.srcLabel=this.value;nur();};
       if($('#pMxLab2'))$('#pMxLab2').oninput=function(){w.srcLabel2=this.value;nur();};
+      if($('#pMxSes'))$('#pMxSes').onchange=function(){w.mxSession=this.value||undefined;commit();};
       if($('#pMxCols'))$('#pMxCols').onchange=function(){w.mxCols=parseInt(this.value)||0;w._mxOff=0;nur();};
       if($('#pMxSpark'))$('#pMxSpark').onchange=function(){w.mxSpark=this.checked;nur();};
       if($('#pMxLbW'))$('#pMxLbW').onchange=function(){w.mxLbW=parseInt(this.value)||132;render();commit();};
