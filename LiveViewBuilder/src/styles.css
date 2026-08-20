@@ -3203,7 +3203,8 @@
         font-family:ui-monospace,Menlo,monospace;min-width:74px;text-align:center}
 /* Raster: Bezeichner | Jahre | Verlauf. Die Spaltenzahl kommt vom Widget. */
 .mx-tab{flex:1;min-height:0;display:grid;align-content:space-evenly;
-        gap:clamp(1px,.35cqmin,3px);font-variant-numeric:tabular-nums}
+        row-gap:clamp(1px,.35cqmin,3px);column-gap:clamp(4px,1.1cqmin,9px);
+        font-variant-numeric:tabular-nums}
 .mx-hz{font-size:clamp(9px,1.5cqmin,11px);color:var(--muted);text-align:center;
        font-family:ui-monospace,Menlo,monospace;padding-bottom:2px}
 .mx-hz.jetzt{color:var(--accent-2);font-weight:700}
@@ -3215,9 +3216,12 @@
 .mx-lb{display:flex;align-items:center;gap:5px;font-size:clamp(9px,1.6cqmin,11.5px);
        color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .mx-lb i{font-style:normal;font-size:.82em;color:var(--muted);opacity:.8}
-.mx-z{display:flex;align-items:center;justify-content:center;border-radius:5px;
-      font-family:ui-monospace,Menlo,monospace;font-size:clamp(9px,1.6cqmin,12px);
-      color:var(--text);min-height:0;padding:clamp(2px,.6cqmin,5px) 0;line-height:1.15}
+/* Zellen bewusst schmaler als die Spalte und deutlich gerundet: volle Spaltenbreite
+   ergibt breite Bloecke, die die Matrix schwer und grob wirken lassen. */
+.mx-z{display:flex;align-items:center;justify-content:center;border-radius:9px;
+      font-family:ui-monospace,Menlo,monospace;font-size:clamp(9px,1.5cqmin,11.5px);
+      color:var(--text);min-height:0;padding:clamp(2px,.55cqmin,5px) 0;line-height:1.15;
+      width:100%;max-width:clamp(52px,11cqmin,88px);justify-self:center}
 .mx-z.jetzt{box-shadow:inset 0 0 0 1.5px var(--accent-2)}
 .mx-vl{display:flex;align-items:center;justify-content:flex-end;color:var(--muted)}
 .mx-leer{flex:1;display:flex;align-items:center;justify-content:center;
