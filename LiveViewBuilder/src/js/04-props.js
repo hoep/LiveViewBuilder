@@ -249,7 +249,9 @@
         // Bei Mehrfachauswahl auf ALLE gewaehlten anwenden - Raender setzt man selten
         // fuer eine Kachel allein, sondern fuer eine ganze Reihe.
         if(sel[w.id]&&Object.keys(sel).length>1)selWidgets().forEach(setOne);else setOne(w);
-        render();};});
+        // render() zeichnet nur neu - ohne commit() landet der Wert nie im Speicher und ist
+        // beim naechsten Aufbau wieder weg.
+        render();commit();};});
     ['pX','pY','pW','pH'].forEach(function(k){var el=$('#'+k);el.oninput=function(){var v=parseInt(el.value)||0;
       function setOne(t){if(k==='pX')t.x=v;if(k==='pY')t.y=v;if(k==='pW')t.w=Math.max(40,v);if(k==='pH')t.h=Math.max(28,v);}
       // Breite/Höhe bei Mehrfachauswahl auf ALLE selektierten Widgets anwenden (X/Y bleiben pro Element – dafür gibt es Ausrichten)

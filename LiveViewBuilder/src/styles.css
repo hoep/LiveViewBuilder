@@ -36,7 +36,9 @@
   .w{position:absolute;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-s);overflow:hidden;-webkit-user-select:none;user-select:none;container-type:size}
   .wsrc{position:absolute;top:3px;right:4px;z-index:6;font-size:9px;line-height:1;padding:2px 5px;border-radius:6px;background:color-mix(in oklab,var(--surface-2) 82%,transparent);color:var(--faint);letter-spacing:.02em;pointer-events:none;opacity:.8;font-weight:600}
   .w *{scrollbar-width:none}.w *::-webkit-scrollbar{width:0;height:0;background:transparent} /* Widgets zeigen nie Scrollbars (Scrollen bleibt möglich) */
-  .winner{position:absolute;left:0;top:0;width:100%;height:100%;transform-origin:top left;isolation:isolate;
+  .winner{position:absolute;left:var(--wpl,0px);top:var(--wpt,0px);
+    width:calc(100% - var(--wpl,0px) - var(--wpr,0px));
+    height:calc(100% - var(--wpt,0px) - var(--wpb,0px));transform-origin:top left;isolation:isolate;
     /* isolation:isolate -> eigener Stacking-Kontext je Widget. Sonst steigt ein interner
        z-index (z. B. der Aktuell-Marker .cnow im Wetter+, z-index:2) bis zum Canvas auf und
        wird ueber ANDEREN Widgets gemalt - sichtbar als schwarzer Punkt auf jedem neu an

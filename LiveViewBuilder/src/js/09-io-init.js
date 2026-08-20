@@ -404,7 +404,7 @@
       // der Abstand kleiner werden - sonst frisst er auf dem Handy die halbe Kachel.
       el.style.transform='none';el.style.left=bx+'px';el.style.top=by+'px';
       el.style.width=bw+'px';el.style.height=bh+'px';
-      el.style.padding=wPadCss(w,s);
+      wPadVars(el,w,s);
       if(sfClass(w)==='s'){win.style.transform='';win.style.width='';win.style.height='';stretched.push(w);}
       else{var _p=wPad(w,1);win.style.width=Math.max(8,w.w-_p.l-_p.r)+'px';win.style.height=Math.max(8,w.h-_p.t-_p.b)+'px';win.style.transformOrigin='top left';win.style.transform='scale('+s+')';}
     });
@@ -454,7 +454,7 @@
       if(isS){win.style.transform='';win.style.width='';win.style.height='';stretched.push(w);}else{var _p2=wPad(w,1);win.style.width=Math.max(8,w.w-_p2.l-_p2.r)+'px';win.style.height=Math.max(8,w.h-_p2.t-_p2.b)+'px';win.style.transform='scale('+s.toFixed(4)+')';}
       el.style.transform='none';el.style.left=px.toFixed(1)+'px';el.style.top=py.toFixed(1)+'px';
       el.style.width=(w.w*s).toFixed(1)+'px';el.style.height=(w.h*s).toFixed(1)+'px';
-      el.style.padding=wPadCss(w,s);};
+      wPadVars(el,w,s);};
     // platzieren: Zeile horizontal zentriert, Einheiten vertikal zentriert
     var y=M;
     lines.forEach(function(line){
