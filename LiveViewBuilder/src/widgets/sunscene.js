@@ -195,6 +195,31 @@
      * nicht so, wie sie zuletzt jemand verdreht hat. Erst das Drehen von Hand legt eine
      * abweichende Ansicht ab, und das Doppeltippen raeumt sie wieder weg.
      */
+    /**
+     * Vorgaben aus dem HomeSuite Hub (Nordausrichtung, Koordinaten). Sie sind dort ohnehin
+     * fuer die Beschattung gepflegt - die Szene soll sie nicht ein zweites Mal gepflegt
+     * bekommen. Ein eigener Eintrag im Widget geht weiterhin vor; leer heisst "aus dem Hub".
+     * Einmal je Seitenaufbau geholt, das Ergebnis teilen sich alle Kacheln.
+     */
+    var _ssHub = null, _ssHubReq = 0;
+    function ssHub() { return _ssHub || {}; }
+    function ssHubLoad(cb) {
+      if (_ssHub) { cb && cb(); return; }
+      if (_ssHubReq) { return; }
+      _ssHubReq = 1;
+      fetch('?api=light&op=housegeo', { cache: 'no-store' })
+        .then(function (r) { return r.json(); })
+        .then(function (j) { _ssHub = (j && j.ok) ? j : {}; })
+        .catch(function () { _ssHub = {}; })
+        .then(function () { cb && cb(); });
+    }
+    /** Wert aus dem Widget, sonst aus dem Hub, sonst die eingebaute Vorgabe. */
+    function ssGeo(w, feld, hubFeld, vorgabe) {
+      var v = w[feld];
+      if (v !== undefined && v !== null && v !== '') return parseFloat(v);
+      var h = ssHub()[hubFeld];
+      return (h !== undefined && h !== null) ? parseFloat(h) : vorgabe;
+    }
     function ssKey(w) { return 'lvb.ss.' + w.id; }
     function ssLoadView(w) {
       if (!w.ssKeep) return null;
@@ -898,7 +923,7 @@
       var L = Math.max(4, ssNum(w.ssHouseL, 25)), B = Math.max(4, ssNum(w.ssHouseB, 12));
       var Ht = Math.max(2, ssNum(w.ssHouseH, 7.5));                 // Traufhoehe
       var Hr = Math.max(0, ssNum(w.ssRoofH, 3.5));                // Firstueberhoehung
-      var rot = ssNum(w.ssNorth, 0) * D, c = Math.cos(rot), sn = Math.sin(rot);
+      var rot = ssGeo(w, 'ssNorth', 'northDeg', 0) * D, c = Math.cos(rot), sn = Math.sin(rot);
       function P(x, y) { return { e: x * c - y * sn, n: x * sn + y * c }; }
       var ring, ridgeA, ridgeB;
       var oi = (geo && _covOn2(w, 'ssOwnFromOsm', true)) ? ssOwnIdx(geo) : -1;
@@ -1259,7 +1284,11 @@
         // Kompass direkt darunter, rechtsbuendig zur Zeitzeile.
         if (cam && _covOn2(w, 'ssCompass', true)) {
           var cr = Math.max(9, f * 0.80);
-          ssCompass(ctx, W - pad - cr, pad + f * 0.72 + f * 0.45 + cr, cr, cam.bearing, pal);
+          var ccx = W - pad - cr, ccy = pad + f * 0.72 + f * 0.45 + cr;
+          ssCompass(ctx, ccx, ccy, cr, cam.bearing, pal);
+          // Trefferflaeche merken: der Kompass IST der Nord-Knopf. Ein eigenes Knopf-Element
+          // laege zwangslaeufig auf einer der Anzeigen - hier auf der Sonnen-Zeile.
+          ssSt(w).hit = { x: ccx, y: ccy, r: cr * 1.9 };
         }
       }
       ctx.restore();
@@ -1308,6 +1337,14 @@
           e.preventDefault();
           return;
         }
+        // Kompass angetippt? -> Ansicht nach Norden drehen (kein Ziehen beginnen).
+        var hb = st.hit;
+        if (hb && !(typeof editing !== 'undefined' && editing)) {
+          var rc = box.getBoundingClientRect();
+          var sc = rc.width ? (box.firstElementChild ? box.firstElementChild.width / (window.devicePixelRatio || 1) / rc.width : 1) : 1;
+          var mx = (e.clientX - rc.left) * (sc || 1), my = (e.clientY - rc.top) * (sc || 1);
+          if (Math.abs(mx - hb.x) <= hb.r && Math.abs(my - hb.y) <= hb.r) { ssResetView(w, el); e.preventDefault(); return; }
+        }
         st.drag = { x: e.clientX, y: e.clientY, b: st.bearing != null ? st.bearing : ssNum(w.ssBearing, 20),
                     p: st.pitch != null ? st.pitch : ssNum(w.ssPitch, 52), axis: null };
         try { box.setPointerCapture(e.pointerId); } catch (_) {}
@@ -1326,9 +1363,9 @@
           if (st.drag.axis === 'v') { st.drag = null; return; }       // senkrecht -> Seite scrollen lassen
         }
         st.bearing = ((st.drag.b - dx * 0.4) % 360 + 360) % 360;
-        e.preventDefault(); ssDraw(w, el); ssResetBtn(w, el);
+        e.preventDefault(); ssDraw(w, el);
       };
-      function up(e) { if (st.drag) { st.drag = null; try { box.releasePointerCapture(e.pointerId); } catch (_) {} ssSaveView(w); ssResetBtn(w, el); } }
+      function up(e) { if (st.drag) { st.drag = null; try { box.releasePointerCapture(e.pointerId); } catch (_) {} ssSaveView(w); } }
       box.onpointerup = up; box.onpointercancel = up;
 
       // Mausrad zoomt den Umkreis. Nur wenn das Widget schon gedreht/bedient wurde oder
@@ -1338,7 +1375,7 @@
         if (!e.ctrlKey && st.radius == null && st.bearing == null) return;
         var r = st.radius != null ? st.radius : ssNum(w.ssRadius, 55);
         st.radius = Math.max(20, Math.min(400, r * (e.deltaY > 0 ? 1.12 : 0.89)));
-        e.preventDefault(); ssDraw(w, el); ssSaveView(w); ssResetBtn(w, el);
+        e.preventDefault(); ssDraw(w, el); ssSaveView(w);
       };
       // Doppeltippen stellt die eingestellte Ansicht wieder her.
       box.ondblclick = function () {
@@ -2008,18 +2045,11 @@
       var b = st.bearing != null ? st.bearing : ssNum(w.ssBearing, 20);
       return Math.abs(((b % 360) + 360) % 360) < 0.05;
     }
-    /** Knopf zeigen, sobald die Ansicht nicht genau nach Norden blickt oder sonst abweicht. */
-    function ssResetBtn(w, el) {
-      var b = $('[data-ssreset]', el); if (!b) return;
-      var st = ssSt(w);
-      var ab = (!ssIstNord(w) || st.pitch != null || st.radius != null);
-      if (ab) b.removeAttribute('hidden'); else b.setAttribute('hidden', '');
-    }
     function ssResetView(w, el) {
       var st = ssSt(w);
       st.bearing = 0;                       // exakt Norden oben
       st.pitch = null; st.radius = null; st.now = 0; st.key = null;
-      ssDraw(w, el); ssSaveView(w); ssResetBtn(w, el);
+      ssDraw(w, el); ssSaveView(w);
     }
 
     // ---- Widget ----
@@ -2027,25 +2057,18 @@
       label: 'Sonnenszene', cat: 'Wetter & Zeit', paletteIcon: 'sun', size: [420, 260], noHover: true,
       defaults: function (w) {
         w.ssPitch = 52; w.ssBearing = 20; w.ssRadius = 55;
-        w.ssHouseL = 25; w.ssHouseB = 12; w.ssHouseH = 7.5; w.ssRoofH = 3.5; w.ssNorth = 0;
+        w.ssHouseL = 25; w.ssHouseB = 12; w.ssHouseH = 7.5; w.ssRoofH = 3.5;   // ssNorth: leer = aus dem Hub
       },
       render: function () {
-        // Der Knopf stellt die eingestellte Blickrichtung wieder her. Doppeltippen tut
-        // dasselbe, ist aber nicht zu sehen - und was man nicht sieht, findet man nicht.
-        return '<div class="ssc" data-role="ssbox"><canvas></canvas>'
-             + '<button class="ss-reset" data-ssreset title="Ansicht zurücksetzen" hidden>'
-             + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" '
-             + 'stroke-linecap="round" stroke-linejoin="round">'
-             + '<path d="M12 21V3"/><path d="M8 7l4-4 4 4"/></svg><b>N</b></button></div>';
+        return '<div class="ssc" data-role="ssbox"><canvas></canvas></div>';
       },
       mount: function (w) {
         var el = ssEl(w); if (!el) return;
         ssSt(w).w = w;                            // fuer den Skinwechsel erreichbar machen
         ssRestore(w);                             // gemerkte Ansicht (nur bei "Drehung merken")
+        ssHubLoad(function () { var e2 = ssEl(w); if (e2) { ssSt(w).key = null; ssDraw(w, e2); } });
         ssBind(w, el); ssDraw(w, el);
-        var rb = $('[data-ssreset]', el);
-        if (rb) rb.onclick = function (e) { e.stopPropagation(); ssResetView(w, el); };
-        ssResetBtn(w, el);
+
         // Groessenaenderung -> neu zeichnen (Kachel skaliert, Fenster, Reflow, Zoom)
         var box = $('[data-role=ssbox]', el);
         if (box && typeof ResizeObserver !== 'undefined') {
@@ -2103,7 +2126,11 @@
         h += row('Länge × Breite (m)', '<input id="ssHL" type="number" step="0.5" min="3" value="' + ssNum(w.ssHouseL, 25) + '" style="width:60px"> <input id="ssHB" type="number" step="0.5" min="3" value="' + ssNum(w.ssHouseB, 12) + '" style="width:60px">');
         h += row('Traufe / First (m)', '<input id="ssHH" type="number" step="0.5" value="' + ssNum(w.ssHouseH, 7.5) + '" style="width:60px"> <input id="ssHR" type="number" step="0.2" value="' + ssNum(w.ssRoofH, 3.5) + '" style="width:60px">');
         h += row('Grundstück', '<input type="checkbox" id="ssPlot"' + (_covOn2(w, 'ssPlot', true) ? ' checked' : '') + '>');
-        h += row('Nordausrichtung (°)', '<input id="ssN" type="number" step="0.1" value="' + ssNum(w.ssNorth, 0) + '" style="width:64px">');
+        h += row('Nordausrichtung (°)', '<input id="ssN" type="number" step="0.1" value="'
+              + ((w.ssNorth === undefined || w.ssNorth === null || w.ssNorth === '') ? '' : w.ssNorth)
+              + '" placeholder="' + (ssHub().northDeg != null ? ssHub().northDeg : 'Hub') + '" style="width:64px">'
+              + ' <span style="font-size:11px;color:var(--muted)">leer = aus dem HomeSuite Hub'
+              + (ssHub().northDeg != null ? (' (' + ssHub().northDeg + '°)') : '') + '</span>');
         h += '<div style="font-size:11px;color:var(--muted);margin:2px 2px 6px">Der First verläuft entlang der <b>Länge</b>. Nordausrichtung dreht das Haus (0° = Länge in Ost-West-Richtung).</div>';
         h += '<div class="pgh">Nachbarschaft</div>';
         h += row('Gebäude zeigen', '<input type="checkbox" id="ssBuildings"' + (_covOn2(w, 'ssBuildings', true) ? ' checked' : '') + '>');
