@@ -497,6 +497,30 @@ if ($api === 'runscript') {
     return;
 }
 
+// ---- Serienrecorder: eine doppelte Aufnahme loeschen (token):  ?api=srdel&inst=<id>&pfad=<pfad>&key=TOKEN ----
+//      Loeschen ist nicht harmlos, deshalb Token wie bei runscript. Zusaetzlich wird geprueft,
+//      dass die Zielinstanz wirklich ein SeriesRecorder ist - der Hook ruft keine beliebige
+//      Funktion auf einer beliebigen Instanz. Die eigentliche Sicherung sitzt im Modul: es
+//      rechnet die Duplikatliste neu und lehnt ab, was dort nicht als ueberfluessig steht.
+if ($api === 'srdel') {
+    header('Content-Type: application/json; charset=utf-8');
+    if (!hash_equals($TOKEN, (string) ($_GET['key'] ?? ''))) {
+        http_response_code(403);
+        echo json_encode(['error' => 'forbidden']);
+        return;
+    }
+    $inst = (int) ($_GET['inst'] ?? 0);
+    $pfad = (string) ($_GET['pfad'] ?? '');
+    $guid = ($inst > 0 && @IPS_InstanceExists($inst)) ? (IPS_GetInstance($inst)['ModuleInfo']['ModuleID'] ?? '') : '';
+    if ($guid !== '{F7F9F89F-82ED-4478-970F-C3C749912A0A}' || !function_exists('SR_LoescheDatei')) {
+        http_response_code(404);
+        echo json_encode(['error' => 'kein SeriesRecorder']);
+        return;
+    }
+    echo SR_LoescheDatei($inst, $pfad);
+    return;
+}
+
 // ---- BatteryManager-Scan auslösen (harmlos, ohne Token):  ?api=batscan&vid=<Register-VarID> ----
 //      Ermittelt die Instanz über den Parent der Register-Variable und ruft BM_Update NUR,
 //      wenn es wirklich eine BatteryManager-Instanz ist (kein beliebiger Aufruf).
