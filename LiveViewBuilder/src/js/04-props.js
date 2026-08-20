@@ -243,7 +243,8 @@
     // Raender: gelten fuer JEDES Widget und wirken nur auf die Kachel, nicht auf das Raster.
     ['pMT','pMR','pMB','pML'].forEach(function(k){var el=$('#'+k);if(!el)return;
       el.oninput=function(){
-        var v=Math.max(0,parseInt(el.value)||0),key='m'+k.charAt(3);
+        // 'pMT' -> Index 2 ist der Buchstabe. charAt(3) war daneben und setzte 'm'.
+        var v=Math.max(0,parseInt(el.value)||0),key='m'+k.charAt(2);
         function setOne(t){if(v)t[key]=v;else delete t[key];}
         // Bei Mehrfachauswahl auf ALLE gewaehlten anwenden - Raender setzt man selten
         // fuer eine Kachel allein, sondern fuer eine ganze Reihe.
