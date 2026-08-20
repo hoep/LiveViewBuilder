@@ -1402,13 +1402,14 @@ if ($api === 'light') {
     if ($op === 'scenes' || $op === 'scene' || $op === 'sceneapply' || $op === 'scenecapture'
         || $op === 'scenesave' || $op === 'scenedelete' || $op === 'scenerename'
         || $op === 'autoget' || $op === 'autoset' || $op === 'autotick' || $op === 'sensors'
-        || $op === 'bandget' || $op === 'bandset') {
+        || $op === 'bandget' || $op === 'bandset' || $op === 'housegeo') {
         if (!function_exists('HSH_Manage')) { echo json_encode(['ok' => false, 'err' => 'hub_prefix']); return; }
         $hub = (int) (@IPS_GetInstanceListByModuleID('{A0C082B4-9E74-430E-BD97-F9CEBB364257}')[0] ?? 0);
         if ($hub <= 0) { echo json_encode(['ok' => false, 'err' => 'no_hub']); return; }
 
         if ($op === 'autoget') { echo HSH_Manage($hub, json_encode(['op' => 'lightAutoGet'])); return; }
         if ($op === 'bandget') { echo HSH_Manage($hub, json_encode(['op' => 'lightAutoBandGet'])); return; }
+        if ($op === 'housegeo') { echo HSH_Manage($hub, json_encode(['op' => 'houseGeo'])); return; }
         if ($op === 'bandset') { // Baender schreiben: Token
             if (!hash_equals($TOKEN, (string) ($_GET['key'] ?? ''))) {
                 http_response_code(403); echo json_encode(['ok' => false, 'err' => 'forbidden']); return;
