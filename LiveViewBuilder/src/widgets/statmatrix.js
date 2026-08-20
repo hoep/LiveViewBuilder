@@ -57,6 +57,38 @@
     var off=Math.max(0,Math.min(anz-n,(w._mxOff||0)));
     return {von:anz-n-off,bis:anz-off};
   }
+  /**
+   * Zellfarbe aus dem normierten Anteil. Gemischt wird gegen die FLAECHENFARBE, nicht per
+   * Deckkraft: Alpha mischt im hellen Thema gegen Weiss und im dunklen gegen Schwarz - dort
+   * wirkte die halbe Matrix matt und "zart", obwohl es dieselben Werte waren. color-mix
+   * gegen --surface sieht in beiden Themen gleich aus; die rgba-Zeile davor bleibt als
+   * Rueckfallebene fuer Browser ohne color-mix stehen.
+   *
+   * Die Rampe beginnt bei 16 % statt bei null - eine Zeile, deren Minimum unsichtbar ist,
+   * sieht aus wie eine Luecke - und laeuft mit t^0.85 leicht angehoben, damit die Mitte
+   * nicht durchhaengt.
+   */
+  function _mxAnteil(t){
+    t=Math.max(0,Math.min(1,t));
+    return 0.16+0.84*Math.pow(t,0.85);
+  }
+  function _mxBg(hex,t){
+    var a=_mxAnteil(t);
+    return 'background:'+accA(a,hex)+';'
+         + 'background:color-mix(in oklab,'+hex+' '+Math.round(a*100)+'%,var(--surface));';
+  }
+  /**
+   * Schriftfarbe aus der GEMISCHTEN Zellfarbe statt aus einer festen Schwelle. Eine feste
+   * Schwelle stimmt immer nur fuer ein Thema: im hellen Thema sind blasse Zellen fast weiss
+   * (dunkle Schrift noetig), im dunklen fast schwarz (helle Schrift) - bei gleichem Anteil.
+   * Gerechnet wird die Helligkeit der Mischung aus Zeilenfarbe und Flaechenfarbe.
+   */
+  function _mxHell(hex,t){
+    var a=_mxAnteil(t),c=_rgb(hex),s=_rgb(cssv('--surface')||'#ffffff'),l=0,i;
+    var g=[0.2126,0.7152,0.0722];
+    for(i=0;i<3;i++)l+=g[i]*(c[i]*a+s[i]*(1-a))/255;
+    return l<0.55;   // dunkle Zelle -> helle Schrift
+  }
   /** Sparkline ueber ALLE Spalten der Zeile - der Verlauf soll nicht am Fenster enden. */
   function _mxSpark(werte,hex){
     var g=werte.filter(function(v){return !isNaN(v);});
@@ -122,12 +154,8 @@
       for(k=F.von;k<F.bis;k++){
         var v=alle[k],t=isNaN(v)?0:(v-lo)/sp;
         var jz=(String(kopf[k+1])===jetzt)?' jetzt':'';
-        // Rampe bis zum Vollton - eine Heatmap lebt davon, dass das Maximum wirklich
-        // kraeftig ist. Ab etwa der Haelfte kippt die Schrift auf Weiss, sonst verliert
-        // sie auf der dunklen Zelle den Kontrast.
-        var hell=(t>0.5);
-        h+='<div class="mx-z'+jz+(hell?' hell':'')+'" style="background:'
-          +(isNaN(v)?'transparent':accA(0.09+0.91*t,hex))+'">'+_mxFmt(w,v)+'</div>';
+        h+='<div class="mx-z'+jz+(_mxHell(hex,t)?' hell':'')+'" style="'
+          +(isNaN(v)?'':_mxBg(hex,t))+'">'+_mxFmt(w,v)+'</div>';
       }
       if(spark)h+='<div class="mx-vl">'+_mxSpark(alle,hex)+'</div>';
     });
