@@ -3233,3 +3233,14 @@
 .mx-vl{display:flex;align-items:center;justify-content:flex-end;color:var(--muted)}
 .mx-leer{flex:1;display:flex;align-items:center;justify-content:center;
          font-size:12px;color:var(--muted);opacity:.7}
+
+/* ---- sunscene: Knopf "Ansicht zurücksetzen" --------------------------- */
+.ssc{position:relative}
+.ss-reset{position:absolute;left:8px;top:8px;z-index:3;display:flex;align-items:center;gap:3px;
+          padding:3px 7px 3px 5px;border:1px solid var(--line);border-radius:7px;
+          background:color-mix(in oklab,var(--surface) 82%,transparent);
+          color:var(--muted);cursor:pointer;line-height:1}
+.ss-reset:hover{color:var(--text);border-color:var(--accent)}
+.ss-reset svg{width:13px;height:13px}
+.ss-reset b{font-size:10px;font-weight:700;letter-spacing:.04em}
+.ss-reset[hidden]{display:none}

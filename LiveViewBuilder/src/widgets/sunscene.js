@@ -188,6 +188,36 @@
 
     function ssEl(w) { return $('.w[data-id="' + w.id + '"]', canvas) || $('.w[data-id="' + w.id + '"]', $('#ovcanvas')); }
     function ssSt(w) { return _ssState[w.id] || (_ssState[w.id] = { bearing: null, pitch: null, drag: null, raf: 0, spin: 0 }); }
+    /**
+     * Gedrehte Ansicht je Geraet merken (nur wenn "Drehung merken" an ist).
+     * Ohne Merker gilt beim Aufbau IMMER die eingestellte Blickrichtung - das ist der
+     * Normalfall: eine Kachel an der Wand soll morgens so stehen wie gestern eingerichtet,
+     * nicht so, wie sie zuletzt jemand verdreht hat. Erst das Drehen von Hand legt eine
+     * abweichende Ansicht ab, und das Doppeltippen raeumt sie wieder weg.
+     */
+    function ssKey(w) { return 'lvb.ss.' + w.id; }
+    function ssLoadView(w) {
+      if (!w.ssKeep) return null;
+      try { var r = localStorage.getItem(ssKey(w)); return r ? JSON.parse(r) : null; } catch (_) { return null; }
+    }
+    function ssSaveView(w) {
+      if (!w.ssKeep) return;
+      var st = ssSt(w);
+      try {
+        if (st.bearing == null && st.pitch == null && st.radius == null) localStorage.removeItem(ssKey(w));
+        else localStorage.setItem(ssKey(w), JSON.stringify({ b: st.bearing, p: st.pitch, r: st.radius }));
+      } catch (_) {}
+    }
+    /** Einmal je Kachel den Merker in den Laufzeit-Zustand holen. */
+    function ssRestore(w) {
+      var st = ssSt(w);
+      if (st._restored) return; st._restored = 1;
+      var v = ssLoadView(w);
+      if (!v) return;
+      if (v.b != null) st.bearing = v.b;
+      if (v.p != null) st.pitch = v.p;
+      if (v.r != null) st.radius = v.r;
+    }
     function ssNum(v, d) { var n = parseFloat(v); return isNaN(n) ? d : n; }
     // Wert einer gebundenen Variablen. WAHRHEITSWERTE zaehlen mit: ein Regensensor, ein
     // Fensterkontakt, ein Schaltausgang liefern true/false, und parseFloat(true) ist NaN -
@@ -1296,9 +1326,9 @@
           if (st.drag.axis === 'v') { st.drag = null; return; }       // senkrecht -> Seite scrollen lassen
         }
         st.bearing = ((st.drag.b - dx * 0.4) % 360 + 360) % 360;
-        e.preventDefault(); ssDraw(w, el);
+        e.preventDefault(); ssDraw(w, el); ssResetBtn(w, el);
       };
-      function up(e) { if (st.drag) { st.drag = null; try { box.releasePointerCapture(e.pointerId); } catch (_) {} } }
+      function up(e) { if (st.drag) { st.drag = null; try { box.releasePointerCapture(e.pointerId); } catch (_) {} ssSaveView(w); ssResetBtn(w, el); } }
       box.onpointerup = up; box.onpointercancel = up;
 
       // Mausrad zoomt den Umkreis. Nur wenn das Widget schon gedreht/bedient wurde oder
@@ -1308,13 +1338,12 @@
         if (!e.ctrlKey && st.radius == null && st.bearing == null) return;
         var r = st.radius != null ? st.radius : ssNum(w.ssRadius, 55);
         st.radius = Math.max(20, Math.min(400, r * (e.deltaY > 0 ? 1.12 : 0.89)));
-        e.preventDefault(); ssDraw(w, el);
+        e.preventDefault(); ssDraw(w, el); ssSaveView(w); ssResetBtn(w, el);
       };
       // Doppeltippen stellt die eingestellte Ansicht wieder her.
       box.ondblclick = function () {
         if (typeof editing !== 'undefined' && editing) return;
-        st.bearing = null; st.pitch = null; st.radius = null; st.now = 0;
-        st.key = null; ssDraw(w, el);
+        ssResetView(w, el);
       };
     }
 
@@ -1966,6 +1995,19 @@
       st.key = null; ssDraw(w, el);
     }
 
+    /** Knopf nur zeigen, wenn die Ansicht ueberhaupt von der Vorgabe abweicht. */
+    function ssResetBtn(w, el) {
+      var b = $('[data-ssreset]', el); if (!b) return;
+      var st = ssSt(w);
+      var ab = (st.bearing != null || st.pitch != null || st.radius != null);
+      if (ab) b.removeAttribute('hidden'); else b.setAttribute('hidden', '');
+    }
+    function ssResetView(w, el) {
+      var st = ssSt(w);
+      st.bearing = null; st.pitch = null; st.radius = null; st.now = 0; st.key = null;
+      ssDraw(w, el); ssSaveView(w); ssResetBtn(w, el);
+    }
+
     // ---- Widget ----
     defWidget('sunscene', {
       label: 'Sonnenszene', cat: 'Wetter & Zeit', paletteIcon: 'sun', size: [420, 260], noHover: true,
@@ -1974,12 +2016,22 @@
         w.ssHouseL = 25; w.ssHouseB = 12; w.ssHouseH = 7.5; w.ssRoofH = 3.5; w.ssNorth = 0;
       },
       render: function () {
-        return '<div class="ssc" data-role="ssbox"><canvas></canvas></div>';
+        // Der Knopf stellt die eingestellte Blickrichtung wieder her. Doppeltippen tut
+        // dasselbe, ist aber nicht zu sehen - und was man nicht sieht, findet man nicht.
+        return '<div class="ssc" data-role="ssbox"><canvas></canvas>'
+             + '<button class="ss-reset" data-ssreset title="Ansicht zurücksetzen" hidden>'
+             + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" '
+             + 'stroke-linecap="round" stroke-linejoin="round">'
+             + '<path d="M12 21V3"/><path d="M8 7l4-4 4 4"/></svg><b>N</b></button></div>';
       },
       mount: function (w) {
         var el = ssEl(w); if (!el) return;
         ssSt(w).w = w;                            // fuer den Skinwechsel erreichbar machen
+        ssRestore(w);                             // gemerkte Ansicht (nur bei "Drehung merken")
         ssBind(w, el); ssDraw(w, el);
+        var rb = $('[data-ssreset]', el);
+        if (rb) rb.onclick = function (e) { e.stopPropagation(); ssResetView(w, el); };
+        ssResetBtn(w, el);
         // Groessenaenderung -> neu zeichnen (Kachel skaliert, Fenster, Reflow, Zoom)
         var box = $('[data-role=ssbox]', el);
         if (box && typeof ResizeObserver !== 'undefined') {
@@ -2103,7 +2155,9 @@
         });
         h += '<div class="pgh">Ansicht</div>';
         h += row('Neigung (°)', '<input id="ssP" type="number" min="0" max="70" value="' + ssNum(w.ssPitch, 52) + '" style="width:64px">');
-        h += row('Blickrichtung (°)', '<input id="ssB" type="number" min="0" max="359" value="' + ssNum(w.ssBearing, 20) + '" style="width:64px">');
+        h += row('Blickrichtung (°)', '<input id="ssB" type="number" min="0" max="359" value="' + ssNum(w.ssBearing, 20) + '" style="width:64px">'
+              + ' <span style="font-size:11px;color:var(--muted)">0 = genau Nord</span>');
+        h += row('Drehung merken', '<input type="checkbox" id="ssKeep"' + (w.ssKeep ? ' checked' : '') + '> <span style="font-size:11px;color:var(--muted)">von Hand gedrehte Ansicht je Gerät behalten; ohne Haken gilt beim Öffnen immer die Blickrichtung oben</span>');
         h += row('Umkreis (m)', '<input id="ssR" type="number" min="20" max="400" value="' + ssNum(w.ssRadius, 55) + '" style="width:64px">');
         h += row('Zeitleiste', '<input type="checkbox" id="ssStrip"' + (_covOn2(w, 'ssStrip', true) ? ' checked' : '') + '>');
         h += row('Höhe der Zeitleiste (%)', '<input id="ssStripPct" type="number" min="50" max="200" step="5" value="' + ssNum(w.ssStripPct, 100) + '" style="width:64px"> <span style="font-size:11px;color:var(--muted)">100 % = automatisch, kleiner = flacher</span>');
@@ -2139,6 +2193,11 @@
           var e = $('#' + o[0]); if (e) e.onchange = function () { w[o[1]] = this.value || undefined; up(); };
         });
         var _cs = $('#ssCloudSrc'); if (_cs) _cs.onchange = function () { w.ssCloudSrc = (this.value === 'auto') ? undefined : this.value; up(); };
+        var _kp = $('#ssKeep'); if (_kp) _kp.onchange = function () {
+          w.ssKeep = this.checked || undefined;
+          if (!w.ssKeep) { try { localStorage.removeItem('lvb.ss.' + w.id); } catch (_) {} }
+          up();
+        };
         [['ssGeoR', 'ssGeoR'], ['ssMaxB', 'ssMaxB'], ['ssEnRad', 'ssEnRad'], ['ssEnA0', 'ssEnA0'], ['ssEnRef', 'ssEnRef'], ['ssLat', 'lat'], ['ssLon', 'lon'], ['ssHL', 'ssHouseL'], ['ssHB', 'ssHouseB'], ['ssHH', 'ssHouseH'],
          ['ssHR', 'ssRoofH'], ['ssN', 'ssNorth'], ['ssP', 'ssPitch'], ['ssB', 'ssBearing'], ['ssR', 'ssRadius'], ['ssStripPct', 'ssStripPct']].forEach(function (o) {
           var e = $('#' + o[0]); if (e) e.onchange = function () {
