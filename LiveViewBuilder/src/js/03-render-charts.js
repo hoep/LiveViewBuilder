@@ -98,12 +98,28 @@
     if(w.textTransform)d.style.textTransform=w.textTransform; // universelle Groß-/Kleinschreibung (opt-in)
     if(w.ff){d.style.setProperty('--w-ff',w.ff);d.classList.add('tw-ff');}if(w.fwt){d.style.setProperty('--w-fwt',w.fwt);d.classList.add('tw-fwt');}if(w.fsty){d.style.setProperty('--w-fsty',w.fsty);d.classList.add('tw-fsty');}if(w.fsz){d.style.setProperty('--w-fsz',w.fsz+'px');d.classList.add('tw-fsz');} // Typografie: auf innere Elemente erzwingen
   }
+  // ===== Raender je Widget (mT/mR/mB/mL) ======================================
+  // Der Platz eines Widgets bleibt x/y/w/h - der Rand rueckt nur die KACHEL darin ein.
+  // Damit veraendert ein Rand weder das Raster noch die Nachbarn: die Kachel wird kleiner,
+  // ihre Position im Layout bleibt, wo sie war. Genau deshalb sitzt das hier zentral und
+  // nicht in den einzelnen Widgets - es gilt fuer jedes.
+  function _wm(w,k){var v=parseFloat(w['m'+k]);return isNaN(v)?0:v;}
+  function wGeom(w){
+    var mt=_wm(w,'T'),mr=_wm(w,'R'),mb=_wm(w,'B'),ml=_wm(w,'L');
+    return {l:w.x+ml, t:w.y+mt,
+            w:Math.max(8,w.w-ml-mr), h:Math.max(8,w.h-mt-mb)};
+  }
+  function applyGeomTo(el,w){
+    var g=wGeom(w);
+    el.style.left=g.l+'px';el.style.top=g.t+'px';
+    el.style.width=g.w+'px';el.style.height=g.h+'px';
+  }
   // Ein Widget-Element bauen (identisch für Seiteninhalt und Leisten-Inhalt)
   function _mkWidgetEl(w,_refSet){
       _refSet=_refSet||{};
       var d=document.createElement('div');d.className='w t-'+w.type+(sel[w.id]?' sel':'')+(w.anim?' anim-'+w.anim:'')+(w.lineMode?' wline':'');d.dataset.id=w.id;
       if(w.group!=null&&w.group!=='')d.dataset.grp=w.group; // Gruppen-Anhebung im Run: Mitglieder ueber data-grp findbar
-      d.style.left=w.x+'px';d.style.top=w.y+'px';d.style.width=w.w+'px';d.style.height=w.h+'px';
+      applyGeomTo(d,w);
       var _frameOn=(w.frame!=null)?w.frame:!state.page.noframe;if(!_frameOn)d.classList.add('no-frame'); // Kachel-Rahmen: Widget-Override sonst Ansicht-Standard
       if(w.bgT)d.classList.add('bg-t'); // Hintergrund transparent (Rahmen bleibt davon unberuehrt)
       if(w.lblWrap)d.classList.add('lbl-wrap'); // Beschriftungen duerfen umbrechen
@@ -1604,7 +1620,7 @@
   function _ovWidgetEl(w){
     var dd=document.createElement('div');dd.className='w t-'+w.type+(w.lineMode?' wline':'');dd.dataset.id=w.id;
     var _ak=_wActionKind(w,true);if(_ak)_ak.split(' ').forEach(function(c){dd.classList.add(c);});
-    dd.style.left=w.x+'px';dd.style.top=w.y+'px';dd.style.width=w.w+'px';dd.style.height=w.h+'px';
+    applyGeomTo(dd,w);
     dd.innerHTML='<div class="winner">'+widgetInner(w)+'</div>';
     if(w.type==='value'&&w.valfs){var vv=$('.v',dd);if(vv)vv.style.fontSize=w.valfs+'px';}
     if(w.bgT)dd.classList.add('bg-t');
