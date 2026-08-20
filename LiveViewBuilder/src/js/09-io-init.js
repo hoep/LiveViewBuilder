@@ -400,9 +400,13 @@
       var bw=spanX?vw:w.w*s,bh=spanY?vh:w.h*s;
       var bx=spanX?0:(w.x*s+_gapOff(AX,w.x)),by=spanY?0:(w.y*s+_gapOff(AY,w.y));
       bx=Math.max(0,Math.min(bx,vw-bw));by=Math.max(0,Math.min(by,vh-bh));
-      el.style.transform='none';el.style.left=bx+'px';el.style.top=by+'px';el.style.width=bw+'px';el.style.height=bh+'px';
+      // Innenabstand mitskalieren: der Reflow verkleinert die ganze Seite, also muss auch
+      // der Abstand kleiner werden - sonst frisst er auf dem Handy die halbe Kachel.
+      el.style.transform='none';el.style.left=bx+'px';el.style.top=by+'px';
+      el.style.width=bw+'px';el.style.height=bh+'px';
+      el.style.padding=wPadCss(w,s);
       if(sfClass(w)==='s'){win.style.transform='';win.style.width='';win.style.height='';stretched.push(w);}
-      else{win.style.width=w.w+'px';win.style.height=w.h+'px';win.style.transformOrigin='top left';win.style.transform='scale('+s+')';}
+      else{var _p=wPad(w,1);win.style.width=Math.max(8,w.w-_p.l-_p.r)+'px';win.style.height=Math.max(8,w.h-_p.t-_p.b)+'px';win.style.transformOrigin='top left';win.style.transform='scale('+s+')';}
     });
     sfPropagate(stretched);
   }
@@ -447,8 +451,10 @@
       cur.push(u);curW+=need;}
     if(cur.length)lines.push(cur);
     var placeW=function(w,px,py,s){var el=sfEl(w);if(!el)return;var win=el.firstElementChild;if(!win)return;var isS=(sfClass(w)==='s');
-      if(isS){win.style.transform='';win.style.width='';win.style.height='';stretched.push(w);}else{win.style.width=w.w+'px';win.style.height=w.h+'px';win.style.transform='scale('+s.toFixed(4)+')';}
-      el.style.transform='none';el.style.left=px.toFixed(1)+'px';el.style.top=py.toFixed(1)+'px';el.style.width=(w.w*s).toFixed(1)+'px';el.style.height=(w.h*s).toFixed(1)+'px';};
+      if(isS){win.style.transform='';win.style.width='';win.style.height='';stretched.push(w);}else{var _p2=wPad(w,1);win.style.width=Math.max(8,w.w-_p2.l-_p2.r)+'px';win.style.height=Math.max(8,w.h-_p2.t-_p2.b)+'px';win.style.transform='scale('+s.toFixed(4)+')';}
+      el.style.transform='none';el.style.left=px.toFixed(1)+'px';el.style.top=py.toFixed(1)+'px';
+      el.style.width=(w.w*s).toFixed(1)+'px';el.style.height=(w.h*s).toFixed(1)+'px';
+      el.style.padding=wPadCss(w,s);};
     // platzieren: Zeile horizontal zentriert, Einheiten vertikal zentriert
     var y=M;
     lines.forEach(function(line){
