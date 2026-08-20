@@ -3191,6 +3191,10 @@
 .mx-tt{font-size:clamp(11px,2cqmin,13px);font-weight:700;letter-spacing:.06em;
        text-transform:uppercase;color:var(--muted)}
 .mx-fl{flex:1}
+.mx-lgd{display:inline-flex;align-items:center;gap:5px;font-size:clamp(8px,1.3cqmin,10px);
+        color:var(--muted);opacity:.85}
+.mx-ramp{display:inline-block;width:54px;height:8px;border-radius:4px;
+         background:linear-gradient(90deg,color-mix(in oklab,var(--accent) 10%,transparent),var(--accent))}
 .mx-seg{display:inline-flex;border:1px solid var(--line);border-radius:7px;overflow:hidden}
 .mx-b{border:0;background:var(--panel);color:var(--muted);cursor:pointer;
       padding:3px 10px;font-size:clamp(10px,1.6cqmin,11.5px)}
@@ -3203,7 +3207,7 @@
         font-family:ui-monospace,Menlo,monospace;min-width:74px;text-align:center}
 /* Raster: Bezeichner | Jahre | Verlauf. Die Spaltenzahl kommt vom Widget. */
 .mx-tab{flex:1;min-height:0;display:grid;align-content:space-evenly;
-        row-gap:clamp(1px,.35cqmin,3px);column-gap:clamp(4px,1.1cqmin,9px);
+        row-gap:clamp(1px,.35cqmin,3px);column-gap:clamp(2px,.5cqmin,4px);
         font-variant-numeric:tabular-nums}
 .mx-hz{font-size:clamp(9px,1.5cqmin,11px);color:var(--muted);text-align:center;
        font-family:ui-monospace,Menlo,monospace;padding-bottom:2px}
@@ -3216,12 +3220,12 @@
 .mx-lb{display:flex;align-items:center;gap:5px;font-size:clamp(9px,1.6cqmin,11.5px);
        color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .mx-lb i{font-style:normal;font-size:.82em;color:var(--muted);opacity:.8}
-/* Zellen bewusst schmaler als die Spalte und deutlich gerundet: volle Spaltenbreite
-   ergibt breite Bloecke, die die Matrix schwer und grob wirken lassen. */
-.mx-z{display:flex;align-items:center;justify-content:center;border-radius:9px;
+/* Zellen fuellen ihre Spalte und laufen bis zum Vollton durch - genau das macht eine
+   Heatmap lesbar. Auf der kraeftigen Haelfte kippt die Schrift auf Weiss. */
+.mx-z{display:flex;align-items:center;justify-content:center;border-radius:4px;
       font-family:ui-monospace,Menlo,monospace;font-size:clamp(9px,1.5cqmin,11.5px);
-      color:var(--text);min-height:0;padding:clamp(2px,.55cqmin,5px) 0;line-height:1.15;
-      width:100%;max-width:clamp(52px,11cqmin,88px);justify-self:center}
+      color:var(--text);min-height:0;padding:clamp(2px,.55cqmin,5px) 0;line-height:1.15}
+.mx-z.hell{color:#fff}
 .mx-z.jetzt{box-shadow:inset 0 0 0 1.5px var(--accent-2)}
 .mx-vl{display:flex;align-items:center;justify-content:flex-end;color:var(--muted)}
 .mx-leer{flex:1;display:flex;align-items:center;justify-content:center;
