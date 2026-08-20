@@ -247,7 +247,14 @@
     var pager=(ps>0&&total>ps)?('<div class="tbl-pager"><button class="tbl-pg" data-tbl-page="prev"'+(page<=0?' disabled':'')+'>&#8249;</button><span class="tbl-pgtxt">'+from+'&ndash;'+to+' von '+total+'</span><button class="tbl-pg" data-tbl-page="next"'+(page>=pages-1?' disabled':'')+'>&#8250;</button></div>'):'';
     var seg=w.hideToggle?'':('<div class="seg"><button class="seg-b'+(view==='table'?' on':'')+'" data-tbl-view="table">Tabelle</button><button class="seg-b'+(view==='cards'?' on':'')+'" data-tbl-view="cards">Karten</button></div>');
     var ph='<div class="ph"><div><h3>'+escL(w.label||'Tabelle')+'</h3><div class="ph-sub">'+subHtml+'</div></div><div class="ph-right">'+seg+pager+'</div></div>';
-    // ---- Werkzeugleiste: Suchfeld + Pillen ----
+    // ---- Werkzeugleiste: Suchfeld + Pillen + Sammelaktion ----
+    // Mehrfachauswahl: eine Spalte mit Haken vorn, das Ausfuehren sitzt in der
+    // Werkzeugleiste. Beides muss VOR der Leiste feststehen - sie wird frueher
+    // gebaut als die Tabelle darunter.
+    var selAn=!!(w.tblSel&&w.tblActInst&&w.tblActCol!=null&&w.tblActCol!=='');
+    var selAktion='';
+    var selCi=selAn?parseInt(w.tblActCol):-1;
+    if(selAn&&!w._tblSel)w._tblSel={};
     var pillsHtml='';
     if(pills.length){
       if(w.tblPillAll!==0)pillsHtml+='<span class="tbl-pill tbl-pill-all'+(pillOn?' off':'')+'" data-tbl-pill="_all" title="alle Filter aus">Alle</span>';
@@ -269,7 +276,7 @@
         +'<button class="tbl-qx" data-tbl-qclear="1" title="Suche und Filter zurücksetzen">&times;</button></div>'):'';
       // Sammelaktion rechts in der Leiste: erscheint erst, wenn etwas ausgewaehlt
       // ist - ein Loeschsymbol, das immer sichtbar waere, laedt zum Danebengreifen ein.
-      var selN=0,selAktion='';
+      var selN=0;
       if(selAn){ for(var _k in (w._tblSel||{})) if(w._tblSel[_k]) selN++;
         if(selN>0){
           var fr=(w._tblSelFrage===1);
@@ -280,7 +287,10 @@
             +'<button class="tbl-selclr" data-tbl-selclr="1" title="Auswahl aufheben">&times;</button>';
         }
       }
-      toolsHtml='<div class="tbl-tools">'+qh+'<div class="tbl-pills" data-role="tblpills">'+pillsHtml+'</div>'+selAktion+'</div>';
+      // Die Sammelaktion gehoert IN den Pillen-Bereich: beim Nachzeichnen wird nur
+      // dieser Container ersetzt, nicht die ganze Leiste (das Suchfeld soll seinen
+      // Fokus behalten). Aussen davor wuerde die Aktion nie erscheinen.
+      toolsHtml='<div class="tbl-tools">'+qh+'<div class="tbl-pills" data-role="tblpills">'+pillsHtml+selAktion+'</div></div>';
     }
     // Leerzustand unterscheidet Datenlage und Filterlage: "Keine Zeilen" waere gelogen,
     // wenn 3000 Zeilen da sind und nur die Suche nichts findet.
@@ -298,13 +308,6 @@
       // Widget nichts ueber den Inhalt wissen und der Knopf trifft nicht die
       // falsche Datei, wenn die Tabelle sortiert oder gefiltert ist.
       var actAn=!!(w.tblAct&&w.tblActInst&&w.tblActCol!=null&&w.tblActCol!=='');
-      // Mehrfachauswahl: eine Spalte mit Haken vorn, das Ausfuehren sitzt in der
-      // Werkzeugleiste. Fuer wiederkehrende Arbeit an vielen Zeilen ist das die
-      // ruhigere Bedienung - man sichtet erst, entscheidet dann, und ein
-      // Fehlgriff beim Sichten kostet nichts.
-      var selAn=!!(w.tblSel&&w.tblActInst&&w.tblActCol!=null&&w.tblActCol!=='');
-      var selCi=selAn?parseInt(w.tblActCol):-1;
-      if(selAn&&!w._tblSel)w._tblSel={};
       var actCi=actAn?parseInt(w.tblActCol):-1;
       var actKopf=actAn?('<th style="text-align:center">'+esc(w.tblActHead||'')+'</th>'):'';
       // Kopf-Haken waehlt alles, was gerade sichtbar ist (die geblaetterte Seite) -
@@ -350,7 +353,10 @@
       if(old){
         var sub=panel.querySelector('.ph-sub');if(sub)sub.innerHTML=subHtml;
         var pr=panel.querySelector('.ph-right');if(pr)pr.innerHTML=seg+pager;
-        var pw=panel.querySelector('[data-role=tblpills]');if(pw)pw.innerHTML=pillsHtml;
+        // Sammelaktion mit ersetzen: sie haengt im selben Container wie die Pillen.
+        // Ohne das erscheint sie beim Anhaken nie - genau dieser Fehler kostete
+        // eine Runde Fehlersuche.
+        var pw=panel.querySelector('[data-role=tblpills]');if(pw)pw.innerHTML=pillsHtml+(typeof selAktion!=='undefined'?selAktion:'');
         var tmp=document.createElement('div');tmp.innerHTML=bodyHtml;
         if(tmp.firstChild)old.parentNode.replaceChild(tmp.firstChild,old);
         return;
