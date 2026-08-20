@@ -1995,16 +1995,30 @@
       st.key = null; ssDraw(w, el);
     }
 
-    /** Knopf nur zeigen, wenn die Ansicht ueberhaupt von der Vorgabe abweicht. */
+    /**
+     * Der Knopf stellt auf EXAKT NORDEN: Blickrichtung 0 heisst, die Nordachse zeigt nach
+     * oben und die Kompassnadel steht senkrecht.
+     *
+     * Nicht zu verwechseln mit der Nordausrichtung des Hauses (ssNorth, hier -12,6 Grad) -
+     * die dreht das GEBAEUDE in der Welt und bleibt unangetastet. Bei Blickrichtung 0 steht
+     * das Haus deshalb bewusst schraeg im Bild: genau so, wie es in der Landschaft steht.
+     */
+    function ssIstNord(w) {
+      var st = ssSt(w);
+      var b = st.bearing != null ? st.bearing : ssNum(w.ssBearing, 20);
+      return Math.abs(((b % 360) + 360) % 360) < 0.05;
+    }
+    /** Knopf zeigen, sobald die Ansicht nicht genau nach Norden blickt oder sonst abweicht. */
     function ssResetBtn(w, el) {
       var b = $('[data-ssreset]', el); if (!b) return;
       var st = ssSt(w);
-      var ab = (st.bearing != null || st.pitch != null || st.radius != null);
+      var ab = (!ssIstNord(w) || st.pitch != null || st.radius != null);
       if (ab) b.removeAttribute('hidden'); else b.setAttribute('hidden', '');
     }
     function ssResetView(w, el) {
       var st = ssSt(w);
-      st.bearing = null; st.pitch = null; st.radius = null; st.now = 0; st.key = null;
+      st.bearing = 0;                       // exakt Norden oben
+      st.pitch = null; st.radius = null; st.now = 0; st.key = null;
       ssDraw(w, el); ssSaveView(w); ssResetBtn(w, el);
     }
 
