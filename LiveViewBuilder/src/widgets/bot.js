@@ -81,14 +81,23 @@
       },
       click:function(w,el,e){ if(!w.mowerId)return false;
         var root=el.querySelector('[data-role=botroot]'),m=root&&root._botM; if(!m)return false;
+        // Nach dem Schalten sofort quittieren und zeitnah nachlesen. Ohne das steht die
+        // Kachel bis zum naechsten 15-Sekunden-Poll auf dem alten Stand - der Tipp sieht
+        // dann aus, als waere er verpufft, und man tippt ein zweites Mal.
+        function quittung(feld,wert){
+          if(feld)m[feld]=wert;
+          botPaint(w);
+          setTimeout(function(){botFetch(w);},1200);   // Modul hat den Befehl abgesetzt
+          setTimeout(function(){botFetch(w);},4500);   // und pollt 3 s danach den Ist-Zustand
+        }
         var bc=e.target.closest('[data-bcmd]');
-        if(bc){var k=bc.getAttribute('data-bcmd'),v=(m.vars||{})[k];if(v)setVar(v,k==='Start'?0:1);return true;}
+        if(bc){var k=bc.getAttribute('data-bcmd'),v=(m.vars||{})[k];if(v){setVar(v,k==='Start'?0:1);quittung(null);}return true;}
         var cu=e.target.closest('[data-bcut]');
-        if(cu){var vc=(m.vars||{}).CuttingHeight;if(vc){var nv=Math.max(1,Math.min(9,(+m.cuttingHeight||0)+parseInt(cu.getAttribute('data-bcut'),10)));setVar(vc,nv);}return true;}
+        if(cu){var vc=(m.vars||{}).CuttingHeight;if(vc){var nv=Math.max(1,Math.min(9,(+m.cuttingHeight||0)+parseInt(cu.getAttribute('data-bcut'),10)));setVar(vc,nv);quittung('cuttingHeight',nv);}return true;}
         var hb=e.target.closest('[data-bhl]');
-        if(hb){var vh=(m.vars||{}).Headlight;if(vh)setVar(vh,parseInt(hb.getAttribute('data-bhl'),10));return true;}
+        if(hb){var vh=(m.vars||{}).Headlight;if(vh){var nh=parseInt(hb.getAttribute('data-bhl'),10);setVar(vh,nh);quittung('headlight',nh);}return true;}
         var ab=e.target.closest('[data-bam]');
-        if(ab){var va=(m.vars||{}).AutoMode;if(va)setVar(va,parseInt(ab.getAttribute('data-bam'),10));return true;}
+        if(ab){var va=(m.vars||{}).AutoMode;if(va){var na=parseInt(ab.getAttribute('data-bam'),10);setVar(va,na);quittung('autoMode',na);}return true;}
         return false;
       },
       props:function(w){
