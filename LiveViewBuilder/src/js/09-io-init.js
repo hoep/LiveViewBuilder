@@ -134,11 +134,23 @@
   var _saveT=null,_dirty=false,_target='';
   function markDirty(){_dirty=true;var b=$('#saveBtn');if(b)b.classList.add('dirty');}
   function markSaved(){_dirty=false;var b=$('#saveBtn');if(b)b.classList.remove('dirty');}
+  /**
+   * Laufzeitfelder beim Speichern weglassen. Alles, was mit einem Unterstrich beginnt, ist im
+   * ganzen Bestand Arbeitszustand: geholte Tabellenzeilen (_tblRows), Diagramm-Historie (_hist),
+   * Auswahl und Blaetterstand (_tblPage, _mxOff), Zeitstempel des letzten Kamerabilds (_lastCam).
+   * Es wird beim Aufbau ohnehin neu befuellt - gespeichert blaeht es nur die Ansicht auf.
+   *
+   * Gemessen am 20.08.2026: 27 % aller Seitendateien bestanden aus solchen Feldern, die
+   * Rollos-Log-Seite zu 100 % (25 KB geholte Zeilen), die Batterie-Seite zu 97 %. Eine Tabelle
+   * mit ein paar hundert Zeilen schreibt so ihren kompletten Inhalt ins Layout - und liefert
+   * ihn beim naechsten Laden als veralteten Stand wieder aus.
+   */
+  function _ohneLaufzeit(k,v){return (k.charAt(0)==='_')?undefined:v;}
   function saveStore(silent){
     // NIE im Doku-Modus speichern: die Doku baut ihren Store aus der Registry (buildDokuStore)
     // und darf das echte Live-Layout niemals ueberschreiben. Bulletproof-Guard, egal welcher Pfad ruft.
     if(typeof DOKU!=='undefined'&&DOKU){if(!silent&&typeof toast==='function')toast('Doku-Modus: nichts gespeichert');return Promise.resolve();}
-    return fetch('?api=layout&key='+encodeURIComponent(TOKEN)+(_target?('&file='+encodeURIComponent(_target)):''),{method:'POST',body:JSON.stringify(store)})
+    return fetch('?api=layout&key='+encodeURIComponent(TOKEN)+(_target?('&file='+encodeURIComponent(_target)):''),{method:'POST',body:JSON.stringify(store,_ohneLaufzeit)})
       .then(function(r){return r.json();}).then(function(j){
         if(j&&j.ok){markSaved();if(!silent)toast('Gespeichert: '+(_target||'Standard (live)')+' ('+j.bytes+' B)');}
         else if(!silent)toast('Fehler: '+((j&&j.error)||'?'));

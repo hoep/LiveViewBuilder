@@ -1445,6 +1445,28 @@
   .t-table .seg-b{border:0;background:none;color:var(--muted);font-size:clamp(9px,2.6cqmin,13px);padding:clamp(3px,1.6cqmin,6px) clamp(7px,3cqmin,14px);border-radius:6px;cursor:pointer;font-family:var(--fu)}
   .t-table .seg-b.on{background:var(--surface);color:var(--text);box-shadow:0 1px 2px rgba(0,0,0,.18)}
   .t-table .tbl-empty{padding:clamp(16px,7cqmin,34px) clamp(11px,4cqmin,22px);text-align:center;color:var(--faint);font-size:clamp(10px,2.8cqmin,14px)}
+  /* ---- Werkzeugleiste: Suchfeld + Filter-Pillen ----
+     Eigene Zeile ZWISCHEN Kopf und Rumpf, flex:0 0 auto. Der Rumpf (.tbl-scroll) behaelt damit
+     sein flex:1 und das klebende thead (position:sticky, top:0) bleibt unveraendert richtig.
+     Waere die Leiste im Kopf, muesste die Sticky-Position um ihre Hoehe versetzt werden. */
+  .t-table .tbl-tools{display:flex;align-items:center;gap:clamp(6px,2.6cqmin,14px);flex-wrap:wrap;flex:0 0 auto;padding:clamp(6px,2.4cqmin,12px) clamp(11px,4cqmin,22px);border-bottom:1px solid var(--line)}
+  .t-table .tbl-qbox{position:relative;display:flex;align-items:center;flex:0 1 auto;min-width:clamp(110px,34cqmin,240px)}
+  .t-table .tbl-q{width:100%;box-sizing:border-box;background:var(--surface-2);border:1px solid var(--line);border-radius:8px;color:var(--text);font:inherit;font-size:clamp(10px,2.8cqmin,14px);padding:clamp(4px,1.8cqmin,8px) clamp(22px,7cqmin,32px) clamp(4px,1.8cqmin,8px) clamp(8px,3cqmin,14px);min-height:24px;outline:none}
+  .t-table .tbl-q:focus{border-color:var(--accent)}
+  .t-table .tbl-q::placeholder{color:var(--faint)}
+  .t-table .tbl-qx{position:absolute;right:clamp(3px,1.4cqmin,7px);border:0;background:none;color:var(--muted);font-size:clamp(13px,3.6cqmin,18px);line-height:1;cursor:pointer;padding:2px 4px}
+  .t-table .tbl-qx:hover{color:var(--text)}
+  .t-table .tbl-pills{display:flex;flex-wrap:wrap;gap:clamp(3px,1.6cqmin,7px);min-width:0}
+  /* Form und Zustandslogik wie die Severity-Chips der Meldungsliste (.hmsgchip): eine abgewaehlte
+     Pille bleibt sichtbar, wird aber neutral - versteckt man sie, findet sie niemand wieder.
+     Farbe kommt ueber --pc aus dem Widget (Skin-Token), Vorgabe ist der Akzent. */
+  .t-table .tbl-pill{display:inline-flex;align-items:center;gap:clamp(3px,1.4cqmin,6px);font-size:clamp(9px,2.6cqmin,12.5px);font-weight:600;padding:clamp(3px,1.4cqmin,6px) clamp(7px,3cqmin,13px);min-height:22px;box-sizing:border-box;border-radius:999px;border:1.5px solid var(--pc,var(--accent));color:var(--pc,var(--accent));background:color-mix(in oklab,var(--pc,var(--accent)) 16%,transparent);cursor:pointer;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;line-height:1.3;white-space:nowrap}
+  .t-table .tbl-pill.off{opacity:.45;background:transparent;border-color:var(--line);color:var(--muted)}
+  .t-table .tbl-pill:active{transform:scale(.94)}
+  .t-table .tbl-pill b{font-family:var(--fm);font-weight:700;font-size:.85em;opacity:.75}
+  .t-table .tbl-hi{background:color-mix(in oklab,var(--accent) 32%,transparent);color:inherit;border-radius:3px;padding:0 1px}
+  .t-table .tbl-qclr{margin-left:clamp(5px,2.4cqmin,10px);border:1px solid var(--line);background:var(--surface-2);color:var(--text);border-radius:7px;font:inherit;font-size:clamp(9px,2.6cqmin,12.5px);padding:clamp(3px,1.4cqmin,6px) clamp(7px,3cqmin,13px);cursor:pointer}
+  .t-table .tbl-qclr:hover{border-color:var(--accent);color:var(--accent)}
   .t-table .tbl-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(clamp(140px,44cqmin,230px),1fr));gap:clamp(7px,3cqmin,14px);padding:clamp(9px,3cqmin,18px) clamp(11px,4cqmin,22px);overflow:auto;flex:1}
   .t-table .tbl-card{border:1px solid var(--line);border-radius:12px;background:var(--tile);padding:clamp(7px,3cqmin,14px) clamp(9px,3.4cqmin,16px)}
   .t-table .tbl-card .tc-row{display:flex;justify-content:space-between;gap:clamp(6px,3cqmin,13px);padding:clamp(2px,1cqmin,4px) 0;font-size:clamp(10px,2.9cqmin,14px)}
