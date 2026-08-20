@@ -1467,6 +1467,31 @@
      und in der Nebenfarbe, damit sie nicht wie eine abgewaehlte Filterpille aussieht. */
   .t-table .tbl-pill-mehr{border-style:dashed;border-color:var(--muted);color:var(--muted);background:transparent;opacity:.8;font-weight:500}
   .t-table .tbl-pill-mehr:hover{opacity:1;border-color:var(--accent);color:var(--accent)}
+  /* Aktionsknopf je Zeile. Zurueckhaltend, solange er nur dasteht - deutlich,
+     sobald er nachfragt: der zweite Klick loescht wirklich. */
+  .t-table .tbl-act{font:inherit;font-size:clamp(9px,2.4cqmin,12px);padding:clamp(2px,1cqmin,5px) clamp(6px,2.4cqmin,11px);
+    border-radius:7px;border:1px solid var(--line);background:transparent;color:var(--muted);cursor:pointer;white-space:nowrap}
+  .t-table .tbl-act:hover{border-color:var(--accent);color:var(--accent)}
+  .t-table .tbl-act.frage{border-color:var(--crit);color:var(--crit);background:color-mix(in oklab,var(--crit) 14%,transparent);font-weight:700}
+  .t-table .tbl-act[disabled]{opacity:.6;cursor:default}
+  /* Mehrfachauswahl: Haken je Zeile, Sammelaktion in der Leiste. */
+  .t-table .tbl-check{display:inline-block;width:clamp(11px,3cqmin,15px);height:clamp(11px,3cqmin,15px);
+    border:1.5px solid var(--line);border-radius:4px;cursor:pointer;vertical-align:middle;position:relative}
+  .t-table .tbl-check:hover{border-color:var(--accent)}
+  .t-table .tbl-check.an{border-color:var(--accent);background:var(--accent)}
+  .t-table .tbl-check.an::after{content:"";position:absolute;left:50%;top:46%;width:28%;height:55%;
+    border:solid var(--bg);border-width:0 2px 2px 0;transform:translate(-50%,-55%) rotate(45deg)}
+  .t-table tr.tbl-sel{background:color-mix(in oklab,var(--accent) 9%,transparent)}
+  .t-table .tbl-selact{display:inline-flex;align-items:center;gap:5px;margin-left:auto;font:inherit;
+    font-size:clamp(9px,2.5cqmin,12.5px);font-weight:700;padding:clamp(3px,1.3cqmin,6px) clamp(8px,2.6cqmin,12px);
+    border-radius:999px;border:1.5px solid var(--crit);color:var(--crit);
+    background:color-mix(in oklab,var(--crit) 12%,transparent);cursor:pointer;white-space:nowrap}
+  .t-table .tbl-selact svg{width:clamp(11px,3cqmin,15px);height:clamp(11px,3cqmin,15px)}
+  .t-table .tbl-selact.frage{background:var(--crit);color:var(--bg)}
+  .t-table .tbl-selact[disabled]{opacity:.6;cursor:default}
+  .t-table .tbl-selclr{font:inherit;font-size:clamp(11px,3cqmin,15px);line-height:1;padding:0 6px;margin-left:4px;
+    border:0;background:transparent;color:var(--muted);cursor:pointer}
+  .t-table .tbl-selclr:hover{color:var(--fg)}
   .t-table .tbl-pill b{font-family:var(--fm);font-weight:700;font-size:.85em;opacity:.75}
   .t-table .tbl-hi{background:color-mix(in oklab,var(--accent) 32%,transparent);color:inherit;border-radius:3px;padding:0 1px}
   .t-table .tbl-qclr{margin-left:clamp(5px,2.4cqmin,10px);border:1px solid var(--line);background:var(--surface-2);color:var(--text);border-radius:7px;font:inherit;font-size:clamp(9px,2.6cqmin,12.5px);padding:clamp(3px,1.4cqmin,6px) clamp(7px,3cqmin,13px);cursor:pointer}

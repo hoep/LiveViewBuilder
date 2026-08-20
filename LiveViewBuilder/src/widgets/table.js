@@ -211,7 +211,9 @@
           dir=(w._tblSortDir==='desc')?-1:1;
       body=body.slice().sort(function(ra,rb){return _tblCmp(ra[c]!=null?ra[c]:'',rb[c]!=null?rb[c]:'')*dir;});}
     var total=body.length,ps=(w.pageSize>0?w.pageSize:0),paged=body,from=1,to=total,page=0,pages=1;
+    // Die sichtbare Seite merken: der Kopf-Haken darf nur waehlen, was man sieht.
     if(ps>0&&total>ps){pages=Math.ceil(total/ps);page=Math.max(0,Math.min(w._tblPage||0,pages-1));w._tblPage=page;from=page*ps+1;to=Math.min((page+1)*ps,total);paged=body.slice(page*ps,page*ps+ps);}
+    w._tblSeite=paged;
     // numerische Spalten (mono) — bewusst aus ALLEN Zeilen, nicht aus der Treffermenge:
     // sonst wechselt eine Spalte bei jedem Tastendruck zwischen Mono und Fliesstext.
     var numc=[];for(var ci=0;ci<cols;ci++){var alln=all.length>0;for(var ri=0;ri<all.length;ri++){if(!_tblIsNum(all[ri][ci]!=null?all[ri][ci]:'')){alln=false;break;}}numc[ci]=alln;}
@@ -265,7 +267,20 @@
     if(w.tblQ||pills.length){
       var qh=w.tblQ?('<div class="tbl-qbox"><input class="tbl-q" data-role="tblq" type="text" autocomplete="off" spellcheck="false" placeholder="'+esc(w.tblQPh||'Suchen …')+'" value="'+esc(w._tblQ==null?'':w._tblQ)+'">'
         +'<button class="tbl-qx" data-tbl-qclear="1" title="Suche und Filter zurücksetzen">&times;</button></div>'):'';
-      toolsHtml='<div class="tbl-tools">'+qh+'<div class="tbl-pills" data-role="tblpills">'+pillsHtml+'</div></div>';
+      // Sammelaktion rechts in der Leiste: erscheint erst, wenn etwas ausgewaehlt
+      // ist - ein Loeschsymbol, das immer sichtbar waere, laedt zum Danebengreifen ein.
+      var selN=0,selAktion='';
+      if(selAn){ for(var _k in (w._tblSel||{})) if(w._tblSel[_k]) selN++;
+        if(selN>0){
+          var fr=(w._tblSelFrage===1);
+          selAktion='<button class="tbl-selact'+(fr?' frage':'')+'" data-tbl-selrun="1" title="'+esc(w.tblActLabel||'Ausführen')+'">'
+            +'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">'
+            +'<path d="M4 7h16M10 11v6M14 11v6M5 7l1 13h12l1-13M9 7V4h6v3"/></svg>'
+            +'<span>'+(fr?(w.tblActFrage||'Wirklich?'):(selN+''))+'</span></button>'
+            +'<button class="tbl-selclr" data-tbl-selclr="1" title="Auswahl aufheben">&times;</button>';
+        }
+      }
+      toolsHtml='<div class="tbl-tools">'+qh+'<div class="tbl-pills" data-role="tblpills">'+pillsHtml+'</div>'+selAktion+'</div>';
     }
     // Leerzustand unterscheidet Datenlage und Filterlage: "Keine Zeilen" waere gelogen,
     // wenn 3000 Zeilen da sind und nur die Suche nichts findet.
@@ -278,17 +293,41 @@
       // Karten arbeiten mit derselben gefilterten und geblaetterten Menge wie die Tabelle.
       bodyHtml=total?('<div class="tbl-cards">'+paged.map(function(r){return '<div class="tbl-card">'+sicht.map(function(ci){var h=head[ci];return '<div class="tc-row"><span class="tc-k">'+esc(h)+'</span><span class="tc-v'+(numc[ci]?' tbl-mono':'')+'"'+alSt(ci)+'>'+cellHtml(ci,r[ci]!=null?r[ci]:'')+'</span></div>';}).join('')+'</div>';}).join('')+'</div>'):emptyHtml;
     }else{
-      var thead='<thead><tr>'+sicht.map(function(ci){var h=head[ci];var st=(w._tblSortCol===ci)?(w._tblSortDir==='desc'?'desc':'asc'):'idle';var rc=(w.sevStyle&&(ci===sevIdx||ci===barIdx))?' class="r"':'';return '<th'+rc+tdSt(ci)+'><button class="tbl-sort" data-tbl-sort="'+ci+'">'+esc(h)+_tblChev(st)+'</button></th>';}).join('')+'</tr></thead>';
+      // Aktionsspalte: ein Knopf je Zeile, der genau DIESE Zeile meint. Der
+      // Parameter kommt aus einer (meist versteckten) Spalte - so muss das
+      // Widget nichts ueber den Inhalt wissen und der Knopf trifft nicht die
+      // falsche Datei, wenn die Tabelle sortiert oder gefiltert ist.
+      var actAn=!!(w.tblAct&&w.tblActInst&&w.tblActCol!=null&&w.tblActCol!=='');
+      // Mehrfachauswahl: eine Spalte mit Haken vorn, das Ausfuehren sitzt in der
+      // Werkzeugleiste. Fuer wiederkehrende Arbeit an vielen Zeilen ist das die
+      // ruhigere Bedienung - man sichtet erst, entscheidet dann, und ein
+      // Fehlgriff beim Sichten kostet nichts.
+      var selAn=!!(w.tblSel&&w.tblActInst&&w.tblActCol!=null&&w.tblActCol!=='');
+      var selCi=selAn?parseInt(w.tblActCol):-1;
+      if(selAn&&!w._tblSel)w._tblSel={};
+      var actCi=actAn?parseInt(w.tblActCol):-1;
+      var actKopf=actAn?('<th style="text-align:center">'+esc(w.tblActHead||'')+'</th>'):'';
+      // Kopf-Haken waehlt alles, was gerade sichtbar ist (die geblaetterte Seite) -
+      // nicht die ganze Treffermenge: was man nicht sieht, soll man nicht loeschen.
+      var selAlle=selAn&&paged.length&&paged.every(function(r){return w._tblSel[String(r[selCi])];});
+      var selKopf=selAn?('<th style="text-align:center"><span class="tbl-check'+(selAlle?' an':'')+'" data-tbl-selall="1"></span></th>'):'';
+      var thead='<thead><tr>'+selKopf+sicht.map(function(ci){var h=head[ci];var st=(w._tblSortCol===ci)?(w._tblSortDir==='desc'?'desc':'asc'):'idle';var rc=(w.sevStyle&&(ci===sevIdx||ci===barIdx))?' class="r"':'';return '<th'+rc+tdSt(ci)+'><button class="tbl-sort" data-tbl-sort="'+ci+'">'+esc(h)+_tblChev(st)+'</button></th>';}).join('')+actKopf+'</tr></thead>';
       var tbody='<tbody>'+(total?paged.map(function(r){
         var sev=(sevIdx>=0)?_tblSevOf(r[sevIdx]):'';
-        return '<tr'+(sev?' class="tsev-'+sev+'"':'')+'>'+sicht.map(function(ci){
+        var selW=selAn?String(r[selCi]):'';
+        var selAus=selAn&&w._tblSel[selW];
+        return '<tr'+(sev?' class="tsev-'+sev+'"':'')+(selAus?' class="tbl-sel"':'')+'>'
+          +(selAn?('<td style="text-align:center"><span class="tbl-check'+(selAus?' an':'')+'" data-tbl-sel="'+esc(selW)+'"></span></td>'):'')
+          +sicht.map(function(ci){
           var v=r[ci]!=null?r[ci]:'';
           if(w.sevStyle&&ci===sevIdx&&sev)return '<td class="r"><span class="tbl-chip tsc-'+sev+'">'+esc(v)+'</span></td>';
           if(w.sevStyle&&ci===barIdx){var p=_tblPctOf(v);
             var bar=!isNaN(p)?('<span class="tbl-mini"><span style="width:'+Math.max(2,Math.min(100,p))+'%;background:var(--'+(sev||'accent')+')"></span></span>'):'';
             return '<td class="'+(numc[ci]?'tbl-mono ':'')+'tbl-barcell r"><span'+(sev?' style="color:var(--'+sev+')"':'')+'>'+esc(v)+'</span>'+bar+'</td>';}
           return '<td'+(numc[ci]?' class="tbl-mono"':'')+tdSt(ci)+'>'+cellHtml(ci,v)+'</td>';
-        }).join('')+'</tr>';}).join(''):'<tr><td colspan="'+cols+'">'+emptyHtml+'</td></tr>')+'</tbody>';
+        }).join('')+(actAn?('<td style="text-align:center"><button class="tbl-act" data-tbl-act="'
+          +esc(String(r[actCi]!=null?r[actCi]:''))+'">'+esc(w.tblActLabel||'Ausführen')+'</button></td>'):'')
+        +'</tr>';}).join(''):'<tr><td colspan="'+(cols+(actAn?1:0)+(selAn?1:0))+'">'+emptyHtml+'</td></tr>')+'</tbody>';
       // Pro-Spalte Breite (w.colW[ci]: Zahl=px oder String wie "20%"/"120px") via colgroup, AUTO-Layout:
       // nicht gesetzte Spalten bleiben inhaltsbasiert konstant; eine Aenderung zieht Platz nur aus der
       // flexiblen (breitesten) Spalte statt aus allen (kein table-layout:fixed).
@@ -297,10 +336,10 @@
       // ihre Inhaltsbreite, der Ueberschuss landet vollstaendig hier. Ohne das verteilt der
       // Browser den freien Platz anteilig auf ALLE Spalten - dann steht neben "23:53" viel
       // Leerraum, waehrend der lange Sendungstitel unnoetig umbricht.
-      var colgroup='<colgroup>'+sicht.map(function(ci){var h=head[ci];
+      var colgroup='<colgroup>'+(selAn?'<col style="width:38px">':'')+sicht.map(function(ci){var h=head[ci];
         var cw=w.colW&&w.colW[ci];
         var wv=cw?(/^\d+$/.test(String(cw))?cw+'px':String(cw)):(ci===flex?'100%':'');
-        return '<col'+(wv?' style="width:'+wv+'"':'')+'>';}).join('')+'</colgroup>';
+        return '<col'+(wv?' style="width:'+wv+'"':'')+'>';}).join('')+(actAn?'<col style="width:'+(w.tblActBreite||'110px')+'">':'')+'</colgroup>';
       bodyHtml='<div class="tbl-scroll"><table class="tbl">'+colgroup+thead+tbody+'</table></div>';
     }
     // Teilweises Nachzeichnen: Kopfzahl, Pager, Pillen und Rumpf ersetzen — das Suchfeld
@@ -429,6 +468,12 @@
       [].forEach.call(document.querySelectorAll('[data-tcol-al]'),function(sel){sel.onchange=function(){var ci=+sel.getAttribute('data-tcol-al');w.colAlign=w.colAlign||[];w.colAlign[ci]=this.value||undefined;_tblDraw(w);commit();};});
       [].forEach.call(document.querySelectorAll('[data-tcol-html]'),function(cb){cb.onchange=function(){var ci=+cb.getAttribute('data-tcol-html');w.colRaw=w.colRaw||[];w.colRaw[ci]=this.checked||undefined;_tblDraw(w);commit();};});
       [].forEach.call(document.querySelectorAll('[data-tcol-q]'),function(cb){cb.onchange=function(){var ci=+cb.getAttribute('data-tcol-q');w.colQ=w.colQ||[];w.colQ[ci]=this.checked||undefined;_tblDraw(w);commit();};});
+      if($('#pTblSel'))$('#pTblSel').onchange=function(){w.tblSel=this.checked||undefined;w._tblSel={};_tblDraw(w);commit();};
+      if($('#pTblAct'))$('#pTblAct').onchange=function(){w.tblAct=this.checked||undefined;_tblDraw(w);commit();};
+      [['pTblActLabel','tblActLabel'],['pTblActHead','tblActHead'],['pTblActFrage','tblActFrage'],
+       ['pTblActCol','tblActCol'],['pTblActInst','tblActInst'],['pTblActApi','tblActApi']].forEach(function(p){
+        var el=$('#'+p[0]); if(el)el.oninput=function(){w[p[1]]=this.value.trim()||undefined;_tblDraw(w);commit();};
+      });
       [].forEach.call(document.querySelectorAll('[data-tcol-hide]'),function(cb){cb.onchange=function(){var ci=+cb.getAttribute('data-tcol-hide');w.colHide=w.colHide||[];w.colHide[ci]=this.checked||undefined;_tblDraw(w);commit();};});
       [].forEach.call(document.querySelectorAll('[data-tcol-sort]'),function(inp){inp.oninput=function(){var ci=+inp.getAttribute('data-tcol-sort');w.colSortBy=w.colSortBy||[];var v=this.value.trim();w.colSortBy[ci]=(v===''?undefined:v);_tblDraw(w);commit();};});
       [].forEach.call(document.querySelectorAll('[data-tcol-w]'),function(inp){inp.oninput=function(){var ci=+inp.getAttribute('data-tcol-w');w.colW=w.colW||[];var v=this.value.trim();w.colW[ci]=v||undefined;_tblDraw(w);commit();};});
@@ -442,6 +487,73 @@
       if(qc){w._tblQ='';w._tblPillSt=null;
         if(typeof RUN!=='undefined'&&RUN){try{localStorage.removeItem('lvtbl_'+w.id);localStorage.removeItem('lvtblq_'+w.id);}catch(e2){}}
         w._tblPage=0;_tblDraw(w);return true;}
+      // Auswahlhaken je Zeile - reine Anzeige, kein Serverweg.
+      var sc=e.target.closest('[data-tbl-sel]');
+      if(sc){ var k=sc.getAttribute('data-tbl-sel')||'';
+        w._tblSel=w._tblSel||{};
+        if(w._tblSel[k])delete w._tblSel[k];else w._tblSel[k]=1;
+        w._tblSelFrage=0; _tblBody(w); return true; }
+      var sa=e.target.closest('[data-tbl-selall]');
+      if(sa){ var rows=w._tblSeite||[],ci=parseInt(w.tblActCol),alle=true,i2;
+        w._tblSel=w._tblSel||{};
+        for(i2=0;i2<rows.length;i2++){ if(!w._tblSel[String(rows[i2][ci])]){alle=false;break;} }
+        for(i2=0;i2<rows.length;i2++){ var kk=String(rows[i2][ci]); if(alle)delete w._tblSel[kk];else w._tblSel[kk]=1; }
+        w._tblSelFrage=0; _tblBody(w); return true; }
+      var sx=e.target.closest('[data-tbl-selclr]');
+      if(sx){ w._tblSel={}; w._tblSelFrage=0; _tblBody(w); return true; }
+      // Sammelaktion: erster Klick fragt, zweiter fuehrt aus - der Reihe nach,
+      // damit eine abgelehnte Datei die uebrigen nicht mitreisst.
+      var sr=e.target.closest('[data-tbl-selrun]');
+      if(sr){
+        if(w._tblSelFrage!==1){ w._tblSelFrage=1; _tblBody(w);
+          setTimeout(function(){ if(w._tblSelFrage===1){w._tblSelFrage=0;_tblBody(w);} },10000); return true; }
+        w._tblSelFrage=0;
+        var liste=[]; for(var k3 in w._tblSel) if(w._tblSel[k3]) liste.push(k3);
+        sr.disabled=true; sr.querySelector('span').textContent='…';
+        var api=w.tblActApi||'srdel',inst=w.tblActInst||'',tok=(typeof TOKEN!=='undefined'?TOKEN:'');
+        var fertig=0,ok=0;
+        liste.forEach(function(p3){
+          fetch('?api='+encodeURIComponent(api)+'&inst='+encodeURIComponent(inst)
+                +'&pfad='+encodeURIComponent(p3)+'&key='+encodeURIComponent(tok),{cache:'no-store'})
+            .then(function(r){return r.json();}).then(function(j){ if(j&&j.ok){ok++;delete w._tblSel[p3];} })
+            .catch(function(){})
+            .then(function(){ if(++fertig===liste.length){ _tblLoad(w); } });
+        });
+        return true;
+      }
+      // Aktionsknopf. ZWEI Klicks: der erste faerbt um und fragt nach, der zweite
+      // fuehrt aus. Eine Tabelle wird im Vorbeigehen bedient - ein einzelner
+      // Fehlgriff darf keine Aufnahme kosten. Nach zehn Sekunden ohne Bestaetigung
+      // faellt der Knopf in den Ausgangszustand zurueck.
+      var ab=e.target.closest('[data-tbl-act]');
+      if(ab){
+        var wert=ab.getAttribute('data-tbl-act')||'';
+        if(!wert)return true;
+        if(ab.getAttribute('data-frage')!=='1'){
+          ab.setAttribute('data-frage','1');
+          ab.dataset.alt=ab.textContent;
+          ab.textContent=w.tblActFrage||'Wirklich?';
+          ab.classList.add('frage');
+          setTimeout(function(){ if(ab.getAttribute('data-frage')==='1'){
+            ab.removeAttribute('data-frage'); ab.textContent=ab.dataset.alt||''; ab.classList.remove('frage'); } },10000);
+          return true;
+        }
+        ab.removeAttribute('data-frage'); ab.classList.remove('frage');
+        ab.textContent='…'; ab.disabled=true;
+        fetch('?api='+encodeURIComponent(w.tblActApi||'srdel')
+              +'&inst='+encodeURIComponent(w.tblActInst||'')
+              +'&pfad='+encodeURIComponent(wert)
+              +'&key='+encodeURIComponent(typeof TOKEN!=='undefined'?TOKEN:''),{cache:'no-store'})
+          .then(function(r){return r.json();})
+          .then(function(j){
+            ab.textContent=(j&&j.ok)?'erledigt':'abgelehnt';
+            ab.title=(j&&j.grund)?String(j.grund):'';
+            // Nach dem Loeschen stimmt die Quelle nicht mehr - neu holen.
+            setTimeout(function(){_tblLoad(w);},1200);
+          })
+          .catch(function(){ ab.textContent='Fehler'; ab.disabled=false; });
+        return true;
+      }
       var pm=e.target.closest('[data-tbl-pillmore]');
       if(pm){w._tblPillMehr=(pm.getAttribute('data-tbl-pillmore')==='1');_tblBody(w);return true;}
       var pl=e.target.closest('[data-tbl-pill]');
