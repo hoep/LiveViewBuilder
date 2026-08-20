@@ -3226,6 +3226,7 @@
       font-family:ui-monospace,Menlo,monospace;font-size:clamp(9px,1.5cqmin,11.5px);
       color:var(--text);min-height:0;padding:clamp(2px,.55cqmin,5px) 0;line-height:1.15}
 .mx-z.hell{color:#fff}
+.mx-z:not(.hell){color:#17242a}   /* dunkle Schrift auf heller Zelle - unabhaengig vom Thema */
 .mx-z.jetzt{box-shadow:inset 0 0 0 1.5px var(--accent-2)}
 .mx-vl{display:flex;align-items:center;justify-content:flex-end;color:var(--muted)}
 .mx-leer{flex:1;display:flex;align-items:center;justify-content:center;
