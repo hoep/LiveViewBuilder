@@ -174,6 +174,11 @@
     var el=_tblEl(w);if(!el)return;var root=$('[data-role=tblroot]',el);if(!root)return;
     var rows=w._tblRows||[],head=rows.length?rows[0]:[],all=rows.slice(1);
     var cols=head.length||(all[0]?all[0].length:0);
+    // Versteckte Spalten. Sie bleiben in den DATEN (Suche, Pillen und die Sortier-
+    // Stellvertreter arbeiten darauf), werden aber nicht gezeichnet - Hilfsspalten wie
+    // _ts oder _Serie gehoeren ins JSON, nicht auf den Schirm.
+    var _hid={};(w.colHide||[]).forEach(function(v,ci){if(v)_hid[ci]=1;});
+    var sicht=[];for(var _c=0;_c<cols;_c++)if(!_hid[_c])sicht.push(_c);
     var view=w._tblView||w.tblView||'table';
     // ---- Filtern (vor Sortieren, vor Blaettern) ----
     var q=_tblQVal(w);
@@ -193,7 +198,12 @@
         byGrp[g].forEach(function(p){var n=0;for(var i=0;i<base.length;i++)if(_tblPillHit(w,p,base[i]))n++;cnt[p.k]=n;});});
     }
     // ---- Sortierung ----
-    if(w._tblSortCol!=null&&w._tblSortCol<cols){var c=w._tblSortCol,dir=(w._tblSortDir==='desc')?-1:1;
+    if(w._tblSortCol!=null&&w._tblSortCol<cols){
+      // Sortier-Stellvertreter: "4,6 GB" und "20.08." sortieren als Text falsch. colSortBy
+      // schickt den Vergleich auf eine versteckte Spalte mit dem Rohwert (Bytes, Zeitstempel).
+      var c=(w.colSortBy&&w.colSortBy[w._tblSortCol]!=null&&w.colSortBy[w._tblSortCol]!=='')
+              ?(parseInt(w.colSortBy[w._tblSortCol])||0):w._tblSortCol,
+          dir=(w._tblSortDir==='desc')?-1:1;
       body=body.slice().sort(function(ra,rb){return _tblCmp(ra[c]!=null?ra[c]:'',rb[c]!=null?rb[c]:'')*dir;});}
     var total=body.length,ps=(w.pageSize>0?w.pageSize:0),paged=body,from=1,to=total,page=0,pages=1;
     if(ps>0&&total>ps){pages=Math.ceil(total/ps);page=Math.max(0,Math.min(w._tblPage||0,pages-1));w._tblPage=page;from=page*ps+1;to=Math.min((page+1)*ps,total);paged=body.slice(page*ps,page*ps+ps);}
@@ -257,12 +267,12 @@
     if(!rows.length||!cols){bodyHtml='<div class="tbl-empty">'+(w.varId?'Keine Daten (Zeile 0 = Spaltenkopf, JSON o. serialisiertes Array)':'Variable wählen')+'</div>';}
     else if(view==='cards'){
       // Karten arbeiten mit derselben gefilterten und geblaetterten Menge wie die Tabelle.
-      bodyHtml=total?('<div class="tbl-cards">'+paged.map(function(r){return '<div class="tbl-card">'+head.map(function(h,ci){return '<div class="tc-row"><span class="tc-k">'+esc(h)+'</span><span class="tc-v'+(numc[ci]?' tbl-mono':'')+'"'+alSt(ci)+'>'+cellHtml(ci,r[ci]!=null?r[ci]:'')+'</span></div>';}).join('')+'</div>';}).join('')+'</div>'):emptyHtml;
+      bodyHtml=total?('<div class="tbl-cards">'+paged.map(function(r){return '<div class="tbl-card">'+sicht.map(function(ci){var h=head[ci];return '<div class="tc-row"><span class="tc-k">'+esc(h)+'</span><span class="tc-v'+(numc[ci]?' tbl-mono':'')+'"'+alSt(ci)+'>'+cellHtml(ci,r[ci]!=null?r[ci]:'')+'</span></div>';}).join('')+'</div>';}).join('')+'</div>'):emptyHtml;
     }else{
-      var thead='<thead><tr>'+head.map(function(h,ci){var st=(w._tblSortCol===ci)?(w._tblSortDir==='desc'?'desc':'asc'):'idle';var rc=(w.sevStyle&&(ci===sevIdx||ci===barIdx))?' class="r"':'';return '<th'+rc+tdSt(ci)+'><button class="tbl-sort" data-tbl-sort="'+ci+'">'+esc(h)+_tblChev(st)+'</button></th>';}).join('')+'</tr></thead>';
+      var thead='<thead><tr>'+sicht.map(function(ci){var h=head[ci];var st=(w._tblSortCol===ci)?(w._tblSortDir==='desc'?'desc':'asc'):'idle';var rc=(w.sevStyle&&(ci===sevIdx||ci===barIdx))?' class="r"':'';return '<th'+rc+tdSt(ci)+'><button class="tbl-sort" data-tbl-sort="'+ci+'">'+esc(h)+_tblChev(st)+'</button></th>';}).join('')+'</tr></thead>';
       var tbody='<tbody>'+(total?paged.map(function(r){
         var sev=(sevIdx>=0)?_tblSevOf(r[sevIdx]):'';
-        return '<tr'+(sev?' class="tsev-'+sev+'"':'')+'>'+head.map(function(h,ci){
+        return '<tr'+(sev?' class="tsev-'+sev+'"':'')+'>'+sicht.map(function(ci){
           var v=r[ci]!=null?r[ci]:'';
           if(w.sevStyle&&ci===sevIdx&&sev)return '<td class="r"><span class="tbl-chip tsc-'+sev+'">'+esc(v)+'</span></td>';
           if(w.sevStyle&&ci===barIdx){var p=_tblPctOf(v);
@@ -278,7 +288,7 @@
       // ihre Inhaltsbreite, der Ueberschuss landet vollstaendig hier. Ohne das verteilt der
       // Browser den freien Platz anteilig auf ALLE Spalten - dann steht neben "23:53" viel
       // Leerraum, waehrend der lange Sendungstitel unnoetig umbricht.
-      var colgroup='<colgroup>'+head.map(function(h,ci){
+      var colgroup='<colgroup>'+sicht.map(function(ci){var h=head[ci];
         var cw=w.colW&&w.colW[ci];
         var wv=cw?(/^\d+$/.test(String(cw))?cw+'px':String(cw)):(ci===flex?'100%':'');
         return '<col'+(wv?' style="width:'+wv+'"':'')+'>';}).join('')+'</colgroup>';
@@ -378,9 +388,11 @@
             '<select data-tcol-al="'+ci+'">'+alOpt({ci:ci})+'</select> '
             +'<input data-tcol-w="'+ci+'" value="'+esc(w.colW&&w.colW[ci]!=null?w.colW[ci]:'')+'" placeholder="Breite" title="Breite: Zahl = px, oder z. B. 20%" style="width:64px"> '
             +'<label style="font-size:11px;color:var(--muted)"><input type="checkbox" data-tcol-html="'+ci+'"'+((w.colRaw&&w.colRaw[ci])?' checked':'')+'> HTML</label> '
-            +'<label style="font-size:11px;color:var(--muted)"><input type="checkbox" data-tcol-q="'+ci+'"'+((w.colQ&&w.colQ[ci])?' checked':'')+'> Suche</label>');
+            +'<label style="font-size:11px;color:var(--muted)"><input type="checkbox" data-tcol-q="'+ci+'"'+((w.colQ&&w.colQ[ci])?' checked':'')+'> Suche</label> '
+            +'<label style="font-size:11px;color:var(--muted)"><input type="checkbox" data-tcol-hide="'+ci+'"'+((w.colHide&&w.colHide[ci])?' checked':'')+'> versteckt</label> '
+            +'<input data-tcol-sort="'+ci+'" value="'+esc(w.colSortBy&&w.colSortBy[ci]!=null?w.colSortBy[ci]:'')+'" placeholder="sort" title="Sortieren nach Spalte Nr. (Rohwert)" style="width:46px">');
         });
-        s+='<div class="hint" style="font-size:11px;margin-top:4px"><b>Breite</b>: Zahl = Pixel, oder mit Einheit (z. B. <code>20%</code>). Leer = automatisch. <b>HTML</b>: Zellinhalt wird als HTML gerendert statt escaped (z. B. <code>&lt;img&gt;</code>, <code>&lt;span style&gt;</code>). Nur bei vertrauenswuerdiger Quelle. <b>Suche</b>: begrenzt die Volltextsuche auf diese Spalten; ohne Haken wird in allen gesucht. Gezielt setzen — in einer Sender-Spalte mit Bildern fände „png" sonst jede Zeile.</div>';
+        s+='<div class="hint" style="font-size:11px;margin-top:4px"><b>Breite</b>: Zahl = Pixel, oder mit Einheit (z. B. <code>20%</code>). Leer = automatisch. <b>HTML</b>: Zellinhalt wird als HTML gerendert statt escaped (z. B. <code>&lt;img&gt;</code>, <code>&lt;span style&gt;</code>). Nur bei vertrauenswuerdiger Quelle. <b>Suche</b>: begrenzt die Volltextsuche auf diese Spalten; ohne Haken wird in allen gesucht. Gezielt setzen — in einer Sender-Spalte mit Bildern fände „png" sonst jede Zeile. <b>versteckt</b>: Spalte wird nicht gezeichnet, bleibt aber in den Daten (Suche, Pillen, Sortierung). <b>sort</b>: Nummer der Spalte, nach der beim Klick auf diesen Kopf sortiert wird — fuer Rohwert-Spalten neben der formatierten Anzeige („4,6 GB" sortiert nach Bytes).</div>';
       } else s+='<div class="hint" style="font-size:11px;margin-top:6px;color:var(--muted)">Spalten-Formatierung erscheint, sobald Daten geladen sind (Variable waehlen).</div>';
       s+='<div class="hint" style="font-size:11px;margin-top:6px">Quelle: Text-Variable mit <b>JSON</b> oder <b>serialisiertem Array</b> im Format [Zeile][Spalte]. <b>Zeile 0 = Spaltenkopf</b>.</div>';
       return s;},
@@ -408,6 +420,8 @@
       [].forEach.call(document.querySelectorAll('[data-tcol-al]'),function(sel){sel.onchange=function(){var ci=+sel.getAttribute('data-tcol-al');w.colAlign=w.colAlign||[];w.colAlign[ci]=this.value||undefined;_tblDraw(w);commit();};});
       [].forEach.call(document.querySelectorAll('[data-tcol-html]'),function(cb){cb.onchange=function(){var ci=+cb.getAttribute('data-tcol-html');w.colRaw=w.colRaw||[];w.colRaw[ci]=this.checked||undefined;_tblDraw(w);commit();};});
       [].forEach.call(document.querySelectorAll('[data-tcol-q]'),function(cb){cb.onchange=function(){var ci=+cb.getAttribute('data-tcol-q');w.colQ=w.colQ||[];w.colQ[ci]=this.checked||undefined;_tblDraw(w);commit();};});
+      [].forEach.call(document.querySelectorAll('[data-tcol-hide]'),function(cb){cb.onchange=function(){var ci=+cb.getAttribute('data-tcol-hide');w.colHide=w.colHide||[];w.colHide[ci]=this.checked||undefined;_tblDraw(w);commit();};});
+      [].forEach.call(document.querySelectorAll('[data-tcol-sort]'),function(inp){inp.oninput=function(){var ci=+inp.getAttribute('data-tcol-sort');w.colSortBy=w.colSortBy||[];var v=this.value.trim();w.colSortBy[ci]=(v===''?undefined:v);_tblDraw(w);commit();};});
       [].forEach.call(document.querySelectorAll('[data-tcol-w]'),function(inp){inp.oninput=function(){var ci=+inp.getAttribute('data-tcol-w');w.colW=w.colW||[];var v=this.value.trim();w.colW[ci]=v||undefined;_tblDraw(w);commit();};});
     },
     click:function(w,el,e){
