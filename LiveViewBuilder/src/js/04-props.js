@@ -165,7 +165,7 @@
       +row('Ebene','<button class="btn" id="pZFront" style="padding:4px 9px">nach vorn</button> <button class="btn" id="pZBack" style="padding:4px 9px">nach hinten</button>')
       +posSection(w)
       +'<div class="xy">'+cell('X','pX',w.x)+cell('Y','pY',w.y)+cell('B','pW',w.w)+cell('H','pH',w.h)+'</div>'
-      +'<div style="font-size:11px;color:var(--muted);margin:6px 2px 3px">Rand (rückt die Kachel im eigenen Platz ein)</div>'
+      +'<div style="font-size:11px;color:var(--muted);margin:6px 2px 3px">Innenabstand der Zeichenfläche (px)</div>'
       +'<div class="xy">'+cell('O','pMT',w.mT||0)+cell('R','pMR',w.mR||0)+cell('U','pMB',w.mB||0)+cell('L','pML',w.mL||0)+'</div>'
       +'<button class="btn danger" id="pDel">Löschen</button>'
       +'</div>'

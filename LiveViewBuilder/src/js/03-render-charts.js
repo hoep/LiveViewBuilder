@@ -98,21 +98,24 @@
     if(w.textTransform)d.style.textTransform=w.textTransform; // universelle Groß-/Kleinschreibung (opt-in)
     if(w.ff){d.style.setProperty('--w-ff',w.ff);d.classList.add('tw-ff');}if(w.fwt){d.style.setProperty('--w-fwt',w.fwt);d.classList.add('tw-fwt');}if(w.fsty){d.style.setProperty('--w-fsty',w.fsty);d.classList.add('tw-fsty');}if(w.fsz){d.style.setProperty('--w-fsz',w.fsz+'px');d.classList.add('tw-fsz');} // Typografie: auf innere Elemente erzwingen
   }
-  // ===== Raender je Widget (mT/mR/mB/mL) ======================================
-  // Der Platz eines Widgets bleibt x/y/w/h - der Rand rueckt nur die KACHEL darin ein.
-  // Damit veraendert ein Rand weder das Raster noch die Nachbarn: die Kachel wird kleiner,
-  // ihre Position im Layout bleibt, wo sie war. Genau deshalb sitzt das hier zentral und
-  // nicht in den einzelnen Widgets - es gilt fuer jedes.
+  // ===== Innenabstand je Widget (mT/mR/mB/mL) =================================
+  // Der Abstand wirkt INNEN: die Kachel (Rahmen, Hintergrund, Position, Groesse) bleibt
+  // unveraendert, nur die Zeichenflaeche darin rueckt ein. Umgesetzt als Innenabstand auf
+  // der Kachel - die Zeichenflaeche .winner ist absolut positioniert und bezieht sich damit
+  // auf deren Innenkante, also wirkt der Abstand ohne weiteres Zutun auf JEDES Widget.
   function _wm(w,k){var v=parseFloat(w['m'+k]);return isNaN(v)?0:v;}
-  function wGeom(w){
-    var mt=_wm(w,'T'),mr=_wm(w,'R'),mb=_wm(w,'B'),ml=_wm(w,'L');
-    return {l:w.x+ml, t:w.y+mt,
-            w:Math.max(8,w.w-ml-mr), h:Math.max(8,w.h-mt-mb)};
+  function wPad(w,s){
+    s=(s==null?1:s);
+    return {t:_wm(w,'T')*s,r:_wm(w,'R')*s,b:_wm(w,'B')*s,l:_wm(w,'L')*s};
+  }
+  function wPadCss(w,s){
+    var m=wPad(w,s);
+    return (m.t||m.r||m.b||m.l)?(m.t+'px '+m.r+'px '+m.b+'px '+m.l+'px'):'';
   }
   function applyGeomTo(el,w){
-    var g=wGeom(w);
-    el.style.left=g.l+'px';el.style.top=g.t+'px';
-    el.style.width=g.w+'px';el.style.height=g.h+'px';
+    el.style.left=w.x+'px';el.style.top=w.y+'px';
+    el.style.width=w.w+'px';el.style.height=w.h+'px';
+    el.style.padding=wPadCss(w);
   }
   // Ein Widget-Element bauen (identisch für Seiteninhalt und Leisten-Inhalt)
   function _mkWidgetEl(w,_refSet){
