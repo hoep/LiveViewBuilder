@@ -108,14 +108,23 @@
     s=(s==null?1:s);
     return {t:_wm(w,'T')*s,r:_wm(w,'R')*s,b:_wm(w,'B')*s,l:_wm(w,'L')*s};
   }
-  function wPadCss(w,s){
+  /**
+   * Der Abstand kann NICHT als Innenabstand der Kachel gesetzt werden: die Zeichenflaeche
+   * ist absolut positioniert, und fuer solche Kinder ist der Bezug die Padding-Box - das
+   * Padding liegt darin und wird schlicht ueberdeckt. Die Werte gehen deshalb als
+   * CSS-Variablen an die Kachel, und die Zeichenflaeche rechnet ihre Kanten daraus.
+   */
+  function wPadVars(el,w,s){
     var m=wPad(w,s);
-    return (m.t||m.r||m.b||m.l)?(m.t+'px '+m.r+'px '+m.b+'px '+m.l+'px'):'';
+    ['t','r','b','l'].forEach(function(k){
+      var v=m[k];
+      if(v)el.style.setProperty('--wp'+k,v+'px');else el.style.removeProperty('--wp'+k);
+    });
   }
   function applyGeomTo(el,w){
     el.style.left=w.x+'px';el.style.top=w.y+'px';
     el.style.width=w.w+'px';el.style.height=w.h+'px';
-    el.style.padding=wPadCss(w);
+    wPadVars(el,w);
   }
   // Ein Widget-Element bauen (identisch für Seiteninhalt und Leisten-Inhalt)
   function _mkWidgetEl(w,_refSet){
