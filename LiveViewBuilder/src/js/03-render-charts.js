@@ -130,7 +130,7 @@
   // der Seite anfassen - Popup-Widgets tragen dieselben IDs wie die Seiten-Widgets.
   function rootOfEl(el){var oc=$('#ovcanvas');return (el&&oc&&oc.contains(el))?oc:canvas;}
   function activateWidget(w,root){
-    if(w.type==='gauge'||w.type==='chart'||w.type==='spark'||w.type==='sankey'||w.type==='gaugepro'||w.type==='waterfall'||w.type==='meteogram'||w.type==='multiring'||w.type==='statmatrix')initEChart(w,root);
+    if(w.type==='gauge'||w.type==='chart'||w.type==='spark'||w.type==='sankey'||w.type==='gaugepro'||w.type==='waterfall'||w.type==='meteogram'||w.type==='multiring')initEChart(w,root);
     if(w.type==='camera'||w.type==='campro'||w.type==='camarray')refreshCam(w,root);
     if(w.type==='html'){if(w.htmlSrc==='custom')setHtmlContent(w,w.html||'',root);else fetchHtml(w,root);}
     if(w.type==='weekplan')fetchWeekplan(w,root);
@@ -344,7 +344,6 @@
     else if(w.type==='sankey'){setSankey(w);}
     else if(w.type==='meteogram'){setMeteogram(w);}
     else if(w.type==='multiring'){setMultiring(w);}
-    else if(w.type==='statmatrix'){setStatMatrix(w);}   // Daten holt das Widget selbst (mount)
     else if(w.type==='waterfall'||w.ctype==='waterfall'){setWaterfall(w);} // Live-Werte, KEINE Historie
     else if(w.ctype==='pie'||w.ctype==='donut'){renderChartData(w);}
     else{ fetchHist(w); } // immer frisch laden (auch ctype 'spark') (Query ~2ms); _hist-Cache ist wegen seiten-kollidierender IDs nicht verlaesslich
