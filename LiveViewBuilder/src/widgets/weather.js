@@ -76,7 +76,7 @@
     var f=(fmt&&fmt!=='auto')?fmt:wDetect(j);if(!f)return null;
     var cur=null,days=[],hours=[];
     if(f==='owm'){
-      if(j.current){var cw=(j.current.weather&&j.current.weather[0])||{};cur={temp:j.current.temp,cond:cw.description||cw.main,icon:owmIcon(cw),humidity:j.current.humidity,wind:_msKmh(j.current.wind_speed)};}
+      if(j.current){var cw=(j.current.weather&&j.current.weather[0])||{};cur={temp:j.current.temp,cond:cw.description||cw.main,icon:owmIcon(cw),humidity:j.current.humidity,wind:_msKmh(j.current.wind_speed),gust:_msKmh(j.current.wind_gust)};}
       (j.daily||[]).forEach(function(d){var dw=(d.weather&&d.weather[0])||{};days.push({hi:d.temp&&d.temp.max,lo:d.temp&&d.temp.min,cond:dw.description||dw.main,icon:owmIcon(dw),pop:(d.pop!=null)?Math.round(d.pop*100):null,ts:d.dt||null,feels:(d.feels_like&&d.feels_like.day),hum:d.humidity,wind:_msKmh(d.wind_speed),gust:_msKmh(d.wind_gust),wdir:d.wind_deg,press:d.pressure,clouds:d.clouds,uv:d.uvi,precip:(d.rain!=null?d.rain:(d.snow!=null?d.snow:0))});});
       // Stundenwerte stecken im selben OneCall-JSON. Sie werden in DIESELBE Struktur wie
       // die Tage gebracht - dadurch greift die gesamte vorhandene Darstellung mit Icon,
@@ -88,7 +88,7 @@
     } else if(f==='tempest'){
       var uw=((j.units&&j.units.units_wind)||'').toLowerCase();
       var windC=function(v){if(v==null)return null;if(/mph/.test(uw))return v*1.60934;if(/kt|knot/.test(uw))return v*1.852;if(/kph|km/.test(uw))return v;if(/mps|m\/s/.test(uw))return v*3.6;return _msKmh(v);};
-      var cc=j.current_conditions;if(cc)cur={temp:cc.air_temperature,cond:cc.conditions,icon:tempestIcon(cc.icon)||wCondIcon(cc.conditions),humidity:cc.relative_humidity,wind:windC(cc.wind_avg)};
+      var cc=j.current_conditions;if(cc)cur={temp:cc.air_temperature,cond:cc.conditions,icon:tempestIcon(cc.icon)||wCondIcon(cc.conditions),humidity:cc.relative_humidity,wind:windC(cc.wind_avg),gust:windC(cc.wind_gust)};
       var hrsAll=(j.forecast&&j.forecast.hourly)||[]; // Tempest liefert im Tages-Forecast weder Regenmenge noch Wind -> aus den Stunden je Tag aggregieren
       var dl=(j.forecast&&j.forecast.daily)||[];dl.forEach(function(d){
         var ds=d.day_start_local||null,de=(ds!=null)?ds+86400:null;
@@ -107,12 +107,12 @@
       });
       var hl=(j.forecast&&j.forecast.hourly)||[];hl.forEach(function(h){hours.push({hi:h.air_temperature,lo:h.air_temperature,cond:h.conditions,icon:tempestIcon(h.icon)||wCondIcon(h.conditions),pop:(h.precip_probability!=null)?Math.round(h.precip_probability):null,ts:h.time||null,feels:h.feels_like,hum:h.relative_humidity,wind:windC(h.wind_avg),gust:windC(h.wind_gust),wdir:h.wind_direction,press:h.sea_level_pressure,clouds:null,uv:h.uv,precip:h.precip});});
     } else if(f==='openmeteo'){
-      if(j.current)cur={temp:j.current.temperature_2m,cond:wmoText(j.current.weather_code),icon:wmoIcon(j.current.weather_code),humidity:j.current.relative_humidity_2m,wind:j.current.wind_speed_10m};
+      if(j.current)cur={temp:j.current.temperature_2m,cond:wmoText(j.current.weather_code),icon:wmoIcon(j.current.weather_code),humidity:j.current.relative_humidity_2m,wind:j.current.wind_speed_10m,gust:j.current.wind_gusts_10m};
       var dd=j.daily;if(dd&&dd.time){for(var i=0;i<dd.time.length;i++){var wc=dd.weather_code&&dd.weather_code[i];var dts=dd.time[i]?Math.floor(new Date(dd.time[i]).getTime()/1000):null;days.push({hi:dd.temperature_2m_max&&dd.temperature_2m_max[i],lo:dd.temperature_2m_min&&dd.temperature_2m_min[i],cond:wmoText(wc),icon:wmoIcon(wc),pop:dd.precipitation_probability_max?dd.precipitation_probability_max[i]:null,ts:dts,wind:dd.wind_speed_10m_max?dd.wind_speed_10m_max[i]:null,gust:dd.wind_gusts_10m_max?dd.wind_gusts_10m_max[i]:null,wdir:dd.wind_direction_10m_dominant?dd.wind_direction_10m_dominant[i]:null,uv:dd.uv_index_max?dd.uv_index_max[i]:null,precip:dd.precipitation_sum?dd.precipitation_sum[i]:null});}}
       var hd=j.hourly;if(hd&&hd.time){for(var hi=0;hi<hd.time.length;hi++){var whc=hd.weather_code&&hd.weather_code[hi];var hts=hd.time[hi]?Math.floor(new Date(hd.time[hi]).getTime()/1000):null;var ht=hd.temperature_2m&&hd.temperature_2m[hi];hours.push({hi:ht,lo:ht,cond:wmoText(whc),icon:wmoIcon(whc),pop:hd.precipitation_probability?hd.precipitation_probability[hi]:null,ts:hts,feels:hd.apparent_temperature?hd.apparent_temperature[hi]:null,hum:hd.relative_humidity_2m?hd.relative_humidity_2m[hi]:null,wind:hd.wind_speed_10m?hd.wind_speed_10m[hi]:null,gust:hd.wind_gusts_10m?hd.wind_gusts_10m[hi]:null,wdir:hd.wind_direction_10m?hd.wind_direction_10m[hi]:null,press:hd.pressure_msl?hd.pressure_msl[hi]:null,clouds:hd.cloud_cover?hd.cloud_cover[hi]:null,uv:hd.uv_index?hd.uv_index[hi]:null,precip:hd.precipitation?hd.precipitation[hi]:null});}}
     } else if(f==='flat'){
       var t=(j.temp!=null?j.temp:j.temperature),cnd=(j.condition||j.conditions||j.description);
-      cur={temp:t,cond:cnd,icon:(j.icon?(tempestIcon(j.icon)||wCondIcon(j.icon)):wCondIcon(cnd)),humidity:(j.humidity!=null?j.humidity:j.relative_humidity),wind:(j.wind!=null?j.wind:(j.wind_speed!=null?j.wind_speed:j.windspeed))};
+      cur={temp:t,cond:cnd,icon:(j.icon?(tempestIcon(j.icon)||wCondIcon(j.icon)):wCondIcon(cnd)),humidity:(j.humidity!=null?j.humidity:j.relative_humidity),wind:(j.wind!=null?j.wind:(j.wind_speed!=null?j.wind_speed:j.windspeed)),gust:(j.gust!=null?j.gust:(j.wind_gust!=null?j.wind_gust:j.windgust))};
     }
     return {fmt:f,cur:cur,days:days,hours:hours};
   }
@@ -224,11 +224,26 @@
     }
     var hum=(w.vHum&&_ln(w.vHum)!=null)?_ln(w.vHum):(cur?cur.humidity:null);
     var wind=(w.vWind&&_ln(w.vWind)!=null)?_ln(w.vWind):(cur?cur.wind:null);
+    // Boeen neben dem Mittelwert. Der Durchschnitt allein sagt wenig: 12 km/h mit
+    // Spitzen von 50 ist ein anderer Tag als gleichmaessige 12. Gebundene Variable
+    // schlaegt die Wetterquelle - eine eigene Station misst naeher am Haus.
+    var gust=(w.vGust&&_ln(w.vGust)!=null)?_ln(w.vGust):(cur&&cur.gust!=null?cur.gust:null);
     var ci=el.querySelector('[data-role=cico]');if(ci)ci.innerHTML=iconSVG(icon);
     var ct=el.querySelector('[data-role=val]');if(ct)ct.textContent=(temp!=null)?(_wtxt(temp,1)+unit):'–';
     var cs=el.querySelector('[data-role=sub]');if(cs)cs.textContent=(condTxt)?wTrans(condTxt):((cData||condHasVar)?'':'keine/ungültige Daten');
     var hu=el.querySelector('[data-role=hum]');if(hu)hu.innerHTML=(hum!=null)?(_dropSVG+_wtxt(hum)+' %'):'';
-    var wi=el.querySelector('[data-role=wind]');if(wi)wi.innerHTML=(wind!=null)?('<svg class="hwmic" style="fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24">'+((ICONS.wind||[])[1]||'')+'</svg>'+_wtxt(wind)+' km/h'):'';
+    var wi=el.querySelector('[data-role=wind]');
+    if(wi){
+      var _wsvg='<svg class="hwmic" style="fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24">'+((ICONS.wind||[])[1]||'')+'</svg>';
+      // Die Boe steht daneben, sobald sie sich vom angezeigten Wert unterscheidet.
+      // "24 km/h · Böen 24" waere doppelt gemoppelt - alles andere ist eine
+      // Information: die Boe kann ueber dem Mittel liegen (Spitze) oder darunter
+      // (das Mittel ist ueber einen laengeren Zeitraum gebildet).
+      var _bo=(w.hGust!==false&&gust!=null&&(wind==null||Math.abs(gust-wind)>=0.5))
+        ? ('<span class="hwgust"> · Böen '+_wtxt(gust)+' km/h</span>') : '';
+      wi.innerHTML=(wind!=null)?(_wsvg+_wtxt(wind)+' km/h'+_bo)
+                 :((_bo!=='')?(_wsvg+'Böen '+_wtxt(gust)+' km/h'):'');
+    }
     wBand(w,el,_ln,_lt);
     if(!wExt(w))return;
     // Stundenmodus nutzt DIESELBEN Slots wie der Tagesmodus. Die Beschriftung wird zur
@@ -269,7 +284,7 @@
       +row('Format','<select id="pWFmt"><option value="auto"'+((w.wfmt||'auto')==='auto'?' selected':'')+'>Automatisch erkennen</option><option value="owm"'+(w.wfmt==='owm'?' selected':'')+'>OpenWeatherMap</option><option value="tempest"'+(w.wfmt==='tempest'?' selected':'')+'>Tempest / WeatherFlow</option><option value="openmeteo"'+(w.wfmt==='openmeteo'?' selected':'')+'>Open-Meteo</option></select>')
       +row('Temp-Einheit','<input id="pWUnit" value="'+esc(w.wunit!=null?w.wunit:'°')+'" style="width:60px" placeholder="°">')
       +'<div class="pgh">Aktuelle Werte (optional als Variable)</div>'
-      +fieldPick(w,'vTemp','Temperatur')+fieldPick(w,'vCond','Zustand')+fieldPick(w,'vHum','Feuchte %')+fieldPick(w,'vWind','Wind km/h')+fieldPick(w,'vRain','Regen (bool)')
+      +fieldPick(w,'vTemp','Temperatur')+fieldPick(w,'vCond','Zustand')+fieldPick(w,'vHum','Feuchte %')+fieldPick(w,'vWind','Wind km/h')+fieldPick(w,'vGust','Böen km/h')+fieldPick(w,'vRain','Regen (bool)')
       +'<div class="pgh">Zusatzzeile (erscheint nur bei Bedarf)</div>'
       +fieldPick(w,'vStorm','Gewitter-Stufe 0-3')+fieldPick(w,'vStormDist','Gewitter km')+fieldPick(w,'vStormAge','letzter Blitz (Zeit)')+fieldPick(w,'vStormRate','Blitze/30 min')
       +fieldPick(w,'vRainRate','Regenrate mm/h')+fieldPick(w,'vRainDay','Regen heute mm')
@@ -321,6 +336,7 @@
       +(w.fcMode==='hours'?('<div class="pgh">Zusatzwerte je Stunde (einzeln zuschaltbar)</div>'
         +row('Luftfeuchte','<input type="checkbox" id="pHHum"'+(w.hHum!==false?' checked':'')+'>')
         +row('Wind','<input type="checkbox" id="pHWind"'+(w.hWind!==false?' checked':'')+'>')
+        +row('Böen','<input type="checkbox" id="pHGust"'+(w.hGust!==false?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">neben dem Mittelwert, sobald sie ihn übersteigen</span>')
         +row('Luftdruck','<input type="checkbox" id="pHPress"'+(w.hPress!==false?' checked':'')+'>')
         +row('Niederschlag (% · mm)','<input type="checkbox" id="pHPrecip"'+(w.hPrecip!==false?' checked':'')+'>')):'')
       +(w.fcMode==='hours'?'':row('Erster Tag','<select id="pFcStart"><option value="0"'+((w.fcStart||0)===0?' selected':'')+'>Heute</option><option value="1"'+(w.fcStart===1?' selected':'')+'>Morgen</option></select>'))):'';
@@ -336,7 +352,7 @@
     if(wExt(w)){
       if($('#pHideCur'))$('#pHideCur').onchange=function(){w.hideCur=this.checked?undefined:true;render();applyWeather(w);commit();};
       if($('#pFcMode'))$('#pFcMode').onchange=function(){w.fcMode=(this.value==='hours')?'hours':undefined;render();renderProps();applyWeather(w);commit();};
-      [['pHHum','hHum'],['pHWind','hWind'],['pHPress','hPress'],['pHPrecip','hPrecip']].forEach(function(p){var _e=$('#'+p[0]);if(_e)_e.onchange=function(){w[p[1]]=this.checked?undefined:false;render();applyWeather(w);commit();};});
+      [['pHHum','hHum'],['pHWind','hWind'],['pHGust','hGust'],['pHPress','hPress'],['pHPrecip','hPrecip']].forEach(function(p){var _e=$('#'+p[0]);if(_e)_e.onchange=function(){w[p[1]]=this.checked?undefined:false;render();applyWeather(w);commit();};});
       if($('#pWDays'))$('#pWDays').oninput=function(){w.days=Math.max(1,Math.min(12,parseInt(this.value)||5));render();applyWeather(w);commit();};
       if($('#pFcStart'))$('#pFcStart').onchange=function(){w.fcStart=parseInt(this.value);render();applyWeather(w);commit();};
       if($('#pShowPq'))$('#pShowPq').onchange=function(){w.showPq=this.checked;render();applyWeather(w);commit();};
