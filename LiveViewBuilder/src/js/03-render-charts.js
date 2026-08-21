@@ -159,7 +159,7 @@
   function rootOfEl(el){var oc=$('#ovcanvas');return (el&&oc&&oc.contains(el))?oc:canvas;}
   function activateWidget(w,root){
     if(w.type==='gauge'||w.type==='chart'||w.type==='spark'||w.type==='sankey'||w.type==='gaugepro'||w.type==='waterfall'||w.type==='meteogram'||w.type==='multiring')initEChart(w,root);
-    if(w.type==='camera'||w.type==='campro'||w.type==='camarray')refreshCam(w,root);
+    if(w.type==='camera'||w.type==='campro'||w.type==='camarray')_camReihe(w,root);
     if(w.type==='html'){if(w.htmlSrc==='custom')setHtmlContent(w,w.html||'',root);else fetchHtml(w,root);}
     if(w.type==='weekplan')fetchWeekplan(w,root);
     if(w.type==='suncard')refreshSun(w,root);
@@ -1627,6 +1627,28 @@
   // dauerhaft in derselben <img>-Verbindung - ein erneutes Setzen von src wuerde ihn abreissen
   // und neu verbinden lassen (sichtbares Ruckeln, unnoetige Last auf der Kamera).
   function _camMode(w){return w.camSrc||'media';}
+  /**
+   * Kamerabilder der Reihe nach holen, nicht alle auf einmal.
+   *
+   * Sie sind das Schwerste am Seitenaufbau: auf der Hauptseite elf Bilder mit
+   * zusammen gut zwei Megabyte, waehrend die eigentlichen Daten (Werte, Profile,
+   * Layout) zusammen keine 200 KB wiegen. Ein Browser haelt nur sechs
+   * Verbindungen je Gegenstelle offen - werden die Bilder sofort und gleichzeitig
+   * angefordert, wartet jede kleine Abfrage dahinter. Gemessen: die
+   * Werteabfrage brauchte 2,1 s, obwohl sie in 20 ms beantwortet ist.
+   *
+   * Also: ein kurzer Vorlauf fuer die Seite, dann die Bilder mit Abstand.
+   */
+  var _camQ=[],_camT=0;
+  function _camReihe(w,root){
+    _camQ.push([w,root]);
+    if(_camT)return;
+    _camT=setTimeout(function _weiter(){
+      var e=_camQ.shift();
+      if(e){try{refreshCam(e[0],e[1]);}catch(_e){}}
+      _camT=_camQ.length?setTimeout(_weiter,150):0;
+    },300);
+  }
   function refreshCam(w,root){
     if(w.type==='camarray'){                                // nur die AKTIVE Kamera versorgen, und nur wenn Media
       var cams=w.cams||[],ci=Math.min(Math.max(parseInt(w._ci)||0,0),Math.max(0,cams.length-1)),c=cams[ci];
@@ -1786,7 +1808,7 @@
   }
   setInterval(function(){allWidgets().forEach(function(w){if((w.type==='chart'||w.type==='spark')&&w.ctype!=='waterfall'&&w.ctype!=='barrace'&&!(_wsOK&&bcfg().noSafetyPoll))fetchHist(w);if(w.type==='html'&&w.htmlSrc!=='custom')fetchHtml(w);if(w.type==='weekplan')fetchWeekplan(w);if(w.type==='calendar')fetchCalEvents(w);if(w.type==='eventctl')fetchEvent(w);if(w.type==='objinfo')fetchObjInfo(w);if(w.type==='statetl')_stlFetch(w);if(w.type==='statelog')_slogFetch(w);if(w.type==='table')_tblLoad(w);
     var _wr=WIDGETS[w.type];if(_wr&&_wr.tick)try{_wr.tick(w);}catch(_e){}});},60000);
-  setInterval(function(){var now=Date.now();allWidgets().forEach(function(w){if(w.type==='camera'||w.type==='campro'||w.type==='camarray'){var iv=((w.refresh>0)?w.refresh:15)*1000;if(!w._lastCam||now-w._lastCam>=iv){w._lastCam=now;refreshCam(w);}}});},1000);
+  setInterval(function(){var now=Date.now();allWidgets().forEach(function(w){if(w.type==='camera'||w.type==='campro'||w.type==='camarray'){var iv=((w.refresh>0)?w.refresh:15)*1000;if(!w._lastCam||now-w._lastCam>=iv){w._lastCam=now;_camReihe(w);}}});},1000);
 
   // ---------- Auswahl & Eigenschaften ----------
   var sel={},clip=[];
