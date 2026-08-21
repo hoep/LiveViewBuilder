@@ -34,7 +34,33 @@
   }
   // ---------- Einstellungen (Builder-Konfigurator) ----------
   function bcfg(){store.cfg=store.cfg||{};var c=store.cfg;if(c.gs==null)c.gs=8;if(c.gap==null)c.gap=12;if(c.defW==null)c.defW=1440;if(c.defH==null)c.defH=900;if(c.defFit==null)c.defFit='auto';if(c.autosave==null)c.autosave=true;if(c.mobileOpt==null)c.mobileOpt=true;if(c.mobileW==null)c.mobileW=640;if(c.wglow==null)c.wglow=false;if(c.refreshSec==null)c.refreshSec=15;if(c.chartAnim==null)c.chartAnim=false;return c;}
-  function isMobile(){var w=window.innerWidth||0,h=window.innerHeight||0;if(w<=(bcfg().mobileW||640))return true;try{if(window.matchMedia&&window.matchMedia('(pointer:coarse)').matches&&Math.min(w,h)<=820)return true;}catch(e){}return false;} // coarse-Pointer (Touch) in beiden Ausrichtungen -> mobil
+  /**
+   * Vollansicht auf DIESEM Geraet erzwingen.
+   *
+   * Anlass: ein iPad gilt hier immer als mobil - der Zeiger ist grob und die
+   * kuerzere Kante liegt bei 768 oder 820 Bildpunkten. Solange das Fenster gross
+   * ist, faellt das nicht auf; sobald Safari es verkleinert (Slide Over, geteilte
+   * Ansicht, Rueckkehr aus dem Hintergrund), kippt die Seite in die Mobilfassung
+   * und bleibt dort.
+   *
+   * Einmal `?voll=1` aufrufen - das Geraet merkt es sich (localStorage), auch
+   * ohne den Parameter in der Adresse. `?voll=0` hebt es wieder auf. Die
+   * Einstellung gilt NUR fuer dieses Geraet; Telefone bleiben unberuehrt.
+   */
+  var _vollCache=null;
+  function vollAnsicht(){
+    if(_vollCache!==null)return _vollCache;
+    var an=false;
+    try{
+      var m=String(location.search||'').match(/[?&](?:voll|desktop)=([01])/);
+      if(m){an=(m[1]==='1');localStorage.setItem('lvvoll',an?'1':'0');}
+      else an=(localStorage.getItem('lvvoll')==='1');
+    }catch(e){}
+    _vollCache=an;
+    return an;
+  }
+  function isMobile(){
+    if(vollAnsicht())return false;var w=window.innerWidth||0,h=window.innerHeight||0;if(w<=(bcfg().mobileW||640))return true;try{if(window.matchMedia&&window.matchMedia('(pointer:coarse)').matches&&Math.min(w,h)<=820)return true;}catch(e){}return false;} // coarse-Pointer (Touch) in beiden Ausrichtungen -> mobil
   function buildSettings(){
     var box=$('#setpanel');if(!box)return;var c=bcfg();
     box.innerHTML=''
@@ -52,6 +78,11 @@
       +'<div class="pgh">Mobil</div>'
       +'<label class="skrow2" style="flex-direction:row;align-items:center;gap:8px"><input type="checkbox" id="stMob"'+(c.mobileOpt!==false?' checked':'')+'><span>Für Mobilgeräte optimieren (Auto-Reflow)</span></label>'
       +'<label class="skrow2"><span>Mobil-Schwelle (px Breite)</span><input id="stMobW" type="number" min="320" value="'+(c.mobileW||640)+'"></label>'
+      +'<div class="skhint" style="font-size:11px;color:var(--muted);line-height:1.45;margin:2px 2px 8px">'
+      +'Einzelnes Gerät immer in der Vollansicht: einmal <b>?voll=1</b> an die Adresse hängen — '
+      +'das Gerät merkt es sich, auch ohne den Parameter. <b>?voll=0</b> hebt es wieder auf. '
+      +(vollAnsicht()?'<b style="color:var(--accent)">Auf diesem Gerät ist die Vollansicht aktiv.</b>':'')
+      +'</div>'
       +'<label class="skrow2"><span>Mobil-Startseite</span><select id="stMobHome"><option value="">(automatisch)</option>'+Object.keys(store.views||{}).map(function(n){return '<option'+(store.homeMobile===n?' selected':'')+'>'+esc(n)+'</option>';}).join('')+'</select></label>'
       +'<label class="skrow2"><span>Mobil-Ansicht für „'+esc(store.current||'')+'"</span><select id="stMobView"><option value="">(keine)</option>'+Object.keys(store.views||{}).map(function(n){return '<option'+((state.page&&state.page.mobileView)===n?' selected':'')+'>'+esc(n)+'</option>';}).join('')+'</select></label>'
       +'<label class="skrow2" style="flex-direction:row;align-items:center;gap:8px"><input type="checkbox" id="stFitLock"'+((state.page&&state.page.fitLock)?' checked':'')+'><span>Fit sperren für „'+esc(store.current||'')+'" (immer Querformat, kein Mobil-Reflow)</span></label>'

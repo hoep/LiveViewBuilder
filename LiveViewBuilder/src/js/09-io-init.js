@@ -379,7 +379,11 @@
     document.body.classList.remove('reflow');canvas.style.position='absolute';canvas.style.height=vh+'px';smartFit(CR.w,CR.h);
     if(typeof chromeFitBottom==='function')chromeFitBottom(vh);
   }
-  function sfPick(vw,vh,p){var c=sfCfg(p),ad=p.w/p.h,av=vw/vh,lo=c.reflowLo+(_scMode==='reflow'?0.08:0),r=(av/ad<lo)||vw<c.phoneW;_scMode=r?'reflow':'anchor';return _scMode;}
+  function sfPick(vw,vh,p){
+    // Vollansicht erzwungen (siehe vollAnsicht()): die Seite wird skaliert, aber
+    // nie gestapelt - genau das meint "immer die volle Webseite".
+    if(typeof vollAnsicht==='function'&&vollAnsicht()){_scMode='anchor';return _scMode;}
+    var c=sfCfg(p),ad=p.w/p.h,av=vw/vh,lo=c.reflowLo+(_scMode==='reflow'?0.08:0),r=(av/ad<lo)||vw<c.phoneW;_scMode=r?'reflow':'anchor';return _scMode;}
 
   // gapFit v2 — robuste Per-Widget-Berechnung (kein fragiles Track-Cell-Matching):
   // EIN Faktor s haelt jedes Seitenverhaeltnis absolut (Box = w*s x h*s). Der Ueberschuss je Achse
@@ -552,6 +556,12 @@
     // Run/Kiosk auf Mobil: das Ein-/Ausblenden der Browser-Adressleiste ändert NUR die Höhe -> nicht neu skalieren
     // (sonst springt das Layout beim ersten Tipp). Breiten-/Orientierungswechsel skaliert weiter normal.
     var vw=window.innerWidth,vh=window.innerHeight;
+    // Im Hintergrund NICHT umbauen. iOS meldet beim Minimieren, beim Wechsel in die
+    // geteilte Ansicht und beim App-Umschalter eine geschrumpfte Groesse; wer darauf
+    // hoert, kippt in die Mobilfassung und kommt beim Zurueckkehren nicht wieder
+    // heraus, weil dann kein weiteres resize folgt. Beim Sichtbarwerden wird
+    // ohnehin neu eingepasst (visibilitychange unten).
+    if(document.hidden)return;
     if(document.body.classList.contains('run')&&isMobile()&&bcfg().kioskStable!==false&&vw===_fitVP.w&&Math.abs(vh-_fitVP.h)<170)return;
     // Doku: bei geaenderter Zielbreite Katalog neu aufbauen (Textblöcke füllen die neue Breite, kein Zoom)
     if((typeof DOKU!=='undefined'&&DOKU)&&typeof dokuFitWidth==='function'&&typeof buildDokuStore==='function'){
@@ -559,3 +569,12 @@
       if(_tw!==DOKU_TXTW){var _cur=store&&store.current;dokuFitWidth();store=buildDokuStore();if(_cur&&store.views[_cur])store.current=_cur;switchView(store.current);}
     }
     fitCanvas();});});
+  // Zurueck aus dem Hintergrund: einmal sauber einpassen. Das ist die Gegenseite
+  // zur Wache oben - waehrend die Seite verborgen war, wurde jede gemeldete
+  // Groesse ignoriert, also gilt jetzt die erste, die wieder stimmt. Zwei Anlaeufe,
+  // weil iOS die endgueltige Fenstergroesse erst nach dem Einblenden meldet.
+  document.addEventListener('visibilitychange',function(){
+    if(document.hidden)return;
+    fitCanvas();
+    setTimeout(fitCanvas,260);
+  });
