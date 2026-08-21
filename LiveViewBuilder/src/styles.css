@@ -983,20 +983,66 @@
   .rt .rthead .rth-eyebrow{font-size:clamp(9px,3cqmin,13px);font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
   .rt .rthead .rth-meta{font-size:clamp(8.5px,2.8cqmin,12px);font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--faint);font-variant-numeric:tabular-nums;white-space:nowrap}
   .rt .rtscroll{flex:1;overflow:auto;overscroll-behavior:contain;position:relative}
-  .rtt{border-collapse:separate;border-spacing:0;width:100%;font-size:clamp(10px,3.2cqmin,14px);font-variant-numeric:tabular-nums}
+  .rtt{border-collapse:separate;border-spacing:0;width:100%;font-size:var(--rt-fs,clamp(10px,3.2cqmin,14px));font-variant-numeric:tabular-nums}
   .rtt thead th{position:sticky;top:0;z-index:3;background:var(--surface-2);color:var(--muted);font-weight:600;font-size:clamp(8px,2.6cqmin,11px);letter-spacing:.06em;text-transform:uppercase;text-align:center;padding:clamp(6px,2.6cqmin,11px) clamp(8px,3.2cqmin,14px) clamp(5px,2.4cqmin,10px);border-bottom:1px solid var(--line);white-space:nowrap}
   .rtt thead th small{display:block;font-size:clamp(7px,2.2cqmin,10px);font-weight:500;color:var(--faint);letter-spacing:.04em;margin-top:2px}
   .rtt thead th.rt-num{text-align:right}
   .rtt th.rtrl,.rtt td.rtrl{position:sticky;left:0;text-align:left;white-space:nowrap;padding:0 clamp(10px,4cqmin,18px) 0 clamp(8px,3.2cqmin,14px);border-right:1px solid var(--line);box-shadow:9px 0 10px -10px color-mix(in oklab,var(--text) 26%,transparent)}
   .rtt th.rtrl{z-index:4;background:var(--surface-2);color:var(--faint);font-size:clamp(8px,2.6cqmin,11px);letter-spacing:.06em;text-transform:uppercase}
   .rtt td.rtrl{z-index:2;background:var(--surface)}
-  .rtt tbody tr:nth-child(even) td.rtrl{background:var(--tile)}
+  .rt-zeb .rtt tbody tr:nth-child(even) td.rtrl{background:var(--tile)}
   .rtrl-in{display:flex;align-items:center;gap:clamp(6px,3cqmin,12px);min-height:var(--rt-rowh,44px)}
   .rtrl-ix{flex:none;width:clamp(18px,5cqmin,26px);height:clamp(18px,5cqmin,26px);border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:clamp(9px,2.8cqmin,12px);font-weight:700;font-variant-numeric:tabular-nums;background:color-mix(in oklab,var(--accent) 15%,var(--surface));color:var(--accent);box-shadow:inset 0 0 0 1px color-mix(in oklab,var(--accent) 28%,transparent)}
   .rtrl-tx{font-weight:600;color:var(--text)}
   .rtt tbody td{padding:clamp(4px,2.2cqmin,9px) clamp(8px,3.2cqmin,14px);border-bottom:1px solid var(--line-soft);text-align:center;vertical-align:middle;height:var(--rt-rowh,44px)}
-  .rtt tbody tr:nth-child(even) td{background:var(--tile)}
+  .rt-zeb .rtt tbody tr:nth-child(even) td{background:var(--tile)}
   .rtt tbody tr:hover td{background:color-mix(in oklab,var(--accent) 7%,var(--surface))}
+
+  /* --- Regeltabelle: Zellzustaende, Gitter, Zusammenfassung ------------------
+     Ohne diese Regeln sehen gesperrte Zellen aus wie bedienbare - an einer
+     Poolanlage die falsche Reihenfolge: der Anwender erfuehre die Sperre erst
+     nach dem Tippen. */
+
+  /* Gitter: keins / nur waagerecht (bisheriges Verhalten) / voll */
+  .rt-g-none .rtt tbody td{border-bottom:0}
+  .rt-g-full .rtt tbody td{border-right:1px solid var(--line-soft)}
+  .rt-g-full .rtt tbody td:last-child{border-right:0}
+
+  /* Nur-Anzeige-Tabelle: nichts sieht anfassbar aus */
+  .rt-ro .rtt .rtc{cursor:default}
+  .rt-ro .rtt tbody tr:hover td{background:inherit}
+
+  /* Zelle gesperrt: sichtbar stumpf, kein Zeigefinger, halbe Deckkraft */
+  .rtt td.rtc-dis{cursor:not-allowed;opacity:.42;background-image:repeating-linear-gradient(135deg,transparent 0 5px,color-mix(in oklab,var(--text) 7%,transparent) 5px 6px)}
+  .rtt td.rtc-dis .rtsw,.rtt td.rtc-dis .rtseg{pointer-events:none}
+  /* Zelle gedaempft: bedienbar, aber gerade ohne Wirkung */
+  .rtt td.rtc-dim{opacity:.55}
+  /* Zelle verlangt eine Eingabe, die fehlt */
+  .rtt td.rtc-req{box-shadow:inset 0 0 0 1px color-mix(in oklab,var(--warn) 55%,transparent);background:color-mix(in oklab,var(--warn) 11%,transparent)}
+
+  /* Quittung: geschrieben und noch nicht bestaetigt / nicht uebernommen */
+  .rtt td.rtc-pend{background:color-mix(in oklab,var(--accent) 13%,transparent);box-shadow:inset 0 0 0 1px color-mix(in oklab,var(--accent) 45%,transparent)}
+  .rtt td.rtc-pend .rtcv,.rtt td.rtc-pend .rtv{opacity:.6}
+  .rtt td.rtc-fail{background:color-mix(in oklab,var(--crit) 15%,transparent);box-shadow:inset 0 0 0 1px color-mix(in oklab,var(--crit) 55%,transparent)}
+  .rtt td.rtc-fail .rtcv,.rtt td.rtc-fail .rtv{color:var(--crit)}
+
+  /* Gruppenkopf ueber den Spalten - liegt UEBER der Spaltenkopfzeile, darf sich
+     beim Scrollen nicht mit ihr ueberlagern */
+  .rtt thead tr.rtgrp th{position:sticky;top:0;z-index:5;background:var(--surface-2);color:var(--faint);font-size:clamp(7.5px,2.4cqmin,10px);letter-spacing:.1em;padding-top:clamp(5px,2.2cqmin,9px);padding-bottom:clamp(3px,1.6cqmin,6px);border-bottom:1px solid var(--line-soft)}
+  .rtt thead tr.rtgrp+tr th{top:calc(clamp(7.5px,2.4cqmin,10px) + clamp(8px,3.8cqmin,15px))}
+
+  /* Zusammenfassungszeile je Regel: halbe Hoehe, linksbuendig, leise */
+  .rtt tbody tr.rtsum td{height:auto;padding:0 clamp(8px,3.2cqmin,14px) clamp(4px,2cqmin,8px);border-bottom:1px solid var(--line);text-align:left;font-size:clamp(8.5px,2.6cqmin,11.5px);color:var(--muted);line-height:1.35}
+  .rt-zeb .rtt tbody tr.rtsum td{background:inherit}
+  .rtt tbody tr.rtsum+tr td{border-top:0}
+
+  /* Zeilenwarnung */
+  .rtt td .rtwarn{display:inline-block;margin-left:5px;padding:0 5px;border-radius:5px;font-size:.82em;font-weight:700;background:color-mix(in oklab,var(--warn) 22%,transparent);color:var(--warn)}
+  .rtt td .rtwarn-crit{background:color-mix(in oklab,var(--crit) 22%,transparent);color:var(--crit)}
+
+  /* Schloss in der Kopfzeile (Gate 'lock') */
+  .rt .rthead .rtlock{flex:none;display:inline-flex;align-items:center;gap:5px;padding:2px clamp(6px,2.6cqmin,11px);border-radius:999px;border:1px solid var(--line);background:var(--surface-2);color:var(--muted);font-size:clamp(8px,2.6cqmin,11px);font-weight:600;letter-spacing:.05em;text-transform:uppercase;cursor:pointer}
+  .rt .rthead .rtlock.on{border-color:color-mix(in oklab,var(--accent) 45%,transparent);background:color-mix(in oklab,var(--accent) 15%,var(--surface));color:var(--accent)}
   .rtt tbody tr:hover td.rtrl{background:color-mix(in oklab,var(--accent) 9%,var(--surface))}
   .rtt tr[data-active="1"] td.rtrl{box-shadow:inset 3px 0 0 var(--accent),9px 0 10px -10px color-mix(in oklab,var(--text) 26%,transparent)}
   .rtt tr[data-active="0"] td.rtc{opacity:.4}
@@ -3295,3 +3341,87 @@
 .ss-reset svg{width:13px;height:13px}
 .ss-reset b{font-size:10px;font-weight:700;letter-spacing:.04em}
 .ss-reset[hidden]{display:none}
+
+  /* --- Speicherleiste und Markierung geaenderter Kacheln ---------------------
+     Gehoert zum gesammelten Schreiben: solange eine Ansicht eine savebar traegt,
+     gehen Aenderungen in einen Puffer statt sofort ans Geraet. Ohne sichtbare
+     Markierung wuesste niemand, was noch ungeschrieben ist. */
+  .sbar{width:100%;height:100%;display:flex;align-items:center;justify-content:space-between;gap:clamp(8px,3cqmin,16px);padding:0 clamp(10px,4cqmin,18px);background:var(--surface-2);border:1px solid var(--line);border-radius:12px}
+  .sbar.has{border-color:color-mix(in oklab,var(--accent) 45%,transparent);background:color-mix(in oklab,var(--accent) 10%,var(--surface-2))}
+  .sbar .sb-l{display:flex;align-items:center;gap:clamp(6px,2.6cqmin,11px);min-width:0}
+  .sbar .sb-lbl{font-weight:600;color:var(--text);font-size:clamp(11px,3cqmin,15px);white-space:nowrap}
+  .sbar .sb-cnt{flex:none;min-width:clamp(20px,5.5cqmin,28px);height:clamp(20px,5.5cqmin,28px);padding:0 6px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;font-size:clamp(10px,2.8cqmin,13px);font-weight:700;font-variant-numeric:tabular-nums;background:var(--tile);color:var(--faint)}
+  .sbar.has .sb-cnt{background:var(--accent);color:#08201c}
+  .sbar .sb-hint{color:var(--muted);font-size:clamp(9px,2.5cqmin,12px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .sbar.has .sb-hint{visibility:hidden}
+  .sbar .sb-r{display:flex;gap:6px;flex:none}
+  .sbar .sb-b{padding:clamp(4px,2cqmin,8px) clamp(9px,3.4cqmin,15px);border-radius:9px;border:1px solid var(--line);background:var(--surface);color:var(--muted);font:inherit;font-size:clamp(10px,2.7cqmin,13px);font-weight:600;cursor:pointer}
+  .sbar .sb-b:hover{border-color:var(--muted);color:var(--text)}
+  .sbar .sb-b[disabled]{opacity:.5;cursor:default}
+  .sbar .sb-go{border-color:color-mix(in oklab,var(--accent) 50%,transparent);color:var(--accent)}
+  .sbar.has .sb-go{background:var(--accent);border-color:var(--accent);color:#08201c}
+
+  /* Geaenderte, noch nicht geschriebene Kachel */
+  .w.w-dirty{outline:2px solid color-mix(in oklab,var(--accent) 60%,transparent);outline-offset:-2px;border-radius:8px}
+  .w.w-dirty::after{content:'';position:absolute;top:3px;right:3px;width:7px;height:7px;border-radius:50%;background:var(--accent);pointer-events:none;z-index:5}
+
+  /* Inverse Textfarbe - Rueckfall, falls applySkin (Skin-Anwendung) noch nicht
+     gelaufen ist. Im Betrieb setzt applySkin sie aus der jeweils ANDEREN Ansicht:
+     im dunklen Skin die Schrift des hellen und umgekehrt. Gebraucht ueberall dort,
+     wo Text auf einer gefuellten Flaeche steht. */
+  :root{--text-inv:#16232a}
+  :root:not([data-theme="light"]){--text-inv:#16232a}
+  :root[data-theme="dark"]{--text-inv:#16232a}
+  :root[data-theme="light"]{--text-inv:#e7eef0}
+
+  /* ===== Programmfuehrer (epggrid) =====================================
+     Ein Senderraster mit waagrechter Zeitachse. Alle Farben kommen aus dem
+     Skin (oder aus den Widget-Eigenschaften, die selbst Skinfarben sind) -
+     nichts ist fest verdrahtet, damit das Raster jedem Thema folgt. */
+  .epgw{position:absolute;inset:0;display:flex;flex-direction:column;overflow:hidden;
+        font-family:var(--fu,inherit);color:var(--text)}
+  .epgw .epghd{display:flex;align-items:center;gap:8px;padding:0 2px 7px;flex:none}
+  .epgw .epghd .sp{flex:1}
+  .epgw .epgtag{font-weight:700;letter-spacing:.2px}
+  .epgw .epguhr{color:var(--muted);font-variant-numeric:tabular-nums}
+  .epgw .epgb{background:var(--surface-2);border:1px solid var(--line);border-radius:11px;
+              padding:3px 5px 3px 3px;color:var(--text);font:inherit;cursor:pointer;line-height:1}
+  .epgw .epgb:hover{border-color:var(--muted)}
+  .epgw .epgb.on{border-color:var(--accent);color:var(--accent)}
+  .epgw .epgq{background:var(--surface-2);border:1px solid var(--line);border-radius:11px;
+              padding:4px 9px;color:var(--text);font:inherit;min-width:150px}
+  .epgw .epgq::placeholder{color:var(--faint)}
+  .epgw .epgbody{flex:1;display:flex;min-height:0;overflow:hidden;
+                 border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+  .epgw .epgnames{flex:none;overflow:hidden;border-right:1px solid var(--line);background:var(--surface)}
+  .epgw .epgsc{flex:1;overflow:auto;scrollbar-width:thin}
+  .epgw .epgin{position:relative}
+  .epgw .epgax{position:sticky;top:0;z-index:3;background:var(--surface);border-bottom:1px solid var(--line)}
+  .epgw .epgaxl{position:absolute;top:0;color:var(--muted);font-variant-numeric:tabular-nums;
+                padding-left:5px;border-left:1px solid var(--line-soft,var(--line))}
+  .epgw .epgrow{position:relative;border-bottom:1px solid var(--line-soft,var(--line))}
+  .epgw .epgn{display:flex;align-items:center;gap:7px;padding:0 8px;overflow:hidden;
+              border-bottom:1px solid var(--line-soft,var(--line))}
+  .epgw .epgn img{object-fit:contain;flex:none}
+  .epgw .epgn span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .epgw .epgp{position:absolute;top:3px;bottom:3px;overflow:hidden;padding:5px 8px;
+              box-sizing:border-box;cursor:pointer;transition:filter .12s}
+  .epgw .epgp:hover{filter:brightness(1.25)}
+  .epgw .epgp .t{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
+  .epgw .epgp .z{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;opacity:.85;margin-top:2px}
+  .epgw .epgp.tref{outline:2px solid var(--accent);outline-offset:-2px}
+  .epgw .epgnl{position:absolute;top:0;bottom:0;width:2px;z-index:4;pointer-events:none}
+  .epgw .epgleer{padding:14px;color:var(--muted)}
+  .epgw .epgrec{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:5px;vertical-align:middle}
+  .epgw .epgov{position:absolute;inset:0;z-index:9;display:flex;align-items:center;justify-content:center;
+               background:color-mix(in oklab,var(--bg,#000) 62%,transparent);backdrop-filter:blur(2px)}
+  .epgw .epgovc{width:min(560px,86%);background:var(--surface);border:1px solid var(--line);
+                border-radius:14px;padding:14px 16px 13px;box-shadow:0 18px 44px rgba(0,0,0,.42)}
+  .epgw .epgovh{display:flex;align-items:center;gap:9px;font-size:12px;color:var(--muted);margin-bottom:9px}
+  .epgw .epgovh img{height:22px;max-width:56px;object-fit:contain}
+  .epgw .epgovh b{color:var(--text)}
+  .epgw .epgovt{font-size:19px;font-weight:700;line-height:1.25;margin-bottom:3px}
+  .epgw .epgovs{font-size:12.5px;color:var(--accent);margin-bottom:8px}
+  .epgw .epgovd{font-size:12.5px;color:var(--muted);line-height:1.5;max-height:150px;overflow:auto}
+  .epgw .epgovb{display:flex;align-items:center;gap:10px;margin-top:12px}
+  .epgw .epgovm{font-size:12px;color:var(--muted);flex:1;line-height:1.35}

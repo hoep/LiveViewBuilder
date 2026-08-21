@@ -147,7 +147,7 @@
     if(_popup&&_popup.widgets){var _ov=$('#ovcanvas');if(_ov)_popup.widgets.forEach(function(w){_vidxOne(w,_ov);});}
     if(typeof _hover!=='undefined'&&_hover&&_hover.widgets){var _hv=$('#hovcanvas');if(_hv)_hover.widgets.forEach(function(w){_vidxOne(w,_hv);});}
   }
-  function invalidateVidx(){_vidx=null;} // bei render()/Popup-Wechsel aufrufen — nächster poll/apply baut neu
+  function invalidateVidx(){_vidx=null;deferReset();} // bei render()/Popup-Wechsel aufrufen — nächster poll/apply baut neu
   // Live-Feed (für WS-Monitor-Widget): jeder eingehende Wert wird protokolliert, mit Quelle (poll/ws)
   var _liveFeed=[],_liveSrc='poll';
   function _feedPush(id,d,src){if(src==='cache')return;_liveFeed.push({t:Date.now(),id:id,v:(d.f!=null&&d.f!=='')?d.f:d.v,src:src||'poll'});if(_liveFeed.length>500)_liveFeed.splice(0,_liveFeed.length-500);}
@@ -291,7 +291,68 @@
     }
   }
   startPV();wsConnect();_wsWd=setInterval(wsWatchdog,30000);
+  // ---------- Gesammeltes Schreiben ------------------------------------------
+  // Manche Geraete nehmen keine Einzelwerte entgegen, sondern schreiben bei jeder
+  // Aenderung einen ganzen Block zurueck. Am ProCon-Poolcontroller ist eine Regel
+  // nicht einzeln aenderbar: setRules() schickt IMMER die komplette Sektion, und
+  // wer fuenf Felder nacheinander stellt, loest fuenf komplette Sektionsschreibungen
+  // aus - gegen ein Stundenbudget von 60.
+  //
+  // Traegt eine Ansicht ein 'savebar'-Widget, wandern Aenderungen deshalb erst in
+  // einen Puffer und gehen auf Knopfdruck in EINEM Auftrag zum Modul. Bis dahin
+  // zeigt die Oberflaeche den gewuenschten Wert bereits an (sonst springt das Feld
+  // beim naechsten Poll zurueck und man glaubt, es habe nicht funktioniert).
+  var _defBuf={};          // VariablenID -> gewuenschter Wert
+  var _defBars=0;          // Zahl der savebar-Widgets in der aktuellen Ansicht
+  function deferActive(){return _defBars>0;}
+  function deferCount(){var n=0,k;for(k in _defBuf)n++;return n;}
+  function deferReset(){_defBars=0;}
+  function deferRegister(){_defBars++;}
+  function deferHas(id){return Object.prototype.hasOwnProperty.call(_defBuf,id);}
+  function deferPut(id,val){
+    _defBuf[id]=val;
+    // Anzeige sofort nachziehen, damit der gestellte Wert stehen bleibt.
+    var d=_lastVals[id]||{};
+    _lastVals[id]={v:val,f:String(val),u:d.u||'',c:d.c||0,pend:1};
+    try{applyVal(id,_lastVals[id]);}catch(e){}
+    _defPaint();
+  }
+  function deferDrop(){_defBuf={};_defPaint();pollVals();}
+  /** Geaenderte Felder markieren und die Leiste auffrischen. */
+  function _defPaint(){
+    try{
+      $$('.w').forEach(function(el){
+        var w=_wForEl(el);if(!w)return;
+        var dirty=false,ids=[];
+        if(w.varId)ids.push(w.varId);
+        (w.items||[]).forEach(function(it){if(it&&it.vid)ids.push(it.vid);});
+        ids.forEach(function(i){if(deferHas(i))dirty=true;});
+        el.classList.toggle('w-dirty',dirty);
+      });
+      $$('[data-role=savecount]').forEach(function(n){n.textContent=String(deferCount());});
+      $$('[data-role=savewrap]').forEach(function(n){n.classList.toggle('has',deferCount()>0);});
+    }catch(e){}
+  }
+  /** Puffer an das Modul geben - ein Auftrag, egal wie viele Werte. */
+  function deferFlush(inst,cb){
+    var n=deferCount();
+    if(!n){if(cb)cb({ok:true,werte:0});return;}
+    var body='werte='+encodeURIComponent(JSON.stringify(_defBuf));
+    fetch('?api=poolsave&inst='+encodeURIComponent(inst)+'&key='+encodeURIComponent(TOKEN),
+      {method:'POST',cache:'no-store',
+       headers:{'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'},body:body})
+      .then(function(r){return r.json();})
+      .then(function(j){
+        if(j&&j.ok){_defBuf={};}
+        _defPaint();
+        setTimeout(pollVals,600);
+        if(cb)cb(j||{ok:false});
+      })
+      .catch(function(){if(cb)cb({ok:false,fehler:'keine Antwort'});});
+  }
+
   function setVar(id,val){if(typeof DOKU!=='undefined'&&DOKU&&typeof dokuSetVar==='function'){dokuSetVar(id,val);return;} // Doku: lokal, nie an den Server
+  if(deferActive()){deferPut(id,val);return;}   // gesammelt schreiben statt sofort
   fetch('?api=setvar&id='+id+'&value='+encodeURIComponent(val)+'&key='+encodeURIComponent(TOKEN),{cache:'no-store'}).then(function(){setTimeout(pollVals,250);});}
 
   // ---------- Variablen-Baum ----------
@@ -444,6 +505,15 @@
     var sk=activeSkin(),th=(store.theme==='light'?'light':'dark'),toks=sk[th]||sk.dark,rs=document.documentElement.style;
     SKIN_TOKENS.forEach(function(k){if(toks[k]!=null)rs.setProperty('--'+k,toks[k]);});
     (sk.extra||[]).forEach(function(e){if(e&&e.key&&toks[e.key]!=null)rs.setProperty('--'+e.key,toks[e.key]);}); // eigene benannte Skin-Farben
+    // Inverse Textfarbe: die Textfarbe der JEWEILS ANDEREN Ansicht. Im dunklen
+    // Skin also die helle Schrift des hellen Skins und umgekehrt. Gebraucht wird
+    // sie ueberall dort, wo Text auf einer gefuellten Flaeche steht - dort ist
+    // '--text' per Definition unlesbar. Bisher standen dafuer feste Werte wie
+    // '#08201c' im Code, die keinem Skinwechsel folgen.
+    // Sie wird abgeleitet, nicht je Skin gepflegt: ein Skin muss dafuer nichts tun.
+    var gegen=(th==='light')?(sk.dark||{}):(sk.light||{});
+    var inv=gegen.text||((th==='light')?'#e7eef0':'#16232a');
+    rs.setProperty('--text-inv',inv);
     if(sk.fu)rs.setProperty('--fu',sk.fu);if(sk.fm)rs.setProperty('--fm',sk.fm);
     rs.setProperty('--ring','0 0 0 3px color-mix(in oklab,'+(toks.accent||'#00cdab')+' 38%,transparent)');
     document.documentElement.setAttribute('data-theme',th);rs.colorScheme=th;

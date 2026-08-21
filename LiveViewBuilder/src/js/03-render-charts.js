@@ -425,13 +425,64 @@
     var sw=$('[data-role=evsw]',el);if(sw)sw.classList.toggle('on',!!j.active);
     var sub=$('[data-role=evsub]',el);if(sub){var parts=[j.active?'aktiv':'inaktiv'];if(j.next>0)parts.push('nächste: '+new Date(j.next*1000).toLocaleString('de-DE',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}));sub.textContent=parts.join(' · ');}
   }).catch(function(){});}
+  /**
+   * Zeitstempel nach PHP-Muster formatieren (d.m.Y H:i und Verwandte).
+   *
+   * Absichtlich dieselben Zeichen wie in IP-Symcon und PHP - wer dort 'H:i'
+   * schreibt, erwartet hier dasselbe. Ein Backslash schuetzt ein Zeichen davor,
+   * als Muster gelesen zu werden ("\\a\\m H:i" -> "am 14:30").
+   *
+   * Sondermuster 'rel' liefert einen Abstand ("vor 5 min") - fuer "zuletzt
+   * aktualisiert" meist aussagekraeftiger als ein volles Datum.
+   */
+  var _OIDAY=['So','Mo','Di','Mi','Do','Fr','Sa'],
+      _OIDAYL=['Sonntag','Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag'],
+      _OIMON=['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'],
+      _OIMONL=['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
+  function _oi2(n){return (n<10?'0':'')+n;}
+  function fmtTs(ts,fmt){
+    if(!(ts>0))return '–';
+    var d=new Date(ts*1000);
+    if(fmt==='rel'){
+      var s=Math.round(Date.now()/1000)-ts, v=Math.abs(s), vor=(s>=0);
+      var t = v<45?'gerade eben'
+            : v<5400?(Math.round(v/60)+' min')
+            : v<172800?(Math.round(v/3600)+' h')
+            : (Math.round(v/86400)+' Tg');
+      return (t==='gerade eben')?t:((vor?'vor ':'in ')+t);
+    }
+    if(!fmt)fmt='d.m.Y H:i';
+    var out='',i,c;
+    for(i=0;i<fmt.length;i++){
+      c=fmt.charAt(i);
+      if(c==='\\'){ out+=fmt.charAt(++i)||''; continue; }
+      switch(c){
+        case 'd': out+=_oi2(d.getDate()); break;
+        case 'j': out+=d.getDate(); break;
+        case 'm': out+=_oi2(d.getMonth()+1); break;
+        case 'n': out+=(d.getMonth()+1); break;
+        case 'Y': out+=d.getFullYear(); break;
+        case 'y': out+=_oi2(d.getFullYear()%100); break;
+        case 'H': out+=_oi2(d.getHours()); break;
+        case 'G': out+=d.getHours(); break;
+        case 'i': out+=_oi2(d.getMinutes()); break;
+        case 's': out+=_oi2(d.getSeconds()); break;
+        case 'D': out+=_OIDAY[d.getDay()]; break;
+        case 'l': out+=_OIDAYL[d.getDay()]; break;
+        case 'M': out+=_OIMON[d.getMonth()]; break;
+        case 'F': out+=_OIMONL[d.getMonth()]; break;
+        default:  out+=c;
+      }
+    }
+    return out;
+  }
+
   function fetchObjInfo(w,root){if(!w.objId)return;fetch('?api=objinfo&id='+w.objId,{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
     var el=$('.w[data-id="'+w.id+'"]',(root||canvas));if(!el||!j||j.error)return;
     var nm=$('[data-role=oiname]',el);if(nm&&!w.label)nm.textContent=j.name||'Objekt';
     var vv=$('[data-role=oival]',el);if(!vv)return;var f=w.field||'updated',out='–';
     if(f==='name')out=j.name||'';
-    else if(f==='updated'||f==='changed'){var ts=j[f];out=ts>0?new Date(ts*1000).toLocaleString('de-DE'):'–';}
-    else if(f==='next'||f==='last'){var t=j[f];out=t>0?new Date(t*1000).toLocaleString('de-DE'):'–';}
+    else if(f==='updated'||f==='changed'||f==='next'||f==='last')out=fmtTs(j[f],w.oiFmt);
     vv.textContent=out;
   }).catch(function(){});}
 
@@ -758,6 +809,120 @@
     }
     return out;
   }
+  // ==================================================================
+  // Serien-Umrechnung und Serien-Format
+  //
+  // Zwei verschiedene Dinge, die oft zusammen gebraucht werden:
+  //   umrechnen  - aus dem Rohwert eine andere Groesse machen (y/1000, y*12, log(y))
+  //   formatieren- denselben Wert anders SCHREIBEN (7384 s als 2:03:04)
+  // Beides gehoert an die Serie, nicht ans Diagramm: in einem Chart koennen
+  // Sekunden und Kilowatt nebeneinander liegen.
+  // ==================================================================
+
+  // Kleiner Formelrechner (Shunting-Yard). Bewusst KEIN new Function/eval: der
+  // Ausdruck stammt zwar aus dem eigenen Seitenentwurf, aber ein Tippfehler soll
+  // eine kaputte Zahl geben und keinen Skriptfehler, der das Diagramm abraeumt.
+  var _CH_FN={log:Math.log,ln:Math.log,log10:function(v){return Math.log(v)/Math.LN10;},
+              log2:function(v){return Math.log(v)/Math.LN2;},sqrt:Math.sqrt,abs:Math.abs,
+              round:Math.round,floor:Math.floor,ceil:Math.ceil,exp:Math.exp};
+  var _CH_PREC={'+':1,'-':1,'*':2,'/':2,'%':2,'^':3};
+  var _chCalcCache={};
+  function _chCalc(expr){
+    expr=String(expr==null?'':expr).trim();
+    if(!expr)return null;
+    if(_chCalcCache[expr]!==undefined)return _chCalcCache[expr];
+    var toks=expr.match(/\d+(?:[.,]\d+)?|[a-zA-Z_][a-zA-Z_0-9]*|[()+\-*\/%^,]/g);
+    if(!toks){_chCalcCache[expr]=null;return null;}
+    var out=[],ops=[],prev=null,i,t;
+    for(i=0;i<toks.length;i++){
+      t=toks[i];
+      if(/^\d/.test(t)){out.push(parseFloat(t.replace(',','.')));prev='n';continue;}
+      if(/^[a-zA-Z_]/.test(t)){
+        if(_CH_FN[t]){ops.push(t);prev='f';}
+        else{out.push({v:t});prev='n';}                 // y, x, sonst 0
+        continue;
+      }
+      if(t==='('){ops.push(t);prev='(';continue;}
+      if(t===')'){
+        while(ops.length&&ops[ops.length-1]!=='(')out.push(ops.pop());
+        if(!ops.length){_chCalcCache[expr]=null;return null;}
+        ops.pop();
+        if(ops.length&&_CH_FN[ops[ops.length-1]])out.push(ops.pop());
+        prev='n';continue;
+      }
+      if(t===','){while(ops.length&&ops[ops.length-1]!=='(')out.push(ops.pop());prev=',';continue;}
+      // Vorzeichen: '-' direkt nach Anfang/Operator/Klammer ist unaer
+      if(t==='-'&&(prev===null||prev==='o'||prev==='('||prev===',')){ops.push('u-');prev='o';continue;}
+      if(!_CH_PREC[t]){_chCalcCache[expr]=null;return null;}
+      while(ops.length){
+        var top=ops[ops.length-1];
+        if(top==='('||(!_CH_PREC[top]&&top!=='u-'))break;
+        var pt=(top==='u-')?4:_CH_PREC[top];
+        if(pt<_CH_PREC[t]||(pt===_CH_PREC[t]&&t==='^'))break;
+        out.push(ops.pop());
+      }
+      ops.push(t);prev='o';
+    }
+    while(ops.length){var o=ops.pop();if(o==='('){_chCalcCache[expr]=null;return null;}out.push(o);}
+    var fn=function(y,x){
+      var st=[],k,a,b,v;
+      for(k=0;k<out.length;k++){
+        v=out[k];
+        if(typeof v==='number'){st.push(v);continue;}
+        if(v&&v.v!==undefined){st.push(v.v==='y'?y:(v.v==='x'?x:0));continue;}
+        if(v==='u-'){if(!st.length)return null;st.push(-st.pop());continue;}
+        if(_CH_FN[v]){if(!st.length)return null;st.push(_CH_FN[v](st.pop()));continue;}
+        if(st.length<2)return null;
+        b=st.pop();a=st.pop();
+        st.push(v==='+'?a+b:v==='-'?a-b:v==='*'?a*b:v==='/'?(b===0?null:a/b):v==='%'?(b===0?null:a%b):Math.pow(a,b));
+      }
+      if(st.length!==1)return null;
+      var r=st[0];
+      return (r==null||!isFinite(r))?null:r;
+    };
+    _chCalcCache[expr]=fn;return fn;
+  }
+
+  // Wertformate je Serie. 'hms' und Verwandte lesen den Wert als SEKUNDEN und
+  // schreiben ihn als Dauer - der haeufigste Fall (Laufzeiten kommen als Sekunden).
+  var _CHVFMT=[['','Format: wie Achse'],['hms','Dauer h:mm:ss'],['hm','Dauer h:mm'],
+               ['dhm','Dauer d h:mm'],['ms','Dauer m:ss'],['minhm','Minuten als h:mm'],
+               ['thousand','1.234,5'],['compact','1,2k']];
+  function _ch2(n){return (n<10?'0':'')+n;}
+  function _chFmtVal(fmt,v,dec){
+    if(v==null||isNaN(v))return '';
+    var n=Number(v);
+    if(fmt==='minhm')n=n*60;                        // Eingabe in Minuten -> Sekunden
+    if(fmt==='hms'||fmt==='hm'||fmt==='dhm'||fmt==='ms'||fmt==='minhm'){
+      var neg=n<0; n=Math.abs(Math.round(n));
+      var d=Math.floor(n/86400),h=Math.floor(n%86400/3600),m=Math.floor(n%3600/60),sec=n%60,r;
+      if(fmt==='ms')      r=Math.floor(n/60)+':'+_ch2(sec);
+      else if(fmt==='dhm')r=(d>0?(d+'d '):'')+h+':'+_ch2(m);
+      else if(fmt==='hm'||fmt==='minhm') r=(d*24+h)+':'+_ch2(m);
+      else                r=(d*24+h)+':'+_ch2(m)+':'+_ch2(sec);
+      return (neg?'-':'')+r;
+    }
+    var dd=(dec!=null&&dec!=='')?Math.max(0,Math.min(6,parseInt(dec))):null;
+    var str;
+    if(fmt==='compact'){
+      var a=Math.abs(n);
+      if(a>=1e6)str=(n/1e6).toFixed(dd==null?1:dd).replace('.',',')+' M';
+      else if(a>=1e3)str=(n/1e3).toFixed(dd==null?1:dd).replace('.',',')+' k';
+      else str=n.toFixed(dd==null?(Math.abs(n)>=10?0:1):dd).replace('.',',');
+      return str;
+    }
+    str=n.toFixed(dd==null?(Math.abs(n)>=100?0:(Math.abs(n)>=10?1:2)):dd);
+    return (fmt==='thousand')?_axThou(str):str.replace('.',',');
+  }
+  /** Index einer Achse im Achsen-Array (die Achse selbst kennt ihn nicht). */
+  function _chAxIndex(w,a){var ax=_chYAxes(w),i;for(i=0;i<ax.length;i++)if(ax[i]===a)return i;return 0;}
+  /** Format der ERSTEN Serie, die auf dieser Achse liegt (die Achse kann nur eines tragen). */
+  function _chAxisFmt(w,ai){
+    var S=_chSeries(w),i;
+    for(i=0;i<S.length;i++){if(S[i]&&(S[i].axis|0)===ai&&S[i].vfmt)return S[i].vfmt;}
+    return '';
+  }
+
   function _axThou(s){var a=s.split('.');a[0]=a[0].replace(/\B(?=(\d{3})+(?!\d))/g,'.');return a.join(',');}
   function _axNumFmt(w){
     var m=w.yFmt||'auto',dec=(w.yDec!=null&&w.yDec!=='')?Math.max(0,Math.min(6,parseInt(w.yDec))):null;
@@ -800,6 +965,10 @@
     // stur das veraltete, nicht mehr editierbare „kWh" an jede Zahl.
     var unit=(a&&a.name!=null&&a.name!=='')?a.name:(w.yunit||'');
     var eff={yFmt:((a&&a.fmt)||w.yFmt),yDec:((a&&a.dec!=null&&a.dec!=='')?a.dec:w.yDec),yUnitLab:w.yUnitLab,yunit:unit,dec:w.dec};
+    // Traegt eine Serie dieser Achse ein eigenes Format, gilt es auch fuer die
+    // Skalenwerte - sonst stuenden an der Achse Sekunden und am Punkt 2:03:04.
+    var sf=_chAxisFmt(w,(a&&a._i!=null)?a._i:_chAxIndex(w,a));
+    if(sf){o.formatter=function(v){return _chFmtVal(sf,v,eff.yDec);};return o;}
     if(_axHasNumFmt(eff))o.formatter=_axNumFmt(eff);
     return o;
   }
@@ -903,7 +1072,19 @@
     var series=hs.map(function(s,i){
       var d=defs[i]||{},col=_chColor(d.color,i),nm=d.name||s.name||(i===0?(w.label||'Serie 1'):'Serie '+(i+1)),ax=Math.min(Math.max(parseInt(d.axis)||0,0),yaxes.length-1);
       var rt=_rt(d);if(_resolveType(rt).kind==='bar')anyBar=true;
-      return _mkSer(rt,s.data,col,nm,ax,w,stacked,lbl,false,_mixed);
+      // Wertbeschriftung je Serie: leer = wie das Diagramm. In einem gemischten
+      // Diagramm will man die Zahlen meist an den Balken, nicht an der Linie -
+      // ein gemeinsamer Schalter zwingt zu allem oder nichts.
+      var slab=(d.lab==='on')?true:((d.lab==='off')?false:!!w.labels);
+      var slbl=slab?{show:true,fontSize:_ecF(w,'label',9),color:cssv('--muted'),position:'top',
+        formatter:function(p){var v=(p.value&&p.value.length!=null)?p.value[p.value.length-1]:p.value;
+          return d.vfmt?_chFmtVal(d.vfmt,v,w.yDec):_chNum(w,v,false);}}:{show:false};
+      var so=_mkSer(rt,s.data,col,nm,ax,w,stacked,slbl,false,_mixed,d);
+      // Wertformat je Serie auch im Tooltip. echarts kennt valueFormatter je Serie -
+      // damit bleibt die gewohnte Tooltip-Darstellung, und trotzdem schreibt sich
+      // jede Serie in ihrer eigenen Groesse (Sekunden als 2:03:04, daneben kW).
+      if(d.vfmt)so.tooltip={valueFormatter:function(v){return _chFmtVal(d.vfmt,v,w.yDec);}};
+      return so;
     });
     // Vergleichsserie (Zeitversatz): abgeschattete Balken ODER Vorperioden-Strich (Marke)
     var cmpS=(_hist[w.id]&&_hist[w.id].cmp)||null;
@@ -928,7 +1109,9 @@
     } else if(cmpS){var shade=(w.cmpShade!=null?w.cmpShade:55)/100,olbl=OFFLBL[w.cmpOff||'1d'];
       cmpS.forEach(function(s,i){if(!s)return;var d=defs[i]||{},base=_chColor(d.color,i),col=darken(base,shade),ax=Math.min(Math.max(parseInt(d.axis)||0,0),yaxes.length-1);
         var nm=(d.name||(i===0?(w.label||'Serie 1'):'Serie '+(i+1)))+' · '+olbl,rt=_rt(d);
-        series.push(_mkSer(rt,s.data,col,nm,ax,w,stacked,null,true,_mixed));
+        var cs=_mkSer(rt,s.data,col,nm,ax,w,stacked,null,true,_mixed);
+        if(d.vfmt)cs.tooltip={valueFormatter:function(v){return _chFmtVal(d.vfmt,v,w.yDec);}};
+        series.push(cs);
       });
     }
     var ax0=_axShow(w);
@@ -1114,12 +1297,30 @@
   // die Balken treffen. Eine Leistungslinie auf einen Verbrauchsbalken zu stapeln ergibt
   // keinen Sinn - und bei zwei Linien addierte echarts sie stillschweigend aufeinander, was
   // wie ein Messfehler aussieht. Reine Linien- oder Flaechendiagramme stapeln unveraendert.
-  function _mkSer(rt,data,col,nm,ax,w,stacked,lbl,dashed,mixed){var R=_resolveType(rt),
+  function _mkSer(rt,data,col,nm,ax,w,stacked,lbl,dashed,mixed,sd){var R=_resolveType(rt),
     st=(stacked&&!(mixed&&R.kind!=='bar'))?'total':undefined,br=parseFloat(w.barRadius!=null?w.barRadius:3);
+    // Punkte je Serie (Form . Farbe . Groesse); leer = wie das Diagramm.
+    sd=sd||{};
+    var _syF=String(sd.sym||''),_syOn=(_syF&&_syF!=='none'),_syOff=(_syF==='none'),
+        _syC=(sd.symC?(_skinToCss(sd.symC)||sd.symC):''),
+        _syS=(sd.symS!=null&&sd.symS!==''&&parseFloat(sd.symS)>=0)?parseFloat(sd.symS):null;
     if(R.kind==='bar')return {type:'bar',name:nm,yAxisIndex:ax,stack:(dashed?(stacked?'cmp':undefined):st),itemStyle:{color:col,borderRadius:(stacked?0:br)},data:data,label:(dashed?{show:false}:lbl)};
-    if(R.kind==='scatter')return {type:'scatter',name:nm,yAxisIndex:ax,symbolSize:(w.symSize||7),itemStyle:{color:col},data:data,label:(dashed?{show:false}:lbl)};
+    if(R.kind==='scatter')return {type:'scatter',name:nm,yAxisIndex:ax,symbol:(_syF||'circle'),symbolSize:(_syS!=null?_syS:(w.symSize||7)),itemStyle:{color:_syC||col},data:data,label:(dashed?{show:false}:lbl)};
     var smooth=(R.smooth!=null?R.smooth:(w.smooth!==false&&!R.step));
-    var ser={type:'line',name:nm,yAxisIndex:ax,stack:(dashed?undefined:st),showSymbol:(dashed?false:!!w.symbols),symbolSize:(w.symSize||5),smooth:smooth,step:(R.step?'end':false),lineStyle:{color:col,width:parseFloat(w.lw||2),type:(dashed?'dashed':'solid')},itemStyle:{color:col},data:data,label:(dashed?{show:false}:lbl)};
+    // Wertbeschriftung an einer Linie haengt in echarts am Datenpunkt-Symbol: ist
+    // showSymbol aus, wird der Punkt uebersprungen - und mit ihm die Beschriftung,
+    // obwohl label.show true ist. Darum bei eingeschalteten Werten das Symbol
+    // zulassen und es ueber symbolSize 0 unsichtbar halten; die Linie sieht
+    // unveraendert aus, die Zahlen stehen aber da.
+    var _wl=!!(lbl&&lbl.show&&!dashed);
+    // Sichtbar sind die Punkte, wenn die Serie eine Form waehlt oder das Diagramm
+    // sie zeigt; 'Punkte: aus' schlaegt beides. Nur-wegen-der-Werte eingeschaltete
+    // Symbole bleiben mit Groesse 0 unsichtbar.
+    var _sy=dashed?false:(_syOff?false:(_syOn||!!w.symbols||_wl));
+    var _syZ=(_sy&&!_syOn&&!w.symbols&&_wl&&_syS==null);
+    var ser={type:'line',name:nm,yAxisIndex:ax,stack:(dashed?undefined:st),showSymbol:_sy,
+      symbol:(_syOn?_syF:'circle'),symbolSize:(_syZ?0:(_syS!=null?_syS:(w.symSize||5))),
+      smooth:smooth,step:(R.step?'end':false),lineStyle:{color:col,width:parseFloat(w.lw||2),type:(dashed?'dashed':'solid')},itemStyle:{color:(_syC||col)},data:data,label:(dashed?{show:false}:lbl)};
     if(R.fill)ser.areaStyle=dashed?{color:accA(.10,col)}:(w.grad?{color:gradFill(col)}:{color:accA(stacked?.42:.14,col)});
     return ser;}
   function _chColor(c,i){ // Serien-Farbe: Skin-Stichwort -> echte Farbe (ECharts kann kein var()), Hex bleibt, leer -> Auto
@@ -1264,17 +1465,33 @@
     var S=_chSeries(w).filter(function(s){return s&&s.vid;});if(!S.length)return;
     var cols=[cssv('--accent'),cssv('--info'),cssv('--warm')],out=[],cmp=[],done=0;
     var off=(w.cmpOn?OFFS[w.cmpOff||'1d']:0),poff=(w._pOff||0),mTo=W.to,mFrom=W.from,lvl=W.level,aggF=W.aggF;
-    function hUrl(id,from,to){return lvl!=null?('?api=aggregated&id='+encodeURIComponent(id)+'&level='+lvl+'&from='+from+'&to='+to):('?api=history&id='+encodeURIComponent(id)+'&from='+from+'&to='+to);}
-    function hPts(j){if(lvl!=null){return ((j&&j.rows)||[]).map(function(b){return [b.t*1000,b[aggF]];}).filter(function(p){return p[1]!=null;}).sort(function(a,b){return a[0]-b[0];});}return (j&&j.data)||[];}
+    // Stufe und Aggregat je Serie; leer bedeutet "wie das Diagramm".
+    function sLvl(s){return s&&s.stage?_CHLVL[s.stage]:lvl;}
+    function sAgg(s){return (s&&s.aggF)?s.aggF:aggF;}
+    function hUrl(id,from,to,lv){return lv!=null?('?api=aggregated&id='+encodeURIComponent(id)+'&level='+lv+'&from='+from+'&to='+to):('?api=history&id='+encodeURIComponent(id)+'&from='+from+'&to='+to);}
+    function hPts(j,lv,af){
+      if(lv!=null){return ((j&&j.rows)||[]).map(function(b){
+        // Das Archiv liefert avg/sum/min/max je Block; welche Spalte gilt, entscheidet die Serie.
+        var v=b[af]; if(v==null&&af!=='avg')v=b.avg;
+        return [b.t*1000,v];}).filter(function(p){return p[1]!=null;}).sort(function(a,b){return a[0]-b[0];});}
+      return (j&&j.data)||[];
+    }
     var total=S.length*(w.cmpOn&&off?2:1);
     function fin(){done++;if(done>=total){_hist[w.id]={series:out,cmp:(w.cmpOn&&off?cmp:null)};if(_ec[w.id]){renderChartData(w);var pl=$('.w[data-id="'+w.id+'"] [data-role=plabel]',canvas);if(pl)pl.textContent=poff>0?('−'+poff):'jetzt';}}}
     S.forEach(function(s,i){var id=s.vid,scol=s.color||cols[i%cols.length],snm=s.name||(i===0?(w.label||'Serie 1'):'Serie '+(i+1));
-      fetch(hUrl(id,mFrom,mTo),{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
-        out[i]={data:hPts(j),color:scol,name:snm};
+      var lv=sLvl(s),af=sAgg(s),cf=_chCalc(s&&s.calc);
+      // Umrechnung direkt nach dem Holen: ab hier rechnet und zeichnet alles mit
+      // dem umgerechneten Wert - Achse, Tooltip, Min/Max, Vergleichsperiode.
+      var conv=function(pts){ if(!cf)return pts;
+        var o=[],k,v;
+        for(k=0;k<pts.length;k++){ v=cf(Number(pts[k][1]),pts[k][0]); if(v!=null)o.push([pts[k][0],v]); }
+        return o; };
+      fetch(hUrl(id,mFrom,mTo,lv),{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
+        out[i]={data:conv(hPts(j,lv,af)),color:scol,name:snm};
       }).catch(function(){out[i]={data:[],color:scol,name:snm};}).then(fin);
       if(w.cmpOn&&off){var to=mTo-off,from=mFrom-off;
-        fetch(hUrl(id,from,to),{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
-          cmp[i]={data:hPts(j).map(function(p){return [p[0]+off*1000,p[1]];}),color:scol};
+        fetch(hUrl(id,from,to,lv),{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
+          cmp[i]={data:conv(hPts(j,lv,af)).map(function(p){return [p[0]+off*1000,p[1]];}),color:scol};
         }).catch(function(){cmp[i]={data:[]};}).then(fin);
       }
     });
@@ -1567,7 +1784,8 @@
       var z=(w.htmlZoom||100)/100;if(z!==1)wrap.style.transform='scale('+z+')';
     }
   }
-  setInterval(function(){allWidgets().forEach(function(w){if((w.type==='chart'||w.type==='spark')&&w.ctype!=='waterfall'&&w.ctype!=='barrace'&&!(_wsOK&&bcfg().noSafetyPoll))fetchHist(w);if(w.type==='html'&&w.htmlSrc!=='custom')fetchHtml(w);if(w.type==='weekplan')fetchWeekplan(w);if(w.type==='calendar')fetchCalEvents(w);if(w.type==='eventctl')fetchEvent(w);if(w.type==='objinfo')fetchObjInfo(w);if(w.type==='statetl')_stlFetch(w);if(w.type==='statelog')_slogFetch(w);if(w.type==='table')_tblLoad(w);});},60000);
+  setInterval(function(){allWidgets().forEach(function(w){if((w.type==='chart'||w.type==='spark')&&w.ctype!=='waterfall'&&w.ctype!=='barrace'&&!(_wsOK&&bcfg().noSafetyPoll))fetchHist(w);if(w.type==='html'&&w.htmlSrc!=='custom')fetchHtml(w);if(w.type==='weekplan')fetchWeekplan(w);if(w.type==='calendar')fetchCalEvents(w);if(w.type==='eventctl')fetchEvent(w);if(w.type==='objinfo')fetchObjInfo(w);if(w.type==='statetl')_stlFetch(w);if(w.type==='statelog')_slogFetch(w);if(w.type==='table')_tblLoad(w);
+    var _wr=WIDGETS[w.type];if(_wr&&_wr.tick)try{_wr.tick(w);}catch(_e){}});},60000);
   setInterval(function(){var now=Date.now();allWidgets().forEach(function(w){if(w.type==='camera'||w.type==='campro'||w.type==='camarray'){var iv=((w.refresh>0)?w.refresh:15)*1000;if(!w._lastCam||now-w._lastCam>=iv){w._lastCam=now;refreshCam(w);}}});},1000);
 
   // ---------- Auswahl & Eigenschaften ----------
@@ -1794,6 +2012,18 @@
   function offSel(id,cur,withLast){cur=cur||'1d';var o=(withLast?'<option value="last"'+(cur==='last'?' selected':'')+'>Letzter Wert</option>':'')+Object.keys(OFFS).map(function(k){return '<option value="'+k+'"'+(k===cur?' selected':'')+'>'+OFFLBL[k]+'</option>';}).join('');return '<select id="'+id+'">'+o+'</select>';}
   // opt (optional): {max:n} begrenzt die Zeilen und blendet den „Serie"-Knopf aus, {simple:1} laesst Typ/Achse weg.
   // Wird von ctype 'spark' genutzt (setSpark zeichnet nur chartSeries(w)[0] und ignoriert Typ/Achse).
+  // Auswahlen fuer die Serieneinstellungen. 'raw' ist bewusst dabei: eine Serie darf
+  // ungeglaettet neben einem Tagesmittel liegen.
+  var _CHSTAGE=[['','Stufe: wie Diagramm'],['raw','roh'],['min','5 Minuten'],['hour','Stunde'],
+                ['day','Tag'],['week','Woche'],['month','Monat'],['year','Jahr']];
+  var _CHAGGF =[['','Aggregat: wie Diagramm'],['avg','Mittel'],['sum','Summe'],['min','Minimum'],['max','Maximum']];
+  // Punkte je Serie. Leer heisst weiterhin 'wie das Diagramm' (Schalter 'Punkte'),
+  // 'none' schaltet sie fuer DIESE Serie ab - eine Messreihe darf ihre Punkte
+  // zeigen, waehrend die Vergleichslinie daneben glatt bleibt.
+  var _CHSYM=[['','Punkte: wie Diagramm'],['none','Punkte: aus'],['circle','Punkt: Kreis'],
+              ['emptyCircle','Punkt: Kreis offen'],['rect','Punkt: Quadrat'],['roundRect','Punkt: Quadrat rund'],
+              ['triangle','Punkt: Dreieck'],['diamond','Punkt: Raute'],['pin','Punkt: Pin'],['arrow','Punkt: Pfeil']];
+
   function seriesEditor(w,opt){
     opt=opt||{};
     var arr=_ensureSeries(w);
@@ -1811,11 +2041,81 @@
         +skinSel(String(s.color||''),'data-sf="'+i+'.color" title="Farbe"')
         +(isPart?'':('<select data-sf="'+i+'.type">'+TY.map(function(t){return '<option value="'+t[0]+'"'+((s.type||'')===t[0]?' selected':'')+'>'+t[1]+'</option>';}).join('')+'</select>'))
         +(isPart?'':(function(){var ya=_chYAxes(w),cax=Math.min(Math.max(s.axis|0,0),ya.length-1);return '<select data-sf="'+i+'.axis" title="Achse">'+ya.map(function(a,ai){return '<option value="'+ai+'"'+(cax===ai?' selected':'')+'>'+((a.side||'L')==='R'?'R':'L')+(a.name?(' '+esc(a.name)):(' '+(ai+1)))+'</option>';}).join('')+'</select>';})())
-        +'<button class="btn" data-sdel="'+i+'" style="padding:2px"><svg class="i"><use href="#ic-minus"/></svg></button></div>';
+        // Aggregationsstufe JE SERIE. Bisher galt die Stufe des Diagramms fuer alle
+        // Serien - wer Tagessummen neben Stundenmittel legen will, hatte keine Wahl.
+        // Leer = wie das Diagramm.
+        +(isPart?'':('<select data-sf="'+i+'.stage" title="Aggregationsstufe dieser Serie">'
+            +_CHSTAGE.map(function(o){return '<option value="'+o[0]+'"'+((s.stage||'')===o[0]?' selected':'')+'>'+o[1]+'</option>';}).join('')+'</select>'))
+        +(isPart?'':('<select data-sf="'+i+'.aggF" title="Aggregat dieser Serie">'
+            +_CHAGGF.map(function(o){return '<option value="'+o[0]+'"'+((s.aggF||'')===o[0]?' selected':'')+'>'+o[1]+'</option>';}).join('')+'</select>'))
+        // Umrechnen und Schreiben sind zwei Dinge: die Formel aendert den WERT,
+        // das Format nur seine Darstellung.
+        +'<input data-sf="'+i+'.calc" value="'+esc(s.calc||'')+'" placeholder="Formel, z. B. y/1000" title="Umrechnung. y = Wert, x = Zeit. Funktionen: log ln log10 sqrt abs round floor ceil exp" style="flex:1;min-width:96px">'
+        +'<select data-sf="'+i+'.vfmt" title="Wertformat dieser Serie (gilt auch fuer ihre Achse)">'
+            +_CHVFMT.map(function(o){return '<option value="'+o[0]+'"'+((s.vfmt||'')===o[0]?' selected':'')+'>'+o[1]+'</option>';}).join('')+'</select>'
+        +'<select data-sf="'+i+'.lab" title="Werte an den Datenpunkten dieser Serie">'
+            +[['','Werte: wie Diagramm'],['on','Werte an'],['off','Werte aus']].map(function(o){
+                return '<option value="'+o[0]+'"'+((s.lab||'')===o[0]?' selected':'')+'>'+o[1]+'</option>';}).join('')+'</select>'
+        // Punkte je Serie: Form, Farbe, Groesse. Die Form entscheidet ueber das
+        // Anzeigen, Farbe und Groesse verfeinern nur - so bleibt eine leere
+        // Zeile genau das, was sie vorher war.
+        +'<select data-sf="'+i+'.sym" title="Punkte (Symbolform) dieser Serie">'
+            +_CHSYM.map(function(o){return '<option value="'+o[0]+'"'+((s.sym||'')===o[0]?' selected':'')+'>'+o[1]+'</option>';}).join('')+'</select>'
+        +skinSel(String(s.symC||''),'data-sf="'+i+'.symC" title="Punktfarbe (leer = Serienfarbe)"')
+        +'<input data-sf="'+i+'.symS" type="number" min="0" max="40" step="0.5" value="'+(s.symS!=null?esc(String(s.symS)):'')+'" placeholder="px" title="Punktgröße in px (leer = wie Diagramm)" style="width:52px">'
+        +'<button class="btn" data-sdel="'+i+'" style="padding:2px"><svg class="i"><use href="#ic-minus"/></svg></button>'
+        // Platz fuer die Herkunftszeile. Sie wird NACH dem Zeichnen gefuellt (siehe
+        // _chLogCheck) - ein Neuzeichnen aus einer Antwort heraus waere eine Schleife.
+        +(s.vid?('<div data-slog="'+s.vid+'" style="flex-basis:100%;font-size:11px;color:var(--faint);line-height:1.35;margin:1px 2px 0"></div>'):'')
+        +'</div>';
     });
     if(!(opt.max&&arr.length>=opt.max))h+='<button class="btn" data-sadd="1" style="padding:4px 8px;font-size:11px"><svg class="i"><use href="#ic-plus"/></svg> Serie</button>';
     return h;
   }
+  /**
+   * Herkunft und Aufzeichnungsstatus der Serien-Variablen in den Editor schreiben.
+   *
+   * Anlass: eine Serie, die auf eine nicht geloggte (oder schlicht falsche)
+   * Variable zeigt, liefert einen leeren Balken und sonst nichts. Zwei
+   * Zahlendreher in den Maeher-Diagrammen sind so wochenlang unbemerkt geblieben -
+   * die ID gab es wirklich, sie gehoerte nur zum Licht im Kinderbad.
+   *
+   * Bewusst KEIN render()/renderProps() aus der Antwort heraus: das ruft mount(),
+   * mount ruft wieder hierher - genau die Schleife, die heute schon eine Seite
+   * unbedienbar gemacht hat. Es wird direkt in die vorhandenen Knoten geschrieben.
+   */
+  var _chLog={};
+  function _chLogCheck(w){
+    var ids=[],seen={};
+    _chSeries(w).forEach(function(s){var v=parseInt(s&&s.vid)||0;if(v&&!seen[v]){seen[v]=1;ids.push(v);}});
+    if(!ids.length)return;
+    var fehlt=ids.filter(function(v){return _chLog[v]===undefined;});
+    if(!fehlt.length){_chLogPaint();return;}
+    fehlt.forEach(function(v){_chLog[v]=null;});          // laeuft
+    fetch('?api=logstat&ids='+fehlt.join(','),{cache:'no-store'})
+      .then(function(r){return r.json();})
+      .then(function(j){ if(j&&j.vars)for(var k in j.vars)_chLog[k]=j.vars[k]; _chLogPaint(); })
+      .catch(function(){});
+  }
+  function _chLogPaint(){
+    $$('#props [data-slog]').forEach(function(el){
+      var d=_chLog[el.getAttribute('data-slog')];
+      if(!d)return;
+      if(!d.ok){el.style.color='var(--crit)';el.textContent='Variable existiert nicht';return;}
+      var pfad=String(d.pfad||d.name||'');
+      if(!d.logged){
+        el.style.color='var(--crit)';
+        el.textContent='wird NICHT aufgezeichnet · '+pfad;
+      }else if(!d.bloecke){
+        el.style.color='var(--warn)';
+        el.textContent='aufgezeichnet, aber keine Daten in den letzten 7 Tagen · '+pfad;
+      }else{
+        el.style.color='var(--faint)';
+        el.textContent=pfad+(d.agg===1?' · Zähler':'');
+      }
+    });
+  }
+
   function axesEditor(w){
     var ax=_ensureYAxes(w),h='<div class="pgh">Y-Achsen (Seite · Name · Min/Max · Format)</div>';
     ax.forEach(function(a,i){

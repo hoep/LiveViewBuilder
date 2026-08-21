@@ -287,6 +287,103 @@ if ($api === 'messages') {
 }
 
 // ---- Live-Werte (Delta über since) ----
+if ($api === 'epg') {
+    // ---- Programmfuehrer: ein Zeitfenster aus dem XMLTV-Zwischenlager --------
+    //
+    // Gelesen wird NICHT die 23 MB grosse XMLTV-Datei, sondern die Tagesdateien,
+    // die das Skript "ER - EPG-Zwischenlager" daraus baut (je Tag rund 175 KB).
+    // Der Receiver wird hier nicht angefasst - er kennt dieses Fenster gar nicht.
+    header('Content-Type: application/json; charset=utf-8');
+    $dir = IPS_GetKernelDir() . 'livebuilder/epg';
+    $von = (int) ($_GET['von'] ?? time());
+    if ($von <= 0) { $von = time(); }
+    $dauer = (int) ($_GET['dauer'] ?? 10800);          // Sekunden, Vorgabe drei Stunden
+    // Deckel: mehr als zwoelf Stunden auf einmal ergeben eine Antwort, die
+    // niemand anzeigt, aber jeder uebertraegt.
+    $dauer = max(1800, min(43200, $dauer));
+    $bis = $von + $dauer;
+
+    $kanaele = json_decode((string) @file_get_contents($dir . '/kanaele.json'), true);
+    if (!is_array($kanaele) || $kanaele === []) {
+        echo json_encode(['ok' => false, 'fehler' => 'kein EPG-Zwischenlager - Skript "ER - EPG-Zwischenlager" noch nicht gelaufen']);
+        return;
+    }
+    $stand = json_decode((string) @file_get_contents($dir . '/stand.json'), true) ?: [];
+
+    // Sendungen liegen im Tag ihres BEGINNS. Eine, die um 23:40 anfaengt, steht
+    // also im Vortag - deshalb faengt das Einlesen einen Tag frueher an.
+    $mitDetail = (int) ($_GET['detail'] ?? 0) === 1;
+    $tage = [];
+    for ($t = $von - 86400; $t <= $bis; $t += 86400) {
+        $tage[date('Y-m-d', $t)] = true;
+    }
+    $tage[date('Y-m-d', $bis)] = true;
+    $daten = [];
+    foreach (array_keys($tage) as $tag) {
+        $j = json_decode((string) @file_get_contents($dir . '/tag-' . $tag . '.json'), true);
+        if (!is_array($j)) { continue; }
+        foreach ($j as $ch => $liste) {
+            foreach ($liste as $p) {
+                if ((int) $p[0] >= $bis || (int) $p[1] <= $von) { continue; }
+                // Die Beschreibung nur auf Nachfrage. Sie ist das laengste Feld;
+                // im Raster steht sie nirgends, in der Detailansicht ueberall.
+                // Leeren, nicht entfernen: eine Luecke im Zahlenindex macht aus
+                // dem JSON-Array ein Objekt, und der Client liest dann nichts mehr.
+                if (!$mitDetail && isset($p[6])) { $p[6] = ''; }
+                $daten[$ch][] = $p;
+            }
+        }
+    }
+
+    // Programmierte Aufnahmen. Die Datei schreibt das Skript "ER - Timerliste
+    // ablegen"; der Hook fragt die Box NICHT selbst - sonst kostete jeder
+    // Seitenaufruf eine Abfrage an ein Geraet, das nebenher fernsieht.
+    $tj = json_decode((string) @file_get_contents($dir . '/timer.json'), true);
+    $timer = [];
+    foreach (($tj['timer'] ?? []) as $t) {
+        // Vergleichsform der Referenz: die ersten zehn Felder, ohne Anhaengsel.
+        $k = strtoupper(implode(':', array_slice(explode(':', (string) $t['ref']), 0, 10)));
+        $timer[$k][] = $t;
+    }
+    $istProgrammiert = function (string $ref, int $a, int $b) use ($timer): int {
+        $k = strtoupper(implode(':', array_slice(explode(':', $ref), 0, 10)));
+        foreach ($timer[$k] ?? [] as $t) {
+            // Ein Timer traegt Vor- und Nachlauf, deckt die Sendung also weiter ab
+            // als sie dauert. Als Treffer zaehlt, wer ihre MITTE einschliesst -
+            // damit gilt weder der Vorlauf der naechsten noch der Nachlauf der
+            // vorigen Sendung als Aufnahme dieser hier.
+            $mitte = (int) (($a + $b) / 2);
+            if ((int) $t['start'] <= $mitte && (int) $t['ende'] >= $mitte) {
+                return empty($t['aus']) ? 1 : 2;   // 1 = programmiert, 2 = abgeschaltet
+            }
+        }
+        return 0;
+    };
+
+    $nurIds = array_filter(array_map('trim', explode(',', (string) ($_GET['kanaele'] ?? ''))));
+    $out = [];
+    foreach ($kanaele as $k) {
+        $id = (string) ($k['id'] ?? '');
+        if ($nurIds !== [] && !in_array($id, $nurIds, true)) { continue; }
+        $p = $daten[$id] ?? [];
+        usort($p, static fn(array $a, array $b): int => $a[0] <=> $b[0]);
+        if (($k['ref'] ?? '') !== '' && $timer !== []) {
+            foreach ($p as $i => $x) {
+                $mark = $istProgrammiert((string) $k['ref'], (int) $x[0], (int) $x[1]);
+                if (!isset($p[$i][6])) { $p[$i][6] = ''; }   // kein Loch im Index
+                $p[$i][7] = $mark;
+            }
+        }
+        $out[] = ['id' => $id, 'name' => (string) ($k['name'] ?? $id), 'picon' => (string) ($k['picon'] ?? ''),
+                  'ref' => (string) ($k['ref'] ?? ''), 'p' => $p];
+    }
+    echo json_encode(['ok' => true, 'von' => $von, 'bis' => $bis, 'jetzt' => time(),
+                      'stand' => (int) ($stand['stand'] ?? 0), 'quelle' => 'XMLTV',
+                      'timerstand' => (int) ($tj['stand'] ?? 0), 'timer' => count($tj['timer'] ?? []),
+                      'kanaele' => $out], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    return;
+}
+
 if ($api === 'val') {
     header('Content-Type: application/json; charset=utf-8');
     $ids   = array_filter(array_map('intval', explode(',', (string) ($_GET['ids'] ?? ''))));
@@ -497,6 +594,66 @@ if ($api === 'runscript') {
     return;
 }
 
+// ---- Poolcontroller: Relais-Zeitplaene an den Controller senden (token):
+//      ?api=poolsched&inst=<id>&key=TOKEN[&probe=1]
+//      Ohne probe wird geschrieben - aber in EINEM Vorgang fuer alle Relais, weil
+//      setRules() ohnehin immer die komplette TIMEC-Sektion schickt.
+if ($api === 'poolsched') {
+    header('Content-Type: application/json; charset=utf-8');
+    if (!hash_equals($TOKEN, (string) ($_GET['key'] ?? ''))) {
+        http_response_code(403);
+        echo json_encode(['ok' => false, 'fehler' => 'forbidden']);
+        return;
+    }
+    $inst = (int) ($_GET['inst'] ?? 0);
+    $guid = ($inst > 0 && @IPS_InstanceExists($inst)) ? (IPS_GetInstance($inst)['ModuleInfo']['ModuleID'] ?? '') : '';
+    if ($guid !== '{878CA345-86D1-84FC-B196-5B3224C067CF}' || !function_exists('HSPC_ZeitplanProbe')) {
+        http_response_code(404);
+        echo json_encode(['ok' => false, 'fehler' => 'kein PoolController']);
+        return;
+    }
+    echo empty($_GET['probe']) ? HSPC_ZeitplaeneSenden($inst) : HSPC_ZeitplanProbe($inst);
+    return;
+}
+
+// ---- Poolcontroller: gesammelte Konfigurationswerte schreiben (token):
+//      POST ?api=poolsave&inst=<id>&key=TOKEN   Rumpf: werte=<JSON {vid:wert,...}>
+//      Der Grund fuer den Sammelweg: am ProCon ist keine Einzeleinstellung schreibbar.
+//      setRules() schickt immer die KOMPLETTE Sektion; fuenf einzeln gestellte Felder
+//      waeren fuenf vollstaendige Sektionsschreibungen gegen ein Stundenbudget von 60.
+//      Das Modul gruppiert den Auftrag und schreibt je Sektion genau einmal.
+if ($api === 'poolsave') {
+    header('Content-Type: application/json; charset=utf-8');
+    if (!hash_equals($TOKEN, (string) ($_GET['key'] ?? ''))) {
+        http_response_code(403);
+        echo json_encode(['ok' => false, 'fehler' => 'forbidden']);
+        return;
+    }
+    $inst = (int) ($_GET['inst'] ?? 0);
+    $roh  = (string) ($_POST['werte'] ?? '');
+    if ($roh === '') {
+        $body = (string) @file_get_contents('php://input');
+        if ($body !== '') {
+            $felder = [];
+            parse_str($body, $felder);
+            $roh = (string) ($felder['werte'] ?? '');
+        }
+    }
+    $guid = ($inst > 0 && @IPS_InstanceExists($inst)) ? (IPS_GetInstance($inst)['ModuleInfo']['ModuleID'] ?? '') : '';
+    if ($guid !== '{878CA345-86D1-84FC-B196-5B3224C067CF}' || !function_exists('HSPC_SchreibeSammlung')) {
+        http_response_code(404);
+        echo json_encode(['ok' => false, 'fehler' => 'kein PoolController']);
+        return;
+    }
+    if (trim($roh) === '') {
+        echo json_encode(['ok' => false, 'fehler' => 'nichts zu schreiben']);
+        return;
+    }
+    // ?trocken=1 zeigt nur, was passieren wuerde - ohne jeden Geraetezugriff.
+    echo HSPC_SchreibeSammlung($inst, $roh, !empty($_GET['trocken']));
+    return;
+}
+
 // ---- Serienrecorder: eine doppelte Aufnahme loeschen (token):  ?api=srdel&inst=<id>&pfad=<pfad>&key=TOKEN ----
 //      Loeschen ist nicht harmlos, deshalb Token wie bei runscript. Zusaetzlich wird geprueft,
 //      dass die Zielinstanz wirklich ein SeriesRecorder ist - der Hook ruft keine beliebige
@@ -510,14 +667,43 @@ if ($api === 'srdel') {
         return;
     }
     $inst = (int) ($_GET['inst'] ?? 0);
-    $pfad = (string) ($_GET['pfad'] ?? '');
+    // Mehrere Pfade kommen als JSON-Array in 'pfade'. Ein Sammelauftrag ist hier
+    // nicht Bequemlichkeit: je Haekchen eine eigene Anfrage abzufeuern hiesse,
+    // dass die Aufrufe im Modul nebenlaeufig dieselbe Liste lesen und
+    // zurueckschreiben - der letzte gewinnt, die uebrigen Streichungen gehen
+    // verloren.
+    // Der Auftrag darf im Rumpf stehen: 40 Aufnahmepfade mit Umlauten und
+    // Leerzeichen ergeben prozentkodiert weit mehr, als eine URL sicher traegt.
+    $roh = (string) ($_POST['pfade'] ?? $_GET['pfade'] ?? '');
+    if ($roh === '') {
+        $body = (string) @file_get_contents('php://input');
+        if ($body !== '') {
+            $felder = [];
+            parse_str($body, $felder);
+            $roh = (string) ($felder['pfade'] ?? '');
+        }
+    }
+    $pfade = $roh !== '' ? json_decode($roh, true) : [(string) ($_GET['pfad'] ?? '')];
+    if (!is_array($pfade)) {
+        $pfade = [];
+    }
+    $pfade = array_values(array_filter(array_map('strval', $pfade), static fn(string $p): bool => $p !== ''));
     $guid = ($inst > 0 && @IPS_InstanceExists($inst)) ? (IPS_GetInstance($inst)['ModuleInfo']['ModuleID'] ?? '') : '';
     if ($guid !== '{F7F9F89F-82ED-4478-970F-C3C749912A0A}' || !function_exists('SR_LoescheDatei')) {
         http_response_code(404);
         echo json_encode(['error' => 'kein SeriesRecorder']);
         return;
     }
-    echo SR_LoescheDatei($inst, $pfad);
+    if ($pfade === []) {
+        echo json_encode(['ok' => false, 'grund' => 'kein Pfad']);
+        return;
+    }
+    $auftrag = json_encode($pfade, JSON_UNESCAPED_UNICODE);
+    // SR_LoescheDateien gibt es erst nach einem Neustart des Dienstes; die alte
+    // Funktion nimmt denselben Auftrag entgegen und reicht ihn durch.
+    echo function_exists('SR_LoescheDateien')
+        ? SR_LoescheDateien($inst, $auftrag)
+        : SR_LoescheDatei($inst, $auftrag);
     return;
 }
 
@@ -857,11 +1043,26 @@ if ($api === 'mower') {
             $geofence  = (is_array($md) && !empty($md['geofence']))  ? $md['geofence']  : null;
             $act       =  is_array($md) ? (int) ($md['activity'] ?? 0) : 0;
             // Aktivitaetsfarbe wie das HSMW.Activity-Profil.
+            // Farbe nach Taetigkeit - bisher die einzige Quelle, also fuer beide
+            // Maeher identisch. Wer zwei Geraete auf getrennten Karten sieht, will
+            // sie unterscheiden koennen; deshalb sind Pfad-, Marker- und
+            // Geofence-Farbe jetzt ueberschreibbar.
             $colors = [0 => '#9AA5AD', 1 => '#9AA5AD', 2 => '#2ECC71', 3 => '#1ABC9C',
                        4 => '#3498DB', 5 => '#1ABC9C', 6 => '#9AA5AD', 7 => '#E67E22'];
             $color  = $colors[$act] ?? '#2ECC71';
+            $hexOk  = fn($c) => preg_match('/^#[0-9a-fA-F]{3,8}$/', (string) $c) ? (string) $c : null;
+            // Reihenfolge: Adresse schlaegt Instanz-Eigenschaft schlaegt Taetigkeitsfarbe.
+            // So laesst sich eine Karte im Seitenentwurf abweichend faerben, ohne die
+            // Einstellung des Geraets zu aendern.
+            $prop   = fn(string $n) => (string) @IPS_GetProperty($iid, $n);
+            $color  = $hexOk($_GET['color'] ?? '')  ?? $hexOk($prop('KartenFarbe'))  ?? $color;
+            $mcol   = $hexOk($_GET['marker'] ?? '') ?? $hexOk($prop('KartenMarker'));
+            $fcol   = $hexOk($_GET['fence'] ?? '')  ?? $hexOk($prop('KartenZaun'));
+            $pz     = (int) @IPS_GetProperty($iid, 'KartenZoom');
+            $zoom   = (int) ($_GET['zoom'] ?? ($pz > 0 ? $pz : 18));
             require_once '/var/lib/symcon/modules/HomeSuite/MowerDevice/mapRenderer.php';
-            echo renderPositionMap($positions, $geofence, $color, (int) ($_GET['w'] ?? 900), (int) ($_GET['h'] ?? 600));
+            echo renderPositionMap($positions, $geofence, $color, (int) ($_GET['w'] ?? 900), (int) ($_GET['h'] ?? 600),
+                                   $zoom, $mcol, $fcol);
         } catch (\Throwable $e) {
             echo '<!doctype html><body style="margin:0;font:13px system-ui;color:#8a9098;display:flex;align-items:center;justify-content:center;height:100vh">Karte nicht verfuegbar</body>';
         }
@@ -1518,6 +1719,37 @@ if ($api === 'wxvars') {
         }
     }
     echo json_encode($out);
+    return;
+}
+
+// ---- Aufzeichnungsstatus mehrerer Variablen:  ?api=logstat&ids=1,2,3[&from=<unix>]
+//      Fuer die Serienzeile im Diagramm-Editor. Eine Serie, die auf eine nicht
+//      geloggte Variable zeigt, liefert einen leeren Balken und sonst nichts - der
+//      haeufigste Fall ist ein Zahlendreher in der ID, und der faellt erst Wochen
+//      spaeter auf. Deshalb sagt der Editor es jetzt sofort.
+if ($api === 'logstat') {
+    header('Content-Type: application/json; charset=utf-8');
+    $ids  = array_slice(array_filter(array_map('intval', explode(',', (string) ($_GET['ids'] ?? '')))), 0, 40);
+    $from = (int) ($_GET['from'] ?? (time() - 7 * 86400));
+    $ac   = 0;
+    foreach ((array) @IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}') as $a) { $ac = (int) $a; break; }
+    $out = [];
+    foreach ($ids as $id) {
+        if (!@IPS_VariableExists($id)) { $out[$id] = ['ok' => false, 'grund' => 'keine Variable']; continue; }
+        $o = @IPS_GetObject($id);
+        $r = ['ok' => true, 'name' => (string) ($o['ObjectName'] ?? ''), 'pfad' => LVB_ObjPath($id),
+              'logged' => false, 'agg' => 0, 'bloecke' => 0];
+        if ($ac > 0) {
+            $r['logged'] = (bool) @AC_GetLoggingStatus($ac, $id);
+            $r['agg']    = (int) @AC_GetAggregationType($ac, $id);
+            if ($r['logged']) {
+                $rows = @AC_GetAggregatedValues($ac, $id, 1, $from, time(), 0);   // Tagesbloecke
+                $r['bloecke'] = is_array($rows) ? count($rows) : 0;
+            }
+        }
+        $out[$id] = $r;
+    }
+    echo json_encode(['ok' => true, 'vars' => $out]);
     return;
 }
 

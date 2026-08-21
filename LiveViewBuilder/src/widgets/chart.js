@@ -225,7 +225,21 @@
       if($('#pAnnFg'))$('#pAnnFg').onchange=function(){w.annFg=this.value||undefined;reChart();};
       if($('#pPnav'))$('#pPnav').onchange=function(){w.pnav=this.checked||undefined;render();commit();};
       if($('#pSegOn'))$('#pSegOn').onchange=function(){w.segOn=this.checked||undefined;renderProps();render();commit();};
-      $$('#props [data-sf]').forEach(function(inp){inp.oninput=inp.onchange=function(){var pr=inp.getAttribute('data-sf').split('.'),i=parseInt(pr[0]),k=pr[1];_ensureSeries(w);w.series[i]=w.series[i]||{};w.series[i][k]=(k==='vid'?(parseInt(inp.value)||0):(k==='axis'?parseInt(inp.value):inp.value));delete _hist[w.id];fetchHist(w);commit();if(inp.tagName==='SELECT')renderProps();};});
+      // Nur Felder, die die DATEN betreffen, holen die Historie neu. Punktform,
+      // Farbe oder Groesse aendern bloss die Darstellung - dafuer das Archiv zu
+      // befragen, waere bei jedem Tastendruck eine Abfrage zu viel.
+      var _SFDATA={vid:1,stage:1,aggF:1,calc:1};
+      $$('#props [data-sf]').forEach(function(inp){inp.oninput=inp.onchange=function(ev){var pr=inp.getAttribute('data-sf').split('.'),i=parseInt(pr[0]),k=pr[1];_ensureSeries(w);w.series[i]=w.series[i]||{};w.series[i][k]=(k==='vid'?(parseInt(inp.value)||0):(k==='axis'?parseInt(inp.value):inp.value));
+        if(_SFDATA[k]){delete _hist[w.id];fetchHist(w);}else if(_ec[w.id])renderChartData(w);else render();
+        commit();
+        if(inp.tagName==='SELECT'){renderProps();return;}
+        // Bei der Variablen-ID das Panel NUR beim Verlassen des Feldes neu aufbauen
+        // (change, nicht input) - sonst springt der Eingabefokus bei jedem Zeichen weg.
+        // Danach steht die Herkunftszeile an der neuen ID.
+        if(k==='vid'&&ev&&ev.type==='change')renderProps();
+      };});
+      // Herkunft/Aufzeichnung der Serien-Variablen nachtragen (asynchron, ohne Neuzeichnen)
+      if(typeof _chLogCheck==='function')_chLogCheck(w);
       $$('#props [data-spick]').forEach(function(b){b.onclick=function(){showTab('vars');toast('Variable im Baum anklicken');_bindSeries={wid:w.id,idx:parseInt(b.getAttribute('data-spick'))};};});
       $$('#props [data-sdel]').forEach(function(b){b.onclick=function(){_ensureSeries(w);w.series.splice(parseInt(b.getAttribute('data-sdel')),1);delete _hist[w.id];renderProps();fetchHist(w);commit();};});
       if($('#props [data-sadd]'))$('#props [data-sadd]').onclick=function(){_ensureSeries(w);w.series.push({vid:0,name:'',color:'',type:'',axis:0});renderProps();commit();};
