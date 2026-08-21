@@ -54,7 +54,12 @@
    * demselben Weg.
    *
    * Eigene Skala (w.vcScale === 'eigen'): w.vcZonen ist eine Liste von Zeilen
-   *   {ab, farbe, name, info} - "ab diesem Wert gilt". Die erste Zeile hat kein 'ab',
+   *   {ab, farbe, name, info} - "ab diesem Wert gilt". 'farbe' nimmt einen Skin-Namen
+   *   ('ok', 'warn', 'crit', 'u-stufe3', ...) ODER einen Hex-Wert; _vcHex loest beides
+   *   auf. Frueher bot der Editor hier nur einen Hex-Waehler an - eigene Skalen konnten
+   *   dadurch nicht dieselben Skin-Farben nutzen wie die Zustandsliste, und ein von Hand
+   *   eingetragener Skin-Name landete stillschweigend in der Vorgabefarbe.
+   *   Die erste Zeile hat kein 'ab',
    * sie gilt vom Anfang der Skala an. Anfang und Ende kommen aus w.vcVon / w.vcBis.
    */
   /**
@@ -235,7 +240,15 @@
         var _tkH=_tk.map(function(t){return '<u style="left:'+t.p.toFixed(2)+'%"></u>';}).join('');
         var _tkL=_tk.length?('<div class="hvcticks">'+_tk.map(function(t){
               return '<span style="left:'+t.p.toFixed(2)+'%">'+esc(String(t.v))+'</span>';}).join('')+'</div>'):'';
-        var _zn=(_def.zonen&&_def.zonen.length&&w.scaleZone!==false)
+        // Die Zonenzeile gibt es NUR bei eigenen Skalen - eingebaute haben keine
+        // 'zonen'. Sie belegt eine eigene Zeile unter der Skala und verschiebt damit
+        // alles darunter: dieselbe Karte sah mit eigener Skala anders aus als mit
+        // pH oder Redox. Deshalb ist sie jetzt AUS, solange man sie nicht
+        // ausdruecklich einschaltet - und dann auch nur, wenn eine Zone wirklich
+        // einen Namen oder Hinweis traegt.
+        var _znHat=(_def.zonen||[]).some(function(z){
+              return String(z.name||'').trim()!==''||String(z.info||'').trim()!=='';});
+        var _zn=(w.scaleZone===true&&_def.zonen&&_def.zonen.length&&_znHat)
               ?'<div class="hvczone" data-role="zone"><b></b><span></span></div>':'';
         scl='<div class="hvcscale" data-role="scale" style="background:'+_vcScaleGrad(_def)+'">'
             +_tkH+'<i class="sdot" data-role="sdot"></i></div>'+_tkL+_zn;
@@ -276,7 +289,7 @@
            +row('Weicher Übergang','<input type="checkbox" id="pVcWeich"'+(w.vcWeich?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">Farben ineinander blenden statt an der Grenze springen</span>')
            +listEditor(w,'vcZonen','Zonen',[
                 {k:'ab',   ph:'ab',      h:'ab'},
-                {k:'farbe',ph:'Farbe',   h:'Farbe', type:'color'},
+                {k:'farbe',ph:'Farbe',   h:'Farbe', type:'skincolor'},
                 {k:'name', ph:'Name',    h:'Name'},
                 {k:'info', ph:'Hinweis', h:'Hinweis'}])
            +'<div class="prop"><button class="btn" id="pVcCopy">Eingebaute Skala übernehmen …</button>'
@@ -284,7 +297,9 @@
                 return '<option value="'+k+'">'+esc(VC_SCALES[k].name)+'</option>';}).join('')+'</select></div>'
         ):'')
         +(w.vcScale?('<div style="font-size:11px;color:var(--muted);margin:2px 2px 5px">'+esc((VC_SCALES[w.vcScale]||{}).desc||'')+' Färbt den Großwert und zeigt eine Skalen-Leiste mit Marker.</div>'
-          +row('Ganze Kachel einfärben','<input type="checkbox" id="pVcScaleFill"'+(w.scaleFill?' checked':'')+'>')):'');
+          +row('Ganze Kachel einfärben','<input type="checkbox" id="pVcScaleFill"'+(w.scaleFill?' checked':'')+'>')
+          +row('Skalenbeschriftung','<input type="checkbox" id="pVcScaleTicks"'+(w.scaleTicks===false?'':' checked')+'> <span style="font-size:11px;color:var(--muted)">Zahlen unter der Skala</span>')
+          +(w.vcScale==='eigen'?row('Zonenzeile','<input type="checkbox" id="pVcScaleZone"'+(w.scaleZone===true?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">zusätzliche Zeile mit Zonenname und Hinweis — verschiebt die Skala; eingebaute Skalen haben sie nicht</span>'):'')):'');
       // Badge / Zielbereich (nur ohne Bereichsmodus sinnvoll)
       if(!w.rngOn){
         s+='<div class="pgh">Badge (oben-rechts)</div>'
@@ -387,6 +402,8 @@
         w.vcWeich=(q.zonen&&q.zonen.length)?undefined:true;
         renderProps();_vcFrisch();
       };
+      if($('#pVcScaleTicks'))$('#pVcScaleTicks').onchange=function(){w.scaleTicks=this.checked?undefined:false;render();if(w.varId&&_lastVals[w.varId])applyVal(w.varId,_lastVals[w.varId]);commit();};
+      if($('#pVcScaleZone'))$('#pVcScaleZone').onchange=function(){w.scaleZone=this.checked?true:undefined;render();if(w.varId&&_lastVals[w.varId])applyVal(w.varId,_lastVals[w.varId]);commit();};
       if($('#pVcScaleFill'))$('#pVcScaleFill').onchange=function(){w.scaleFill=this.checked||undefined;render();if(w.varId&&_lastVals[w.varId])applyVal(w.varId,_lastVals[w.varId]);commit();};
       if($('#pVcRngDec'))$('#pVcRngDec').oninput=function(){w.rngDec=(this.value===''?undefined:Math.max(0,Math.min(6,parseInt(this.value)||0)));render();[w.varId,w.varId2,w.varId3].forEach(function(id){if(id&&_lastVals[id])applyVal(id,_lastVals[id]);});commit();};
       if($('#pVcOkMin')||$('#pVcOkMax')){['#pVcOkMin','#pVcOkMax'].forEach(function(sq){if($(sq))$(sq).addEventListener('change',function(){renderProps();});});}

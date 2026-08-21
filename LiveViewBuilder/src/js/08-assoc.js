@@ -6,6 +6,7 @@
   // accent-2 automatisch funktionieren), danach die deutschen/alten Synonyme, sonst unverändert.
   function _skinColor(c){if(!c)return '';var s=(''+c).trim();if(/^var\(/.test(s))return s;
     if(typeof SKIN_TOKENS!=='undefined'&&SKIN_TOKENS.indexOf(s)>=0)return 'var(--'+s+')';
+    if(s==='text-inv')return 'var(--text-inv)';   // abgeleitet in applySkin, nicht in SKIN_TOKENS
     if(/^u-[a-z0-9-]+$/.test(s))return 'var(--'+s+')'; // eigene benannte Skin-Farbe (u-slug); ist der Var nicht gesetzt, ignoriert CSS die Deklaration graceful
     var m={text:'--text',standard:'--text',ok:'--ok',gruen:'--ok','grün':'--ok',warn:'--warn',warnung:'--warn',alert:'--warn',crit:'--crit',fehler:'--crit',error:'--crit',accent:'--accent',akzent:'--accent',info:'--info',faint:'--faint',muted:'--muted',warm:'--warm'};
     var k=s.toLowerCase();return m[k]?('var('+m[k]+')'):s;}

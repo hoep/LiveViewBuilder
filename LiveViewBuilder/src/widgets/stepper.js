@@ -33,7 +33,14 @@
     mount:function(w){ if(!w.typein)return;
       var el=document.querySelector('.w[data-id="'+w.id+'"]'); if(!el)return;
       var inp=$('[data-role=val]',el); if(!inp||inp.tagName!=='INPUT'||inp._stpWired)return; inp._stpWired=1;
-      function commitVal(){ var nv=parseFloat(String(inp.value).replace(',','.')); if(!isFinite(nv))return;
+      function commitVal(){
+        // Im Bearbeiten-Modus wird NICHT geschrieben. Der zentrale Aenderungspfad
+        // (_wChange) prueft das, dieser eigene Listener hing bisher daran vorbei:
+        // ein Klick ins Zahlenfeld beim Seitenbauen schrieb sofort auf die
+        // Geraetevariable. Bei einer Seite voller Anlagenparameter ist das kein
+        // Schoenheitsfehler.
+        if(mode==='edit')return;
+        var nv=parseFloat(String(inp.value).replace(',','.')); if(!isFinite(nv))return;
         if(w.min!=null&&nv<w.min)nv=w.min; if(w.max!=null&&nv>w.max)nv=w.max;
         if(w.varId)setVar(w.varId,nv); }
       inp.addEventListener('change',commitVal);
