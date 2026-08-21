@@ -1257,6 +1257,19 @@
       var t2;
       if (nacht) {
         t2 = LVSUN.moonName(mn.phase) + '  ·  ' + Math.round(mn.fraction * 100) + ' % beleuchtet';
+        // Wetter gehoert auch in die Nachtzeile. Es hoert um acht Uhr abends nicht
+        // auf zu regnen, und wer nachts auf die Kachel sieht, will genau das wissen.
+        //
+        // Ausgelassen wird nur, was ohne Sonne nicht existiert: die Einstrahlung in
+        // W/m2 und eine AUS IHR gerechnete Bewoelkung. Kommt der Bedeckungsgrad
+        // dagegen aus einer eigenen Variablen oder der Vorhersage, gilt er nachts
+        // genauso - dann steht er auch da.
+        if (wx && wx.cloudSrc && wx.cloudSrc !== 'Strahlung') {
+          var kn = Math.round((1 - wx.cloud) * 100);
+          t2 += '  ·  ' + kn + ' % klar / ' + (100 - kn) + ' % bewölkt';
+        }
+        var nn = ssWxText(wx);
+        if (nn) t2 += '  ·  ' + nn;
       } else {
         t2 = 'Azimut ' + sun.az.toFixed(0) + '°';
         if (rad != null) t2 += '  ·  ' + Math.round(rad) + ' W/m²';
@@ -1271,7 +1284,7 @@
         // Niederschlag im Klartext. Unter 0,5 mm/h steht bewusst KEINE Zahl: dort greift der
         // Rueckfall ueber den Regensensor mit einem gesetzten Ersatzwert (0,25) - eine Zahl
         // waere erfunden. Darueber ist es ein echter Messwert und wird auch als solcher genannt.
-        var np = ssPrecipText(wx);
+        var np = ssWxText(wx);
         if (np) t2 += '  ·  ' + np;
       }
       ctx.fillText(t2, pad, pad + f * 1.15);
@@ -1292,6 +1305,22 @@
         }
       }
       ctx.restore();
+    }
+
+    /**
+     * Wetterlage als Klartext: Niederschlag, sonst Nebel.
+     *
+     * Gemeinsam fuer Tag und Nacht - beide Zeilen sollen dieselbe Sprache
+     * sprechen. Nebel steht nur da, wenn es nicht ohnehin niederschlaegt; beides
+     * gleichzeitig zu nennen, sagt nichts mehr, was man nicht schon sieht.
+     */
+    function ssWxText(wx) {
+      var np = ssPrecipText(wx);
+      if (np) return np;
+      if (wx && wx.fog > 0.05) {
+        return wx.fog > 0.5 ? 'dichter Nebel' : (wx.fog > 0.22 ? 'Nebel' : 'Nebelschwaden');
+      }
+      return '';
     }
 
     /** Niederschlag als Klartext fuer die Kopfzeile: Art, Staerke und - wenn gemessen - Menge. */
