@@ -132,12 +132,47 @@
     Shower:'shower',WashingMachine:'washer',Music:'music',Pause:'pause',Play:'play',Coffee:'coffee',
     Leaf:'leaf',Flame:'flame',HollowDoubleArrowUp:'arrowup',HollowDoubleArrowDown:'arrowdown'};
   function symToIcon(name){if(!name)return '';if(SYMICON[name])return SYMICON[name];var l=name.toLowerCase();return ICONS[l]||AICONS[l]?l:'';}
+  /**
+   * Profil einer Variablen holen - gebuendelt.
+   *
+   * Beim Seitenaufbau ruft jede Kachel das fuer sich. Frueher wurde daraus je
+   * Kachel EINE Anfrage, und weil der Zwischenspeicher erst mit der Antwort
+   * gefuellt ist, sogar mehrere fuer dieselbe Variable: die Hauptseite fragte 23
+   * Profile in 23 Anfragen ab (9 KB Nutzdaten), eine davon viermal. Im Haus faellt
+   * das nicht auf - ueber den Proxy und ein Tablet wird daraus die halbe Ladezeit.
+   *
+   * Jetzt sammelt ein kurzer Aufschub (20 ms) alle Wuensche ein und holt sie in
+   * EINER Anfrage; Nachzuegler auf eine bereits laufende Variable haengen sich an
+   * deren Rueckruf an, statt neu zu fragen.
+   */
+  var _assocWarte={}, _assocRuf={}, _assocTimer=0;
+  function _assocFlush(){
+    _assocTimer=0;
+    var ids=Object.keys(_assocWarte);
+    if(!ids.length)return;
+    _assocWarte={};
+    var fertig=function(id,d){
+      _assocData[id]=d;
+      var cbs=_assocRuf[id]||[];delete _assocRuf[id];
+      cbs.forEach(function(f){try{f(d);}catch(e){}});
+    };
+    fetch('?api=assoc&ids='+ids.join(','),{cache:'no-store'})
+      .then(function(r){return r.json();})
+      .then(function(j){
+        ids.forEach(function(id){
+          var v=(j&&j.vars)?j.vars[id]:null;
+          fertig(id,(v&&v.assocs)?{assocs:v.assocs,picon:v.picon||''}:{assocs:[],picon:''});
+        });
+      })
+      .catch(function(){ids.forEach(function(id){fertig(id,{assocs:[],picon:''});});});
+  }
   function loadAssoc(varId,cb){
     if(!varId){cb&&cb(null);return;}
     if(_assocData[varId]){cb&&cb(_assocData[varId]);return;}
-    fetch('?api=assoc&id='+varId,{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
-      _assocData[varId]=(j&&j.assocs)?{assocs:j.assocs,picon:j.picon||''}:{assocs:[],picon:''};cb&&cb(_assocData[varId]);
-    }).catch(function(){_assocData[varId]={assocs:[],picon:''};cb&&cb(_assocData[varId]);});
+    if(cb){(_assocRuf[varId]=_assocRuf[varId]||[]).push(cb);}
+    if(_assocRuf[varId]&&_assocRuf[varId].length>1&&!_assocWarte[varId])return; // laeuft schon
+    _assocWarte[varId]=1;
+    if(!_assocTimer)_assocTimer=setTimeout(_assocFlush,20);
   }
   function assocResolved(w,a){var key=String(a.v),ov=(w.assocMap&&w.assocMap[key])||{},d=_assocData[w.varId]||{};
     return {icon:ov.icon||symToIcon(a.icon)||symToIcon(d.picon)||'',color:ov.color||a.color||''};}

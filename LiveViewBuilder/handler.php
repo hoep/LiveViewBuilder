@@ -507,6 +507,56 @@ if ($api === 'daylight') {
 // ---- Assoziationen (Variablenprofil): Wert -> Name/Icon/Farbe  ?api=assoc&id=<id> ----
 if ($api === 'assoc') {
     header('Content-Type: application/json; charset=utf-8');
+
+    // Profil einer Variablen: Assoziationen, Einheit, Grenzen, Icon.
+    //
+    // Neben der Einzelabfrage (id=) gibt es die SAMMELABFRAGE (ids=1,2,3). Grund
+    // ist der Seitenaufbau: eine Ansicht wie die Hauptseite fragte hier 23 Profile
+    // einzeln ab - 9 KB Nutzdaten in 23 Anfragen. Der Webserver beantwortet sie
+    // nacheinander; im Haus fiel das nicht auf, ueber den Proxy und ein iPad
+    // summierte es sich zu Sekunden. Eine Antwort statt 23 kostet dasselbe an
+    // Daten und einen Bruchteil der Zeit.
+    $profilVon = function (int $id): ?array {
+        if ($id <= 0 || !@IPS_VariableExists($id)) {
+            return null;
+        }
+        $v    = IPS_GetVariable($id);
+        $prof = $v['VariableCustomProfile'] !== '' ? $v['VariableCustomProfile'] : $v['VariableProfile'];
+        $res  = ['id' => $id, 'type' => $v['VariableType'], 'profile' => $prof, 'assocs' => []];
+        if ($prof !== '' && IPS_VariableProfileExists($prof)) {
+            $p = IPS_GetVariableProfile($prof);
+            $res['suffix'] = $p['Suffix'];
+            $res['prefix'] = $p['Prefix'];
+            $res['min']    = $p['MinValue'];
+            $res['max']    = $p['MaxValue'];
+            $res['step']   = $p['StepSize'];
+            $res['digits'] = $p['Digits'];
+            $res['picon']  = $p['Icon'];
+            foreach ($p['Associations'] as $a) {
+                $res['assocs'][] = [
+                    'v'     => $a['Value'],
+                    'name'  => $a['Name'],
+                    'icon'  => $a['Icon'],
+                    'color' => ($a['Color'] >= 0) ? sprintf('#%06X', $a['Color']) : null,
+                ];
+            }
+        }
+        return $res;
+    };
+
+    $roh = trim((string) ($_GET['ids'] ?? ''));
+    if ($roh !== '') {
+        $out = [];
+        foreach (array_slice(array_unique(array_filter(array_map('intval', explode(',', $roh)))), 0, 400) as $one) {
+            $r = $profilVon($one);
+            if ($r !== null) {
+                $out[$one] = $r;
+            }
+        }
+        echo json_encode(['vars' => $out]);
+        return;
+    }
+
     $id = (int) ($_GET['id'] ?? 0);
     if ($id <= 0 || !@IPS_VariableExists($id)) {
         echo json_encode(['error' => 'no variable']);

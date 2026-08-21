@@ -344,9 +344,23 @@
       // Himmel einpassen, BEVOR gezeichnet oder zwischengespeichert wird: der Fit veraendert cam
       // und muss deshalb auch bei einem Treffer im Zwischenspeicher gelten, sonst passen die
       // spaeter darueber gezeichneten Ebenen nicht mehr zum Bild.
-      var fg = ssGeo(w), ftr = LVSUN.dayTrack(fg.lat, fg.lon, ssNow(w), 30), fap = null;
-      for (var fi = 0; fi < ftr.length; fi++) { if (!fap || ftr[fi].elev > fap.elev) fap = ftr[fi]; }
-      var fmn = LVSUN.moon(fg.lat, fg.lon, ssNow(w) / 1000);
+      // Astronomie NICHT je Bild rechnen.
+      //
+      // Hier standen ein Tagesbogen mit 48 Stuetzpunkten und eine Mondposition -
+      // in jedem Animationsbild neu, also 20-mal je Sekunde, obwohl sich beides in
+      // einer Minute kaum um ein Winkelminuten-Vielfaches bewegt. Im Profil war das
+      // nach dem Aufkopieren der zweitgroesste Posten (moon, pos, ssFmtW). Einmal
+      // je Minute reicht; der Schluessel enthaelt Standort und Zeitpunkt, damit ein
+      // Ortswechsel oder eine gesetzte Uhrzeit sofort greift.
+      var fg = ssGeo(w);
+      var stA = ssSt(w);
+      var aKey = [fg.lat, fg.lon, Math.floor(ssNow(w) / 60000)].join('|');
+      if (!stA.astro || stA.astro.k !== aKey) {
+        var ftr0 = LVSUN.dayTrack(fg.lat, fg.lon, ssNow(w), 30), fap0 = null;
+        for (var fi = 0; fi < ftr0.length; fi++) { if (!fap0 || ftr0[fi].elev > fap0.elev) fap0 = ftr0[fi]; }
+        stA.astro = { k: aKey, fap: fap0, fmn: LVSUN.moon(fg.lat, fg.lon, ssNow(w) / 1000) };
+      }
+      var fap = stA.astro.fap, fmn = stA.astro.fmn;
       ssSkyFit(cam, [fap && { az: fap.az, el: fap.elev }, { az: sun.az, el: sun.elev },
                      fmn && { az: fmn.az, el: fmn.elev }],
                Math.max(12, K * 0.07) + cam.rSun);
@@ -356,11 +370,23 @@
       var pal0 = ssPal(el);
       var wx = _covOn2(w, 'ssWeather', true) ? ssWx(w) : null;
 
-      var key = [W, H, dpr, cam.bearing.toFixed(2), cam.pitch.toFixed(2), cam.radius.toFixed(2),
-                 sun.az.toFixed(2), sun.elev.toFixed(2), clr == null ? 'x' : clr.toFixed(3),
+      // Der Schluessel entscheidet, wann die Szene neu gemalt wird - und er war zu fein.
+      //
+      // Die Sonne wandert rund ein Viertelgrad je Minute; auf zwei Nachkommastellen
+      // genommen aendert sich der Schluessel damit alle paar SEKUNDEN, und jedes Mal
+      // wurde die ganze Szene neu aufgebaut: Himmel, Sterne, Mond, Gebaeude,
+      // Tagesbogen, Beschriftung. Auf einem schnellen Rechner faellt das nicht auf,
+      // auf einem Tablet frisst es die Ladezeit (gemessen: mit vierfach gedrosselter
+      // Rechenleistung ueber 10 Sekunden, davon 5 im Zeichnen).
+      //
+      // Ein Zehntelgrad ist auf dem Bildschirm weniger als ein Bildpunkt - die Szene
+      // sieht unveraendert aus und wird nur noch alle paar Minuten neu gebaut.
+      // Dasselbe gilt fuer Klarheit und Wetter: Zehntel genuegen.
+      var key = [W, H, dpr, cam.bearing.toFixed(1), cam.pitch.toFixed(1), cam.radius.toFixed(1),
+                 sun.az.toFixed(1), sun.elev.toFixed(1), clr == null ? 'x' : clr.toFixed(2),
                  geo ? geo.count : -1, Math.floor(ssNow(w) / 60000), ssStyleKey(w),
                  pal0.tile + pal0.accent,
-                 wx ? [wx.cloud.toFixed(2), wx.rain.toFixed(2), wx.snow.toFixed(2), wx.fog.toFixed(2), wx.storm].join(',') : 'x'
+                 wx ? [wx.cloud.toFixed(1), wx.rain.toFixed(1), wx.snow.toFixed(1), wx.fog.toFixed(1), wx.storm].join(',') : 'x'
                 ].join('|');
       var st = ssSt(w);
       if (st.key !== key || !st.buf) {
@@ -474,16 +500,50 @@
     }
 
     /** Naechstes Animationsbild - rund 30 je Sekunde, ruht bei verdeckter Seite. */
+    /**
+     * Naechstes Animationsbild anfordern.
+     *
+     * Zwei Bremsen, beide aus einer Messung: beim Laden der Hauptseite gingen rund
+     * 2 der ersten 8 Sekunden Rechenzeit in diese Kachel - ein Drittel davon
+     * allein in das Aufkopieren der Szene, 30-mal in der Sekunde, waehrend der
+     * Rest der Seite noch aufgebaut wurde. Auf einem Tablet wird daraus die
+     * gefuehlte Ladezeit.
+     *
+     *  1. Waehrend der ersten Sekunden nach dem Laden ruht die Animation. Das
+     *     STANDBILD ist da - gezeichnet wird es sofort -, nur die Bilderfolge
+     *     wartet, bis die Seite steht.
+     *  2. Danach laeuft sie mit 20 statt 30 Bildern je Sekunde. Regen, Schnee und
+     *     die wandernden Perlen sehen damit unveraendert aus, kosten aber ein
+     *     Drittel weniger. Ueber ssFps ist die Rate einstellbar.
+     */
+    var _ssStart = (typeof performance !== 'undefined' && performance.now) ? 0 : 0;
+    function ssRuhe() {
+      // Zeit seit dem Laden der Seite, in ms.
+      try { return (typeof performance !== 'undefined' && performance.now) ? performance.now() : 9999; }
+      catch (e) { return 9999; }
+    }
     function ssAnim(w, el) {
       var st = ssSt(w);
       if (st.anim) return;
+      var fps = Math.max(4, Math.min(30, parseFloat(w.ssFps) || 20));
+      var ms = Math.round(1000 / fps);
+      var seitStart = ssRuhe();
+      if (seitStart < 2000) { ms = Math.max(ms, 2000 - seitStart); }   // Startruhe
+      // Selbstanpassung: dauert ein Bild laenger, als der Takt erlaubt, wird der
+      // Takt gedehnt - hoechstens ein Viertel der Zeit geht in diese Kachel. Ein
+      // schnelles Geraet merkt davon nichts; ein langsames wird nicht zugedeckt,
+      // sondern zeichnet eben seltener. Vorher hielt das Widget stur an 30 Bildern
+      // je Sekunde fest, auch wenn ein Bild 80 ms brauchte.
+      if (st.last > 0) { ms = Math.max(ms, Math.round(st.last * 4)); }
       st.anim = setTimeout(function () {
         st.anim = 0;
         if (typeof document !== 'undefined' && document.hidden) return;
         var e2 = ssEl(w);
         if (!e2 || !document.body.contains(e2)) return;
+        var t0 = ssRuhe();
         ssDraw(w, e2);
-      }, 33);
+        st.last = ssRuhe() - t0;
+      }, ms);
     }
 
     // Himmel: Farbe folgt der Sonnenhoehe, Dunst der gemessenen Klarheit
