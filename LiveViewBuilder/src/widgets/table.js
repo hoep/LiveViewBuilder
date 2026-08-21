@@ -507,24 +507,42 @@
         w._tblSelFrage=0; _tblBody(w); return true; }
       var sx=e.target.closest('[data-tbl-selclr]');
       if(sx){ w._tblSel={}; w._tblSelFrage=0; _tblBody(w); return true; }
-      // Sammelaktion: erster Klick fragt, zweiter fuehrt aus - der Reihe nach,
-      // damit eine abgelehnte Datei die uebrigen nicht mitreisst.
+      // Sammelaktion: erster Klick fragt, zweiter fuehrt aus. EIN Auftrag fuer
+      // alle Haekchen - nicht je Datei eine Anfrage. Nebenlaeufige Aufrufe lesen
+      // im Modul dieselbe Liste und schreiben sie zurueck; der letzte gewinnt,
+      // die uebrigen Streichungen sind verloren. Die Dateien waren dann geloescht,
+      // die Zeilen standen noch da.
       var sr=e.target.closest('[data-tbl-selrun]');
       if(sr){
         if(w._tblSelFrage!==1){ w._tblSelFrage=1; _tblBody(w);
           setTimeout(function(){ if(w._tblSelFrage===1){w._tblSelFrage=0;_tblBody(w);} },10000); return true; }
         w._tblSelFrage=0;
         var liste=[]; for(var k3 in w._tblSel) if(w._tblSel[k3]) liste.push(k3);
+        if(!liste.length)return true;
         sr.disabled=true; sr.querySelector('span').textContent='…';
         var api=w.tblActApi||'srdel',inst=w.tblActInst||'',tok=(typeof TOKEN!=='undefined'?TOKEN:'');
-        var fertig=0,ok=0;
-        liste.forEach(function(p3){
-          fetch('?api='+encodeURIComponent(api)+'&inst='+encodeURIComponent(inst)
-                +'&pfad='+encodeURIComponent(p3)+'&key='+encodeURIComponent(tok),{cache:'no-store'})
-            .then(function(r){return r.json();}).then(function(j){ if(j&&j.ok){ok++;delete w._tblSel[p3];} })
-            .catch(function(){})
-            .then(function(){ if(++fertig===liste.length){ _tblLoad(w); } });
-        });
+        // Pfade in den Rumpf: prozentkodiert sprengen 40 Aufnahmenamen jede URL.
+        fetch('?api='+encodeURIComponent(api)+'&inst='+encodeURIComponent(inst)
+              +'&key='+encodeURIComponent(tok),
+              {method:'POST',cache:'no-store',
+               headers:{'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'},
+               body:'pfade='+encodeURIComponent(JSON.stringify(liste))})
+          .then(function(r){return r.json();})
+          .then(function(j){
+            // Nur was wirklich weg ist, verliert sein Haekchen: Abgelehntes bleibt
+            // sichtbar angehakt - sonst verschwindet es kommentarlos.
+            var schlecht={},i4,ab=(j&&j.abgelehnt)||[];
+            for(i4=0;i4<ab.length;i4++)schlecht[String(ab[i4]).split(':')[0]]=1;
+            for(i4=0;i4<liste.length;i4++){
+              var nm=liste[i4].split('/').pop();
+              if(!schlecht[nm])delete w._tblSel[liste[i4]];
+            }
+            if(j&&j.grund)sr.title=String(j.grund);
+          })
+          .catch(function(){})
+          // Am Zwischenspeicher VORBEI nachladen: _tblLoad nimmt bevorzugt den
+          // zuletzt gemeldeten Wert, und der ist genau jetzt der alte.
+          .then(function(){ sr.disabled=false; _tblFetch(w); });
         return true;
       }
       // Aktionsknopf. ZWEI Klicks: der erste faerbt um und fragt nach, der zweite
@@ -554,8 +572,11 @@
           .then(function(j){
             ab.textContent=(j&&j.ok)?'erledigt':'abgelehnt';
             ab.title=(j&&j.grund)?String(j.grund):'';
-            // Nach dem Loeschen stimmt die Quelle nicht mehr - neu holen.
-            setTimeout(function(){_tblLoad(w);},1200);
+            // Nach dem Loeschen stimmt die Quelle nicht mehr - neu holen, und
+            // zwar am Zwischenspeicher VORBEI: _tblLoad nimmt bevorzugt den
+            // zuletzt gemeldeten Wert, und das waere hier der alte. Die Tabelle
+            // zeichnete sich damit unveraendert neu.
+            setTimeout(function(){_tblFetch(w);},1200);
           })
           .catch(function(){ ab.textContent='Fehler'; ab.disabled=false; });
         return true;

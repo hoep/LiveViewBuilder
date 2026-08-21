@@ -128,7 +128,7 @@
       +row('Name','<input id="pName" value="'+esc(w.name||'')+'" placeholder="eindeutige Kennung (intern)">')
       +((w.type==='camera'||w.type==='image')?row('Media-ID','<input id="pMedia" value="'+(w.mediaId||'')+'" placeholder="Media-ID">')
           :(w.type==='line'||w.type==='shape')?row('Farbe','<input id="pColor" type="color" value="'+(w.color||'#00cdab')+'">')
-          :(['text','calendar','clock','component','eventctl','objinfo','infolist','meterlist','statuslist','statusgrid','devlist','msglog','chart','skinswitch','windrose','rangeslider','raincard','rainradar','rainintensity','circlerange','cie','weekedit'].indexOf(w.type)<0&&!(w.type==='html'&&w.htmlSrc==='custom')&&!(w.type==='colorpick'&&(w.cmode||'wheel')==='cie')?row('Variable','<input id="pVar" value="'+esc(String(w.varId||''))+'" placeholder="ID oder =Formel"> <button class="btn" id="pPick" style="padding:6px 8px">wählen</button>')+'<div style="font-size:11px;color:var(--muted);line-height:1.4;margin:2px 4px 7px">Formel möglich: <b>=45552+49633</b>, <b>=(#20726+#40754)/2</b> — Aggregat &amp; Live aus den Einzelvariablen.<br>Text verketten (Live): <b>=#35768.&quot;°C &quot;.#27635.&quot;%&quot;</b> — Variablen &amp; Text mit dem Punkt.</div>':''))
+          :(['text','calendar','clock','component','eventctl','objinfo','infolist','meterlist','statuslist','statusgrid','devlist','msglog','chart','skinswitch','windrose','rangeslider','raincard','rainradar','rainintensity','circlerange','cie','weekedit','ruletable','epggrid'].indexOf(w.type)<0&&!(w.type==='html'&&w.htmlSrc==='custom')&&!(w.type==='colorpick'&&(w.cmode||'wheel')==='cie')?row('Variable','<input id="pVar" value="'+esc(String(w.varId||''))+'" placeholder="ID oder =Formel"> <button class="btn" id="pPick" style="padding:6px 8px">wählen</button>')+'<div style="font-size:11px;color:var(--muted);line-height:1.4;margin:2px 4px 7px">Formel möglich: <b>=45552+49633</b>, <b>=(#20726+#40754)/2</b> — Aggregat &amp; Live aus den Einzelvariablen.<br>Text verketten (Live): <b>=#35768.&quot;°C &quot;.#27635.&quot;%&quot;</b> — Variablen &amp; Text mit dem Punkt.</div>':''))
       +((w.type==='kpi'||w.type==='delta')?('<div class="pgh">Vergleich (Zeitversatz)</div>'
         +row('Aktiv','<input type="checkbox" id="pCmpOn"'+(w.cmpOn?' checked':'')+'>')
         +(w.cmpOn?(row('Aggregationsstufe',stageSel('pCmpStage',cmpStage(w)))+row('Zählervariable','<input type="checkbox" id="pCmpCnt"'+(w.cmpCounter?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">Verbrauch je Periode</span>')+(!w.cmpCounter?row('Periodenmittel','<input type="checkbox" id="pCmpAvg"'+(w.cmpAvg?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">Mittel über die Periode statt Punktwert</span>'):'')+row('Anzeige','<select id="pCmpMode"><option value="pct"'+((w.cmpMode||'pct')==='pct'?' selected':'')+'>Prozent</option><option value="abs"'+(w.cmpMode==='abs'?' selected':'')+'>Absolut</option></select>')+row('Veränderung invertieren','<input type="checkbox" id="pCmpInv"'+(w.cmpInvert?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">Rückgang = gut (z. B. Verbrauch) — nur Farbe dreht, Pfeil bleibt</span>')):'')
@@ -274,7 +274,7 @@
     };}
     $$('[data-leup]',p).forEach(function(b){_leMove(b,'data-leup',-1);});
     $$('[data-ledn]',p).forEach(function(b){_leMove(b,'data-ledn', 1);});
-    $$('[data-leadd]',p).forEach(function(b){b.onclick=function(){var key=b.dataset.leadd;if(!w[key])w[key]=[];w[key].push(key==='links'?{from:'',to:'',vid:0}:(key==='steps'?{title:'',vid:0,type:'auf',color:'#00cdab'}:(key==='states')?{v:'',text:'',icon:'',color:''}:(key==='options')?{value:'',text:'',icon:'',color:''}:{label:'',vid:0}));render();renderProps();};});
+    $$('[data-leadd]',p).forEach(function(b){b.onclick=function(){var key=b.dataset.leadd;if(!w[key])w[key]=[];w[key].push(key==='links'?{from:'',to:'',vid:0}:(key==='steps'?{title:'',vid:0,type:'auf',color:'#00cdab'}:(key==='states')?{v:'',text:'',icon:'',color:''}:(key==='options')?{value:'',text:'',icon:'',color:''}:(key==='cols'&&w.type==='ruletable')?{label:'Neue Spalte',type:'num',optSrc:'profile'}:(key==='rows'&&w.type==='ruletable')?{label:'Regel '+((w.rows||[]).length)}:{label:'',vid:0}));render();renderProps();};});
     $$('[data-leico]',p).forEach(function(b){b.onclick=function(){_iconPick={wid:w.id,path:b.dataset.leico};showTab('icons');toast('Icon für diese Zeile wählen');};});
     $$('[data-fpick]',p).forEach(function(b){b.onclick=function(){showTab('vars');toast('Variable im Baum anklicken');_bindField={wid:w.id,path:b.dataset.fpick};};}); // generischer Feld-Pick (Pfad, z. B. fc.0.hi)
     $$('[data-fid]',p).forEach(function(inp){inp.onchange=function(){setPath(w,inp.dataset.fid,parseInt(inp.value)||0);render();renderProps();};});
@@ -354,11 +354,16 @@
   }
   // Skin-Farben GENERISCH aus SKIN_TOKENS ableiten (ohne Struktur-/Hintergrundfarben) — neue Skin-Farben erscheinen automatisch
   var _SKIN_STRUCT={bg:1,surface:1,'surface-2':1,tile:1,line:1,'line-soft':1};
-  var _SKIN_LBL={text:'Neutral',muted:'Gedämpft',faint:'Blass',accent:'Akzent','accent-2':'Akzent 2',ok:'OK',warn:'Warnung',crit:'Kritisch',info:'Info',warm:'Warm',sun:'Sonne',moon:'Mond'};
+  var _SKIN_LBL={text:'Textfarbe','text-inv':'Textfarbe invers',muted:'Gedämpft',faint:'Blass',accent:'Akzent','accent-2':'Akzent 2',ok:'OK',warn:'Warnung',crit:'Kritisch',info:'Info',warm:'Warm',sun:'Sonne',moon:'Mond'};
   // Eigene, benannte Skin-Farben des aktiven Skins (skinExtras aus 06-live) mit anhaengen -> erscheinen ueberall.
   function _skinExtraKeys(){try{return (typeof skinExtras==='function'?skinExtras():[]).map(function(e){return e.key;});}catch(_){return [];}}
   function _skinLbl(k){if(_SKIN_LBL[k])return _SKIN_LBL[k];try{var e=(typeof skinExtras==='function'?skinExtras():[]).filter(function(x){return x.key===k;})[0];if(e)return e.name;}catch(_){}return k;}
-  function skinColorKeys(){var t=(typeof SKIN_TOKENS!=='undefined'&&SKIN_TOKENS)?SKIN_TOKENS:['accent','ok','warn','crit','info','warm','muted'];return t.filter(function(k){return !_SKIN_STRUCT[k];}).concat(_skinExtraKeys());}
+  function skinColorKeys(){var t=(typeof SKIN_TOKENS!=='undefined'&&SKIN_TOKENS)?SKIN_TOKENS:['accent','ok','warn','crit','info','warm','muted'];
+    // 'text-inv' gehoert nicht zu SKIN_TOKENS (es wird abgeleitet, nicht gepflegt),
+    // soll aber ueberall waehlbar sein - direkt hinter 'text'.
+    var k=t.filter(function(x){return !_SKIN_STRUCT[x];}),i=k.indexOf('text');
+    if(i>=0)k.splice(i+1,0,'text-inv'); else k.push('text-inv');
+    return k.concat(_skinExtraKeys());}
   function skinSel(cur,attrs){cur=cur||'';var keys=skinColorKeys(),known=(cur===''||keys.indexOf(cur)>=0);
     var op='<option value=""'+(cur===''?' selected':'')+'>Auto</option>'+keys.map(function(k){return '<option value="'+k+'"'+(cur===k?' selected':'')+' style="background:var(--'+k+');color:#08201c">'+_skinLbl(k)+'</option>';}).join('');
     if(cur&&!known)op='<option value="'+esc(cur)+'" selected style="background:'+esc(cur)+';color:#08201c">Eigene</option>'+op;
