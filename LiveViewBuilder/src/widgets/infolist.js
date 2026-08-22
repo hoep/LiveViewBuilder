@@ -46,10 +46,13 @@
       +(w.ilfIcon?('<span class="ilfi">'+iconSVG(w.ilfIcon)+'</span>'):'')+'<span>'+t+'</span></div>';
   }
   /** Aktionsknopf einer Zeile. Ohne Icon kein Knopf - ein leerer Kasten waere ein Versprechen ohne Inhalt. */
-  function _ilKnopf(r,i){
-    if(!r.btn)return '';
-    var b=_ilFarbe(r.btnCol,'var(--accent)');
-    return '<button class="hibtn" data-ilb="'+i+'" style="--b:'+b+'"'+(r.btnTitle?(' title="'+esc(r.btnTitle)+'"'):'')+'>'+iconSVG(r.btn)+'</button>';
+  function _ilKnopf(r,i,zweiter){
+    var ic=zweiter?r.btn2:r.btn;
+    if(!ic)return '';
+    var b=_ilFarbe(zweiter?r.btn2Col:r.btnCol,'var(--accent)');
+    var ti=zweiter?r.btn2Title:r.btnTitle;
+    return '<button class="hibtn" data-ilb="'+i+'"'+(zweiter?' data-ilb2="1"':'')+' style="--b:'+b+'"'
+      +(ti?(' title="'+esc(ti)+'"'):'')+'>'+iconSVG(ic)+'</button>';
   }
   /** Hat die Zeile etwas zu tun? Legacy-Felder (btnVid/btnTo) zaehlen mit. */
   function _ilHatAkt(r){return !!(r.actVid||r.actScript||r.actTo||r.btnVid||r.btnTo);}
@@ -62,12 +65,17 @@
    * Wert leer = umschalten. Dafuer wird der zuletzt gemeldete Wert gelesen; ist
    * keiner da (Zahl statt Schalter), wird nichts geraten und true geschickt.
    */
-  function _ilTue(r){
-    var to=r.actTo||r.btnTo, sc=r.actScript, vid=r.actVid||r.btnVid;
+  function _ilTue(r,zwei){
+    // Der zweite Knopf hat einen eigenen Satz Ziele. Fehlt einer davon, gilt der
+    // erste - so genuegt beim Tor der zweite WERT (auf/zu an derselben Variablen).
+    var to=zwei?(r.act2To||r.actTo||r.btnTo):(r.actTo||r.btnTo);
+    var sc=zwei?(r.act2Script||r.actScript):r.actScript;
+    var vid=zwei?(r.act2Vid||r.actVid||r.btnVid):(r.actVid||r.btnVid);
     if(to){openPopup(to);return;}
     if(sc){fetch('?api=runscript&id='+(parseInt(sc)||0)+'&key='+encodeURIComponent(TOKEN),{cache:'no-store'});toast('Skript gestartet');return;}
     if(!vid)return;
-    var val=(r.actVal!=null&&r.actVal!=='')?r.actVal:((r.btnVal!=null&&r.btnVal!=='')?r.btnVal:null);
+    var _av=zwei?r.act2Val:r.actVal;
+    var val=(_av!=null&&_av!=='')?_av:((!zwei&&r.btnVal!=null&&r.btnVal!=='')?r.btnVal:null);
     if(val===null){
       var lv=(typeof _lastVals!=='undefined')?_lastVals[vid]:null;
       var an=lv&&(lv.v===true||lv.v===1||lv.v==='1'||lv.v==='true');
@@ -148,21 +156,21 @@
           +'<span class="hirow">'
             +'<span class="hibi"'+(_ic?' style="color:'+_ic+';background:color-mix(in oklab,'+_ic+' 14%,var(--surface-2))"':'')+'>'+iconSVG(r.icon||'sensor')+'</span>'
             +'<span class="hin">'+esc(r.label||'')+(r.sub?'<small>'+esc(r.sub)+'</small>':'')+'</span>'
-            +rt+_ilKnopf(r,i)
+            +rt+_ilKnopf(r,i,false)+_ilKnopf(r,i,true)
           +'</span>'+bar+'</div>';
       }).join('');
       return (huelle?'<div class="hilhead">':'')+kopf
-        +'<div class="hinfos'+(alleKarten?' karten':'')+'">'+zeilen+'</div>'
+        +'<div class="hinfos'+(alleKarten?' karten':'')+(w.ilBare?' blank':'')+'">'+zeilen+'</div>'
         +fuss+(huelle?'</div>':'');
     },
     // Kopfzeile, Fusszeile, Knoepfe und schaltende Zeilen fangen den Klick ab,
     // damit er nicht zusaetzlich als Klick auf die ganze Kachel gilt.
     click:function(w,el,e){
       var b=e.target.closest('[data-ilb]'),z=e.target.closest('[data-ilrow]');
-      var r=null;
-      if(b)r=(w.items||[])[parseInt(b.getAttribute('data-ilb'))||0];
+      var r=null,zwei=false;
+      if(b){r=(w.items||[])[parseInt(b.getAttribute('data-ilb'))||0];zwei=(b.getAttribute('data-ilb2')==='1');}
       else if(z)r=(w.items||[])[parseInt(z.getAttribute('data-ilrow'))||0];
-      if(r){_ilTue(r);return true;}
+      if(r){_ilTue(r,zwei);return true;}
       if(e.target.closest('[data-ilfoot]')&&w.ilfTo){openPopup(w.ilfTo);return true;}
       if(e.target.closest('[data-ilhead]')&&w.ilhTo){openPopup(w.ilhTo);return true;}
       return false;
@@ -171,6 +179,7 @@
       var TPL=[['','schlicht'],['karten','Karten (alle Zeilen getönt)'],['geraete','Geräte (mit Balken)'],['tueren','Türen & Tore (mit Fußzeile)']];
       return (w.type==='infolist'
       ?'<div style="font-size:11px;color:var(--muted);line-height:1.4;margin:0 2px 7px">Je Zeile: Icon, Name (+Zusatz), rechts entweder ein <b>Wert</b> oder eine <b>Pill</b>. „Status" färbt nur die Pill ein (ohne Pill-Text hat er keine Wirkung).</div>'
+        +row('Zeilenrahmen','<input type="checkbox" id="pIlBare"'+(w.ilBare?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">ohne Kasten je Zeile — nur Abstand statt Trennern</span>')
         +row('Vorlage','<select id="pIlTpl">'+TPL.map(function(t){return '<option value="'+t[0]+'"'+((w.ilTpl||'')===t[0]?' selected':'')+'>'+t[1]+'</option>';}).join('')+'</select> '
             +'<button class="btn" id="pIlTplGo" style="padding:4px 8px;font-size:11px">einsetzen</button>')
         +'<div class="hint" style="font-size:11px;margin:0 2px 8px">„Einsetzen" stellt Kopf-, Fuß- und Zeilenangaben passend ein und legt Beispielzeilen an. Danach ist alles frei änderbar — die Vorlage erzwingt nichts.</div>'
@@ -202,8 +211,12 @@
         +'<div class="pgh">Je Zeile: Aktion</div>'
         +'<div class="hint" style="font-size:11px;margin:0 2px 8px">Mit Knopf-Icon führt der <b>Knopf</b> die Aktion aus, ohne Icon die <b>ganze Zeile</b>. Die Variable geht über RequestAction, wenn sie eine Aktion hat — es wird also wirklich geschaltet. Wert leer = umschalten (an/aus).</div>'
         +listEditor(w,'items','Knopf-Icon · Knopf-Farbe · VarID · Wert · Skript-ID · Popup · Hinweis',[{k:'btn',type:'icon',h:'Knopf',ph:'Knopf-Icon'},{k:'btnCol',type:'skincolor',h:'Knopf-Farbe'},{k:'actVid',h:'VarID',ph:'ID'},{k:'actVal',h:'Wert',ph:'leer = um'},{k:'actScript',h:'Skript',ph:'ID'},{k:'actTo',h:'Popup',ph:'Popup'},{k:'btnTitle',h:'Hinweis',ph:'Hinweis'}])
+        +'<div class="pgh">Je Zeile: zweiter Knopf (Gegenrichtung)</div>'
+        +'<div class="hint" style="font-size:11px;margin:0 2px 8px">Für Dinge mit zwei Richtungen — Tor auf/zu, Licht an/aus. Leere Felder erben vom ersten Knopf; beim Tor genügt also der zweite <b>Wert</b>.</div>'
+        +listEditor(w,'items','Knopf-Icon · Farbe · VarID · Wert · Skript · Popup · Hinweis',[{k:'btn2',type:'icon',h:'Knopf 2',ph:'Icon'},{k:'btn2Col',type:'skincolor',h:'Farbe'},{k:'act2Vid',h:'VarID',ph:'wie oben'},{k:'act2Val',h:'Wert',ph:'Wert'},{k:'act2Script',h:'Skript',ph:'ID'},{k:'act2To',h:'Popup',ph:'Popup'},{k:'btn2Title',h:'Hinweis',ph:'Hinweis'}])
       :'');},
     wire:function(w){
+      if($('#pIlBare'))$('#pIlBare').onchange=function(){w.ilBare=this.checked||undefined;render();commit();};
       if($('#pIlTpl'))$('#pIlTpl').onchange=function(){w.ilTpl=this.value||undefined;commit();};
       if($('#pIlTplGo'))$('#pIlTplGo').onclick=function(){_ilVorlage(w,(($('#pIlTpl')||{}).value)||'');render();renderProps();commit();};
       if($('#pIlHead'))$('#pIlHead').onchange=function(){w.ilHead=this.checked||undefined;render();renderProps();commit();};
