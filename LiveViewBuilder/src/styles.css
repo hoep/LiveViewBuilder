@@ -980,11 +980,17 @@
      Alles in Container-Einheiten: Feldgroesse, Icon, Abstaende, Legende. Die
      Kachel darf von 120 px bis Wandtafel wachsen, ohne dass etwas bricht. */
   .iaw{display:flex;flex-direction:column;height:100%;box-sizing:border-box;container-type:size}
+  /* Die Zeilen teilen sich die Hoehe und haben eine Untergrenze. Mit
+     aspect-ratio allein schrumpften die ZEILEN unter die Feldgroesse, waehrend
+     die Felder ihr Quadrat behielten - sie lagen dann uebereinander. */
   .iag{flex:1;min-height:0;display:grid;gap:clamp(3px,2cqmin,10px);
+    grid-auto-rows:minmax(clamp(16px,9cqmin,34px),1fr);
     padding:clamp(4px,2.5cqmin,12px) clamp(6px,3cqmin,14px);align-content:start;overflow:auto}
-  .iac{position:relative;aspect-ratio:1;display:grid;place-items:center;border-radius:clamp(5px,2.5cqmin,12px);
-    background:var(--surface-2);border:1px solid transparent;color:var(--c,var(--muted));min-height:0}
-  .iac svg{width:62%;height:62%}
+  .iac{position:relative;display:grid;place-items:center;border-radius:clamp(5px,2.5cqmin,12px);
+    background:var(--surface-2);border:1px solid transparent;color:var(--c,var(--muted));min-height:0;min-width:0}
+  /* Das Icon richtet sich nach der KLEINEREN Seite des Feldes - sonst wird es
+     in einem breiten, flachen Feld zur Briefmarke oder ragt hinaus. */
+  .iac svg{width:auto;height:auto;max-width:66%;max-height:66%;aspect-ratio:1}
   .iac.hi{background:color-mix(in oklab,var(--c) 18%,var(--surface-2));border-color:color-mix(in oklab,var(--c) 55%,transparent)}
   .iac.tap{cursor:pointer}
   .iac.tap:active{transform:scale(.94)}

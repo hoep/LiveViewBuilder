@@ -13,15 +13,26 @@
   // der NORMALZUSTAND - er faerbt ruhig und zaehlt nicht in Kopfzeile und
   // Abzeichen mit. Sonst meldete ein Raster aus 24 geschlossenen Fenstern "24".
   var _IA_LEER={v:'',icon:'',color:'',label:'',norm:false,hi:false};
-  function _iaZustand(w,roh){
+  /**
+   * Welcher Zustand gilt fuer diesen Wert?
+   *
+   * Verglichen wird gegen den ROHWERT und gegen den formatierten Text. Der Text
+   * ist oft die einzige gemeinsame Sprache: dieselben Fenster haengen hier an
+   * zwei Profilen - "FensterTile" zaehlt 0/1/2 (zu/gekippt/offen), "Dachfenster"
+   * kennt nur false/true. Eine 1 heisst dort "offen" und hier "gekippt". Ueber
+   * "Geschlossen"/"Gekippt"/"Geoeffnet" trifft dagegen beides zu.
+   */
+  function _iaZustand(w,roh,txt){
     var st=(w.states&&w.states.length)?w.states:[];
     var s=String(roh===true?1:(roh===false?0:(roh==null?'':roh))).trim();
+    var f=String(txt==null?'':txt).trim().toLowerCase();
     var fall=null,i,z,zv;
     for(i=0;i<st.length;i++){
       z=st[i];zv=String(z.v==null?'':z.v).trim();
       if(zv===''||zv==='*'){if(!fall)fall=z;continue;}
       // Zahlen vergleichen sich als Zahlen ("1" trifft 1.0), alles andere als Text.
       if(zv===s||(!isNaN(parseFloat(zv))&&!isNaN(parseFloat(s))&&parseFloat(zv)===parseFloat(s)))return z;
+      if(f&&zv.toLowerCase()===f)return z;
     }
     return fall||_IA_LEER;
   }
@@ -31,7 +42,7 @@
     for(i=0;i<st.length;i++)n.push(0);
     (w.items||[]).forEach(function(r){
       var d=(typeof _lastVals!=='undefined')?_lastVals[r.vid]:null;
-      var z=_iaZustand(w,d?d.v:(r.probe!=null?r.probe:null));
+      var z=_iaZustand(w,d?d.v:(r.probe!=null?r.probe:null),d?d.f:null);
       var ix=st.indexOf(z);if(ix>=0)n[ix]++;
     });
     return n;
@@ -78,7 +89,7 @@
       var gitter=(cols>0)?('repeat('+cols+',1fr)'):('repeat(auto-fit,minmax('+mind+'px,1fr))');
       var felder=(w.items||[]).map(function(r,i){
         var d=(typeof _lastVals!=='undefined')?_lastVals[r.vid]:null;
-        var z=_iaZustand(w,d?d.v:(r.probe!=null?r.probe:null));
+        var z=_iaZustand(w,d?d.v:(r.probe!=null?r.probe:null),d?d.f:null);
         var c=_iaFarbe(z.color,'var(--muted)');
         var hi=!!z.hi;
         return '<div class="iac'+(hi?' hi':'')+(r.to?' tap':'')+'" style="--c:'+c+'"'
@@ -145,8 +156,8 @@
         +row('Legende','<input type="checkbox" id="pIaLeg"'+(w.iaLeg?' checked':'')+'> '
             +'<label style="font-size:11px;color:var(--muted)"><input type="checkbox" id="pIaLegAll"'+(w.iaLegAll!==false?' checked':'')+'> auch Zustände mit 0</label>')
         +'<div class="pgh">Zustände (Wert · Icon · Farbe · Bezeichnung)</div>'
-        +'<div class="hint" style="font-size:11px;margin:0 2px 8px">Wert leer oder <code>*</code> = gilt für alles Übrige. <b>Normal</b> markiert den Ruhezustand: er zählt nicht in Untertitel und Abzeichen. <b>Hervorheben</b> hinterlegt das Feld in seiner Farbe.</div>'
-        +listEditor(w,'states','Wert · Icon · Farbe · Bezeichnung · Normal · Hervorheben',[{k:'v',h:'Wert',ph:'0'},{k:'icon',type:'icon',h:'Icon'},{k:'color',type:'skincolor',h:'Farbe'},{k:'label',h:'Bezeichnung',ph:'zu'},{k:'norm',type:'select',h:'Normal',options:[['','—'],['1','ja']]},{k:'hi',type:'select',h:'Hervorheben',options:[['','—'],['1','ja']]}])
+        +'<div class="hint" style="font-size:11px;margin:0 2px 8px">Wert leer oder <code>*</code> = gilt für alles Übrige. Verglichen wird gegen den Rohwert <i>und</i> gegen den angezeigten Text — bei gemischten Profilen (0/1/2 neben true/false) trifft nur der Text beides. <b>Normal</b> markiert den Ruhezustand: er zählt nicht in Untertitel und Abzeichen. <b>Hervorheben</b> hinterlegt das Feld in seiner Farbe.</div>'
+        +listEditor(w,'states','Wert · Icon · Farbe · Bezeichnung · Normal · Hervorheben',[{k:'v',h:'Wert',ph:'0 oder Text'},{k:'icon',type:'icon',h:'Icon'},{k:'color',type:'skincolor',h:'Farbe'},{k:'label',h:'Bezeichnung',ph:'zu'},{k:'norm',type:'select',h:'Normal',options:[['','—'],['1','ja']]},{k:'hi',type:'select',h:'Hervorheben',options:[['','—'],['1','ja']]}])
         +'<div class="pgh">Felder</div>'
         +listEditor(w,'items','Variable · Name · Popup',[{k:'vid',h:'VarID',ph:'ID'},{k:'label',h:'Name',ph:'Name'},{k:'to',h:'Popup',ph:'Popup'}])
       :'');},
