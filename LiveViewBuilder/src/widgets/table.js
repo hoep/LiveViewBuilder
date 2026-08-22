@@ -28,9 +28,13 @@
   }
   // Optionaler Status-Stil: Text -> Schweregrad; % aus Text lesen (fuer Ladebalken)
   function _tblSevOf(t){t=String(t==null?'':t).toLowerCase();
-    if(/leer|schwach|kritisch|critical|empty|entladen/.test(t))return 'crit';
-    if(/bald|mittel|\bwarn|niedrig|\blow\b/.test(t))return 'warn';
-    if(/\bok\b|voll|gut|normal|hoch|full|geladen/.test(t))return 'ok';
+    if(/leer|schwach|kritisch|critical|empty|entladen|fehler|defekt/.test(t))return 'crit';
+    if(/bald|mittel|\bwarn|niedrig|\blow\b|offen|unklar|fehlt|pr(ue|ü)fen/.test(t))return 'warn';
+    if(/\bok\b|voll|gut|normal|hoch|full|geladen|fertig/.test(t))return 'ok';
+    // Feststellung statt Bewertung: etwas ist eingestellt oder ruht - das ist
+    // weder gut noch schlecht, soll aber nicht farblos untergehen.
+    if(/aktiv|regel|hinweis|\binfo\b/.test(t))return 'info';
+    if(/ruht|inaktiv|pause|aus\b/.test(t))return 'muted';
     return '';}
   function _tblPctOf(t){var m=String(t==null?'':t).match(/(\d+(?:[.,]\d+)?)\s*%/);return m?parseFloat(m[1].replace(',','.')):NaN;}
   function _tblLoad(w){ // aus Live-Wert (JSON schnell) oder per Endpunkt (serialized/robust)
@@ -244,10 +248,19 @@
       if(w.colRaw&&w.colRaw[ci])return String(v==null?'':v);
       return (qhi&&qcSet[ci])?_tblMark(v,qhi):esc(v);};
     // Status-Stil: Status-Spalte (Chip+Streifen) und %-Spalte (Ladebalken) erkennen
-    var sevIdx=-1,barIdx=-1;
+    var sevIdx=-1,barIdx=-1,_barMax=0;
     if(w.sevStyle){for(var hi=0;hi<cols;hi++){var hs=String(head[hi]||'').toLowerCase();
       if(sevIdx<0&&/status|zustand/.test(hs))sevIdx=hi;
-      if(barIdx<0&&/wert|ladung|prozent|ladest|%/.test(hs))barIdx=hi;}}
+      // Balken: neben den Prozentspalten auch Zaehlspalten, die eine Menge
+      // beschreiben. Ohne sie steht in der Spalte eine nackte Zahl, deren
+      // Groessenverhaeltnis man Zeile fuer Zeile selbst ausrechnen muesste.
+      if(barIdx<0&&/wert|ladung|prozent|ladest|%|anzahl|ausstrahlung|folgen|aufnahmen/.test(hs))barIdx=hi;}}
+    if(w.sevStyle&&barIdx>=0){
+      for(var bm=0;bm<all.length;bm++){
+        var _bv=parseFloat(String(all[bm][barIdx]!=null?all[bm][barIdx]:'').replace(',','.'));
+        if(!isNaN(_bv)&&_bv>_barMax)_barMax=_bv;
+      }
+    }
     // Kopf: Titel + Zähler + rechts Seg-Toggle + Pager. Der Zaehler nennt bei aktivem Filter
     // BEIDE Zahlen - "12 Einträge" waere sonst eine andere Aussage als die Datenlage.
     var totAll=all.length;
@@ -333,6 +346,10 @@
           var v=r[ci]!=null?r[ci]:'';
           if(w.sevStyle&&ci===sevIdx&&sev)return '<td class="r"><span class="tbl-chip tsc-'+sev+'">'+esc(v)+'</span></td>';
           if(w.sevStyle&&ci===barIdx){var p=_tblPctOf(v);
+            // Ohne Prozentzeichen: gegen den GROESSTEN Wert der Spalte messen.
+            // Sonst bliebe die Spalte bei einer Zaehlung ohne Balken - und genau
+            // dort ist der Vergleich zwischen den Zeilen die eigentliche Aussage.
+            if(isNaN(p)&&_barMax>0){var _bn=parseFloat(String(v).replace(',','.'));if(!isNaN(_bn))p=_bn/_barMax*100;}
             var bar=!isNaN(p)?('<span class="tbl-mini"><span style="width:'+Math.max(2,Math.min(100,p))+'%;background:var(--'+(sev||'accent')+')"></span></span>'):'';
             return '<td class="'+(numc[ci]?'tbl-mono ':'')+'tbl-barcell r"><span'+(sev?' style="color:var(--'+sev+')"':'')+'>'+esc(v)+'</span>'+bar+'</td>';}
           return '<td'+(numc[ci]?' class="tbl-mono"':'')+tdSt(ci)+'>'+cellHtml(ci,v)+'</td>';
