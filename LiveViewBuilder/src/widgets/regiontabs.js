@@ -25,18 +25,68 @@
     },
     click:function(w,el,e){
       var b=e.target.closest('[data-rtv]'); if(!b)return false;
+      // Beim Zeigergeraet ist der Wechsel schon beim Druecken passiert (siehe
+      // unten). Dann hier NICHT noch einmal - das waere ein zweites Zeichnen
+      // ohne Wirkung.
+      if(w._rtZeit&&(Date.now()-w._rtZeit)<800)return true;
       var view=b.getAttribute('data-rtv');
-      if(w.slot&&typeof setRegion==='function'){setRegion(w.slot,view);}   // setzt _regions + render() -> Tabs re-highlighten
+      if(w.slot&&typeof setRegion==='function'){setRegion(w.slot,view);}
       return true;
     },
     props:function(w){if(w.type!=='regiontabs')return '';
-      return row('Stil','<select id="pRtStyle"><option value="buttons"'+(w.style==='buttons'?' selected':'')+'>Buttons</option><option value="pills"'+((w.style||'pills')==='pills'?' selected':'')+'>Pills</option><option value="underline"'+(w.style==='underline'?' selected':'')+'>Underline</option></select>')
-        +row('Region-Name','<input id="pRtSlot" value="'+esc(w.slot||'')+'" placeholder="muss zur Komponente passen">')
+      // Welche Regionen gibt es auf dieser Seite ueberhaupt? Der Name muss zu
+      // einer Komponente passen, und bisher musste man ihn wissen.
+      var slots=[],hin='';
+      (state.widgets||[]).forEach(function(x){
+        if(x.type==='component'&&x.slot&&slots.indexOf(x.slot)<0)slots.push(x.slot);
+      });
+      if(w.slot){
+        var treffer=(state.widgets||[]).filter(function(x){return x.type==='component'&&x.slot===w.slot;});
+        hin=treffer.length
+          ? '<span style="color:var(--ok)">schaltet die Komponente '+treffer.map(function(x){return '„'+esc(x.name||x.id)+'"';}).join(', ')+'</span>'
+          : '<span style="color:var(--warn)">keine Komponente mit diesem Region-Namen auf dieser Seite</span>';
+      }
+      return row('Region',(slots.length
+          ? '<select id="pRtSlotSel"><option value="">— gefundene Regionen —</option>'
+              +slots.map(function(n){return '<option value="'+esc(n)+'"'+(w.slot===n?' selected':'')+'>'+esc(n)+'</option>';}).join('')
+              +'</select> '
+          : '')
+        +'<input id="pRtSlot" value="'+esc(w.slot||'')+'" placeholder="muss zur Komponente passen" style="width:150px">')
+      +'<div style="font-size:11px;line-height:1.4;margin:2px 2px 6px">'+hin+'</div>'
+      +row('Stil','<select id="pRtStyle"><option value="buttons"'+(w.style==='buttons'?' selected':'')+'>Buttons</option><option value="pills"'+((w.style||'pills')==='pills'?' selected':'')+'>Pills</option><option value="underline"'+(w.style==='underline'?' selected':'')+'>Underline</option></select>')
         +'<div style="font-size:11px;color:var(--muted);margin:2px 2px 4px">Schaltet den gleichnamigen Komponenten-Bereich um. Tabs (Label · Ansicht) werden generiert bzw. per Liste gepflegt.</div>'
         +listEditor(w,'tabs','Tabs: Label · Ansicht',[{k:'label',ph:'Label'},{k:'view',ph:'Ansicht'}]);
     },
     wire:function(w){
       if($('#pRtStyle'))$('#pRtStyle').onchange=function(){w.style=this.value;render();commit();};
-      if($('#pRtSlot'))$('#pRtSlot').oninput=function(){w.slot=this.value||undefined;render();commit();};
+      if($('#pRtSlot'))$('#pRtSlot').oninput=function(){w.slot=this.value||undefined;render();renderProps();commit();};
+      if($('#pRtSlotSel'))$('#pRtSlotSel').onchange=function(){if(!this.value)return;w.slot=this.value;render();renderProps();commit();};
     }
   });
+
+  /**
+   * Umschalten schon beim DRUECKEN, nicht erst beim Loslassen.
+   *
+   * Der Anlass ist eine Klage aus dem Betrieb: die Reiter reagierten manchmal
+   * erst beim zweiten Klick. Zwischen Druecken und Loslassen kann einiges
+   * dazwischenkommen - die Seite baut noch auf, ein Widget zeichnet sich neu und
+   * ersetzt dabei den Knopf unter dem Finger, oder ein vorangegangener
+   * Lang-Druck hat den naechsten Klick zum Verschlucken vorgemerkt. Beim
+   * Druecken ist nichts davon passiert.
+   *
+   * Der Klick-Weg bleibt als Rueckfall bestehen (Tastatur, Barrierefreiheit);
+   * er erkennt an der Zeitmarke, dass schon geschaltet wurde.
+   */
+  document.addEventListener('pointerdown', function(e){
+    try{
+      if(typeof mode!=='undefined'&&mode==='edit')return;
+      var b=e.target.closest&&e.target.closest('[data-rtv]');
+      if(!b)return;
+      var el=b.closest('.w[data-id]');
+      if(!el)return;
+      var w=(typeof _wForEl==='function')?_wForEl(el):null;
+      if(!w||w.type!=='regiontabs'||!w.slot||typeof setRegion!=='function')return;
+      w._rtZeit=Date.now();
+      setRegion(w.slot,b.getAttribute('data-rtv'));
+    }catch(_e){}
+  }, true);
