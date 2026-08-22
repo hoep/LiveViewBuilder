@@ -40,6 +40,47 @@
       +esc(text)+'</button>';
   }
 
+  /**
+   * Legende neben dem Suchfeld.
+   *
+   * Die Schraffuren sind absichtlich leicht - das Raster soll lesbar bleiben.
+   * Genau deshalb erklaeren sie sich nicht von selbst: wer sie zum ersten Mal
+   * sieht, haelt sie fuer einen Verlauf. Die Legende zeigt dieselben Muster in
+   * klein, aus denselben Werten gebaut; wer eine Farbe umstellt, sieht es hier
+   * sofort mit.
+   *
+   * Was abgeschaltet ist, erscheint auch nicht - eine Legende fuer eine
+   * Markierung, die es nicht gibt, waere schlimmer als keine.
+   */
+  function _epgLegende(w){
+    if(w.epgLeg===false)return '';
+    var fs=Math.max(9,Math.round(parseFloat(w.epgFsH||w.epgFsN||12)*0.8));
+    var h=Math.max(10,Math.round(fs*1.15)),br=Math.max(2,Math.round(fs*0.25));
+    var cBlk=_epgCol(w.epgCB,'var(--surface-2)');
+    function probe(stil){
+      return '<span style="display:inline-block;width:'+Math.round(h*1.6)+'px;height:'+h+'px;'
+        +'border-radius:'+br+'px;background:'+cBlk+';border:1px solid var(--line);vertical-align:-2px;'+stil+'"></span>';
+    }
+    function streifen(farbe,deck,abst,winkel){
+      return 'background-image:repeating-linear-gradient('+winkel+'deg,'
+        +'color-mix(in oklab,'+farbe+' '+(deck*2)+'%,transparent) 0 2px,transparent 2px '+Math.round(abst*0.5)+'px);';
+    }
+    var teile=[];
+    if(w.epgArt!==false){
+      teile.push([probe(streifen(_epgCol(w.epgCF,'var(--warn)'),(w.epgArtA||12),(w.epgArtW||7),135)),'Wunschserie']);
+      teile.push([probe(streifen(_epgCol(w.epgCS,'var(--info)'),(w.epgSerA||7),(w.epgSerW||15),135)),'andere Serie']);
+    }
+    if(w.epgHave!==false){
+      teile.push([probe(streifen(_epgCol(w.epgCH,'var(--ok)'),(w.epgHavA||10),(w.epgHavW||13),45)),'schon aufgenommen']);
+    }
+    teile.push([probe('box-shadow:inset 0 0 0 1px '+_epgCol(w.epgCM,'var(--crit)')+';'),'programmiert']);
+    teile.push([probe('border-left:3px solid '+_epgCol(w.epgCR,'var(--accent)')+';'),'läuft gerade']);
+    return '<span class="epgleg" style="display:inline-flex;align-items:center;gap:'+Math.round(fs*0.6)+'px;'
+      +'font-size:'+fs+'px;color:var(--muted);white-space:nowrap;margin-left:'+Math.round(fs*0.8)+'px">'
+      +teile.map(function(t){return '<span style="display:inline-flex;align-items:center;gap:4px">'+t[0]+esc(t[1])+'</span>';}).join('')
+      +'</span>';
+  }
+
   var _EPGD={};        // je Widget-ID: zuletzt geladenes Fenster
   var _EPGL={};        // je Widget-ID: laeuft gerade eine Abfrage?
 
@@ -106,6 +147,7 @@
     var cRec=_epgCol(w.epgCM,'var(--crit)');
     var cFav=_epgCol(w.epgCF,'var(--warn)');    // Serie der Wunschliste
     var cSer=_epgCol(w.epgCS,'var(--info)');    // Serie, aber nicht auf der Liste
+    var cHav=_epgCol(w.epgCH,'var(--ok)');      // liegt schon auf der Platte
     var jetzt=Math.floor(Date.now()/1000);
     var q=(w._epgQ||'').toLowerCase();
 
@@ -151,7 +193,12 @@
         // lesbar bleiben, die Markierung nur den Blick lenken. Deshalb eine
         // Schraffur statt einer Flaeche - sie faellt auf, ohne den Block
         // einzufaerben, und stoert die Farbe der laufenden Sendung nicht.
-        var schraff='';
+        // Zwei Ebenen koennen zugleich gelten: eine Wunschserie, die schon auf der
+        // Platte liegt, ist beides. Deshalb werden die Muster uebereinandergelegt
+        // statt gegeneinander ausgespielt - und die zweite Ebene laeuft in die
+        // ANDERE Richtung, damit man sie auch dort erkennt, wo beide liegen.
+        var lagen=[];
+        var vor=(w.epgHave!==false)?(p[9]|0):0;
         if(w.epgArt!==false&&art>0){
           // Die beiden Arten unterscheiden sich nicht nur in der Farbe, sondern
           // auch im MUSTER: was aufgenommen wird, ist dichter schraffiert. Bei
@@ -161,9 +208,17 @@
           var ac=(art===1)?cFav:cSer;
           var ad=(art===1)?(w.epgArtA||12):(w.epgSerA||7);
           var aw=(art===1)?(w.epgArtW||7):(w.epgSerW||15);
-          schraff='background-image:repeating-linear-gradient(135deg,'
-            +'color-mix(in oklab,'+ac+' '+ad+'%,transparent) 0 3px,transparent 3px '+aw+'px);';
+          lagen.push('repeating-linear-gradient(135deg,'
+            +'color-mix(in oklab,'+ac+' '+ad+'%,transparent) 0 3px,transparent 3px '+aw+'px)');
         }
+        if(vor>0){
+          // Doppelt vorhanden faellt dichter aus - dieselbe Sprache wie oben:
+          // der Streifenabstand traegt die Unterscheidung, nicht der Farbton.
+          var hd=(w.epgHavA||10), hw=(vor===2)?Math.max(5,Math.round((w.epgHavW||13)*0.6)):(w.epgHavW||13);
+          lagen.push('repeating-linear-gradient(45deg,'
+            +'color-mix(in oklab,'+cHav+' '+hd+'%,transparent) 0 3px,transparent 3px '+hw+'px)');
+        }
+        var schraff=lagen.length?('background-image:'+lagen.join(',')+';'):'';
         var kante=laeuft?('border-left:3px solid '+cRun+';'):'';
         // Was aufgenommen wird, bekommt zusaetzlich einen Rand in der
         // Aufnahmefarbe - der Punkt allein geht in einer vollen Zeile unter.
@@ -457,6 +512,7 @@
         +'<span class="epgtag" data-role="epgtag">Heute</span>'
         +'<span class="epguhr" data-role="epguhr">–</span>'
         +(w.epgQ!==false?'<input class="epgq" data-role="epgq" style="'+_epgKnopfStil(w,true)+'" placeholder="'+esc(w.epgQPh||'Sendung suchen …')+'" value="'+esc(w._epgQ||'')+'">':'')
+        +_epgLegende(w)
         +'<span class="sp"></span>'
         // Reihenfolge wie gewuenscht: erst einen Tag weiter, dann die beiden
         // Abendmarken, dann das Blaettern.
@@ -577,6 +633,12 @@
             +' <input id="pEpgSerA" type="number" min="2" max="40" value="'+(w.epgSerA||7)+'" style="width:52px" title="Deckkraft in Prozent">'
             +' <input id="pEpgSerW" type="number" min="5" max="40" value="'+(w.epgSerW||15)+'" style="width:52px" title="Streifenabstand in px">'
             +' <span style="font-size:11px;color:var(--muted)">alle übrigen Serien · leer = Infofarbe</span>')
+        +row('Schon aufgenommen','<input type="checkbox" id="pEpgHave"'+(w.epgHave!==false?' checked':'')+'> '
+            +skinSel(w.epgCH||'','id="pEpgCH"')
+            +' <input id="pEpgHavA" type="number" min="2" max="40" value="'+(w.epgHavA||10)+'" style="width:52px" title="Deckkraft in Prozent">'
+            +' <input id="pEpgHavW" type="number" min="5" max="40" value="'+(w.epgHavW||13)+'" style="width:52px" title="Streifenabstand in px">'
+            +' <span style="font-size:11px;color:var(--muted)">liegt auf der Platte · Quelle: Serienrecorder · leer = OK-Farbe</span>')
+        +row('Legende','<input type="checkbox" id="pEpgLeg"'+(w.epgLeg!==false?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">neben dem Suchfeld, zeigt nur was eingeschaltet ist</span>')
         +'<div class="pgh">Schriftgrößen (px)</div>'
         +row('Titel / Zeit / Sender','<input id="pEpgFsT" type="number" min="8" max="24" value="'+(w.epgFsT||13)+'" style="width:56px"> '
            +'<input id="pEpgFsZ" type="number" min="7" max="20" value="'+(w.epgFsZ||11)+'" style="width:56px"> '
@@ -599,10 +661,12 @@
       });
       chk('#pEpgSub','epgSub',1);chk('#pEpgRest','epgRest',1);chk('#pEpgCat','epgCat');
       if($('#pEpgQPh'))$('#pEpgQPh').oninput=function(){w.epgQPh=this.value||undefined;render();commit();};
-      ['CB','CR','CT','CZ','CN','CM','CF','CS'].forEach(function(k){sel('#pEpg'+k,'epg'+k);});
+      ['CB','CR','CT','CZ','CN','CM','CF','CS','CH'].forEach(function(k){sel('#pEpg'+k,'epg'+k);});
       chk('#pEpgArt','epgArt',1);
       num('#pEpgArtA','epgArtA',12);num('#pEpgArtW','epgArtW',7);
       num('#pEpgSerA','epgSerA',7);num('#pEpgSerW','epgSerW',15);
+      chk('#pEpgHave','epgHave',1);num('#pEpgHavA','epgHavA',10);num('#pEpgHavW','epgHavW',13);
+      chk('#pEpgLeg','epgLeg',1);
       if($('#pEpgSel'))$('#pEpgSel').onchange=function(){w.epgSel=parseInt(this.value)||undefined;commit();};
       if($('#pEpgMsg'))$('#pEpgMsg').onchange=function(){w.epgMsgVar=parseInt(this.value)||undefined;commit();};
       if($('#pEpgSerie'))$('#pEpgSerie').onchange=function(){w.epgSerie=this.checked;commit();};

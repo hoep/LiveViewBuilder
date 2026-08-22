@@ -396,6 +396,19 @@ if ($api === 'epg') {
         return 0;
     };
 
+    // Was schon auf der Platte liegt. Die Liste fuehrt der Serienrecorder; sie
+    // aendert sich mit jedem Lauf und gehoert deshalb NICHT ins Zwischenlager,
+    // sondern wird hier dazugelegt - wie die Timer der Box.
+    $bestand = [];
+    $srInst = IPS_GetInstanceListByModuleID('{F7F9F89F-82ED-4478-970F-C3C749912A0A}')[0] ?? 0;
+    if ($srInst) {
+        $mv = @IPS_GetObjectIDByIdent('Marken', $srInst);
+        if ($mv) {
+            $mj = json_decode((string) @GetValueString($mv), true);
+            $bestand = is_array($mj['marken'] ?? null) ? $mj['marken'] : [];
+        }
+    }
+
     $nurIds = array_filter(array_map('trim', explode(',', (string) ($_GET['kanaele'] ?? ''))));
     $out = [];
     foreach ($kanaele as $k) {
@@ -403,12 +416,17 @@ if ($api === 'epg') {
         if ($nurIds !== [] && !in_array($id, $nurIds, true)) { continue; }
         $p = $daten[$id] ?? [];
         usort($p, static fn(array $a, array $b): int => $a[0] <=> $b[0]);
-        if (($k['ref'] ?? '') !== '' && $timer !== []) {
+        $mitRef = (($k['ref'] ?? '') !== '' && $timer !== []);
+        if ($mitRef || $bestand !== []) {
             foreach ($p as $i => $x) {
-                $mark = $istProgrammiert((string) $k['ref'], (int) $x[0], (int) $x[1]);
                 if (!isset($p[$i][6])) { $p[$i][6] = ''; }   // kein Loch im Index
                 if (!isset($p[$i][7])) { $p[$i][7] = 0; }   // Art der Sendung
-                $p[$i][8] = $mark;
+                if (!isset($p[$i][8])) { $p[$i][8] = 0; }   // programmierte Aufnahme
+                if ($mitRef) {
+                    $p[$i][8] = $istProgrammiert((string) $k['ref'], (int) $x[0], (int) $x[1]);
+                }
+                // 1 = liegt auf der Platte, 2 = liegt mehrfach dort
+                $p[$i][9] = (int) ($bestand[$id . '|' . (int) $x[0]] ?? 0);
             }
         }
         $out[] = ['id' => $id, 'name' => (string) ($k['name'] ?? $id), 'picon' => (string) ($k['picon'] ?? ''),
@@ -417,6 +435,7 @@ if ($api === 'epg') {
     echo json_encode(['ok' => true, 'von' => $von, 'bis' => $bis, 'jetzt' => time(),
                       'stand' => (int) ($stand['stand'] ?? 0), 'quelle' => 'XMLTV',
                       'timerstand' => (int) ($tj['stand'] ?? 0), 'timer' => count($tj['timer'] ?? []),
+                      'bestand' => count($bestand),
                       'kanaele' => $out], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     return;
 }
