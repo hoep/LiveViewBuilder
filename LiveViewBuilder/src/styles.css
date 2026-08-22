@@ -1520,6 +1520,15 @@
   .t-table .tbl-act:hover{border-color:var(--accent);color:var(--accent)}
   .t-table .tbl-act.frage{border-color:var(--crit);color:var(--crit);background:color-mix(in oklab,var(--crit) 14%,transparent);font-weight:700}
   .t-table .tbl-act[disabled]{opacity:.6;cursor:default}
+  /* Aktionsspalte mit Eingabe: die Zuordnung soll dort passieren koennen, wo die
+     Luecke auffaellt, nicht in einem anderen Fenster. */
+  .t-table .tbl-actbox{display:inline-flex;align-items:center;gap:4px}
+  .t-table .tbl-actin,.t-table .tbl-actsel{font:inherit;font-size:clamp(9px,2.4cqmin,12px);
+    background:var(--surface-2);border:1px solid var(--line);border-radius:6px;color:var(--text);
+    padding:clamp(2px,1cqmin,5px) clamp(4px,1.6cqmin,8px)}
+  .t-table .tbl-actin{width:clamp(52px,16cqmin,92px)}
+  .t-table .tbl-actin:focus,.t-table .tbl-actsel:focus{outline:none;border-color:var(--accent)}
+  .t-table .tbl-actin::placeholder{color:var(--muted)}
   /* Mehrfachauswahl: Haken je Zeile, Sammelaktion in der Leiste. */
   .t-table .tbl-check{display:inline-block;width:clamp(11px,3cqmin,15px);height:clamp(11px,3cqmin,15px);
     border:1.5px solid var(--line);border-radius:4px;cursor:pointer;vertical-align:middle;position:relative}

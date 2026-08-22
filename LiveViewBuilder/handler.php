@@ -765,6 +765,40 @@ if ($api === 'poolsave') {
 //      dass die Zielinstanz wirklich ein SeriesRecorder ist - der Hook ruft keine beliebige
 //      Funktion auf einer beliebigen Instanz. Die eigentliche Sicherung sitzt im Modul: es
 //      rechnet die Duplikatliste neu und lehnt ab, was dort nicht als ueberfluessig steht.
+// ---- Kennung bei TheTVDB/TMDB setzen (token):  ?api=srkat&inst=&pfad=<Serie>&feld=tvdb|tmdb&wert=<id>&key=TOKEN ----
+//      Die Zuordnung gehoert dorthin, wo die Luecke auffaellt - in die
+//      Serienuebersicht. Der Browser fasst die Eigenschaft aber nicht selbst an:
+//      hier wird geprueft, das Modul entscheidet.
+if ($api === 'srkat') {
+    header('Content-Type: application/json; charset=utf-8');
+    if (!hash_equals($TOKEN, (string) ($_GET['key'] ?? ''))) {
+        http_response_code(403);
+        echo json_encode(['error' => 'forbidden']);
+        return;
+    }
+    $inst  = (int) ($_GET['inst'] ?? 0);
+    $serie = trim((string) ($_GET['pfad'] ?? ''));
+    $feld  = strtolower(trim((string) ($_GET['feld'] ?? '')));
+    $wert  = trim((string) ($_GET['wert'] ?? ''));
+    // Aus einer eingefuegten Adresse die Nummer ziehen - das ist, was man nach
+    // dem Nachschlagen in der Zwischenablage hat.
+    if (preg_match('#(\d{2,})#', $wert, $m)) {
+        $wert = $m[1];
+    }
+    if ($inst <= 0 || !@IPS_InstanceExists($inst) || !function_exists('SR_KennungSetzen')) {
+        echo json_encode(['ok' => false, 'grund' => 'Serienrecorder nicht erreichbar']);
+        return;
+    }
+    if ($serie === '' || ($feld !== 'tvdb' && $feld !== 'tmdb')) {
+        echo json_encode(['ok' => false, 'grund' => 'Serie und Feld noetig']);
+        return;
+    }
+    $a = json_decode(SR_KennungSetzen($inst, $serie, $feld, (int) $wert), true);
+    echo json_encode(['ok' => !empty($a['ok']), 'grund' => (string) ($a['fehler'] ?? ''),
+                      'id' => (int) ($a['id'] ?? 0)], JSON_UNESCAPED_UNICODE);
+    return;
+}
+
 if ($api === 'srdel') {
     header('Content-Type: application/json; charset=utf-8');
     if (!hash_equals($TOKEN, (string) ($_GET['key'] ?? ''))) {
