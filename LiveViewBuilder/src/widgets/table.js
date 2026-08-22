@@ -27,6 +27,29 @@
     return cands[0]||null;
   }
   // Optionaler Status-Stil: Text -> Schweregrad; % aus Text lesen (fuer Ladebalken)
+  /**
+   * Die Zelle der Aktionsspalte.
+   *
+   * Zwei Bauarten: ein Knopf allein - dann ist die Zeile selbst der Auftrag -
+   * oder Auswahl und Eingabe daneben. Die zweite ist dafuer da, dass man einen
+   * WERT dort eintragen kann, wo er fehlt; ein Knopf allein kann nur "mach das",
+   * nicht "mach das mit dieser Nummer".
+   */
+  function _tblAktZelle(w,schluessel){
+    var knopf='<button class="tbl-act" data-tbl-act="'+esc(schluessel)+'">'+esc(w.tblActLabel||'Ausführen')+'</button>';
+    if(!w.tblActInput)return knopf;
+    var felder=String(w.tblActFelder||'').split(',').map(function(x){return x.trim();}).filter(Boolean);
+    var sel='';
+    if(felder.length>1){
+      sel='<select class="tbl-actsel">'+felder.map(function(f){
+        var t=f.split(':');return '<option value="'+esc(t[0])+'">'+esc(t[1]||t[0])+'</option>';}).join('')+'</select>';
+    }else if(felder.length===1){
+      sel='<input type="hidden" class="tbl-actsel" value="'+esc(felder[0].split(':')[0])+'">';
+    }
+    return '<span class="tbl-actbox">'+sel
+      +'<input class="tbl-actin" type="text" inputmode="numeric" placeholder="'+esc(w.tblActWertPh||'Nr.')+'">'
+      +knopf+'</span>';
+  }
   function _tblSevOf(t){t=String(t==null?'':t).toLowerCase();
     if(/leer|schwach|kritisch|critical|empty|entladen|fehler|defekt/.test(t))return 'crit';
     if(/bald|mittel|\bwarn|niedrig|\blow\b|offen|unklar|fehlt|pr(ue|ü)fen/.test(t))return 'warn';
@@ -353,8 +376,7 @@
             var bar=!isNaN(p)?('<span class="tbl-mini"><span style="width:'+Math.max(2,Math.min(100,p))+'%;background:var(--'+(sev||'accent')+')"></span></span>'):'';
             return '<td class="'+(numc[ci]?'tbl-mono ':'')+'tbl-barcell r"><span'+(sev?' style="color:var(--'+sev+')"':'')+'>'+esc(v)+'</span>'+bar+'</td>';}
           return '<td'+(numc[ci]?' class="tbl-mono"':'')+tdSt(ci)+'>'+cellHtml(ci,v)+'</td>';
-        }).join('')+(actAn?('<td style="text-align:center"><button class="tbl-act" data-tbl-act="'
-          +esc(String(r[actCi]!=null?r[actCi]:''))+'">'+esc(w.tblActLabel||'Ausführen')+'</button></td>'):'')
+        }).join('')+(actAn?('<td style="text-align:center">'+_tblAktZelle(w,String(r[actCi]!=null?r[actCi]:''))+'</td>'):'')
         +'</tr>';}).join(''):'<tr><td colspan="'+(cols+(actAn?1:0)+(selAn?1:0))+'">'+emptyHtml+'</td></tr>')+'</tbody>';
       // Pro-Spalte Breite (w.colW[ci]: Zahl=px oder String wie "20%"/"120px") via colgroup, AUTO-Layout:
       // nicht gesetzte Spalten bleiben inhaltsbasiert konstant; eine Aenderung zieht Platz nur aus der
@@ -477,6 +499,20 @@
             +'<label style="font-size:11px;color:var(--muted)"><input type="checkbox" data-tcol-hide="'+ci+'"'+((w.colHide&&w.colHide[ci])?' checked':'')+'> versteckt</label> '
             +'<input data-tcol-sort="'+ci+'" value="'+esc(w.colSortBy&&w.colSortBy[ci]!=null?w.colSortBy[ci]:'')+'" placeholder="sort" title="Sortieren nach Spalte Nr. (Rohwert)" style="width:46px">');
         });
+        s+='<div class="pgh">Zeilenaktion</div>'
+          +row('Aktionsspalte','<input type="checkbox" id="pTblAct"'+(w.tblAct?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">ein Knopf je Zeile, rechts angehängt</span>')
+          +row('Schlüsselspalte','<select id="pTblActCol"><option value="">(keine)</option>'
+             +head.map(function(h,ci){return '<option value="'+ci+'"'+((w.tblActCol!=null&&String(w.tblActCol)===String(ci))?' selected':'')+'>'+esc(h||('Spalte '+(ci+1)))+'</option>';}).join('')
+             +'</select> <span style="font-size:11px;color:var(--muted)">was die Zeile identifiziert</span>')
+          +row('Ziel','<input id="pTblActInst" value="'+esc(w.tblActInst||'')+'" placeholder="Instanz-ID" style="width:96px"> '
+             +'<input id="pTblActApi" value="'+esc(w.tblActApi||'')+'" placeholder="api=…" style="width:110px">')
+          +row('Beschriftung','<input id="pTblActHead" value="'+esc(w.tblActHead||'')+'" placeholder="Spaltenkopf" style="width:110px"> '
+             +'<input id="pTblActLabel" value="'+esc(w.tblActLabel||'')+'" placeholder="Knopf" style="width:110px"> '
+             +'<input id="pTblActFrage" value="'+esc(w.tblActFrage||'')+'" placeholder="Rückfrage" style="width:110px">')
+          +row('Eingabe','<input type="checkbox" id="pTblActInput"'+(w.tblActInput?' checked':'')+'> '
+             +'<input id="pTblActFelder" value="'+esc(w.tblActFelder||'')+'" placeholder="tvdb:TheTVDB,tmdb:TMDB" style="width:180px"> '
+             +'<input id="pTblActWertPh" value="'+esc(w.tblActWertPh||'')+'" placeholder="Platzhalter" style="width:96px">')
+          +'<div class="hint" style="font-size:11px;margin-top:4px">Mit <b>Eingabe</b> steht neben dem Knopf ein Feld (und bei mehreren <b>Feldern</b> eine Auswahl davor). Der eingetippte Wert geht als <code>wert</code> und <code>feld</code> mit — damit kann die Zeile nicht nur „mach das" sagen, sondern „mach das mit dieser Nummer". Die Rückfrage entfällt dann: der eingetippte Wert IST die Zustimmung.</div>';
         s+='<div class="hint" style="font-size:11px;margin-top:4px"><b>Breite</b>: Zahl = Pixel, oder mit Einheit (z. B. <code>20%</code>). Leer = automatisch. <b>HTML</b>: Zellinhalt wird als HTML gerendert statt escaped (z. B. <code>&lt;img&gt;</code>, <code>&lt;span style&gt;</code>). Nur bei vertrauenswuerdiger Quelle. <b>Suche</b>: begrenzt die Volltextsuche auf diese Spalten; ohne Haken wird in allen gesucht. Gezielt setzen — in einer Sender-Spalte mit Bildern fände „png" sonst jede Zeile. <b>versteckt</b>: Spalte wird nicht gezeichnet, bleibt aber in den Daten (Suche, Pillen, Sortierung). <b>sort</b>: Nummer der Spalte, nach der beim Klick auf diesen Kopf sortiert wird — fuer Rohwert-Spalten neben der formatierten Anzeige („4,6 GB" sortiert nach Bytes).</div>';
       } else s+='<div class="hint" style="font-size:11px;margin-top:6px;color:var(--muted)">Spalten-Formatierung erscheint, sobald Daten geladen sind (Variable waehlen).</div>';
       s+='<div class="hint" style="font-size:11px;margin-top:6px">Quelle: Text-Variable mit <b>JSON</b> oder <b>serialisiertem Array</b> im Format [Zeile][Spalte]. <b>Zeile 0 = Spaltenkopf</b>.</div>';
@@ -509,8 +545,10 @@
       [].forEach.call(document.querySelectorAll('[data-tcol-q]'),function(cb){cb.onchange=function(){var ci=+cb.getAttribute('data-tcol-q');w.colQ=w.colQ||[];w.colQ[ci]=this.checked||undefined;_tblDraw(w);commit();};});
       if($('#pTblSel'))$('#pTblSel').onchange=function(){w.tblSel=this.checked||undefined;w._tblSel={};_tblDraw(w);commit();};
       if($('#pTblAct'))$('#pTblAct').onchange=function(){w.tblAct=this.checked||undefined;_tblDraw(w);commit();};
+      if($('#pTblActInput'))$('#pTblActInput').onchange=function(){w.tblActInput=this.checked||undefined;_tblDraw(w);commit();};
       [['pTblActLabel','tblActLabel'],['pTblActHead','tblActHead'],['pTblActFrage','tblActFrage'],
-       ['pTblActCol','tblActCol'],['pTblActInst','tblActInst'],['pTblActApi','tblActApi']].forEach(function(p){
+       ['pTblActCol','tblActCol'],['pTblActInst','tblActInst'],['pTblActApi','tblActApi'],
+       ['pTblActFelder','tblActFelder'],['pTblActWertPh','tblActWertPh']].forEach(function(p){
         var el=$('#'+p[0]); if(el)el.oninput=function(){w[p[1]]=this.value.trim()||undefined;_tblDraw(w);commit();};
       });
       [].forEach.call(document.querySelectorAll('[data-tcol-hide]'),function(cb){cb.onchange=function(){var ci=+cb.getAttribute('data-tcol-hide');w.colHide=w.colHide||[];w.colHide[ci]=this.checked||undefined;_tblDraw(w);commit();};});
@@ -586,7 +624,17 @@
       if(ab){
         var wert=ab.getAttribute('data-tbl-act')||'';
         if(!wert)return true;
-        if(ab.getAttribute('data-frage')!=='1'){
+        // Mit Eingabefeld: der Wert IST die Zustimmung - eine Rueckfrage waere
+        // eine zweite. Ohne Eingabe bleibt die Rueckfrage, dort loescht der
+        // Knopf ja etwas.
+        var box=ab.closest('.tbl-actbox'),zusatz='';
+        if(box){
+          var ein=box.querySelector('.tbl-actin'),fld=box.querySelector('.tbl-actsel');
+          var v=ein?String(ein.value||'').trim():'';
+          if(v===''){ if(ein)ein.focus(); return true; }
+          zusatz='&wert='+encodeURIComponent(v)+'&feld='+encodeURIComponent(fld?String(fld.value||''):'');
+        }
+        if(!box&&ab.getAttribute('data-frage')!=='1'){
           ab.setAttribute('data-frage','1');
           ab.dataset.alt=ab.textContent;
           ab.textContent=w.tblActFrage||'Wirklich?';
@@ -599,7 +647,7 @@
         ab.textContent='…'; ab.disabled=true;
         fetch('?api='+encodeURIComponent(w.tblActApi||'srdel')
               +'&inst='+encodeURIComponent(w.tblActInst||'')
-              +'&pfad='+encodeURIComponent(wert)
+              +'&pfad='+encodeURIComponent(wert)+zusatz
               +'&key='+encodeURIComponent(typeof TOKEN!=='undefined'?TOKEN:''),{cache:'no-store'})
           .then(function(r){return r.json();})
           .then(function(j){
