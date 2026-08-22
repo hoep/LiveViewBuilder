@@ -916,6 +916,10 @@
   .hinfo .hirow{display:flex;align-items:center;gap:clamp(6px,6cqh,12px);width:100%;min-width:0}
   .hinfo.mitbar .hirow{flex:none}
   .hinfo.tap{cursor:pointer}
+  /* Ohne Zeilenrahmen: kein Kasten, kein Trenner - nur Abstand. Fuer Kacheln, die
+     als EIN Block gelesen werden sollen; die Karten je Zeile bleiben davon
+     unberuehrt, sie sind ja eine ausdrueckliche Hervorhebung. */
+  .hinfos.blank .hinfo:not(.hicard){background:transparent;border-color:transparent}
   .hinfo.tap:active{transform:scale(.985)}
   /* Fortschritt: volle Zeilenbreite, Hoehe waechst mit der Zeile mit. */
   .hiprog{display:block;width:100%;height:clamp(3px,9cqh,7px);border-radius:99px;background:color-mix(in oklab,var(--line) 70%,transparent);overflow:hidden;flex:none}
