@@ -147,7 +147,10 @@
           +'ab 10 OK, ab 20 Warnung, ab 28 Kritisch).</div>'
           +listEditor(w,'segSteps','Ab Wert · Farbe',[{k:'v',ph:'ab'},{k:'color',type:'skincolor'}]);
       }
-      if(V.ser)h+=seriesEditor(w,(V.spark||V.hm)?{max:1,simple:1}:null); // Sparkline/Heatmap nutzen nur die erste Serie
+      // Heatmap liest weiterhin nur die erste Serie - dort gaebe es fuer eine zweite
+      // keinen Platz. Die Sparkline zeichnet inzwischen alle; sie bleibt aber in der
+      // schlanken Fassung (ID, Name, Farbe): Typ und Achse hat sie nicht.
+      if(V.ser)h+=seriesEditor(w,V.hm?{max:1,simple:1}:(V.spark?{simple:1}:null));
       if(V.yax)h+=axesEditor(w);
       return h;
     },
