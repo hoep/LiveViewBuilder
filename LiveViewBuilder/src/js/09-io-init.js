@@ -1,5 +1,15 @@
   function buildIconLib(q){
     var box=$('#iconLib');if(!box)return;box.innerHTML='';q=(q||'').toLowerCase();
+    // Ganz oben "kein Icon". Ohne diesen Eintrag laesst sich ein einmal gewaehltes
+    // Icon nur tauschen, nie entfernen - die Bibliothek kennt sonst nur Icons.
+    if(!q){
+      var kh=document.createElement('div');kh.className='iconcat';kh.textContent='Entfernen';box.appendChild(kh);
+      var kg=document.createElement('div');kg.className='icongrid';
+      var kb=document.createElement('div');kb.className='iconbtn';kb.title='kein Icon (entfernt das gewählte Icon)';
+      kb.innerHTML='<svg class="ic24" viewBox="0 0 24 24"><path d="M5 5l14 14M19 5L5 19"/></svg>';
+      kb.onclick=function(){assignIcon('');};
+      kg.appendChild(kb);box.appendChild(kg);
+    }
     var cats={};Object.keys(ICONS).forEach(function(id){var e=ICONS[id];if(q&&id.toLowerCase().indexOf(q)<0&&e[0].toLowerCase().indexOf(q)<0&&(e[2]||'').indexOf(q)<0)return;(cats[e[0]]=cats[e[0]]||[]).push(id);});
     Object.keys(cats).forEach(function(cat){
       var h=document.createElement('div');h.className='iconcat';h.textContent=cat;box.appendChild(h);
