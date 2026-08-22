@@ -705,9 +705,19 @@
       // ob der Verlauf ueber oder unter dem eigenen Schnitt liegt. Den Mittelwert
       // rechnet ECharts selbst - eine eigene Rechnung waere eine zweite Wahrheit.
       if(w.spAvg&&_st!=='bar'&&data.length>1){
-        e.markLine={silent:true,symbol:'none',animation:false,
-          lineStyle:{color:farbe,width:1,type:'dashed',opacity:0.55},
-          label:{show:false},data:[{type:'average'}]};
+        // Farbe: bei EINER Reihe neutral, nicht in der Linienfarbe. Eine
+        // gestrichelte Linie im selben Ton verschwindet in einer dichten Kurve
+        // vollstaendig - genau das war der erste Versuch. Bei mehreren Reihen
+        // muss sie dagegen die Farbe ihrer Reihe tragen, sonst weiss man nicht,
+        // wessen Mittel man sieht.
+        var mc=(reihen.length>1)?farbe:cssv('--muted');
+        e.markLine={silent:true,symbol:['none','none'],animation:false,z:9,
+          lineStyle:{color:mc,width:1.2,type:[4,3],opacity:0.9},
+          // valueDim MUSS gesetzt sein: die Punkte sind [Zeit, Wert], und ohne
+          // Angabe mittelt echarts die ERSTE Dimension - also die Zeit. Heraus
+          // kaeme eine senkrechte Linie in der Mitte des Fensters. Genau daran
+          // ist der erste Versuch gescheitert.
+          emphasis:{disabled:true},label:{show:false},data:[{type:'average',valueDim:'y'}]};
       }
       return e;
     });
