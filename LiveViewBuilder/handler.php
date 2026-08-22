@@ -371,7 +371,8 @@ if ($api === 'epg') {
             foreach ($p as $i => $x) {
                 $mark = $istProgrammiert((string) $k['ref'], (int) $x[0], (int) $x[1]);
                 if (!isset($p[$i][6])) { $p[$i][6] = ''; }   // kein Loch im Index
-                $p[$i][7] = $mark;
+                if (!isset($p[$i][7])) { $p[$i][7] = 0; }   // Art der Sendung
+                $p[$i][8] = $mark;
             }
         }
         $out[] = ['id' => $id, 'name' => (string) ($k['name'] ?? $id), 'picon' => (string) ($k['picon'] ?? ''),

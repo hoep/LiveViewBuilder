@@ -63,6 +63,8 @@
     var cTit=_epgCol(w.epgCT,'var(--text)'),cZeit=_epgCol(w.epgCZ,'var(--muted)');
     var cNow=_epgCol(w.epgCN,'var(--warn)');
     var cRec=_epgCol(w.epgCM,'var(--crit)');
+    var cFav=_epgCol(w.epgCF,'var(--warn)');    // Serie der Wunschliste
+    var cSer=_epgCol(w.epgCS,'var(--info)');    // Serie, aber nicht auf der Liste
     var jetzt=Math.floor(Date.now()/1000);
     var q=(w._epgQ||'').toLowerCase();
 
@@ -96,12 +98,31 @@
         var x=Math.round((a-d.von)/span*breite),bw=Math.max(2,Math.round((b-a)/span*breite)-3);
         var laeuft=(p[0]<=jetzt&&p[1]>jetzt);
         // Programmierte Aufnahme: 1 = gesetzt, 2 = gesetzt, aber abgeschaltet.
-        var rec=p[7]|0;
+        var rec=p[8]|0;
+        // Art der Sendung: 1 = Serie der Wunschliste, 2 = andere Serie, 0 = Rest.
+        var art=p[7]|0;
         var tref=q&&(String(p[2]+' '+(p[3]||'')).toLowerCase().indexOf(q)>=0);
         // Der laufende Block hebt sich durch eine getoente Flaeche und einen
         // Streifen an der linken Kante ab - nicht durch eine andere Schriftfarbe,
         // die im hellen Skin sofort unlesbar waere.
         var hg=laeuft?('color-mix(in oklab,'+cRun+' 22%,'+cBlk+')'):cBlk;
+        // Leichte Schraffur nach Art der Sendung. Bewusst LEICHT: das Raster soll
+        // lesbar bleiben, die Markierung nur den Blick lenken. Deshalb eine
+        // Schraffur statt einer Flaeche - sie faellt auf, ohne den Block
+        // einzufaerben, und stoert die Farbe der laufenden Sendung nicht.
+        var schraff='';
+        if(w.epgArt!==false&&art>0){
+          // Die beiden Arten unterscheiden sich nicht nur in der Farbe, sondern
+          // auch im MUSTER: was aufgenommen wird, ist dichter schraffiert. Bei
+          // dieser Deckkraft - und leicht soll es ja sein - liegen zwei Farbtoene
+          // sonst so nah beieinander, dass man sie nebeneinander legen muesste,
+          // um sie zu unterscheiden. Der Abstand der Streifen sieht man sofort.
+          var ac=(art===1)?cFav:cSer;
+          var ad=(art===1)?(w.epgArtA||12):(w.epgSerA||7);
+          var aw=(art===1)?(w.epgArtW||7):(w.epgSerW||15);
+          schraff='background-image:repeating-linear-gradient(135deg,'
+            +'color-mix(in oklab,'+ac+' '+ad+'%,transparent) 0 3px,transparent 3px '+aw+'px);';
+        }
         var kante=laeuft?('border-left:3px solid '+cRun+';'):'';
         // Was aufgenommen wird, bekommt zusaetzlich einen Rand in der
         // Aufnahmefarbe - der Punkt allein geht in einer vollen Zeile unter.
@@ -117,7 +138,7 @@
         // als Hinweistext am Zeiger erreichbar.
         var eng=(bw<30),halb=(bw<110);
         bl+='<div class="epgp'+(tref?' tref':'')+'" data-epgp="'+esc(k.id)+'|'+p[0]+'" title="'+esc(p[2]+(p[3]?' · '+p[3]:'')+' · '+_epgUhr(p[0])+'–'+_epgUhr(p[1]))+'"'
-          +' style="left:'+x+'px;width:'+bw+'px;background:'+hg+';'+kante+'border-radius:'+rad+'px'+(eng?';padding:5px 3px':'')+'">'
+          +' style="left:'+x+'px;width:'+bw+'px;background:'+hg+';'+schraff+kante+'border-radius:'+rad+'px'+(eng?';padding:5px 3px':'')+'">'
           +(eng?(rec?('<div class="epgrec" style="background:'+(rec===1?cRec:cZeit)+'"></div>'):'')
                :('<div class="t" style="font-size:'+fsT+'px;color:'+cTit+'">'
                   +(rec?('<span class="epgrec" style="background:'+(rec===1?cRec:cZeit)+'" title="'+(rec===1?'wird aufgenommen':'Timer abgeschaltet')+'"></span>'):'')
@@ -333,6 +354,16 @@
         +row('Zeit/Untertitel',skinSel(w.epgCZ||'','id="pEpgCZ"'))
         +row('Jetzt-Linie',skinSel(w.epgCN||'','id="pEpgCN"')+' <span style="font-size:11px;color:var(--muted)">leer = Warnfarbe</span>')
         +row('Aufnahme-Marke',skinSel(w.epgCM||'','id="pEpgCM"')+' <span style="font-size:11px;color:var(--muted)">programmierte Sendung, leer = kritisch</span>')
+        +'<div class="pgh">Serien hervorheben</div>'
+        +row('Serien schraffieren','<input type="checkbox" id="pEpgArt"'+(w.epgArt!==false?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">Serie erkannt an Episodennummer oder Kategorie</span>')
+        +row('Programmierte',skinSel(w.epgCF||'','id="pEpgCF"')
+            +' <input id="pEpgArtA" type="number" min="2" max="40" value="'+(w.epgArtA||12)+'" style="width:52px" title="Deckkraft in Prozent">'
+            +' <input id="pEpgArtW" type="number" min="5" max="40" value="'+(w.epgArtW||7)+'" style="width:52px" title="Streifenabstand in px">'
+            +' <span style="font-size:11px;color:var(--muted)">Serien der Wunschliste · leer = Warnfarbe</span>')
+        +row('Nicht programmierte',skinSel(w.epgCS||'','id="pEpgCS"')
+            +' <input id="pEpgSerA" type="number" min="2" max="40" value="'+(w.epgSerA||7)+'" style="width:52px" title="Deckkraft in Prozent">'
+            +' <input id="pEpgSerW" type="number" min="5" max="40" value="'+(w.epgSerW||15)+'" style="width:52px" title="Streifenabstand in px">'
+            +' <span style="font-size:11px;color:var(--muted)">alle übrigen Serien · leer = Infofarbe</span>')
         +'<div class="pgh">Schriftgrößen (px)</div>'
         +row('Titel / Zeit / Sender','<input id="pEpgFsT" type="number" min="8" max="24" value="'+(w.epgFsT||13)+'" style="width:56px"> '
            +'<input id="pEpgFsZ" type="number" min="7" max="20" value="'+(w.epgFsZ||11)+'" style="width:56px"> '
@@ -349,7 +380,10 @@
       chk('#pEpgHead','epgHead',1);chk('#pEpgQ','epgQ',1);chk('#pEpgPic','epgPic',1);
       chk('#pEpgSub','epgSub',1);chk('#pEpgRest','epgRest',1);chk('#pEpgCat','epgCat');
       if($('#pEpgQPh'))$('#pEpgQPh').oninput=function(){w.epgQPh=this.value||undefined;render();commit();};
-      ['CB','CR','CT','CZ','CN','CM'].forEach(function(k){sel('#pEpg'+k,'epg'+k);});
+      ['CB','CR','CT','CZ','CN','CM','CF','CS'].forEach(function(k){sel('#pEpg'+k,'epg'+k);});
+      chk('#pEpgArt','epgArt',1);
+      num('#pEpgArtA','epgArtA',12);num('#pEpgArtW','epgArtW',7);
+      num('#pEpgSerA','epgSerA',7);num('#pEpgSerW','epgSerW',15);
       if($('#pEpgSel'))$('#pEpgSel').onchange=function(){w.epgSel=parseInt(this.value)||undefined;commit();};
       if($('#pEpgMsg'))$('#pEpgMsg').onchange=function(){w.epgMsgVar=parseInt(this.value)||undefined;commit();};
     }
