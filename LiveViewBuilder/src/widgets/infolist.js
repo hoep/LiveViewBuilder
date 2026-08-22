@@ -22,8 +22,14 @@
     if(!w.ilHead)return '';
     var c=_ilFarbe(w.ilhColor,'var(--accent)');
     var sc=_ilFarbe(w.ilhSubCol,'');
-    var zahl=(w.ilhBadgeVid?'<span class="ilbadge" data-vid="'+w.ilhBadgeVid+'"'+_slotAttrs({dec:0})+'>–</span>'
-             :(w.ilhBadge?'<span class="ilbadge">'+esc(w.ilhBadge)+'</span>':''));
+    // Abzeichen: eigene Farbe (sonst wie das Icon) und eine Untergrenze, ab der
+    // es ueberhaupt erscheint. Eine 0 im roten Kreis meldet etwas, wo nichts ist -
+    // und "25" fuer 25 Tage bis zur Abholung ist keine Meldung, sondern eine Zahl.
+    var bc=_ilFarbe(w.ilhBadgeCol,'');
+    var bst=bc?(' style="background:'+bc+'"'):'';
+    var bmin=(w.ilhBadgeMin!=null&&w.ilhBadgeMin!=='')?(' data-min="'+parseFloat(w.ilhBadgeMin)+'"'):'';
+    var zahl=(w.ilhBadgeVid?'<span class="ilbadge" data-vid="'+w.ilhBadgeVid+'"'+_slotAttrs({dec:0})+bmin+bst+'>–</span>'
+             :(w.ilhBadge?'<span class="ilbadge"'+bst+'>'+esc(w.ilhBadge)+'</span>':''));
     var sub=(w.ilhSubVid?'<span data-vid="'+w.ilhSubVid+'"'+_slotAttrs(w.ilhSubUnit?{unit:w.ilhSubUnit}:{})+'>–</span>'
             :(w.ilhSub?esc(w.ilhSub):''));
     return '<div class="ilhead'+(w.ilhTo?' tap':'')+'" data-ilhead="1" style="--c:'+c+'">'
@@ -175,9 +181,11 @@
           +row('Titel','<input id="pIlhTitle" value="'+esc(w.ilhTitle||'')+'" placeholder="Zugänge">')
           +row('Untertitel','<input id="pIlhSub" value="'+esc(w.ilhSub||'')+'" placeholder="fester Text" style="width:104px"> '
               +'<input id="pIlhSubVid" value="'+(w.ilhSubVid||'')+'" placeholder="VarID" style="width:64px"> '+skinSel(String(w.ilhSubCol||''),'id="pIlhSubCol" title="Farbe"'))
-          +row('Zähler','<input id="pIlhBadge" value="'+esc(w.ilhBadge||'')+'" placeholder="fest" style="width:60px"> '
-              +'<input id="pIlhBadgeVid" value="'+(w.ilhBadgeVid||'')+'" placeholder="oder VarID" style="width:74px"> '
-              +'<span style="font-size:11px;color:var(--muted)">leer = kein Abzeichen</span>')
+          +row('Zähler','<input id="pIlhBadge" value="'+esc(w.ilhBadge||'')+'" placeholder="fest" style="width:56px"> '
+              +'<input id="pIlhBadgeVid" value="'+(w.ilhBadgeVid||'')+'" placeholder="VarID" style="width:64px"> '
+              +skinSel(String(w.ilhBadgeCol||''),'id="pIlhBadgeCol" title="Farbe des Abzeichens"')+' '
+              +'<input id="pIlhBadgeMin" type="number" value="'+(w.ilhBadgeMin!=null?w.ilhBadgeMin:'')+'" placeholder="ab" style="width:52px" title="erst ab dieser Zahl zeigen">')
+          +row('','<span style="font-size:11px;color:var(--muted)">leer = kein Abzeichen · Farbe leer = wie das Icon · „ab" blendet kleinere Werte aus (z. B. ab 1 versteckt die 0) — gilt für den Zähler aus einer Variablen</span>')
           +row('Öffnet','<select id="pIlhTo">'+viewOpts(w.ilhTo,'popup','— nichts —')+'</select> <span style="font-size:11px;color:var(--muted)">zeigt dann auch den Pfeil</span>')
          ):'')
         +'<div class="pgh">Fußzeile</div>'
@@ -202,7 +210,8 @@
       if($('#pIlFoot'))$('#pIlFoot').onchange=function(){w.ilFoot=this.checked||undefined;render();renderProps();commit();};
       if($('#pIlhIcon'))$('#pIlhIcon').onclick=function(){_iconPick={wid:w.id,field:'ilhIcon'};showTab('icons');toast('Icon der Kopfzeile wählen');};
       if($('#pIlfIcon'))$('#pIlfIcon').onclick=function(){_iconPick={wid:w.id,field:'ilfIcon'};showTab('icons');toast('Icon der Fußzeile wählen');};
-      [['pIlhColor','ilhColor'],['pIlhSubCol','ilhSubCol']].forEach(function(p){
+      if($('#pIlhBadgeMin'))$('#pIlhBadgeMin').oninput=function(){var v=parseFloat(this.value);w.ilhBadgeMin=isNaN(v)?undefined:v;render();commit();};
+      [['pIlhColor','ilhColor'],['pIlhSubCol','ilhSubCol'],['pIlhBadgeCol','ilhBadgeCol']].forEach(function(p){
         var e=$('#'+p[0]);if(e)e.onchange=function(){w[p[1]]=this.value||undefined;render();commit();};});
       [['pIlhTitle','ilhTitle'],['pIlhSub','ilhSub'],['pIlhBadge','ilhBadge'],['pIlfText','ilfText']].forEach(function(p){
         var e=$('#'+p[0]);if(e)e.oninput=function(){w[p[1]]=this.value||undefined;render();commit();};});

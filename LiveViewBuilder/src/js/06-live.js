@@ -196,7 +196,12 @@
     var _bs=String(base),_pu=(d.u!=null)?String(d.u):''; // Profil-Einheit vom Server
     var num=(_pu!==''&&_bs.length>=_pu.length&&_bs.slice(-_pu.length)===_pu)?_bs.slice(0,-_pu.length).replace(/\s+$/,''):_bs; // Wert ohne Profil-Einheit
     if(!_fIsFormula(id)){ // Formel-Token sind nie echte data-vid-Attribute; ihr String (mit ", =, +) würde den CSS-Selektor sprengen
-      $$('[data-vid="'+id+'"]',canvas).forEach(function(e){e.textContent=_fmtSlot(e,d,base);}); // generische Slots (Forecast, Listen …) — optionale Pro-Slot-Formatierung
+      $$('[data-vid="'+id+'"]',canvas).forEach(function(e){e.textContent=_fmtSlot(e,d,base);
+        // data-min: der Slot verschwindet unterhalb dieser Zahl. Fuer Abzeichen
+        // gedacht - eine 0 im roten Kreis meldet etwas, wo nichts ist.
+        if(e.hasAttribute('data-min')){var _mn=parseFloat(e.getAttribute('data-min')),_nv=parseFloat(String(d.v).replace(',','.'));
+          e.style.display=(!isNaN(_mn)&&(isNaN(_nv)||_nv<_mn))?'none':'';}
+      }); // generische Slots (Forecast, Listen …) — optionale Pro-Slot-Formatierung
       $$('[data-viddot="'+id+'"]',canvas).forEach(function(e){e.classList.toggle('on',on);}); // Status-Dots / Bewegung
       $$('[data-vidbar="'+id+'"]',canvas).forEach(function(e){var nb=parseFloat(String(d.v).replace(',','.'));if(!isNaN(nb))e.style.width=Math.max(0,Math.min(100,nb))+'%';}); // Meter-Balken
     }
