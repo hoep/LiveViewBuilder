@@ -917,6 +917,38 @@
   .hinfo .hin small{display:block;color:var(--faint);font-size:clamp(9px,22cqh,15px);line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .hinfo .hiv{font-family:var(--fm);font-weight:600;font-size:clamp(11px,30cqh,22px);font-variant-numeric:tabular-nums;flex:none}
   .hinfo .hpill{font-size:clamp(9px,22cqh,14px)}
+  /* --- Info-Liste: Kopfzeile --------------------------------------------
+     Sie sitzt UEBER der Zeilenliste und nimmt sich ihre Hoehe; die Zeilen
+     teilen sich den Rest wie bisher (flex:1 1 0). Deshalb hat die Liste
+     darunter keine feste Hoehe mehr, sondern fuellt den Rest. */
+  .hilhead{display:flex;flex-direction:column;height:100%;box-sizing:border-box;container-type:size}
+  .hilhead>.hinfos{flex:1;min-height:0;height:auto;padding-top:0}
+  .ilhead{display:flex;align-items:center;gap:clamp(7px,4cqmin,13px);padding:clamp(6px,3cqmin,12px) clamp(8px,4cqmin,14px) clamp(4px,2cqmin,9px);flex:none}
+  .ilhead.tap{cursor:pointer}
+  .ilhead .ilhi{position:relative;width:clamp(30px,13cqmin,50px);height:clamp(30px,13cqmin,50px);border-radius:clamp(8px,4cqmin,14px);
+    display:grid;place-items:center;flex:none;color:var(--c,var(--accent));background:color-mix(in oklab,var(--c,var(--accent)) 16%,var(--surface-2))}
+  .ilhead .ilhi svg{width:58%;height:58%}
+  /* Das Abzeichen sitzt LINKS OBEN, nicht rechts: rechts liegt der Text, und
+     eine Zahl, die in die Ueberschrift ragt, liest sich als Teil von ihr. */
+  .ilhead .ilbadge{position:absolute;top:-6px;left:-6px;min-width:clamp(16px,6cqmin,22px);height:clamp(16px,6cqmin,22px);
+    border-radius:999px;background:var(--c,var(--accent));color:var(--text-inv,#0d1114);font-weight:700;
+    font-size:clamp(9px,3.4cqmin,12px);display:grid;place-items:center;padding:0 5px;border:2px solid var(--tile);font-variant-numeric:tabular-nums}
+  .ilhead .ilht{flex:1;min-width:0}
+  .ilhead .ilht b{display:block;font-size:clamp(12px,5cqmin,19px);font-weight:600;line-height:1.15;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .ilhead .ilht span{display:block;color:var(--faint);font-size:clamp(9px,3.6cqmin,14px);line-height:1.2;margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .ilhead .ilchev{color:var(--faint);flex:none;display:grid;place-items:center;width:clamp(12px,4cqmin,18px)}
+  .ilhead .ilchev svg{width:100%;height:100%}
+  /* --- Info-Liste: Kartenzeilen ----------------------------------------- */
+  .hinfos.karten .hinfo{background:color-mix(in oklab,var(--c,var(--line)) 13%,var(--tile));
+    border-color:color-mix(in oklab,var(--c,var(--line)) 26%,transparent);border-radius:var(--r-m,12px)}
+  .hinfos.karten .hinfo .hibi{background:transparent;width:clamp(16px,34cqh,26px);height:clamp(16px,34cqh,26px);color:var(--c,var(--accent))}
+  .hinfos.karten .hinfo .hin{font-weight:600}
+  .hinfos.karten .hinfo .hiv{color:var(--faint);font-weight:500}
+  .hibtn{flex:none;display:grid;place-items:center;border:0;cursor:pointer;
+    width:clamp(24px,46cqh,40px);height:clamp(20px,40cqh,34px);border-radius:clamp(6px,12cqh,10px);
+    background:var(--b,var(--accent));color:var(--text-inv,#0d1114)}
+  .hibtn svg{width:58%;height:58%}
+  .hibtn:active{transform:scale(.94)}
   /* KPI */
   .hkpi{display:flex;align-items:center;gap:12px;padding:12px;height:100%;box-sizing:border-box;container-type:size}
   .hkpi .hkbi{width:var(--wf-ic);height:var(--wf-ic);border-radius:11px;background:var(--surface-2);display:grid;place-items:center;flex:none;color:var(--wicon,var(--accent))}
