@@ -243,7 +243,7 @@
     (kan.p||[]).forEach(function(p){if(p[0]===start)roh=p;});
     if(!roh)return;
     w._epgSelP={kid:kan.id,ref:kan.ref,sender:kan.name,picon:kan.picon,start:roh[0],ende:roh[1],
-                titel:roh[2],kurz:roh[3]||'',cat:roh[4]||'',folge:roh[5]||'',desc:''};
+                titel:roh[2],kurz:roh[3]||'',cat:roh[4]||'',folge:roh[5]||'',desc:'',art:roh[7]||0};
     w._epgMehr=false;
     _epgOverlay(w);
     fetch('?api=epg&von='+start+'&dauer=1800&detail=1&kanaele='+encodeURIComponent(kid),{cache:'no-store'})
@@ -278,6 +278,7 @@
       +(s.desc?'<div class="epgovd">'+esc(s.desc)+'</div>':'')
       +mehr
       +'<div class="epgovb"><button class="epgb on epgb-'+(w.epgBtnStil||'pill')+'" data-epgov="rec" style="'+_epgKnopfStil(w)+'">Aufnehmen</button>'
+        +_epgSerienKnopf(w,s)
         +'<button class="epgb epgb-'+(w.epgBtnStil||'pill')+'" data-epgov="mehr" style="'+_epgKnopfStil(w)+'" title="alle Angaben aus dem Programmbestand">'
         +(w._epgMehr?'Weniger ▴':'Mehr ▾')+'</button>'
         +'<span class="epgovm" data-role="epgovm">'+esc(w._epgMsg||'')+'</span></div></div>';
@@ -335,16 +336,34 @@
    * Wichtig dabei: mitgeschickt werden die XMLTV-Zeiten, aber verbindlich sind
    * die der Box - das Skript holt sie sich ueber ER_SucheSendung selbst.
    */
-  function _epgAufnehmen(w){
-    var s=w._epgSelP;if(!s)return;
-    if(!w.epgSel){w._epgMsg='keine Auftragsvariable eingestellt';_epgOverlay(w);return;}
-    if(!s.ref){w._epgMsg='dieser Sender ist keinem Sender der Box zugeordnet';_epgOverlay(w);return;}
-    setVar(w.epgSel,JSON.stringify({ref:s.ref,sender:s.sender,start:s.start,ende:s.ende,
-                                    titel:s.titel,kurz:s.kurz}));
+  /**
+   * Die Pille fuer die ganze Serie.
+   *
+   * Sie erscheint nur, wenn das Programm die Sendung ueberhaupt als Serie
+   * fuehrt - bei einer Nachrichtensendung waere "Serie aufnehmen" eine
+   * sinnlose Zusage. Beschriftung und Zustand kommen aus derselben Angabe, die
+   * auch das Raster schraffiert: 1 heisst, die Serie steht auf der
+   * Aufnahmeliste.
+   */
+  function _epgSerienKnopf(w,s){
+    if(w.epgSerie===false)return '';
+    if(s.art!==1&&s.art!==2)return '';
+    var drin=(s.art===1);
+    return '<button class="epgb'+(drin?' on':'')+' epgb-'+(w.epgBtnStil||'pill')+'" data-epgov="serie" style="'
+      +_epgKnopfStil(w)+'" title="'+esc(drin?'nimmt die Serie aus der Aufnahmeliste':'nimmt jede Folge dieser Serie auf')+'">'
+      +esc(drin?'Serie nicht mehr':'Serie aufnehmen')+'</button>';
+  }
+  /**
+   * Auftrag abgeben und auf die Antwort warten.
+   *
+   * Bewusst kurz und begrenzt: nach zehn Sekunden ist entweder etwas passiert
+   * oder etwas kaputt. Beide Auftragsarten - Sendung und Serie - gehen
+   * denselben Weg, damit es nur eine Stelle gibt, die auf Antworten wartet.
+   */
+  function _epgAuftrag(w,auftrag,fertig){
+    setVar(w.epgSel,JSON.stringify(auftrag));
     w._epgMsg='Auftrag läuft …';_epgOverlay(w);
     if(!w.epgMsgVar)return;
-    // Auf die Antwort warten. Bewusst kurz und begrenzt: nach zehn Sekunden ist
-    // entweder etwas passiert oder etwas kaputt.
     var n=0,iv=setInterval(function(){
       n++;
       fetch('?api=val&ids='+w.epgMsgVar,{cache:'no-store'}).then(function(r){return r.json();})
@@ -352,10 +371,33 @@
           var v=j&&j.values&&j.values[w.epgMsgVar];
           if(v&&String(v.v)!==''&&String(v.v)!==w._epgMsg){
             w._epgMsg=String(v.v);_epgOverlay(w);clearInterval(iv);
+            if(fertig)fertig(w._epgMsg);
           }
         }).catch(function(){});
       if(n>14){clearInterval(iv);}
     },700);
+  }
+  /**
+   * Die ganze Serie in die Aufnahmeliste des Serienrecorders - oder wieder
+   * heraus. Danach wird das Fenster neu geholt: die Schraffur steckt im
+   * Zwischenlager, das das Skript gerade neu gebaut hat.
+   */
+  function _epgSerie(w){
+    var s=w._epgSelP;if(!s)return;
+    if(!w.epgSel){w._epgMsg='keine Auftragsvariable eingestellt';_epgOverlay(w);return;}
+    var drin=(s.art===1);
+    _epgAuftrag(w,{was:'serie',serie:s.titel,aktion:drin?'aus':'an'},function(){
+      s.art=drin?2:1;
+      _epgOverlay(w);
+      _EPGD[w.id]=null;_epgFetch(w);
+    });
+  }
+  function _epgAufnehmen(w){
+    var s=w._epgSelP;if(!s)return;
+    if(!w.epgSel){w._epgMsg='keine Auftragsvariable eingestellt';_epgOverlay(w);return;}
+    if(!s.ref){w._epgMsg='dieser Sender ist keinem Sender der Box zugeordnet';_epgOverlay(w);return;}
+    _epgAuftrag(w,{ref:s.ref,sender:s.sender,start:s.start,ende:s.ende,
+                   titel:s.titel,kurz:s.kurz});
   }
 
   defWidget('epggrid',{
@@ -414,6 +456,7 @@
         var k=ov.getAttribute('data-epgov');
         if(k==='close'){_epgZu(w);return true;}
         if(k==='rec'){_epgAufnehmen(w);return true;}
+        if(k==='serie'){_epgSerie(w);return true;}
         if(k==='mehr'){
           w._epgMehr=!w._epgMehr;
           _epgOverlay(w);
@@ -467,6 +510,7 @@
         +'<div class="pgh">Aufnahme (Klick auf eine Sendung)</div>'
         +row('Auftragsvariable','<input id="pEpgSel" value="'+(w.epgSel||'')+'" placeholder="ID der String-Variablen"> <span style="font-size:11px;color:var(--muted)">hier legt die Kachel den Auftrag ab</span>')
         +row('Rückmeldung','<input id="pEpgMsg" value="'+(w.epgMsgVar||'')+'" placeholder="ID der String-Variablen"> <span style="font-size:11px;color:var(--muted)">was das Skript geantwortet hat</span>')
+        +row('Serien-Pille','<input type="checkbox" id="pEpgSerie"'+(w.epgSerie!==false?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">ganze Serie in die Aufnahmeliste, nur bei Serien</span>')
         +'<div class="pgh">Farben (alle aus dem Skin)</div>'
         +row('Block',skinSel(w.epgCB||'','id="pEpgCB"')+' <span style="font-size:11px;color:var(--muted)">leer = Flächenfarbe</span>')
         +row('läuft gerade',skinSel(w.epgCR||'','id="pEpgCR"')+' <span style="font-size:11px;color:var(--muted)">leer = Akzent</span>')
@@ -512,5 +556,6 @@
       num('#pEpgSerA','epgSerA',7);num('#pEpgSerW','epgSerW',15);
       if($('#pEpgSel'))$('#pEpgSel').onchange=function(){w.epgSel=parseInt(this.value)||undefined;commit();};
       if($('#pEpgMsg'))$('#pEpgMsg').onchange=function(){w.epgMsgVar=parseInt(this.value)||undefined;commit();};
+      if($('#pEpgSerie'))$('#pEpgSerie').onchange=function(){w.epgSerie=this.checked;commit();};
     }
   });
