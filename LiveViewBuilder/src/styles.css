@@ -2597,6 +2597,11 @@
   .tbl-chip.tsc-crit{color:var(--crit);border-color:color-mix(in oklab,var(--crit) 40%,transparent);background:color-mix(in oklab,var(--crit) 12%,transparent)}
   .tbl-chip.tsc-warn{color:var(--warn);border-color:color-mix(in oklab,var(--warn) 40%,transparent);background:color-mix(in oklab,var(--warn) 12%,transparent)}
   .tbl-chip.tsc-ok{color:var(--ok);border-color:color-mix(in oklab,var(--ok) 40%,transparent);background:color-mix(in oklab,var(--ok) 12%,transparent)}
+  /* Vierter Zustand: eine Feststellung, keine Bewertung ("Regel aktiv", "ruht").
+     Ohne ihn muesste man solche Zeilen entweder gruen faerben - was Erfolg
+     behauptet - oder farblos lassen, wo doch etwas eingestellt ist. */
+  .tbl-chip.tsc-info{color:var(--info);border-color:color-mix(in oklab,var(--info) 40%,transparent);background:color-mix(in oklab,var(--info) 12%,transparent)}
+  .tbl-chip.tsc-muted{color:var(--muted);border-color:color-mix(in oklab,var(--muted) 30%,transparent)}
   .tbl-barcell{white-space:nowrap}
   .tbl-mini{display:inline-block;width:46px;height:6px;border-radius:3px;background:var(--line-soft);overflow:hidden;vertical-align:middle;margin-left:8px}
   .tbl-mini>span{display:block;height:100%;border-radius:3px}
