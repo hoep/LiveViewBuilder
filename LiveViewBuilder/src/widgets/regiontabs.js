@@ -23,6 +23,20 @@
       });
       return h+'</div>';
     },
+    // Beim ersten Zeichnen die Standard-Ansicht auch WIRKLICH einstellen.
+    //
+    // Ohne diesen Schritt zeigte die Kachel, was in der Komponente steht, und die
+    // Leiste hob den Standard-Reiter hervor - zwei Angaben, eine Anzeige, und im
+    // Zweifel widersprechen sie sich. Einmal je Ansicht genuegt; danach gilt,
+    // was der Anwender angeklickt hat.
+    mount:function(w){
+      if(typeof mode!=='undefined'&&mode==='edit')return;
+      if(!w.slot||!w.default||typeof setRegion!=='function')return;
+      if(typeof _regions!=='undefined'&&_regions&&_regions[w.slot])return;   // schon gewaehlt
+      if(w._rtStart===store.current)return;                                   // schon erledigt
+      w._rtStart=store.current;
+      setRegion(w.slot,w.default);
+    },
     click:function(w,el,e){
       var b=e.target.closest('[data-rtv]'); if(!b)return false;
       // Beim Zeigergeraet ist der Wechsel schon beim Druecken passiert (siehe
@@ -53,6 +67,12 @@
           : '')
         +'<input id="pRtSlot" value="'+esc(w.slot||'')+'" placeholder="muss zur Komponente passen" style="width:150px">')
       +'<div style="font-size:11px;line-height:1.4;margin:2px 2px 6px">'+hin+'</div>'
+      +row('Standard-Reiter','<select id="pRtDef"><option value="">— erster Reiter —</option>'
+          +(w.tabs||[]).filter(function(t){return t&&t.view;}).map(function(t){
+              return '<option value="'+esc(t.view)+'"'+(w.default===t.view?' selected':'')+'>'+esc(t.label||t.view)+'</option>';
+            }).join('')+'</select>')
+      +'<div style="font-size:11px;color:var(--muted);line-height:1.4;margin:2px 2px 6px">'
+      +'Diese Ansicht steht beim Oeffnen der Seite in der Region. Die Komponente wird mitgezogen.</div>'
       +row('Stil','<select id="pRtStyle"><option value="buttons"'+(w.style==='buttons'?' selected':'')+'>Buttons</option><option value="pills"'+((w.style||'pills')==='pills'?' selected':'')+'>Pills</option><option value="underline"'+(w.style==='underline'?' selected':'')+'>Underline</option></select>')
         +'<div style="font-size:11px;color:var(--muted);margin:2px 2px 4px">Schaltet den gleichnamigen Komponenten-Bereich um. Tabs (Label · Ansicht) werden generiert bzw. per Liste gepflegt.</div>'
         +listEditor(w,'tabs','Tabs: Label · Ansicht',[{k:'label',ph:'Label'},{k:'view',ph:'Ansicht'}]);
@@ -61,6 +81,20 @@
       if($('#pRtStyle'))$('#pRtStyle').onchange=function(){w.style=this.value;render();commit();};
       if($('#pRtSlot'))$('#pRtSlot').oninput=function(){w.slot=this.value||undefined;render();renderProps();commit();};
       if($('#pRtSlotSel'))$('#pRtSlotSel').onchange=function(){if(!this.value)return;w.slot=this.value;render();renderProps();commit();};
+      if($('#pRtDef'))$('#pRtDef').onchange=function(){
+        w.default=this.value||undefined;
+        // Die Komponente mitziehen: sie entscheidet, was OHNE gesetzte Region zu
+        // sehen ist. Zwei Stellen mit derselben Aussage duerfen nicht auseinander
+        // laufen - sonst zeigt die Seite A und die Leiste hebt B hervor.
+        if(w.slot&&w.default){
+          (state.widgets||[]).forEach(function(x){
+            if(x.type==='component'&&x.slot===w.slot)x.comp=w.default;
+          });
+        }
+        delete w._rtStart;
+        if(typeof _regions!=='undefined'&&_regions&&w.slot)delete _regions[w.slot];
+        render();renderProps();commit();
+      };
     }
   });
 
