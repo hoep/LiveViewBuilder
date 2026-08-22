@@ -118,6 +118,7 @@
     if(w.stages)w.stages.forEach(function(o){if(o){add(o.vid);add(o.subvid);add(o.sv);}}); // Pipeline-Stationen (Wert + Zusatzwert + Status-Var fuer bedingten Fluss)
     if(w.elements)w.elements.forEach(function(o){if(o){add(o.vid);add(o.speedVid);add(o.socVid);}});
     if(w.tankVid)add(w.tankVid);
+    add(w.ilhBadgeVid);add(w.ilhSubVid);   // Info-Liste: Zaehler und Untertitel der Kopfzeile
     if((w.type==='container'||w.type==='alarmpanel')&&w.kids)w.kids.forEach(function(k){if(k)_collectIds(k,add);}); // Container/Alarm-Panel: IDs der Kinder mitsammeln (Poll)
     if(w.type==='alarm')[w.title,w.sub,w.notify].forEach(function(s){if(_fIsFormula(s))add(s);}); // Alarm-Karte: Formel-IDs aus dem Text (add=_emit -> Token + Komponenten)
   }
