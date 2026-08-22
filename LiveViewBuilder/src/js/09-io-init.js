@@ -547,6 +547,38 @@
       document.addEventListener('visibilitychange',function(){if(!document.hidden)armFS();});
     }
     _wakeReq();document.addEventListener('visibilitychange',function(){if(!document.hidden)_wakeReq();});
+    initDoppeltipp();
+  }
+  /**
+   * Doppeltipp auf die freie Flaeche laedt die Seite neu.
+   *
+   * Im Kiosk gibt es keine Adressleiste und keinen Neu-laden-Knopf. Wenn die
+   * Anzeige nach einem Umbau am Layout oder nach Stunden im Hintergrund nicht
+   * mehr stimmt, half bisher nur, das Geraet in die Hand zu nehmen.
+   *
+   * Nur die FREIE Flaeche zaehlt - also ein Tipp, der die Unterlage selbst
+   * trifft und kein Widget. Sonst waere jedes schnelle zweimalige Druecken auf
+   * einen Schalter ein Neuladen, und genau das tut man bei einem Schalter, der
+   * nicht sofort reagiert. Zweite Bedingung: derselbe Fleck. Zwei Tipper an
+   * verschiedenen Ecken sind zwei Absichten, keine Geste.
+   *
+   * Der Doppeltipp ist hier frei: das Kiosk-Stueck weiter oben unterbindet
+   * ohnehin den Doppeltipp-Zoom.
+   */
+  function initDoppeltipp(){
+    if(bcfg().noDblReload)return;
+    var tZ=0,xZ=0,yZ=0;
+    document.addEventListener('pointerup',function(e){
+      if(e.button)return;                       // nur die Haupttaste
+      var frei=(e.target===canvas||e.target===cwrap||e.target===stage||e.target===document.body);
+      var jetzt=Date.now();
+      if(!frei){tZ=0;return;}
+      if(jetzt-tZ<=400&&Math.abs(e.clientX-xZ)<40&&Math.abs(e.clientY-yZ)<40){
+        tZ=0;toast('neu laden …');setTimeout(function(){location.reload();},120);
+        return;
+      }
+      tZ=jetzt;xZ=e.clientX;yZ=e.clientY;
+    });
   }
   function buildRunNav(){
     var box=$('#runlist');if(!box)return;box.innerHTML='';
