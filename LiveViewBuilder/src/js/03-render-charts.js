@@ -670,27 +670,47 @@
         itemStyle:{borderColor:cssv('--bg'),borderWidth:2,borderRadius:((donut||rose)?3:0)},minAngle:3}]},true);}
   function chartSeries(w){return (_hist[w.id]&&_hist[w.id].series)?_hist[w.id].series:[];}
   // Sparkline (ctype 'spark') — kompakte Verlaufskurve: keine Achsen, kein Titel, keine Legende.
-  // Linienfarbe: w.lineColor (feste Skin-Liste); Zweitquelle ist die Serien-Farbe series[0].color.
-  // Fuellung: w.fill!==false (undefined = an). Es wird NUR die erste Serie gezeichnet.
-  // Serienstil ist bewusst hart verdrahtet (Breite 1.8, glatt, ohne Punkte) — w.lw/w.smooth gelten hier nicht.
+  // Linienfarbe: w.lineColor (feste Skin-Liste); Zweitquelle ist die Serien-Farbe der Reihe.
+  // Fuellung: w.fill!==false (undefined = an), aber nur bei EINER Reihe - siehe unten.
+  // Linienbreite: w.spLw (Vorgabe 1.8). Mittelwert: w.spAvg.
   function setSpark(w){
     var ec=_ec[w.id];if(!ec)return;
     var _cs=(w.series&&w.series[0]&&w.series[0].color)||'';                 // Merge-Fallback: Farbe aus dem Serien-Editor
     var _lc=_skinColor(w.lineColor||_cs||''),_m=_lc&&_lc.match(/^var\((--[\w-]+)\)$/),acc=_m?cssv(_m[1]):(_lc||cssv('--accent'));
-    var s0=chartSeries(w)[0]||{data:[]};var data=s0.data;
-    // Darstellung: Spline (Vorgabe), eckige Linie oder Balken. Balken sind fuer Groessen
-    // gedacht, die in Portionen anfallen - Niederschlag, Verbrauch je Intervall: dort taeuscht
-    // eine durchgezogene Linie einen stetigen Verlauf vor, den es nicht gibt.
-    var _st=w.spStyle||'spline', ser;
-    if(_st==='bar'){
-      // Schmale Balken mit Mindestbreite, damit sie auf einer 140 px breiten Kachel nicht
-      // zu Haarlinien werden; keine Flaeche, kein Endpunkt-Marker.
-      ser={type:'bar',data:data,itemStyle:{color:acc},barMaxWidth:6,barMinWidth:1,barCategoryGap:'20%',large:true};
-    }else{
-      ser={type:'line',showSymbol:false,smooth:(_st!=='line'),lineStyle:{color:acc,width:1.8},
-        data:data,markPoint:{silent:true,symbol:'circle',symbolSize:5,itemStyle:{color:acc},label:{show:false},data:data.length?[{coord:data[data.length-1]}]:[]}};
-      if(w.fill!==false)ser.areaStyle={color:accA(.16,acc)};
-    }
+    // ALLE Reihen zeichnen, nicht nur die erste. Zwei Verlaeufe nebeneinander sind
+    // der halbe Zweck einer Sparkline: heute gegen gestern, innen gegen aussen.
+    var reihen=chartSeries(w);
+    if(!reihen.length)reihen=[{data:[]}];
+    var _st=w.spStyle||'spline';
+    var _lw=(w.spLw!=null&&w.spLw!=='')?parseFloat(w.spLw):1.8;
+    // Fuellung nur bei EINER Reihe: zwei halbdurchsichtige Flaechen uebereinander
+    // ergeben eine dritte Farbe, und die Linie darunter ist nicht mehr zu finden.
+    var fuellen=(w.fill!==false&&reihen.length===1);
+    var ser=reihen.map(function(s0,i){
+      var data=s0.data||[];
+      // Farbe: fuer die erste Reihe die Linienfarbe der Kachel (so war es immer),
+      // fuer die weiteren die Farbe aus dem Serien-Editor bzw. die Reihenfolge der
+      // Diagrammfarben - dieselbe Quelle wie im grossen Diagramm.
+      var farbe=(i===0)?acc:_chColor((w.series&&w.series[i]&&w.series[i].color)||s0.color||'',i);
+      if(_st==='bar'){
+        // Schmale Balken mit Mindestbreite, damit sie auf einer 140 px breiten Kachel nicht
+        // zu Haarlinien werden; keine Flaeche, kein Endpunkt-Marker.
+        return {type:'bar',data:data,itemStyle:{color:farbe},barMaxWidth:6,barMinWidth:1,barCategoryGap:'20%',large:true};
+      }
+      var e={type:'line',showSymbol:false,smooth:(_st!=='line'),lineStyle:{color:farbe,width:_lw},
+        data:data,markPoint:{silent:true,symbol:'circle',symbolSize:Math.max(4,Math.round(_lw*2.8)),
+          itemStyle:{color:farbe},label:{show:false},data:data.length?[{coord:data[data.length-1]}]:[]}};
+      if(fuellen)e.areaStyle={color:accA(.16,farbe)};
+      // Gestrichelte Linie auf Hoehe des Mittels: erst dadurch sagt die Sparkline,
+      // ob der Verlauf ueber oder unter dem eigenen Schnitt liegt. Den Mittelwert
+      // rechnet ECharts selbst - eine eigene Rechnung waere eine zweite Wahrheit.
+      if(w.spAvg&&_st!=='bar'&&data.length>1){
+        e.markLine={silent:true,symbol:'none',animation:false,
+          lineStyle:{color:farbe,width:1,type:'dashed',opacity:0.55},
+          label:{show:false},data:[{type:'average'}]};
+      }
+      return e;
+    });
     // KEIN Tooltip auf der Sparkline. Sie ist bewusst winzig (auf einer Wertkarte oft nur
     // 142x30 px) und traegt keine Achsen - der Tooltip von ECharts rechnet seine Schrift aber
     // in absoluten Pixeln und wird zusaetzlich von der Seitenskalierung mitgezogen. Ueber einer
@@ -699,7 +719,7 @@
     ec.setOption({backgroundColor:'transparent',animation:!!bcfg().chartAnim,grid:{left:2,right:2,top:6,bottom:4},
       tooltip:{show:false},
       xAxis:{type:'time',show:false},yAxis:{type:'value',scale:true,show:false},
-      series:[ser]},true);
+      series:ser},true);
   }
   function _glowCol(col,a){col=(''+(col||'')).trim();var m=col.match(/^#([0-9a-fA-F]{6})$/);if(m){var n=parseInt(m[1],16);return 'rgba('+((n>>16)&255)+','+((n>>8)&255)+','+(n&255)+','+a+')';}m=col.match(/rgba?\(([^)]+)\)/);if(m){var p=m[1].split(',');return 'rgba('+(+p[0])+','+(+p[1])+','+(+p[2])+','+a+')';}return col;} // Farbe mit Alpha (für Glow)
   function setGauge(w,d){
