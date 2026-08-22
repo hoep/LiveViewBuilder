@@ -203,6 +203,14 @@
         byGrp[g].forEach(function(p){var n=0;for(var i=0;i<base.length;i++)if(_tblPillHit(w,p,base[i]))n++;cnt[p.k]=n;});});
     }
     // ---- Sortierung ----
+    // Anfangssortierung der Seite. Bisher startete jede Tabelle in der Reihenfolge
+    // der Daten, und wer sie anders wollte, musste nach jedem Laden erst in den
+    // Kopf klicken - eine Wandtafel klickt niemand an. Die Wahl ist nur der
+    // START; ein Klick in den Kopf hat weiter das letzte Wort.
+    if(w._tblSortCol==null&&w.tblSort0!=null&&w.tblSort0!==''){
+      w._tblSortCol=parseInt(w.tblSort0)||0;
+      w._tblSortDir=(w.tblSortDir0==='desc')?'desc':'asc';
+    }
     if(w._tblSortCol!=null&&w._tblSortCol<cols){
       // Sortier-Stellvertreter: "4,6 GB" und "20.08." sortieren als Text falsch. colSortBy
       // schickt den Vergleich auf eine versteckte Spalte mit dem Rohwert (Bytes, Zeitstempel).
@@ -436,6 +444,12 @@
       // Pro-Spalte: Ausrichtung + Breite + Roh-HTML + Suchspalte (Kopf aus geladenen Daten)
       if(head.length){
         s+='<div class="pgh">Spalten</div>';
+        s+=row('Anfangssortierung','<select id="pTblSort0"><option value="">(wie geliefert)</option>'
+          +head.map(function(h,ci){return '<option value="'+ci+'"'+((w.tblSort0!=null&&String(w.tblSort0)===String(ci))?' selected':'')+'>'+esc(h||('Spalte '+(ci+1)))+'</option>';}).join('')
+          +'</select> <select id="pTblSortDir0">'
+          +'<option value="asc"'+((w.tblSortDir0!=='desc')?' selected':'')+'>aufsteigend</option>'
+          +'<option value="desc"'+((w.tblSortDir0==='desc')?' selected':'')+'>absteigend</option></select> '
+          +'<span style="font-size:11px;color:var(--muted)">gilt beim Laden; ein Klick in den Kopf sortiert weiter frei</span>');
         var alOpt=function(cur){return ['','left','center','right'].map(function(v){var lbl={'':'Standard',left:'Links',center:'Zentriert',right:'Rechts'}[v];return '<option value="'+v+'"'+((w.colAlign&&w.colAlign[cur.ci]||'')===v?' selected':'')+'>'+lbl+'</option>';}).join('');};
         head.forEach(function(h,ci){
           s+=row(esc(h||('Spalte '+(ci+1))),
@@ -472,6 +486,8 @@
       if($('#pTblPillCount'))$('#pTblPillCount').onchange=function(){w.tblPillCount=this.checked?undefined:0;_tblDraw(w);commit();};
       if($('#pTblPillAll'))$('#pTblPillAll').onchange=function(){w.tblPillAll=this.checked?undefined:0;_tblDraw(w);commit();};
       [].forEach.call(document.querySelectorAll('[data-tcol-al]'),function(sel){sel.onchange=function(){var ci=+sel.getAttribute('data-tcol-al');w.colAlign=w.colAlign||[];w.colAlign[ci]=this.value||undefined;_tblDraw(w);commit();};});
+      if($('#pTblSort0'))$('#pTblSort0').onchange=function(){w.tblSort0=this.value===''?undefined:this.value;w._tblSortCol=undefined;_tblDraw(w);commit();};
+      if($('#pTblSortDir0'))$('#pTblSortDir0').onchange=function(){w.tblSortDir0=(this.value==='desc')?'desc':undefined;w._tblSortCol=undefined;_tblDraw(w);commit();};
       [].forEach.call(document.querySelectorAll('[data-tcol-html]'),function(cb){cb.onchange=function(){var ci=+cb.getAttribute('data-tcol-html');w.colRaw=w.colRaw||[];w.colRaw[ci]=this.checked||undefined;_tblDraw(w);commit();};});
       [].forEach.call(document.querySelectorAll('[data-tcol-q]'),function(cb){cb.onchange=function(){var ci=+cb.getAttribute('data-tcol-q');w.colQ=w.colQ||[];w.colQ[ci]=this.checked||undefined;_tblDraw(w);commit();};});
       if($('#pTblSel'))$('#pTblSel').onchange=function(){w.tblSel=this.checked||undefined;w._tblSel={};_tblDraw(w);commit();};
