@@ -976,6 +976,27 @@
   .ilfoot.tap{cursor:pointer}
   .ilfoot .ilfi{display:grid;place-items:center;width:clamp(11px,4cqmin,17px);height:clamp(11px,4cqmin,17px);flex:none}
   .ilfoot .ilfi svg{width:100%;height:100%}
+  /* --- Icon-Raster ------------------------------------------------------
+     Alles in Container-Einheiten: Feldgroesse, Icon, Abstaende, Legende. Die
+     Kachel darf von 120 px bis Wandtafel wachsen, ohne dass etwas bricht. */
+  .iaw{display:flex;flex-direction:column;height:100%;box-sizing:border-box;container-type:size}
+  .iag{flex:1;min-height:0;display:grid;gap:clamp(3px,2cqmin,10px);
+    padding:clamp(4px,2.5cqmin,12px) clamp(6px,3cqmin,14px);align-content:start;overflow:auto}
+  .iac{position:relative;aspect-ratio:1;display:grid;place-items:center;border-radius:clamp(5px,2.5cqmin,12px);
+    background:var(--surface-2);border:1px solid transparent;color:var(--c,var(--muted));min-height:0}
+  .iac svg{width:62%;height:62%}
+  .iac.hi{background:color-mix(in oklab,var(--c) 18%,var(--surface-2));border-color:color-mix(in oklab,var(--c) 55%,transparent)}
+  .iac.tap{cursor:pointer}
+  .iac.tap:active{transform:scale(.94)}
+  .iac b{position:absolute;left:2%;right:2%;bottom:3%;font-size:clamp(6px,2.2cqmin,10px);font-weight:500;
+    text-align:center;color:var(--faint);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .ialeg{flex:none;display:flex;flex-wrap:wrap;align-items:center;gap:clamp(6px,3cqmin,16px);
+    padding:clamp(5px,2.5cqmin,10px) clamp(8px,4cqmin,15px) clamp(6px,3cqmin,12px);
+    border-top:1px solid color-mix(in oklab,var(--line) 70%,transparent);
+    margin:0 clamp(5px,3cqmin,10px);font-size:clamp(8px,3.2cqmin,13px);color:var(--faint)}
+  .iale{display:inline-flex;align-items:center;gap:clamp(3px,1.4cqmin,6px);color:var(--c,var(--muted))}
+  .iale svg{width:clamp(10px,4cqmin,18px);height:clamp(10px,4cqmin,18px)}
+  .iale b{font-weight:700;font-variant-numeric:tabular-nums;color:var(--c,var(--text))}
   /* KPI */
   .hkpi{display:flex;align-items:center;gap:12px;padding:12px;height:100%;box-sizing:border-box;container-type:size}
   .hkpi .hkbi{width:var(--wf-ic);height:var(--wf-ic);border-radius:11px;background:var(--surface-2);display:grid;place-items:center;flex:none;color:var(--wicon,var(--accent))}
