@@ -141,7 +141,18 @@
         var hatWert=!!(r.vid||(r.value!=null&&r.value!==''));
         var wert=hatWert?('<span class="hiv"'+(r.vid?(' data-vid="'+r.vid+'"'+_slotAttrs(r)):'')
                        +(r.valCol?(' style="color:'+_ilFarbe(r.valCol,'')+'"'):'')+'>'+esc(r.value||'')+'</span>'):'';
-        var pille=(r.pill||r.pillVid)?('<span class="hpill '+esc(r.state||'ok')+'"><span class="hpd"></span>'+ptxt+'</span>'):'';
+        // Farbe der Pille: fest ueber "Status" - ODER aus der Zustandstabelle,
+        // dann folgt sie dem WERT. Ohne sie stand die Waschmaschine gruen auf
+        // "Aus", der Trockner grau auf "Aus": beide Farben waren von Hand
+        // gesetzt und sagten nichts ueber den Wert.
+        var pz=(r.pillVid&&w.pillStates&&w.pillStates.length)
+          ?stateFor(w.pillStates,(_lastVals[r.pillVid]||{}).v,(_lastVals[r.pillVid]||{}).f):null;
+        var pc=pz?_ilFarbe(pz.color,''):'';
+        var pille=(r.pill||r.pillVid)
+          ?('<span class="hpill '+(pc?'':esc(r.state||'ok'))+'"'
+            +(pc?(' style="color:'+pc+';background:color-mix(in oklab,'+pc+' 15%,transparent)"'):'')
+            +'><span class="hpd"></span>'+ptxt+'</span>')
+          :'';
         var rt=(wert||pille)?(wert+pille):'<span class="hiv"></span>';
         var _ic=r.color?(_cssColorOrEmpty(r.color)||''):'';
         // In der Kartenform traegt die Zeile die Toenung: eigene Kartenfarbe, sonst
@@ -175,6 +186,12 @@
         +'<div class="hinfos'+(alleKarten?' karten':'')+(w.ilBare?' blank':'')+'">'+zeilen+'</div>'
         +fuss+(huelle?'</div>':'');
     },
+    // Farbe nach Wert heisst: neu zeichnen, wenn sich ein Wert aendert. Texte
+    // und Balken zieht der Live-Kanal selbst nach (data-vid, data-vidbar), eine
+    // FARBE steht aber im gerenderten Markup - sie entstuende sonst einmal beim
+    // Aufbau, wenn noch gar kein Wert da ist, und bliebe fuer immer falsch.
+    // Ohne Zustandstabelle bleibt alles beim Alten: kein Neuzeichnen.
+    live:function(w,el){ if(el&&w.pillStates&&w.pillStates.length)el.innerHTML=WIDGETS.infolist.render(w); },
     // Kopfzeile, Fusszeile, Knoepfe und schaltende Zeilen fangen den Klick ab,
     // damit er nicht zusaetzlich als Klick auf die ganze Kachel gilt.
     click:function(w,el,e){
@@ -218,6 +235,9 @@
               +'<select id="pIlfTo">'+viewOpts(w.ilfTo,'popup','— öffnet nichts —')+'</select>')
          ):'')
         +listEditor(w,'items','Zeile: Icon · Farbe · Name · Zusatz · Wert · Pill (Text oder VarID) · Status(Pill-Farbe) · VarID',[{k:'icon',type:'icon',h:'Icon',ph:'Icon wählen'},{k:'color',type:'skincolor',h:'Farbe (Icon)'},{k:'label',h:'Name',ph:'Name'},{k:'sub',h:'Zusatz',ph:'Zusatz'},{k:'subVid',h:'Zusatz-ID',ph:'VarID'},{k:'value',h:'Wert',ph:'Wert'},{k:'dec',h:'Dez',ph:'Dez'},{k:'unit',h:'Einh',ph:'Einh'},{k:'pill',h:'Pill',ph:'Pill'},{k:'pillVid',h:'Pill-ID',ph:'VarID'},{k:'state',type:'select',def:'ok',h:'Status (Pill)',ph:'Status',options:[['ok','OK · grün'],['on','An · Akzent'],['off','Aus · grau'],['warn','Warnung · gelb'],['crit','Kritisch · rot'],['warm','Warm · orange']]},{k:'vid',h:'ID',ph:'ID'}])
+        +'<div class="pgh">Farbe der Pille nach Wert</div>'
+        +'<div class="hint" style="font-size:11px;margin:0 2px 8px">Ohne Eintrag gilt die feste Farbe aus der Spalte „Status". Mit Einträgen folgt die Pille dem WERT — gleicher Wert, gleiche Farbe, über alle Zeilen hinweg. Verglichen wird gegen den Rohwert <i>und</i> den angezeigten Text; leerer Wert oder <code>*</code> gilt für alles Übrige.</div>'
+        +listEditor(w,'pillStates','Wert · Farbe',[{k:'v',h:'Wert',ph:'aus / 0'},{k:'color',type:'skincolor',h:'Farbe'}])
         +'<div class="pgh">Je Zeile: hervorheben, Balken, Wertfarbe</div>'
         +listEditor(w,'items','Karte · Tönung · Wertfarbe · Balken(fest) · Balken(VarID) · Balkenfarbe',[{k:'karte',type:'select',h:'Karte',options:[['','nein'],['1','ja']]},{k:'bg',type:'skincolor',h:'Tönung'},{k:'valCol',type:'skincolor',h:'Wertfarbe'},{k:'prog',h:'Balken %',ph:'0–100'},{k:'progVid',h:'Balken-ID',ph:'VarID'},{k:'progCol',type:'skincolor',h:'Balkenfarbe'}])
         +'<div class="pgh">Je Zeile: Aktion</div>'
