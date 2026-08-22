@@ -121,7 +121,7 @@
     add(w.ilhBadgeVid);add(w.ilhSubVid);add(w.ilfVid);   // Info-Liste: Kopf- und Fusszeile
     // Fortschrittsbalken je Zeile - und die Schaltvariable: ohne sie im Kanal
     // wuesste "Wert leer = umschalten" nicht, was gerade an ist.
-    if(w.items)w.items.forEach(function(o){if(o){add(o.progVid);add(o.actVid);add(o.act2Vid);add(o.pillVid);}});
+    if(w.items)w.items.forEach(function(o){if(o){add(o.progVid);add(o.actVid);add(o.act2Vid);add(o.pillVid);add(o.subVid);}});
     if((w.type==='container'||w.type==='alarmpanel')&&w.kids)w.kids.forEach(function(k){if(k)_collectIds(k,add);}); // Container/Alarm-Panel: IDs der Kinder mitsammeln (Poll)
     if(w.type==='alarm')[w.title,w.sub,w.notify].forEach(function(s){if(_fIsFormula(s))add(s);}); // Alarm-Karte: Formel-IDs aus dem Text (add=_emit -> Token + Komponenten)
   }
