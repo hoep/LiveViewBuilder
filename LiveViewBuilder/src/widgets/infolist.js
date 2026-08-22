@@ -115,7 +115,12 @@
       var huelle=(kopf||fuss);
       var zeilen=(w.items||[]).map(function(r,i){
         var karte=(alleKarten||!!r.karte);
-        var rt=r.pill?'<span class="hpill '+esc(r.state||'ok')+'"><span class="hpd"></span>'+esc(r.pill)+'</span>'
+        // Pille: fester Text ODER Variable. Sie war bisher nur Text - damit taugte
+        // sie fuer "laeuft/aus", aber nicht fuer einen Zustand, der sich aendert.
+        // Mit pillVid steht dort der Wert der Variablen, formatiert wie ueberall
+        // (Profil, Nachkommastellen, Einheit).
+        var ptxt=r.pillVid?('<span data-vid="'+r.pillVid+'"'+_slotAttrs(r)+'>–</span>'):esc(r.pill||'');
+        var rt=(r.pill||r.pillVid)?'<span class="hpill '+esc(r.state||'ok')+'"><span class="hpd"></span>'+ptxt+'</span>'
                      :'<span class="hiv"'+(r.vid?' data-vid="'+r.vid+'"'+_slotAttrs(r):'')
                        +(r.valCol?(' style="color:'+_ilFarbe(r.valCol,'')+'"'):'')+'>'+esc(r.value||'')+'</span>';
         var _ic=r.color?(_cssColorOrEmpty(r.color)||''):'';
@@ -183,7 +188,7 @@
           +row('oder Variable','<input id="pIlfVid" value="'+(w.ilfVid||'')+'" placeholder="VarID" style="width:74px"> '
               +'<select id="pIlfTo">'+viewOpts(w.ilfTo,'popup','— öffnet nichts —')+'</select>')
          ):'')
-        +listEditor(w,'items','Zeile: Icon · Farbe · Name · Zusatz · Wert · Pill · Status(Pill-Farbe) · VarID',[{k:'icon',type:'icon',h:'Icon',ph:'Icon wählen'},{k:'color',type:'skincolor',h:'Farbe (Icon)'},{k:'label',h:'Name',ph:'Name'},{k:'sub',h:'Zusatz',ph:'Zusatz'},{k:'value',h:'Wert',ph:'Wert'},{k:'dec',h:'Dez',ph:'Dez'},{k:'unit',h:'Einh',ph:'Einh'},{k:'pill',h:'Pill',ph:'Pill'},{k:'state',type:'select',def:'ok',h:'Status (Pill)',ph:'Status',options:[['ok','OK · grün'],['on','An · Akzent'],['off','Aus · grau'],['warn','Warnung · gelb'],['crit','Kritisch · rot'],['warm','Warm · orange']]},{k:'vid',h:'ID',ph:'ID'}])
+        +listEditor(w,'items','Zeile: Icon · Farbe · Name · Zusatz · Wert · Pill (Text oder VarID) · Status(Pill-Farbe) · VarID',[{k:'icon',type:'icon',h:'Icon',ph:'Icon wählen'},{k:'color',type:'skincolor',h:'Farbe (Icon)'},{k:'label',h:'Name',ph:'Name'},{k:'sub',h:'Zusatz',ph:'Zusatz'},{k:'value',h:'Wert',ph:'Wert'},{k:'dec',h:'Dez',ph:'Dez'},{k:'unit',h:'Einh',ph:'Einh'},{k:'pill',h:'Pill',ph:'Pill'},{k:'pillVid',h:'Pill-ID',ph:'VarID'},{k:'state',type:'select',def:'ok',h:'Status (Pill)',ph:'Status',options:[['ok','OK · grün'],['on','An · Akzent'],['off','Aus · grau'],['warn','Warnung · gelb'],['crit','Kritisch · rot'],['warm','Warm · orange']]},{k:'vid',h:'ID',ph:'ID'}])
         +'<div class="pgh">Je Zeile: hervorheben, Balken, Wertfarbe</div>'
         +listEditor(w,'items','Karte · Tönung · Wertfarbe · Balken(fest) · Balken(VarID) · Balkenfarbe',[{k:'karte',type:'select',h:'Karte',options:[['','nein'],['1','ja']]},{k:'bg',type:'skincolor',h:'Tönung'},{k:'valCol',type:'skincolor',h:'Wertfarbe'},{k:'prog',h:'Balken %',ph:'0–100'},{k:'progVid',h:'Balken-ID',ph:'VarID'},{k:'progCol',type:'skincolor',h:'Balkenfarbe'}])
         +'<div class="pgh">Je Zeile: Aktion</div>'
