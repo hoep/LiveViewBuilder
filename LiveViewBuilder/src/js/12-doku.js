@@ -32,7 +32,7 @@
   // Thematische Gruppen. Jedes Widget genau einmal; was hier fehlt, landet in "Weitere" -
   // dadurch faellt ein neu angelegtes Widget auf, statt lautlos zu verschwinden.
   var DOKU_GROUPS = [
-    ['Werte & Zahlen',          ['value','valuecard','cval','sval','kpi','delta','calc','chip','icon','bar','meterlist','infolist']],
+    ['Werte & Zahlen',          ['value','valuecard','cval','sval','kpi','delta','calc','chip','icon','bar','meterlist','infolist','iconarray']],
     ['Schalten & Bedienen',     ['switch','light','button','tile','checkbox','select','slider','stepper','colorpick','textbox','cover','shadingpanel','shading','shadeprofile','thermostat','heatplan','weekedit','alarm','alarmpanel','bot','timer','eventctl']],
     ['HomeSuite – Zeitplan (Heizung/Beschattung)', ['rooms','curve','week','slots','slotedit','variantbox','transfer','save']],
     ['HomeSuite – Licht-Automatik', ['lightband','autolist','autoedit','autocard','autotimeline']],
