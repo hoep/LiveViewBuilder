@@ -242,8 +242,9 @@
     var roh=null;
     (kan.p||[]).forEach(function(p){if(p[0]===start)roh=p;});
     if(!roh)return;
-    w._epgSelP={ref:kan.ref,sender:kan.name,picon:kan.picon,start:roh[0],ende:roh[1],
+    w._epgSelP={kid:kan.id,ref:kan.ref,sender:kan.name,picon:kan.picon,start:roh[0],ende:roh[1],
                 titel:roh[2],kurz:roh[3]||'',cat:roh[4]||'',folge:roh[5]||'',desc:''};
+    w._epgMehr=false;
     _epgOverlay(w);
     fetch('?api=epg&von='+start+'&dauer=1800&detail=1&kanaele='+encodeURIComponent(kid),{cache:'no-store'})
       .then(function(r){return r.json();})
@@ -265,6 +266,7 @@
     if(!el){el=document.createElement('div');el.className='epgov';el.setAttribute('data-role','epgov');
       ($('.epgw',host)||host).appendChild(el);}
     var zeile=[s.folge,s.kurz,s.cat].filter(function(x){return !!x;}).join(' · ');
+    var mehr=_epgMehrHtml(w,s);
     var dat=new Date(s.start*1000),wt=['So','Mo','Di','Mi','Do','Fr','Sa'][dat.getDay()];
     el.innerHTML='<div class="epgovc">'
       +'<div class="epgovh">'+(s.picon?'<img src="'+esc(s.picon)+'" alt="">':'')
@@ -274,9 +276,55 @@
       +'<div class="epgovt">'+esc(s.titel)+'</div>'
       +(zeile?'<div class="epgovs">'+esc(zeile)+'</div>':'')
       +(s.desc?'<div class="epgovd">'+esc(s.desc)+'</div>':'')
+      +mehr
       +'<div class="epgovb"><button class="epgb on epgb-'+(w.epgBtnStil||'pill')+'" data-epgov="rec" style="'+_epgKnopfStil(w)+'">Aufnehmen</button>'
+        +'<button class="epgb epgb-'+(w.epgBtnStil||'pill')+'" data-epgov="mehr" style="'+_epgKnopfStil(w)+'" title="alle Angaben aus dem Programmbestand">'
+        +(w._epgMehr?'Weniger ▴':'Mehr ▾')+'</button>'
         +'<span class="epgovm" data-role="epgovm">'+esc(w._epgMsg||'')+'</span></div></div>';
   }
+  /**
+   * Die ausgeklappten Angaben - alles, was XMLTV zu dieser Sendung hergibt.
+   *
+   * Aufgebaut wird erst, wenn jemand aufklappt; geholt wird EINMAL je Sendung
+   * (danach steht es im Objekt). Leere Felder erscheinen gar nicht - eine
+   * Tabelle voller Striche sagt weniger als drei gefuellte Zeilen.
+   */
+  function _epgMehrHtml(w,s){
+    if(!w._epgMehr)return '';
+    var d=s.mehr;
+    if(!d)return '<div class="epgovm2">wird geladen …</div>';
+    var reihen=[];
+    function txt(k,v){if(v)reihen.push([k,esc(String(v))]);}
+    function leute(k,l,mitRolle){
+      if(!l||!l.length)return;
+      reihen.push([k,l.map(function(e){
+        var n=esc(e[0]);
+        return (mitRolle&&e[1])?(n+' <span style="opacity:.6">als '+esc(e[1])+'</span>'):n;
+      }).join(', ')]);
+    }
+    if(d.kategorien&&d.kategorien.length)txt('Genre',d.kategorien.join(', '));
+    txt('Jahr',d.jahr); txt('Land',d.land); txt('Sprache',d.sprache);
+    txt('Gattung',d.gattung); txt('Status',d.status);
+    if(d.bewertung)txt('Bewertung',d.bewertung+(d.bewertungQuelle?(' / 10 · '+d.bewertungQuelle):' / 10'));
+    txt('Altersfreigabe',d.freigabe);
+    if(d.wiederholung)txt('Hinweis','Wiederholung');
+    leute('Schauspieler',d.schauspieler,true);
+    leute('Regie',d.regie); leute('Drehbuch',d.drehbuch); leute('Musik',d.musik);
+    leute('Moderation',d.moderation); leute('Gäste',d.gaeste); leute('Produktion',d.produktion);
+    if(d.kennungen&&d.kennungen.length)txt('Kennung',d.kennungen.map(function(e){return e[0]+': '+e[1];}).join(' · '));
+    if(!reihen.length)return '<div class="epgovm2">keine weiteren Angaben im Programmbestand</div>';
+    return '<div class="epgovtab">'+reihen.map(function(r){
+      return '<div class="epgovk">'+r[0]+'</div><div class="epgovv">'+r[1]+'</div>';
+    }).join('')+'</div>';
+  }
+  function _epgMehrHolen(w){
+    var s=w._epgSelP;if(!s||s.mehr)return;
+    fetch('?api=epgdetail&kanal='+encodeURIComponent(s.kid||'')+'&start='+s.start,{cache:'no-store'})
+      .then(function(r){return r.json();})
+      .then(function(j){ if(j&&j.ok){ s.mehr=j.mehr||{}; _epgOverlay(w); } })
+      .catch(function(){ s.mehr={}; _epgOverlay(w); });
+  }
+
   /**
    * Aufnahme anstossen.
    *
@@ -366,6 +414,12 @@
         var k=ov.getAttribute('data-epgov');
         if(k==='close'){_epgZu(w);return true;}
         if(k==='rec'){_epgAufnehmen(w);return true;}
+        if(k==='mehr'){
+          w._epgMehr=!w._epgMehr;
+          _epgOverlay(w);
+          if(w._epgMehr)_epgMehrHolen(w);
+          return true;
+        }
         return true;
       }
       var p=e.target.closest('[data-epgp]');

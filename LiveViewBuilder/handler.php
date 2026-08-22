@@ -287,6 +287,42 @@ if ($api === 'messages') {
 }
 
 // ---- Live-Werte (Delta über since) ----
+if ($api === 'epgdetail') {
+    // ---- Alles zu EINER Sendung: Mitwirkende, Jahr, Land, Bewertung ---------
+    //
+    // Getrennt vom Raster, und zwar aus einem Grund: die Mitwirkenden sind der
+    // groesste Posten im XMLTV (29.819 Schauspieler mit Rollennamen). Im Fenster
+    // haben sie keinen Platz, beim Anklicken einer Sendung sind sie genau das,
+    // was man sucht. Deshalb liegen sie in eigenen Tagesdateien und werden nur
+    // auf Anfrage gelesen.
+    header('Content-Type: application/json; charset=utf-8');
+    $dir = IPS_GetKernelDir() . 'livebuilder/epg';
+    $kanal = trim((string) ($_GET['kanal'] ?? ''));
+    $start = (int) ($_GET['start'] ?? 0);
+    if ($kanal === '' || $start <= 0) {
+        echo json_encode(['ok' => false, 'fehler' => 'kanal und start noetig']);
+        return;
+    }
+    $tag = date('Y-m-d', $start);
+    $det = json_decode((string) @file_get_contents($dir . '/det-' . $tag . '.json'), true);
+    $e = (is_array($det) && isset($det[$kanal . '|' . $start])) ? $det[$kanal . '|' . $start] : [];
+
+    // Die Grunddaten dazu, damit der Aufrufer nicht zweimal fragen muss.
+    $basis = [];
+    $j = json_decode((string) @file_get_contents($dir . '/tag-' . $tag . '.json'), true);
+    foreach (($j[$kanal] ?? []) as $p) {
+        if ((int) $p[0] === $start) {
+            $basis = ['start' => (int) $p[0], 'ende' => (int) $p[1], 'titel' => (string) $p[2],
+                      'kurz' => (string) ($p[3] ?? ''), 'kategorie' => (string) ($p[4] ?? ''),
+                      'folge' => (string) ($p[5] ?? ''), 'text' => (string) ($p[6] ?? '')];
+            break;
+        }
+    }
+    echo json_encode(['ok' => true, 'kanal' => $kanal, 'basis' => $basis, 'mehr' => $e],
+                     JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    return;
+}
+
 if ($api === 'epg') {
     // ---- Programmfuehrer: ein Zeitfenster aus dem XMLTV-Zwischenlager --------
     //
