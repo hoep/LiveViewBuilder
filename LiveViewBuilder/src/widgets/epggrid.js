@@ -14,14 +14,55 @@
   //
   // Alle Farben sind Skinfarben. Es gibt keinen festen Hexwert im Widget - ein
   // Themenwechsel faerbt das Raster mit.
+  /**
+   * Darstellung der Bedienelemente - Pille, Knopf oder Unterstrich.
+   *
+   * Anlass: die Pillen standen in fester Groesse neben einer einstellbaren
+   * Schrift, und je groesser die Schrift wurde, desto verlorener wirkten sie.
+   * Jetzt richten sich Hoehe und Polster nach der Schriftgroesse, und die Form
+   * ist waehlbar - dieselbe Funktion bedient die Kopfzeile UND die
+   * Detailansicht, damit beide gleich aussehen.
+   */
+  function _epgKnopfStil(w,istFeld){
+    var fs=parseFloat(w.epgBtnFs||w.epgFsH||w.epgFsN||13);
+    var h=parseFloat(w.epgBtnH||Math.round(fs*2.1));
+    var px=Math.round(fs*0.72), st=(w.epgBtnStil||'pill');
+    var basis='font-size:'+fs+'px;height:'+h+'px;line-height:'+(h-2)+'px;padding:0 '+px+'px;'
+             +'display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;';
+    if(istFeld)return basis+'border-radius:'+Math.round(h/2)+'px;';
+    if(st==='button')return basis+'border-radius:'+Math.max(4,Math.round(h*0.22))+'px;';
+    if(st==='line')  return basis+'border-radius:0;border:0;border-bottom:2px solid var(--line);background:transparent;padding:0 '+Math.round(px*0.6)+'px;';
+    return basis+'border-radius:'+Math.round(h/2)+'px;';   // Pille
+  }
+  function _epgKnopf(w,schluessel,text,titel,rolle){
+    return '<button class="epgb epgb-'+(w.epgBtnStil||'pill')+'" data-epg="'+schluessel+'"'
+      +(rolle?' data-role="'+rolle+'"':'')+' title="'+esc(titel||'')+'" style="'+_epgKnopfStil(w)+'">'
+      +esc(text)+'</button>';
+  }
+
   var _EPGD={};        // je Widget-ID: zuletzt geladenes Fenster
   var _EPGL={};        // je Widget-ID: laeuft gerade eine Abfrage?
 
   function _epgVon(w){
-    // Startzeitpunkt des Fensters: jetzt (auf die Viertelstunde zurueck) plus
-    // die Verschiebung, die der Anwender erblaettert hat.
+    // Startzeitpunkt des Fensters. Zwei Wege fuehren dorthin: die Verschiebung
+    // in Stunden, die man sich erblaettert hat, oder ein AUSDRUECKLICHER
+    // Zeitpunkt (Hauptabend, ein Tag weiter). Der ausdrueckliche gewinnt -
+    // sonst muesste man aus "20:15 am Dienstag" erst eine Stundenzahl rechnen,
+    // die sich mit jeder Minute wieder aendert.
+    if(w._epgAbs>0)return w._epgAbs;
     var q=Math.floor(Date.now()/900000)*900;
     return q+(w._epgOff||0)*3600;
+  }
+  /** Fenster auf einen Zeitpunkt setzen (Viertelstunde abgerundet). */
+  function _epgAbsSetzen(w,ts){
+    w._epgAbs=Math.floor(ts/900)*900;
+    w._epgOff=0;
+  }
+  /** Uhrzeit am TAG DES AKTUELLEN FENSTERS - "20:15" meint den gezeigten Tag. */
+  function _epgTagesZeit(w,std,min){
+    var d=new Date(_epgVon(w)*1000);
+    d.setHours(std,min||0,0,0);
+    return Math.floor(d.getTime()/1000);
   }
   function _epgDauer(w){return Math.max(1,Math.min(12,parseFloat(w.epgH||3)))*3600;}
   function _epgCol(v,fb){var c=v?_skinColor(v):'';return c||fb;}
@@ -181,7 +222,7 @@
     var uh=$('[data-role=epguhr]',host);
     if(uh)uh.textContent=_epgUhr(d.von)+' – '+_epgUhr(d.bis);
     var jz=$('[data-role=epgjetzt]',host);
-    if(jz)jz.classList.toggle('on',!(w._epgOff));
+    if(jz)jz.classList.toggle('on',!(w._epgOff)&&!(w._epgAbs>0));
   }
 
   /**
@@ -229,11 +270,11 @@
       +'<div class="epgovh">'+(s.picon?'<img src="'+esc(s.picon)+'" alt="">':'')
         +'<b>'+esc(s.sender)+'</b><span>'+wt+' '+dat.getDate()+'.'+(dat.getMonth()+1)+'. · '
         +_epgUhr(s.start)+' – '+_epgUhr(s.ende)+' · '+Math.round((s.ende-s.start)/60)+' min</span>'
-        +'<span class="sp"></span><button class="epgb" data-epgov="close">schließen</button></div>'
+        +'<span class="sp"></span><button class="epgb epgb-'+(w.epgBtnStil||'pill')+'" data-epgov="close" style="'+_epgKnopfStil(w)+'">schließen</button></div>'
       +'<div class="epgovt">'+esc(s.titel)+'</div>'
       +(zeile?'<div class="epgovs">'+esc(zeile)+'</div>':'')
       +(s.desc?'<div class="epgovd">'+esc(s.desc)+'</div>':'')
-      +'<div class="epgovb"><button class="epgb on" data-epgov="rec">Aufnehmen</button>'
+      +'<div class="epgovb"><button class="epgb on epgb-'+(w.epgBtnStil||'pill')+'" data-epgov="rec" style="'+_epgKnopfStil(w)+'">Aufnehmen</button>'
         +'<span class="epgovm" data-role="epgovm">'+esc(w._epgMsg||'')+'</span></div></div>';
   }
   /**
@@ -273,15 +314,23 @@
     label:'Programmführer', cat:'Medien', paletteIcon:'tv', size:[900,520],
     defaults:function(w){w.epgH=3;w.epgPxH=260;w.epgRow=54;w.epgSw=132;},
     render:function(w){
+      var fsH=parseFloat(w.epgFsH||w.epgFsN||13);
+      var hdH=parseFloat(w.epgHdH||Math.round(fsH*2.4));
       var kopf=(w.epgHead===false)?'':
-        '<div class="epghd" style="font-size:'+parseFloat(w.epgFsN||12)+'px">'
+        '<div class="epghd" style="font-size:'+fsH+'px;min-height:'+hdH+'px;padding-bottom:'+Math.max(2,Math.round(hdH*0.18))+'px">'
         +'<span class="epgtag" data-role="epgtag">Heute</span>'
         +'<span class="epguhr" data-role="epguhr">–</span>'
-        +(w.epgQ!==false?'<input class="epgq" data-role="epgq" placeholder="'+esc(w.epgQPh||'Sendung suchen …')+'" value="'+esc(w._epgQ||'')+'">':'')
+        +(w.epgQ!==false?'<input class="epgq" data-role="epgq" style="'+_epgKnopfStil(w,true)+'" placeholder="'+esc(w.epgQPh||'Sendung suchen …')+'" value="'+esc(w._epgQ||'')+'">':'')
         +'<span class="sp"></span>'
-        +'<button class="epgb" data-epg="prev" title="ein Fenster zurück">‹</button>'
-        +'<button class="epgb" data-role="epgjetzt" data-epg="now">jetzt</button>'
-        +'<button class="epgb" data-epg="next" title="ein Fenster weiter">›</button></div>';
+        // Reihenfolge wie gewuenscht: erst einen Tag weiter, dann die beiden
+        // Abendmarken, dann das Blaettern.
+        +(w.epgTag!==false?_epgKnopf(w,'tag1','+1 Tag','ein Tag weiter, gleiche Uhrzeit'):'')
+        +(w.epgAbend!==false?_epgKnopf(w,'2015','20:15','Hauptabendprogramm des gezeigten Tages'):'')
+        +(w.epgAbend!==false?_epgKnopf(w,'2200','22:00','22 Uhr des gezeigten Tages'):'')
+        +_epgKnopf(w,'prev','‹','ein Fenster zurück')
+        +_epgKnopf(w,'now','jetzt','zurück auf die Gegenwart','epgjetzt')
+        +_epgKnopf(w,'next','›','ein Fenster weiter')
+        +'</div>';
       return '<div class="epgw">'+kopf+'<div class="epgbody" data-role="epgbody"></div></div>';
     },
     mount:function(w){_epgFetch(w);},
@@ -292,7 +341,7 @@
       var d=_EPGD[w.id];
       if(!d){_epgFetch(w);return;}
       var jetzt=Math.floor(Date.now()/1000);
-      if(!w._epgOff&&(jetzt>d.bis-60||jetzt-d.jetzt>600)){_epgFetch(w);return;}
+      if(!w._epgOff&&!(w._epgAbs>0)&&(jetzt>d.bis-60||jetzt-d.jetzt>600)){_epgFetch(w);return;}
       _epgPaint(w);
     },
     // Klicks: blaettern, zurueck auf jetzt, oder eine Sendung anfassen.
@@ -300,8 +349,15 @@
       var b=e.target.closest('[data-epg]');
       if(b){
         var k=b.getAttribute('data-epg'),st=parseFloat(w.epgH||3);
-        w._epgOff=(k==='now')?0:((w._epgOff||0)+(k==='next'?st:-st));
-        if(w._epgOff<-48)w._epgOff=-48; if(w._epgOff>144)w._epgOff=144;
+        if(k==='now'){ w._epgAbs=0; w._epgOff=0; }
+        else if(k==='tag1'){ _epgAbsSetzen(w,_epgVon(w)+86400); }
+        else if(k==='2015'){ _epgAbsSetzen(w,_epgTagesZeit(w,20,15)); }
+        else if(k==='2200'){ _epgAbsSetzen(w,_epgTagesZeit(w,22,0)); }
+        else if(w._epgAbs>0){ _epgAbsSetzen(w,w._epgAbs+(k==='next'?1:-1)*st*3600); }
+        else {
+          w._epgOff=(w._epgOff||0)+(k==='next'?st:-st);
+          if(w._epgOff<-48)w._epgOff=-48; if(w._epgOff>144)w._epgOff=144;
+        }
         _epgFetch(w);
         return true;
       }
@@ -337,7 +393,17 @@
         +row('Zeilenhöhe','<input id="pEpgRow" type="number" min="26" max="140" step="2" value="'+(w.epgRow||54)+'"> px')
         +row('Sender-Spalte','<input id="pEpgSw" type="number" min="60" max="400" step="4" value="'+(w.epgSw||132)+'"> px')
         +row('Zeitraster','<select id="pEpgGrid"><option value="15"'+(String(w.epgGrid)==='15'?' selected':'')+'>15 min</option><option value="30"'+(!w.epgGrid||String(w.epgGrid)==='30'?' selected':'')+'>30 min</option><option value="60"'+(String(w.epgGrid)==='60'?' selected':'')+'>60 min</option></select>')
-        +row('Kopfzeile','<input type="checkbox" id="pEpgHead"'+(w.epgHead!==false?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">Tag, Fenster, Blättern</span>')
+        +'<div class="pgh">Kopfzeile</div>'
+        +row('Kopfzeile','<input type="checkbox" id="pEpgHead"'+(w.epgHead!==false?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">Tag, Fenster, Sprungmarken, Blättern</span>')
+        +row('Höhe / Schrift','<input id="pEpgHdH" type="number" min="18" max="90" value="'+(w.epgHdH||'')+'" placeholder="auto" style="width:66px" title="Höhe der Titelleiste in px"> '
+            +'<input id="pEpgFsH" type="number" min="8" max="30" value="'+(w.epgFsH||'')+'" placeholder="13" style="width:66px" title="Schriftgröße der Titelleiste"> px')
+        +row('Bedienelemente','<select id="pEpgBtnStil">'
+            +['pill','button','line'].map(function(v,i){return '<option value="'+v+'"'+(((w.epgBtnStil||'pill')===v)?' selected':'')+'>'+['Pille','Knopf','Unterstrich'][i]+'</option>';}).join('')
+            +'</select> <input id="pEpgBtnFs" type="number" min="8" max="30" value="'+(w.epgBtnFs||'')+'" placeholder="wie Kopf" style="width:74px" title="Schriftgröße"> '
+            +'<input id="pEpgBtnH" type="number" min="14" max="64" value="'+(w.epgBtnH||'')+'" placeholder="auto" style="width:66px" title="Höhe in px"> '
+            +'<span style="font-size:11px;color:var(--muted)">gilt auch für die Detailansicht</span>')
+        +row('Sprungmarken','<input type="checkbox" id="pEpgTag"'+(w.epgTag!==false?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">+1 Tag</span> '
+            +'<input type="checkbox" id="pEpgAbend"'+(w.epgAbend!==false?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">20:15 und 22:00</span>')
         +row('Suchfeld','<input type="checkbox" id="pEpgQ"'+(w.epgQ!==false?' checked':'')+'> <input id="pEpgQPh" value="'+esc(w.epgQPh||'')+'" placeholder="Platzhaltertext" style="width:150px">')
         +row('Senderlogo','<input type="checkbox" id="pEpgPic"'+(w.epgPic!==false?' checked':'')+'> <input id="pEpgPicH" type="number" min="10" max="60" value="'+(w.epgPicH||24)+'" style="width:56px" title="Höhe in px">')
         +row('Untertitel','<input type="checkbox" id="pEpgSub"'+(w.epgSub!==false?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">Episodentitel im Block</span>')
@@ -378,6 +444,12 @@
       num('#pEpgFsT','epgFsT',13);num('#pEpgFsZ','epgFsZ',11);num('#pEpgFsN','epgFsN',12);
       sel('#pEpgGrid','epgGrid');
       chk('#pEpgHead','epgHead',1);chk('#pEpgQ','epgQ',1);chk('#pEpgPic','epgPic',1);
+      chk('#pEpgTag','epgTag',1);chk('#pEpgAbend','epgAbend',1);
+      sel('#pEpgBtnStil','epgBtnStil');
+      ['HdH','FsH','BtnFs','BtnH'].forEach(function(k){
+        var e=$('#pEpg'+k);
+        if(e)e.oninput=function(){w['epg'+k]=parseFloat(this.value)||undefined;render();commit();};
+      });
       chk('#pEpgSub','epgSub',1);chk('#pEpgRest','epgRest',1);chk('#pEpgCat','epgCat');
       if($('#pEpgQPh'))$('#pEpgQPh').oninput=function(){w.epgQPh=this.value||undefined;render();commit();};
       ['CB','CR','CT','CZ','CN','CM','CF','CS'].forEach(function(k){sel('#pEpg'+k,'epg'+k);});

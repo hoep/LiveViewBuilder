@@ -3428,3 +3428,11 @@
   /* Boeen neben dem Windmittel - leiser als der Mittelwert, damit die Zeile
      ihre Rangfolge behaelt: erst der Wert, dann die Spitze. */
   .hwgust{opacity:.72;font-variant-numeric:tabular-nums}
+  /* Bedienelemente des Programmfuehrers in drei Formen. Groesse und Polster
+     kommen aus dem Widget (Schriftgroesse), damit sie nicht neben einer grossen
+     Schrift verloren wirken. */
+  .epgw .epgb-button{border-radius:6px}
+  .epgw .epgb-line{border:0;border-bottom:2px solid var(--line);border-radius:0;background:transparent}
+  .epgw .epgb-line:hover{border-bottom-color:var(--muted);background:transparent}
+  .epgw .epgb-line.on{border-bottom-color:var(--accent);color:var(--accent)}
+  .epgw .epghd{align-items:center}
