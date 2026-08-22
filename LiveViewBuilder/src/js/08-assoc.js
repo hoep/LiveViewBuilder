@@ -200,9 +200,30 @@
       $$('.aibtn',box).forEach(function(b){b.onclick=function(){_assocPick={wid:w.id,key:b.getAttribute('data-akey')};showTab('icons');toast('Icon für Status „'+b.getAttribute('data-akey')+'" links wählen');};});
       $$('.asev',box).forEach(function(sel){sel.onchange=function(){var k=sel.getAttribute('data-akey');if(!w.assocMap)w.assocMap={};if(!w.assocMap[k])w.assocMap[k]={};if(sel.value)w.assocMap[k].color=sel.value;else delete w.assocMap[k].color;w.assocOn=true;render();renderProps();refreshAssocLive(w);commit();};}); // Skin-Farbe (Icon+Text), passt sich dem Theme an
     });}
+  /**
+   * Icon zuweisen - oder entfernen.
+   *
+   * Ein leeres id bedeutet "kein Icon". Ohne diesen Weg liess sich ein einmal
+   * gewaehltes Icon nur noch tauschen, nie wieder loswerden: die Bibliothek
+   * kannte ausschliesslich Icons, und ein Feld ohne Icon war nach dem ersten
+   * Klick unerreichbar. Beim Entfernen wird die Eigenschaft geloescht statt auf
+   * '' gesetzt - eine leere Zeichenkette staende sonst in jedem Seiten-JSON.
+   */
   function assignIcon(id){
-    if(_iconPick){var wp=widget(_iconPick.wid);if(wp){if(_iconPick.path)setPath(wp,_iconPick.path,id);else wp[_iconPick.field]=id;render();select(wp.id);renderProps();toast('Icon: '+id);}_iconPick=null;return;}
-    if(_assocPick){var wa=widget(_assocPick.wid);if(wa){if(!wa.assocMap)wa.assocMap={};if(!wa.assocMap[_assocPick.key])wa.assocMap[_assocPick.key]={};wa.assocMap[_assocPick.key].icon=id;wa.assocOn=true;render();select(wa.id);renderProps();refreshAssocLive(wa);toast('Status-Icon: '+id);}_assocPick=null;return;}
+    var leer=(id===''||id==null);
+    if(_iconPick){var wp=widget(_iconPick.wid);if(wp){
+      if(_iconPick.path)setPath(wp,_iconPick.path,leer?undefined:id);
+      else if(leer)delete wp[_iconPick.field]; else wp[_iconPick.field]=id;
+      render();select(wp.id);renderProps();commit();toast(leer?'Icon entfernt':('Icon: '+id));}_iconPick=null;return;}
+    if(_assocPick){var wa=widget(_assocPick.wid);if(wa){if(!wa.assocMap)wa.assocMap={};if(!wa.assocMap[_assocPick.key])wa.assocMap[_assocPick.key]={};
+      if(leer)delete wa.assocMap[_assocPick.key].icon; else wa.assocMap[_assocPick.key].icon=id;
+      wa.assocOn=true;render();select(wa.id);renderProps();refreshAssocLive(wa);commit();toast(leer?'Status-Icon entfernt':('Status-Icon: '+id));}_assocPick=null;return;}
+    if(leer){ // ohne offene Auswahl: das Icon der ausgewaehlten Kachel loeschen
+      var _ids=Object.keys(sel);if(!_ids.length&&selId)_ids=[selId];
+      var _t=_ids.map(widget).filter(Boolean);
+      if(_t.length){_t.forEach(function(x){delete x.icon;});render();renderProps();commit();toast('Icon entfernt');}
+      return;
+    }
     // EINE Quelle statt einer handgepflegten Kopie: UNIV_ICON_TYPES bestimmt, wer eine
     // Icon-Eigenschaft hat; dazu die Typen, die hier historisch schon per Klick ein Icon
     // annahmen. Die frueher hier stehende Zweitliste war der Kommentar "wie die Icon-Zeile
