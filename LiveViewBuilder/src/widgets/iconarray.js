@@ -13,29 +13,10 @@
   // der NORMALZUSTAND - er faerbt ruhig und zaehlt nicht in Kopfzeile und
   // Abzeichen mit. Sonst meldete ein Raster aus 24 geschlossenen Fenstern "24".
   var _IA_LEER={v:'',icon:'',color:'',label:'',norm:false,hi:false};
-  /**
-   * Welcher Zustand gilt fuer diesen Wert?
-   *
-   * Verglichen wird gegen den ROHWERT und gegen den formatierten Text. Der Text
-   * ist oft die einzige gemeinsame Sprache: dieselben Fenster haengen hier an
-   * zwei Profilen - "FensterTile" zaehlt 0/1/2 (zu/gekippt/offen), "Dachfenster"
-   * kennt nur false/true. Eine 1 heisst dort "offen" und hier "gekippt". Ueber
-   * "Geschlossen"/"Gekippt"/"Geoeffnet" trifft dagegen beides zu.
-   */
-  function _iaZustand(w,roh,txt){
-    var st=(w.states&&w.states.length)?w.states:[];
-    var s=String(roh===true?1:(roh===false?0:(roh==null?'':roh))).trim();
-    var f=String(txt==null?'':txt).trim().toLowerCase();
-    var fall=null,i,z,zv;
-    for(i=0;i<st.length;i++){
-      z=st[i];zv=String(z.v==null?'':z.v).trim();
-      if(zv===''||zv==='*'){if(!fall)fall=z;continue;}
-      // Zahlen vergleichen sich als Zahlen ("1" trifft 1.0), alles andere als Text.
-      if(zv===s||(!isNaN(parseFloat(zv))&&!isNaN(parseFloat(s))&&parseFloat(zv)===parseFloat(s)))return z;
-      if(f&&zv.toLowerCase()===f)return z;
-    }
-    return fall||_IA_LEER;
-  }
+  // Der Vergleich Wert -> Zustand steht in js/06-live.js (stateFor): die
+  // Info-Liste stellt dieselbe Frage, und zwei Fassungen davon liefen sofort
+  // auseinander.
+  function _iaZustand(w,roh,txt){ return stateFor(w.states,roh,txt)||_IA_LEER; }
   /** Zaehlt die Felder je Zustand. Eine Auskunft, die das Raster selbst geben kann - kein Skript noetig. */
   function _iaZaehl(w){
     var st=(w.states&&w.states.length)?w.states:[],n=[],i;

@@ -185,6 +185,32 @@
     return (pre||'')+out+(suf||'');
   }
   // Baut die Format-Attribute fuer einen [data-vid]-Slot aus einer Listen-Zeile (dec/unit/scale). Leer -> kein Attribut.
+  /**
+   * Welcher Zustand aus einer Zustandstabelle gilt fuer diesen Wert?
+   *
+   * Gemeinsam genutzt von Icon-Raster und Info-Liste - die Frage ist dieselbe,
+   * und zwei Fassungen davon liefen sofort auseinander.
+   *
+   * Verglichen wird gegen den ROHWERT und gegen den angezeigten Text. Der Text
+   * ist oft die einzige gemeinsame Sprache: dieselben Fenster haengen an zwei
+   * Profilen, "FensterTile" zaehlt 0/1/2, "Dachfenster" kennt nur false/true -
+   * eine 1 heisst dort "offen" und hier "gekippt".
+   *
+   * @param liste [{v,...}] - v leer oder '*' gilt fuer alles Uebrige
+   */
+  function stateFor(liste,roh,txt){
+    var st=(liste&&liste.length)?liste:[];
+    var s=String(roh===true?1:(roh===false?0:(roh==null?'':roh))).trim();
+    var f=String(txt==null?'':txt).trim().toLowerCase();
+    var fall=null,i,z,zv;
+    for(i=0;i<st.length;i++){
+      z=st[i];zv=String(z.v==null?'':z.v).trim();
+      if(zv===''||zv==='*'){if(!fall)fall=z;continue;}
+      if(zv===s||(!isNaN(parseFloat(zv))&&!isNaN(parseFloat(s))&&parseFloat(zv)===parseFloat(s)))return z;
+      if(f&&zv.toLowerCase()===f)return z;
+    }
+    return fall;
+  }
   function _slotAttrs(o,noUnit){var s='';if(o.dec!=null&&o.dec!=='')s+=' data-dec="'+(parseInt(o.dec)||0)+'"';if(!noUnit&&o.unit)s+=' data-unit="'+esc(o.unit)+'"';if(o.scale!=null&&o.scale!==''&&+o.scale!==1)s+=' data-scale="'+(+o.scale)+'"';return s;}
   function applyVal(id,d){
     if(!id||!d)return;
