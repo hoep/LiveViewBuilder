@@ -91,6 +91,7 @@
       +'<label class="skrow2" style="flex-direction:row;align-items:center;gap:8px"><input type="checkbox" id="stGlow"'+(c.wglow?' checked':'')+'><span>Widget-Glow (leichte Akzentfarbe)</span></label>'
       +'<label class="skrow2" style="flex-direction:row;align-items:center;gap:8px"><input type="checkbox" id="stNoFS"'+(c.noAutoFS?' checked':'')+'><span>Kein Auto-Vollbild beim ersten Klick</span></label>'
       +'<label class="skrow2" style="flex-direction:row;align-items:center;gap:8px"><input type="checkbox" id="stZoom"'+(c.allowZoom?' checked':'')+'><span>Zoom am Gerät erlauben (Pinch/Doppeltipp; wirkt nach Reload)</span></label>'
+      +'<label class="skrow2" style="flex-direction:row;align-items:center;gap:8px"><input type="checkbox" id="stNoDbl"'+(c.noDblReload?' checked':'')+'><span>Doppeltipp auf die freie Fläche lädt NICHT neu</span></label>'
       +'<label class="skrow2" style="flex-direction:row;align-items:center;gap:8px"><input type="checkbox" id="stNoPoll"'+(c.noSafetyPoll?' checked':'')+'><span>Sicherheits-Poll abschalten (nur WebSocket)</span></label>'
       +'<label class="skrow2" style="flex-direction:row;align-items:center;gap:8px"><input type="checkbox" id="stChartAnim"'+(c.chartAnim?' checked':'')+'><span>Chart-Animationen (Standard aus)</span></label>'
       +'<label class="skrow2" style="flex-direction:row;align-items:center;gap:8px"><input type="checkbox" id="stGlow"'+(c.wglow?' checked':'')+'><span>Leucht-Effekt um Widgets (Glow)</span></label>'
@@ -109,6 +110,7 @@
     if($('#stGlow'))$('#stGlow').onchange=function(){bcfg().wglow=this.checked||undefined;document.body.classList.toggle('wglow',this.checked);commit();toast('Widget-Glow '+(this.checked?'an':'aus'));};
     if($('#stNoFS'))$('#stNoFS').onchange=function(){bcfg().noAutoFS=this.checked||undefined;commit();toast('Auto-Vollbild '+(this.checked?'aus':'an')+' (wirkt nach Reload)');};
     if($('#stZoom'))$('#stZoom').onchange=function(){bcfg().allowZoom=this.checked||undefined;commit();toast('Geräte-Zoom '+(this.checked?'erlaubt':'gesperrt')+' (wirkt nach Reload)');};
+    if($('#stNoDbl'))$('#stNoDbl').onchange=function(){bcfg().noDblReload=this.checked||undefined;commit();toast('Doppeltipp-Neuladen '+(this.checked?'aus':'an')+' (wirkt nach Reload)');};
     if($('#stNoPoll'))$('#stNoPoll').onchange=function(){bcfg().noSafetyPoll=this.checked||undefined;commit();toast('Sicherheits-Poll '+(this.checked?'aus':'an')+' (wirkt nach Reload)');};
     if($('#stChartAnim'))$('#stChartAnim').onchange=function(){bcfg().chartAnim=this.checked||undefined;commit();render();toast('Chart-Animationen '+(this.checked?'an':'aus'));};
     // Glow ist reine Optik: Klasse direkt umschalten (applySkin setzt sie ebenfalls).
