@@ -926,10 +926,14 @@
   .hiprog>span{display:block;height:100%;border-radius:99px;transition:width .4s ease}
   .hinfo .hibi{width:clamp(20px,52cqh,42px);height:clamp(20px,52cqh,42px);border-radius:clamp(6px,14cqh,11px);background:var(--surface-2);display:grid;place-items:center;flex:none;color:var(--accent)}
   .hinfo .hibi svg{width:64%;height:64%}
-  .hinfo .hin{flex:1;font-size:clamp(11px,30cqh,22px);min-width:0;line-height:1.15;overflow:hidden}
+  /* Der NAME darf nicht als erster verschwinden. Er ist die Zeile; Wert und Pille
+     sind ihre Auskunft, und eine Auskunft ohne Gegenstand ist wertlos. Deshalb
+     behaelt er eine Mindestbreite, und gekuerzt wird rechts. */
+  .hinfo .hin{flex:1 1 auto;font-size:clamp(11px,30cqh,22px);min-width:3.6em;line-height:1.15;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .hinfo .hin small{display:block;color:var(--faint);font-size:clamp(9px,22cqh,15px);line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .hinfo .hiv{font-family:var(--fm);font-weight:600;font-size:clamp(11px,30cqh,22px);font-variant-numeric:tabular-nums;flex:none}
-  .hinfo .hpill{font-size:clamp(9px,22cqh,14px)}
+  .hinfo .hiv{font-family:var(--fm);font-weight:600;font-size:clamp(11px,30cqh,22px);font-variant-numeric:tabular-nums;
+    flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .hinfo .hpill{font-size:clamp(9px,22cqh,14px);flex:0 1 auto;min-width:0;overflow:hidden}
   /* --- Info-Liste: Kopfzeile --------------------------------------------
      Sie sitzt UEBER der Zeilenliste und nimmt sich ihre Hoehe; die Zeilen
      teilen sich den Rest wie bisher (flex:1 1 0). Deshalb hat die Liste
