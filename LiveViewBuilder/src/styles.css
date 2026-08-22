@@ -3388,6 +3388,11 @@
               padding:3px 5px 3px 3px;color:var(--text);font:inherit;cursor:pointer;line-height:1}
   .epgw .epgb:hover{border-color:var(--muted)}
   .epgw .epgb.on{border-color:var(--accent);color:var(--accent)}
+  /* Die Rueckfrage vor dem Loeschen. Sie traegt die kritische Farbe nur an Rand
+     und Schrift - eine gefuellte Flaeche waere in dieser Zeile der lauteste
+     Punkt der ganzen Seite, und gefragt ist eine Rueckfrage, keine Warnung. */
+  .epgw .epgb.warn{border-color:var(--crit);color:var(--crit)}
+  .epgw .epgb-line.warn{border-bottom-color:var(--crit);color:var(--crit)}
   .epgw .epgq{background:var(--surface-2);border:1px solid var(--line);border-radius:11px;
               padding:4px 9px;color:var(--text);font:inherit;min-width:150px}
   .epgw .epgq::placeholder{color:var(--faint)}

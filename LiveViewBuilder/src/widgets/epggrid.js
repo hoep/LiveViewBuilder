@@ -243,7 +243,7 @@
     (kan.p||[]).forEach(function(p){if(p[0]===start)roh=p;});
     if(!roh)return;
     w._epgSelP={kid:kan.id,ref:kan.ref,sender:kan.name,picon:kan.picon,start:roh[0],ende:roh[1],
-                titel:roh[2],kurz:roh[3]||'',cat:roh[4]||'',folge:roh[5]||'',desc:'',art:roh[7]||0};
+                titel:roh[2],kurz:roh[3]||'',cat:roh[4]||'',folge:roh[5]||'',desc:'',art:roh[7]||0,rec:roh[8]||0};
     w._epgMehr=false;
     _epgOverlay(w);
     fetch('?api=epg&von='+start+'&dauer=1800&detail=1&kanaele='+encodeURIComponent(kid),{cache:'no-store'})
@@ -255,7 +255,7 @@
       }).catch(function(){});
   }
   function _epgZu(w){
-    w._epgSelP=null;w._epgMsg='';
+    w._epgSelP=null;w._epgMsg='';w._epgWeg=false;
     var el=$('.w[data-id="'+w.id+'"] [data-role=epgov]',canvas);
     if(el)el.parentNode.removeChild(el);
   }
@@ -277,7 +277,7 @@
       +(zeile?'<div class="epgovs">'+esc(zeile)+'</div>':'')
       +(s.desc?'<div class="epgovd">'+esc(s.desc)+'</div>':'')
       +mehr
-      +'<div class="epgovb"><button class="epgb on epgb-'+(w.epgBtnStil||'pill')+'" data-epgov="rec" style="'+_epgKnopfStil(w)+'">Aufnehmen</button>'
+      +'<div class="epgovb">'+_epgRecKnopf(w,s)
         +_epgSerienKnopf(w,s)
         +'<button class="epgb epgb-'+(w.epgBtnStil||'pill')+'" data-epgov="mehr" style="'+_epgKnopfStil(w)+'" title="alle Angaben aus dem Programmbestand">'
         +(w._epgMehr?'Weniger ▴':'Mehr ▾')+'</button>'
@@ -337,6 +337,28 @@
    * die der Box - das Skript holt sie sich ueber ER_SucheSendung selbst.
    */
   /**
+   * Der Aufnahme-Knopf. Er hat drei Zustaende, weil die Sendung drei hat.
+   *
+   * Ist nichts programmiert, laedt er dazu ein. Ist etwas programmiert, ist
+   * "Aufnehmen" die falsche Zusage - dann gehoert dorthin der Rueckweg. Und
+   * weil Loeschen am Receiver nicht rueckgaengig zu machen ist, fragt er
+   * einmal nach: der erste Klick stellt die Frage, erst der zweite loescht.
+   */
+  function _epgRecKnopf(w,s){
+    var st=(w.epgBtnStil||'pill');
+    if(!s.rec){
+      return '<button class="epgb on epgb-'+st+'" data-epgov="rec" style="'+_epgKnopfStil(w)+'">Aufnehmen</button>';
+    }
+    if(w._epgWeg){
+      return '<button class="epgb warn epgb-'+st+'" data-epgov="wegja" style="'+_epgKnopfStil(w)
+        +'" title="löscht den Timer am Receiver">wirklich löschen?</button>'
+        +'<button class="epgb epgb-'+st+'" data-epgov="wegnein" style="'+_epgKnopfStil(w)+'">behalten</button>';
+    }
+    return '<button class="epgb epgb-'+st+'" data-epgov="weg" style="'+_epgKnopfStil(w)
+      +'" title="'+esc(s.rec===2?'Timer steht, ist aber abgeschaltet':'wird aufgenommen')+'">'
+      +(s.rec===2?'Timer löschen':'Aufnahme löschen')+'</button>';
+  }
+  /**
    * Die Pille fuer die ganze Serie.
    *
    * Sie erscheint nur, wenn das Programm die Sendung ueberhaupt als Serie
@@ -392,12 +414,36 @@
       _EPGD[w.id]=null;_epgFetch(w);
     });
   }
+  /**
+   * Die programmierte Aufnahme wieder loeschen.
+   *
+   * Der Browser kennt den Timer nicht - er kennt nur die Sendung. Welcher Timer
+   * gemeint ist, entscheidet das Skript: ein Timer traegt Vor- und Nachlauf und
+   * hat andere Zeiten als die Sendung.
+   */
+  function _epgWeg(w){
+    var s=w._epgSelP;if(!s)return;
+    if(!w.epgSel){w._epgMsg='keine Auftragsvariable eingestellt';_epgOverlay(w);return;}
+    w._epgWeg=false;
+    _epgAuftrag(w,{was:'timerweg',ref:s.ref,start:s.start,ende:s.ende,titel:s.titel},function(m){
+      if(String(m).indexOf('gelöscht')===0)s.rec=0;
+      _epgOverlay(w);
+      _EPGD[w.id]=null;_epgFetch(w);
+    });
+  }
   function _epgAufnehmen(w){
     var s=w._epgSelP;if(!s)return;
     if(!w.epgSel){w._epgMsg='keine Auftragsvariable eingestellt';_epgOverlay(w);return;}
     if(!s.ref){w._epgMsg='dieser Sender ist keinem Sender der Box zugeordnet';_epgOverlay(w);return;}
     _epgAuftrag(w,{ref:s.ref,sender:s.sender,start:s.start,ende:s.ende,
-                   titel:s.titel,kurz:s.kurz});
+                   titel:s.titel,kurz:s.kurz},function(m){
+      if(String(m).indexOf('programmiert')===0){s.rec=1;_epgOverlay(w);}
+      // Die Aufnahmemarke steckt in den Fensterdaten, nicht im Sendungsblock:
+      // sie kommt aus der Timerliste, die das Skript gerade neu abgelegt hat.
+      // Ohne dieses Nachholen traegt der Block seine Marke erst beim naechsten
+      // Blaettern - man programmiert, schliesst das Fenster und sieht nichts.
+      _EPGD[w.id]=null;_epgFetch(w);
+    });
   }
 
   defWidget('epggrid',{
@@ -457,6 +503,9 @@
         if(k==='close'){_epgZu(w);return true;}
         if(k==='rec'){_epgAufnehmen(w);return true;}
         if(k==='serie'){_epgSerie(w);return true;}
+        if(k==='weg'){w._epgWeg=true;_epgOverlay(w);return true;}
+        if(k==='wegnein'){w._epgWeg=false;_epgOverlay(w);return true;}
+        if(k==='wegja'){_epgWeg(w);return true;}
         if(k==='mehr'){
           w._epgMehr=!w._epgMehr;
           _epgOverlay(w);
