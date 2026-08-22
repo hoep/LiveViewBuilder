@@ -36,7 +36,18 @@
   }
   function mxSrcOf(session) {
     var b = _mxBus[session];
-    return (b && b._src === 1) ? 1 : 0;
+    if (b && b._src != null) return (b._src === 1) ? 1 : 0;
+    // Noch hat niemand angesagt. Dann gilt die eingestellte Standardansicht der
+    // Matrix - sonst zeigten die Kennzahl-Kacheln beim Seitenaufbau ganze Jahre,
+    // waehrend die Matrix daneben mit "bis heute" startet, und niemand sieht den
+    // Unterschied, bis er einmal umschaltet.
+    var s = 0;
+    try {
+      ((typeof state !== 'undefined' && state.widgets) || []).forEach(function (x) {
+        if (x && x.type === 'statmatrix' && x.mxSession === session) s = _mxSrc(x);
+      });
+    } catch (e) {}
+    return s;
   }
   function _mxEmit(w) {
     var ses = w.mxSession; if (!ses) return;
@@ -230,7 +241,9 @@
     defaults:function(w){w.label='Kennzahlen je Jahr';w.mxCols=5;w.mxDefColor='accent';w.mxLbW=132;},
     render:function(w){return '<div class="panel mx" style="--mxlb:'+(w.mxLbW||132)+'px">'
       +'<div data-role="mxroot"></div></div>';},
-    mount:function(w){_mxLoad(w,function(){_mxPaint(w);_mxEmit(w);});},
+    // Die Quelle SOFORT ansagen, nicht erst wenn die Daten da sind: sie haengt
+    // nicht an den Daten, und die Kacheln daneben fragen beim Aufbau.
+    mount:function(w){_mxEmit(w);_mxLoad(w,function(){_mxPaint(w);_mxEmit(w);});},
     props:function(w){
       return '<div class="pgh">Datenquellen (Tabelle im Zeilenformat)</div>'
         +'<div style="font-size:11px;color:var(--muted);margin:-2px 2px 5px">'
