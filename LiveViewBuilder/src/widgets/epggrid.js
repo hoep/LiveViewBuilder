@@ -70,6 +70,7 @@
     }
     if(w.epgHave!==false){
       teile.push([probe(rand(_epgCol(w.epgCH,'var(--warn)'))),'schon aufgenommen']);
+      teile.push([probe(rand(_epgCol(w.epgCFl,'var(--ok)'))),'Film vorhanden']);
     }
     teile.push([probe('box-shadow:inset 0 0 0 '+rw+'px '+_epgCol(w.epgCM,'var(--crit)')+';'),'programmiert']);
     teile.push([probe('border-left:3px solid '+_epgCol(w.epgCR,'var(--accent)')+';'),'läuft gerade']);
@@ -146,6 +147,7 @@
     var cFav=_epgCol(w.epgCF,'var(--info)');    // Serie der Wunschliste
     var cSer=_epgCol(w.epgCS,'var(--line)');    // Serie, aber nicht auf der Liste
     var cHav=_epgCol(w.epgCH,'var(--warn)');    // liegt schon auf der Platte
+    var cFlm=_epgCol(w.epgCFl,'var(--ok)');     // liegt als Film in der flachen Ablage
     var jetzt=Math.floor(Date.now()/1000);
     var q=(w._epgQ||'').toLowerCase();
 
@@ -199,14 +201,19 @@
         //
         // Nur EINE Aussage je Block, in dieser Reihenfolge:
         //   schon aufgenommen  (die Sendung liegt bereits da - das erspart Arbeit)
+        //                      eigene Farbe, wenn der Fund aus einer Filmablage kommt
         //   Wunschserie        (wird aufgenommen)
         //   andere Serie       (koennte man aufnehmen)
         // Was programmiert ist, bekommt seinen eigenen Rand weiter unten und
         // ueberschreibt diesen - eine gesetzte Aufnahme ist die staerkste Aussage.
+        // 1/2 = Serienfolge auf der Platte, 3 = Film aus einer flachen Ablage.
+        // Die Aussage ist eine andere: bei der Serie stimmen Serie UND Folge
+        // ueberein, beim Film nur der Titel. Deshalb eine eigene Farbe.
         var vor=(w.epgHave!==false)?(p[9]|0):0;
         var rw=Math.max(1,parseFloat(w.epgRandW||2));
         var rc='';
-        if(vor>0)rc=cHav;
+        if(vor===3)rc=cFlm;
+        else if(vor>0)rc=cHav;
         else if(w.epgArt!==false&&art===1)rc=cFav;
         else if(w.epgArt!==false&&art===2)rc=cSer;
         var schraff=rc?('box-shadow:inset 0 0 0 '+rw+'px color-mix(in oklab,'+rc+' 70%,transparent);'):'';
@@ -306,7 +313,7 @@
     if(!roh)return;
     w._epgSelP={kid:kan.id,ref:kan.ref,sender:kan.name,picon:kan.picon,start:roh[0],ende:roh[1],
                 titel:roh[11]||roh[2],kurz:roh[12]||roh[3]||'',epgTitel:roh[2],cat:roh[4]||'',
-                folge:roh[10]||roh[5]||'',desc:'',art:roh[7]||0,rec:roh[8]||0};
+                folge:roh[10]||roh[5]||'',desc:'',art:roh[7]||0,rec:roh[8]||0,vor:roh[9]||0};
     w._epgMehr=false;
     _epgOverlay(w);
     fetch('?api=epg&von='+start+'&dauer=1800&detail=1&kanaele='+encodeURIComponent(kid),{cache:'no-store'})
@@ -338,6 +345,12 @@
         +'<span class="sp"></span><button class="epgb epgb-'+(w.epgBtnStil||'pill')+'" data-epgov="close" style="'+_epgKnopfStil(w)+'">schließen</button></div>'
       +'<div class="epgovt">'+esc(s.titel)+'</div>'
       +(zeile?'<div class="epgovs">'+esc(zeile)+'</div>':'')
+      // Liegt es schon da, ist das die erste Frage beim Aufmachen - und die
+      // Antwort haengt daran, WORAUF sie beruht: bei der Serie auf Serie und
+      // Folge, beim Film allein auf dem Titel.
+      +(s.vor?('<div class="epgovs" style="color:'+(s.vor===3?_epgCol(w.epgCFl,'var(--ok)'):_epgCol(w.epgCH,'var(--warn)'))+'">'
+          +(s.vor===3?'liegt als Film in der Aufnahmeablage'
+                     :(s.vor===2?'liegt mehrfach auf der Platte':'liegt schon auf der Platte'))+'</div>'):'')
       // Woher der Text stammt, gehoert dazu: das EPG beschreibt DIESE Ausstrahlung,
       // der Episodenkatalog die Folge. Meist dasselbe - aber nicht immer, und wer
       // eine Abweichung sucht, soll wissen, wen er fragt.
@@ -649,6 +662,8 @@
         +row('Schon aufgenommen','<input type="checkbox" id="pEpgHave"'+(w.epgHave!==false?' checked':'')+'> '
             +skinSel(w.epgCH||'','id="pEpgCH"')
             +' <span style="font-size:11px;color:var(--muted)">liegt auf der Platte · Quelle: Serienrecorder · leer = Warnfarbe</span>')
+        +row('Film vorhanden',skinSel(w.epgCFl||'','id="pEpgCFl"')
+            +' <span style="font-size:11px;color:var(--muted)">aus den flachen Filmablagen, nur über den Titel gefunden · leer = OK-Farbe</span>')
         +row('Legende','<input type="checkbox" id="pEpgLeg"'+(w.epgLeg!==false?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">neben dem Suchfeld, zeigt nur was eingeschaltet ist</span>')
         +'<div class="pgh">Schriftgrößen (px)</div>'
         +row('Titel / Zeit / Sender','<input id="pEpgFsT" type="number" min="8" max="24" value="'+(w.epgFsT||13)+'" style="width:56px"> '
@@ -672,7 +687,7 @@
       });
       chk('#pEpgSub','epgSub',1);chk('#pEpgSrT','epgSrTitel',1);chk('#pEpgRest','epgRest',1);chk('#pEpgCat','epgCat');
       if($('#pEpgQPh'))$('#pEpgQPh').oninput=function(){w.epgQPh=this.value||undefined;render();commit();};
-      ['CB','CR','CT','CZ','CN','CM','CF','CS','CH'].forEach(function(k){sel('#pEpg'+k,'epg'+k);});
+      ['CB','CR','CT','CZ','CN','CM','CF','CS','CH','CFl'].forEach(function(k){sel('#pEpg'+k,'epg'+k);});
       chk('#pEpgArt','epgArt',1);
       num('#pEpgRandW','epgRandW',2);
       chk('#pEpgHave','epgHave',1);

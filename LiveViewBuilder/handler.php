@@ -432,7 +432,8 @@ if ($api === 'epg') {
                 if ($mitRef) {
                     $p[$i][8] = $istProgrammiert((string) $k['ref'], (int) $x[0], (int) $x[1]);
                 }
-                // 1 = liegt auf der Platte, 2 = liegt mehrfach dort
+                // 1 = liegt auf der Platte, 2 = liegt mehrfach dort,
+                // 3 = liegt als Film in einer der flachen Ablagen
                 $p[$i][9] = (int) ($bestand[$id . '|' . (int) $x[0]] ?? 0);
                 // Nummer, Serie und Episodentitel des Serienrecorders. Sie
                 // schlagen die des XMLTV (Index 2, 3 und 5) - siehe oben.
