@@ -3527,6 +3527,58 @@
   .epgw .epgovh b{color:var(--text)}
   .epgw .epgovt{font-size:19px;font-weight:700;line-height:1.25;margin-bottom:3px}
   .epgw .epgovs{font-size:12.5px;color:var(--accent);margin-bottom:8px}
+  /* ---- Kamera-Messfeld (camroi) ------------------------------------------
+     Werkzeug, kein Anzeigeschild: der gewaehlte Bereich bleibt hell, alles andere
+     liegt im Schatten - so sieht man beim Ziehen, was gemessen wird, und trotzdem,
+     wo man im Bild ist. */
+  .camroi .crbar{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-bottom:8px}
+  .camroi .crsp{flex:1}
+  .camroi .crp{font-size:11.5px;padding:4px 10px;border-radius:20px;border:1px solid var(--line);
+    color:var(--muted);background:var(--surface-2);cursor:pointer;white-space:nowrap}
+  .camroi .crp.on{background:var(--accent-2);color:#fff;border-color:transparent;font-weight:600}
+  .camroi .crb{font-size:11.5px;padding:5px 11px;border-radius:9px;border:1px solid var(--line);
+    background:var(--surface-2);color:var(--text);cursor:pointer;white-space:nowrap}
+  .camroi .crb.pri{background:var(--accent-2);border-color:transparent;color:#fff;font-weight:600}
+  .camroi .crmain{display:flex;gap:14px;align-items:flex-start}
+  .camroi .crpick{position:relative;flex:1;min-width:0;border-radius:9px;overflow:hidden;
+    border:1px solid var(--line);background:#000;line-height:0;touch-action:none;cursor:crosshair}
+  .camroi .crpick>img{width:100%;display:block;opacity:.45;user-select:none;-webkit-user-drag:none}
+  .camroi .crroi{position:absolute;border:2px solid var(--accent);border-radius:2px;
+    box-shadow:0 0 0 9999px rgba(5,10,12,.55);overflow:hidden}
+  .camroi .crroi img{position:absolute;opacity:1;max-width:none}
+  .camroi .crc{position:absolute;width:11px;height:11px;background:var(--accent);border-radius:2px;cursor:pointer}
+  .camroi .crc.nw{left:-6px;top:-6px}.camroi .crc.ne{right:-6px;top:-6px}
+  .camroi .crc.sw{left:-6px;bottom:-6px}.camroi .crc.se{right:-6px;bottom:-6px}
+  .camroi .crtag{position:absolute;left:0;bottom:0;font-size:10px;font-family:var(--fm);color:var(--accent);
+    background:rgba(5,10,12,.85);padding:1px 5px;border-radius:0 4px 0 0;line-height:1.6;white-space:nowrap}
+  .camroi .crinfo{position:absolute;left:6px;top:6px;font-size:10px;font-family:var(--fm);color:var(--muted);
+    background:rgba(5,10,12,.75);padding:2px 6px;border-radius:5px;line-height:1.5}
+  .camroi .crside{width:min(330px,38%);flex:none}
+  .camroi .crm{margin-bottom:10px}
+  .camroi .crmk{display:flex;justify-content:space-between;font-size:11.5px;color:var(--muted);margin-bottom:4px}
+  .camroi .crmk b{font-family:var(--fm);font-weight:600;font-size:12px;color:var(--text)}
+  .camroi .crsk{position:relative;height:7px;border-radius:4px;opacity:.55;
+    background:linear-gradient(90deg,var(--crit),var(--warn) 45%,var(--ok))}
+  .camroi .crsk.inv{background:linear-gradient(90deg,var(--ok),var(--warn) 55%,var(--crit))}
+  .camroi .crzg{position:absolute;top:-3px;width:2px;height:13px;background:var(--text);border-radius:1px;
+    box-shadow:0 0 0 2px var(--surface)}
+  .camroi .crsl{display:flex;justify-content:space-between;font-size:9.5px;color:var(--faint);
+    font-family:var(--fm);margin-top:3px}
+  .camroi .crurteil{font-size:11.5px;line-height:1.5;border-radius:9px;padding:8px 10px;margin-top:11px}
+  .camroi .crurteil.gut{color:var(--ok);background:color-mix(in oklab,var(--ok) 12%,transparent)}
+  .camroi .crurteil.mittel{color:var(--warn);background:color-mix(in oklab,var(--warn) 12%,transparent)}
+  .camroi .crurteil.schlecht{color:var(--crit);background:color-mix(in oklab,var(--crit) 12%,transparent)}
+  .camroi .crvh{font-size:10.5px;letter-spacing:.6px;text-transform:uppercase;color:var(--faint);margin:12px 0 6px}
+  .camroi .crwarn{color:var(--warn);text-transform:none;letter-spacing:0}
+  .camroi .crvl{display:flex;flex-wrap:wrap;gap:6px}
+  .camroi .crv{display:flex;flex-direction:column;gap:1px;font-size:10.5px;padding:5px 8px;border-radius:8px;
+    border:1px solid var(--line);background:var(--surface-2);color:var(--muted);cursor:pointer;text-align:left}
+  .camroi .crv b{font-family:var(--fm);font-size:12.5px;color:var(--accent)}
+  .camroi .crv .crvm{font-family:var(--fm);color:var(--faint)}
+  .camroi .crmsg{font-size:11.5px;color:var(--accent);margin-top:10px;min-height:1.2em}
+  .camroi .crhint{font-size:10.5px;color:var(--faint);line-height:1.5;margin-top:6px}
+  @media (max-width:720px){ .camroi .crmain{flex-direction:column} .camroi .crside{width:100%} }
+
   .epgw .epgovd{font-size:12.5px;color:var(--muted);line-height:1.5;max-height:150px;overflow:auto}
   /* Herkunftsvermerk: leiser als der Text selbst - er ist eine Fussnote, keine Aussage. */
   .epgw .epgovq{font-size:11px;opacity:.6;font-style:italic;white-space:nowrap}
