@@ -103,7 +103,10 @@
     if(g&&!isNaN(soll))g.style.bottom=Math.max(0,Math.min(100,(soll-sc.min)/((sc.max-sc.min)||1)*100))+'%';
     var ds=$('[data-role=devsub]',el);
     if(ds){var ist=_thkNum(w.varId),dv=(!isNaN(ist)&&!isNaN(soll))?(ist-soll):NaN;
-      ds.textContent=isNaN(dv)?'Soll':('Soll · '+(dv>=0?'+':'−')+Math.abs(dv).toFixed(1).replace('.',',')+' K');}
+      // Gradzeichen statt Kelvin: physikalisch waere K fuer eine Differenz richtig, gelesen
+      // wird die Zeile aber neben zwei Temperaturen in Grad - und dort liest sich ein K wie
+      // eine zweite Einheit.
+      ds.textContent=isNaN(dv)?'Soll':('Soll · '+(dv>=0?'+':'−')+Math.abs(dv).toFixed(1).replace('.',',')+' °');}
   }
   function _thkFmt(w,v){var sp=_thkSp(w);return v.toFixed(_thkDec(sp.step)).replace('.',',');}
   // EIN Anwender fuer alle Slots - von mount (aus dem Zwischenspeicher) UND live (Aenderung)
@@ -231,7 +234,7 @@
       +row('Soll max','<input id="pThSpMax" type="number" step="0.5" value="'+sp.max+'">')
       +_thkHint('Nicht aus dem Profil ~Temperature übernehmen - dort steht -30 bis 70 in 5er-Schritten.')
       +row('Sollwert ziehbar','<label style="font-size:12px"><input type="checkbox" id="pThDrag"'+(w.thDrag!==false?' checked':'')+'> Griff am Thermometer</label>')
-      +row('Abweichung','<label style="font-size:12px"><input type="checkbox" id="pThDevOn"'+(w.thDevOn!==false?' checked':'')+'> „Soll · −0,6 K" anzeigen</label>')
+      +row('Abweichung','<label style="font-size:12px"><input type="checkbox" id="pThDevOn"'+(w.thDevOn!==false?' checked':'')+'> „Soll · −0,6 °" anzeigen</label>')
       +row('Einheit','<input id="pThUnit" value="'+esc(_thkUnit(w))+'" style="width:60px">')
       +row('Kleintext','<input id="pThCapTxt" value="'+esc(w.thCapTxt==null?'ISTWERT':w.thCapTxt)+'" placeholder="leer = keine Zeile">')
       +'<div class="pgh">Heizprofile</div>'
