@@ -41,7 +41,13 @@
     if(w.popupTo){openPopup(w.popupTo,_aliasMap(w));return;} // A1/M1: Popup öffnen (mit Alias-Remapping)
     if(w.scriptId){fetch('?api=runscript&id='+w.scriptId+'&key='+encodeURIComponent(TOKEN),{cache:'no-store'});toast('Skript gestartet');return;} // O3
     if(w.openMenu){var _rl=document.getElementById('runlist');if(_rl)_rl.classList.toggle('open');return;} // B4
-    if(w.regSlot&&w.regView){setRegion(w.regSlot,w.regView);return;} // B2: Region-Inhalt tauschen
+    // B2: Region-Inhalt tauschen. Steht daneben ein Seitenziel, ist es ein Sprung
+    // MIT vorgewaehltem Reiter - so kommt man von der Hauptseite direkt auf
+    // "Heizung / Obergeschoss" statt auf die Heizungsseite mit ihrem Standard.
+    if(w.regSlot&&w.regView){
+      if(w.navTo&&store.views[w.navTo]){setRegion(w.regSlot,w.regView,true);navGo(w.navTo);return;}
+      setRegion(w.regSlot,w.regView);return;
+    }
     if(w.navBack){navBack();return;} // Seite zurück (jedes Widget)
     if(w.navTo&&store.views[w.navTo]){navGo(w.navTo);return;} // A1: Seite öffnen (jetzt jedes Widget)
     if(w.type==='switch'&&w.varId){var sw=$('.sw',el),on=!sw.classList.contains('on');sw.classList.toggle('on',on);setVar(w.varId,on?1:0);return;}
