@@ -223,13 +223,18 @@
         // Ein Block von 20 Bildpunkten fasst keinen Text - dort steht sonst ein
         // angeschnittener Buchstabe, der wie ein Fehler aussieht. Der Titel bleibt
         // als Hinweistext am Zeiger erreichbar.
+        // Nummer: die des Serienrecorders schlaegt die des XMLTV. Fuer die
+        // Krimireihen ist das der ganze Unterschied - das XMLTV traegt dort nur
+        // eine laufende Nummer ("E1245"), der Katalog die Staffel, unter der die
+        // Folge auch im Aufnahmebestand liegt ("S2024E21").
+        var nr=(p[10]||p[5]||'');
         var eng=(bw<30),halb=(bw<110);
         bl+='<div class="epgp'+(tref?' tref':'')+'" data-epgp="'+esc(k.id)+'|'+p[0]+'" title="'+esc(p[2]+(p[3]?' · '+p[3]:'')+' · '+_epgUhr(p[0])+'–'+_epgUhr(p[1]))+'"'
           +' style="left:'+x+'px;width:'+bw+'px;background:'+hg+';'+schraff+kante+'border-radius:'+rad+'px'+(eng?';padding:5px 3px':'')+'">'
           +(eng?(rec?('<div class="epgrec" style="background:'+(rec===1?cRec:cZeit)+'"></div>'):'')
                :('<div class="t" style="font-size:'+fsT+'px;color:'+cTit+'">'
                   +(rec?('<span class="epgrec" style="background:'+(rec===1?cRec:cZeit)+'" title="'+(rec===1?'wird aufgenommen':'Timer abgeschaltet')+'"></span>'):'')
-                  +esc(p[2])+(p[5]?' <span style="opacity:.6">'+esc(p[5])+'</span>':'')+'</div>'))
+                  +esc(p[2])+(nr?' <span style="opacity:.6">'+esc(nr)+'</span>':'')+'</div>'))
           +((eng||halb)?'':('<div class="z" style="font-size:'+fsZ+'px;color:'+cZeit+'">'+esc(z)+'</div>'))+'</div>';
       });
       if(!bl)bl='<div class="epgp" style="left:0;width:'+(breite-3)+'px;background:'+cBlk+';border-radius:'+rad+'px">'
@@ -289,7 +294,7 @@
     (kan.p||[]).forEach(function(p){if(p[0]===start)roh=p;});
     if(!roh)return;
     w._epgSelP={kid:kan.id,ref:kan.ref,sender:kan.name,picon:kan.picon,start:roh[0],ende:roh[1],
-                titel:roh[2],kurz:roh[3]||'',cat:roh[4]||'',folge:roh[5]||'',desc:'',art:roh[7]||0,rec:roh[8]||0};
+                titel:roh[2],kurz:roh[3]||'',cat:roh[4]||'',folge:roh[10]||roh[5]||'',desc:'',art:roh[7]||0,rec:roh[8]||0};
     w._epgMehr=false;
     _epgOverlay(w);
     fetch('?api=epg&von='+start+'&dauer=1800&detail=1&kanaele='+encodeURIComponent(kid),{cache:'no-store'})
