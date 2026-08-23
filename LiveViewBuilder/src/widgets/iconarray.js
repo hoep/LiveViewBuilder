@@ -80,8 +80,11 @@
         var z=_iaZustand(w,d?d.v:(r.probe!=null?r.probe:null),d?d.f:null);
         var c=_iaFarbe(z.color,'var(--muted)');
         var hi=!!z.hi;
-        return '<div class="iac'+(hi?' hi':'')+(r.to?' tap':'')+'" style="--c:'+c+'"'
-          +(r.to?(' data-iac="'+i+'"'):'')
+        // JEDE Zelle traegt ihre Nummer, nicht nur die mit Ziel: auf einem Tablett
+        // gibt es keinen Zeiger, der den Namen im Titel zeigen koennte. Ein Tipp
+        // schreibt ihn deshalb in die Kopfzeile.
+        return '<div class="iac'+(hi?' hi':'')+((r.to||w.iaTap!==false)?' tap':'')+(w._iaSel===i?' sel':'')+'" style="--c:'+c+'"'
+          +' data-iac="'+i+'"'
           +' title="'+esc((r.label||('Feld '+(i+1)))+(z.label?(' · '+z.label):''))+'">'
           +iconSVG(z.icon||r.icon||'grid')
           +(w.iaLabels?('<b>'+esc(r.label||'')+'</b>'):'')+'</div>';
@@ -91,7 +94,17 @@
       var kopf='';
       if(w.iaHead){
         var hc=_iaFarbe(w.iahColor,'var(--accent)');
-        var sub=(w.iahSub!=null&&w.iahSub!=='')?esc(w.iahSub):esc(_iaText(w));
+        // Angetipptes Feld schlaegt den Sammeltext: wer wissen will, WELCHES Fenster
+        // offen steht, bekommt genau das - und beim naechsten Tipp wieder die Summe.
+        var gew=(w._iaSel!=null)?(w.items||[])[w._iaSel]:null;
+        var sub;
+        if(gew&&!gew.luecke){
+          var dg=(typeof _lastVals!=='undefined')?_lastVals[gew.vid]:null;
+          var zg=_iaZustand(w,dg?dg.v:(gew.probe!=null?gew.probe:null),dg?dg.f:null);
+          sub='<b class="iasel">'+esc(gew.label||('Feld '+(w._iaSel+1)))+'</b>'+(zg.label?(' · '+esc(zg.label)):'');
+        } else {
+          sub=(w.iahSub!=null&&w.iahSub!=='')?esc(w.iahSub):esc(_iaText(w));
+        }
         var off=_iaOffen(w),min=(w.iahBadgeMin!=null&&w.iahBadgeMin!=='')?parseFloat(w.iahBadgeMin):1;
         var zahl=(w.iahBadge!==false&&off>=min)?('<span class="ilbadge"'+(w.iahBadgeCol?(' style="background:'+_iaFarbe(w.iahBadgeCol,'')+'"'):'')+'>'+off+'</span>'):'';
         kopf='<div class="ilhead'+(w.iahTo?' tap':'')+'" data-iahead="1" style="--c:'+hc+'">'
@@ -118,7 +131,18 @@
     live:function(w,el){ if(el)el.innerHTML=WIDGETS.iconarray.render(w); },
     click:function(w,el,e){
       var c=e.target.closest('[data-iac]');
-      if(c){var r=(w.items||[])[parseInt(c.getAttribute('data-iac'))||0];if(r&&r.to){openPopup(r.to);return true;}return true;}
+      if(c){
+        var ix=parseInt(c.getAttribute('data-iac'))||0,r=(w.items||[])[ix];
+        if(r&&r.to){openPopup(r.to);return true;}
+        // Kein Ziel: den Namen zeigen. Nochmal auf dasselbe Feld raeumt ihn weg,
+        // sonst bliebe die Kopfzeile bei einem Fenster stehen, das laengst wieder
+        // zu ist.
+        if(w.iaTap!==false&&r&&!r.luecke){
+          w._iaSel=(w._iaSel===ix)?null:ix;
+          if(el)el.innerHTML=WIDGETS.iconarray.render(w);
+        }
+        return true;
+      }
       if(e.target.closest('[data-iahead]')&&w.iahTo){openPopup(w.iahTo);return true;}
       return false;
     },

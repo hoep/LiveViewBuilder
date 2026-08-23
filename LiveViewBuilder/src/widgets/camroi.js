@@ -23,6 +23,31 @@
   }
   function _crNum(x,n){ var v=parseFloat(x); return isNaN(v)?'–':v.toFixed(n==null?0:n).replace('.',','); }
 
+  /**
+   * Nur die rechte Spalte neu zeichnen - NICHT die ganze Kachel.
+   *
+   * Ein innerHTML auf dem ganzen Widget wirft auch den Knopf weg, auf dem der
+   * Finger gerade liegt. Zwischen Beruehren und Klick liegen ein paar
+   * Millisekunden, und wenn in denen eine Antwort eintrifft, faellt der Klick ins
+   * Leere: man tippt zweimal. Deshalb bekommt die Messung ihre eigene Ecke.
+   */
+  function _crSeite(w){
+    var el=_crEl(w); if(!el)return;
+    var side=el.querySelector('.crside');
+    if(!side){_crPaint(w);return;}
+    var s=_crState(w);
+    side.innerHTML=_crPanel(w)+_crVorschlagHtml(w)
+      +'<div class="crmsg">'+esc(s.busy||s.msg||'')+'</div>'
+      +'<div class="crhint">Übernehmen verwirft den gelernten Klarwert dieser Kamera – er gehört zum alten Feld.</div>';
+    _crWireSeite(w,el);
+  }
+  /** Nur die Meldezeile - fuer "messen …" und Ähnliches. */
+  function _crMeldung(w){
+    var el=_crEl(w); if(!el)return;
+    var m=el.querySelector('.crmsg'); var s=_crState(w);
+    if(m)m.textContent=(s.busy||s.msg||''); else _crSeite(w);
+  }
+
   /** Kamera, die gerade bearbeitet wird. */
   function _crCam(s){ return (s.cams&&s.cams[s.sel])||null; }
 
@@ -47,42 +72,42 @@
   function _crMessen(w){
     var s=_crState(w),c=_crCam(s); if(!c||!s.roi)return;
     var r=s.roi;
-    s.busy='messen …'; _crPaint(w);
+    s.busy='messen …'; _crMeldung(w);
     fetch('?api=wxroi&was=pruefe&mid='+c.id+'&x='+r.x+'&y='+r.y+'&w='+r.w+'&h='+r.h,{cache:'no-store'})
       .then(function(x){return x.json();}).then(function(j){
         s.busy=''; s.mess=(j&&j.ok)?j.messung:null; if(j&&j.schwellen)s.schwellen=j.schwellen;
-        if(j&&!j.ok)s.msg=j.fehler||''; _crPaint(w);
-      }).catch(function(){ s.busy=''; _crPaint(w); });
+        if(j&&!j.ok)s.msg=j.fehler||''; _crSeite(w);
+      }).catch(function(){ s.busy=''; _crSeite(w); });
   }
 
   function _crVorschlag(w){
     var s=_crState(w),c=_crCam(s); if(!c)return;
-    s.busy='Felder durchmessen …'; s.vor=null; _crPaint(w);
+    s.busy='Felder durchmessen …'; s.vor=null; _crSeite(w);
     fetch('?api=wxroi&was=vorschlag&mid='+c.id,{cache:'no-store'})
       .then(function(x){return x.json();}).then(function(j){
         s.busy='';
-        if(!j||!j.ok){ s.msg='Vorschlag fehlgeschlagen'; _crPaint(w); return; }
-        s.vor=j; _crPaint(w);
-      }).catch(function(){ s.busy=''; s.msg='Vorschlag fehlgeschlagen'; _crPaint(w); });
+        if(!j||!j.ok){ s.msg='Vorschlag fehlgeschlagen'; _crSeite(w); return; }
+        s.vor=j; _crSeite(w);
+      }).catch(function(){ s.busy=''; s.msg='Vorschlag fehlgeschlagen'; _crSeite(w); });
   }
 
   function _crSetzen(w){
     var s=_crState(w),c=_crCam(s); if(!c||!s.roi)return;
     var r=s.roi;
-    s.busy='übernehmen …'; _crPaint(w);
+    s.busy='übernehmen …'; _crMeldung(w);
     fetch('?api=wxroi&was=setze&mid='+c.id+'&x='+r.x+'&y='+r.y+'&w='+r.w+'&h='+r.h
           +'&key='+encodeURIComponent(TOKEN),{cache:'no-store'})
       .then(function(x){return x.json();}).then(function(j){
         s.busy=''; s.msg=(j&&j.ok)?(j.hinweis||'übernommen'):((j&&j.fehler)||'nicht übernommen');
         if(j&&j.ok&&s.cams&&s.cams[s.sel]){var cc=s.cams[s.sel];cc.x=r.x;cc.y=r.y;cc.w=r.w;cc.h=r.h;cc.klarwertTag=0;cc.klarwertNacht=0;}
-        _crPaint(w);
-      }).catch(function(){ s.busy=''; s.msg='nicht übernommen'; _crPaint(w); });
+        _crSeite(w);
+      }).catch(function(){ s.busy=''; s.msg='nicht übernommen'; _crSeite(w); });
   }
 
   /** Kamera aufnehmen, stilllegen, herausnehmen - danach die Liste neu holen. */
   function _crKamera(w,was,mid,an){
     var s=_crState(w);
-    s.busy='…'; _crPaint(w);
+    s.busy='…'; _crMeldung(w);
     fetch('?api=wxroi&was='+was+'&mid='+mid+(an!=null?('&an='+(an?1:0)):'')
           +'&key='+encodeURIComponent(TOKEN),{cache:'no-store'})
       .then(function(x){return x.json();}).then(function(j){
@@ -91,7 +116,7 @@
         // Nach dem Aufnehmen gleich die neue Kamera zeigen - sonst sucht man sie.
         s.zeigeNeu=(was==='binden')?mid:null;
         _crLade(w);
-      }).catch(function(){ s.busy=''; s.msg='ging nicht'; _crPaint(w); });
+      }).catch(function(){ s.busy=''; s.msg='ging nicht'; _crMeldung(w); });
   }
 
   /** Auswahlliste der Bildquellen im Baum. */
@@ -212,11 +237,31 @@
       else if(a==='loesen'){ var k2=_crCam(s); if(k2)_crKamera(w,'loesen',k2.id); }};});
     el.querySelectorAll('[data-crbind]').forEach(function(b){b.onclick=function(){
       _crKamera(w,'binden',parseInt(b.getAttribute('data-crbind')));};});
-    el.querySelectorAll('[data-crvor]').forEach(function(b){b.onclick=function(){
-      var v=(s.vor&&s.vor.vorschlaege)||[],i=parseInt(b.getAttribute('data-crvor'));
-      if(!v[i])return; s.roi={x:v[i].x,y:v[i].y,w:v[i].w,h:v[i].h}; s.mess=v[i].messung; _crPaint(w);};});
+    _crWireSeite(w,el);
 
     var pick=el.querySelector('[data-role=crpick]'); if(!pick)return;
+    _crRahmen(w,pick,el);
+  }
+  /** Verdrahtung der rechten Spalte - sie wird fuer sich neu gezeichnet. */
+  function _crWireSeite(w,el){
+    var s=_crState(w);
+    el.querySelectorAll('[data-crvor]').forEach(function(b){b.onclick=function(){
+      var v=(s.vor&&s.vor.vorschlaege)||[],i=parseInt(b.getAttribute('data-crvor'));
+      if(!v[i])return; s.roi={x:v[i].x,y:v[i].y,w:v[i].w,h:v[i].h}; s.mess=v[i].messung;
+      _crRechteck(w); _crSeite(w);};});
+  }
+  /** Das Rechteck im Bild an den Zustand angleichen - ohne die Kachel neu zu zeichnen. */
+  function _crRechteck(w){
+    var el=_crEl(w); if(!el)return;
+    var s=_crState(w),r=s.roi; if(!r)return;
+    var box=el.querySelector('.crroi'); if(!box)return;
+    box.style.left=r.x+'%';box.style.top=r.y+'%';box.style.width=r.w+'%';box.style.height=r.h+'%';
+    var im=box.querySelector('img');
+    if(im){im.style.left=(-r.x/r.w*100)+'%';im.style.top=(-r.y/r.h*100)+'%';im.style.width=(100/r.w*100)+'%';im.style.height=(100/r.h*100)+'%';}
+    var tg=box.querySelector('.crtag'); if(tg)tg.textContent=r.x+' · '+r.y+' · '+r.w+' × '+r.h;
+  }
+  function _crRahmen(w,pick,el){
+    var s=_crState(w);
     var ziehen=null;
     function anteil(ev){
       var b=pick.getBoundingClientRect();
@@ -230,11 +275,7 @@
       s.roi={x:Math.round(x),y:Math.round(y),w:Math.round(Math.max(5,bw)),h:Math.round(Math.max(5,bh))};
       if(s.roi.x+s.roi.w>100)s.roi.w=100-s.roi.x;
       if(s.roi.y+s.roi.h>100)s.roi.h=100-s.roi.y;
-      var el2=el.querySelector('.crroi');
-      if(el2){var r=s.roi;el2.style.left=r.x+'%';el2.style.top=r.y+'%';el2.style.width=r.w+'%';el2.style.height=r.h+'%';
-        var im=el2.querySelector('img');
-        if(im){im.style.left=(-r.x/r.w*100)+'%';im.style.top=(-r.y/r.h*100)+'%';im.style.width=(100/r.w*100)+'%';im.style.height=(100/r.h*100)+'%';}
-        var tg=el2.querySelector('.crtag'); if(tg)tg.textContent=r.x+' · '+r.y+' · '+r.w+' × '+r.h;}
+      _crRechteck(w);
     }
     pick.addEventListener('pointerdown',function(ev){
       if(typeof mode!=='undefined'&&mode==='edit')return;   // im Bearbeiten gehoert der Zeiger dem Builder

@@ -2764,7 +2764,21 @@ $html = str_replace('__LV_WSURL__', (string) ($WSURL ?? ''), $html);       // vo
 $html = str_replace('__LV_RUN__', ($LV_MODE === 'run' ? '1' : ''), $html); // /hook/run/<site> -> Laufzeit
 $html = str_replace('__LV_DOKU__', ($LV_MODE === 'doku' ? '1' : ''), $html); // /hook/doku -> Doku/Demo
 header('Content-Type: text/html; charset=utf-8');
-header('Cache-Control: no-store, no-cache, must-revalidate'); // Builder nie cachen -> nach Rebuild immer frisch
+// Nicht "no-store", sondern "immer nachfragen": der Browser darf die Seite behalten,
+// muss aber jedes Mal fragen, ob sie noch stimmt. Das ETag ist der Inhalt selbst -
+// nach einem Rebuild aendert es sich, und dann kommt die neue Seite. Solange nichts
+// gebaut wurde, kostet ein Aufruf 304 statt einer halben Megabyte.
+//
+// Der Token steckt in der Seite, deshalb geht das ETag ueber den FERTIGEN Text und
+// die Antwort ist "private": ein Zwischenspeicher unterwegs darf sie nicht anderen
+// zeigen.
+$etag = '"' . md5($html) . '"';
+header('Cache-Control: private, no-cache, must-revalidate');
+header('ETag: ' . $etag);
+if (trim((string) ($_SERVER['HTTP_IF_NONE_MATCH'] ?? '')) === $etag) {
+    http_response_code(304);
+    return;
+}
 // Die Symcon-Hook-Schicht kappt die Ausgabe bei 1 MB. builder.html ist inzwischen groesser;
 // daher gzip-komprimiert ausliefern (~250 KB). Bei >1 MB ist gzip Pflicht (best effort fuer
 // Clients ohne Accept-Encoding, die praktisch alle gzip verstehen), sonst nur wenn angeboten.
