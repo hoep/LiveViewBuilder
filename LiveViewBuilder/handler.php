@@ -399,13 +399,18 @@ if ($api === 'epg') {
     // Was schon auf der Platte liegt. Die Liste fuehrt der Serienrecorder; sie
     // aendert sich mit jedem Lauf und gehoert deshalb NICHT ins Zwischenlager,
     // sondern wird hier dazugelegt - wie die Timer der Box.
+    // Dazu die ermittelte Staffel/Folge: das XMLTV liefert sie bei den
+    // Krimireihen nicht (Tatort traegt dort nur eine laufende Nummer), der
+    // Serienrecorder schlaegt sie im Episodenkatalog nach.
     $bestand = [];
+    $nummern = [];
     $srInst = IPS_GetInstanceListByModuleID('{F7F9F89F-82ED-4478-970F-C3C749912A0A}')[0] ?? 0;
     if ($srInst) {
         $mv = @IPS_GetObjectIDByIdent('Marken', $srInst);
         if ($mv) {
             $mj = json_decode((string) @GetValueString($mv), true);
             $bestand = is_array($mj['marken'] ?? null) ? $mj['marken'] : [];
+            $nummern = is_array($mj['nummern'] ?? null) ? $mj['nummern'] : [];
         }
     }
 
@@ -417,7 +422,7 @@ if ($api === 'epg') {
         $p = $daten[$id] ?? [];
         usort($p, static fn(array $a, array $b): int => $a[0] <=> $b[0]);
         $mitRef = (($k['ref'] ?? '') !== '' && $timer !== []);
-        if ($mitRef || $bestand !== []) {
+        if ($mitRef || $bestand !== [] || $nummern !== []) {
             foreach ($p as $i => $x) {
                 if (!isset($p[$i][6])) { $p[$i][6] = ''; }   // kein Loch im Index
                 if (!isset($p[$i][7])) { $p[$i][7] = 0; }   // Art der Sendung
@@ -427,6 +432,8 @@ if ($api === 'epg') {
                 }
                 // 1 = liegt auf der Platte, 2 = liegt mehrfach dort
                 $p[$i][9] = (int) ($bestand[$id . '|' . (int) $x[0]] ?? 0);
+                // Nummer aus dem Katalog - schlaegt die des XMLTV (Index 5)
+                $p[$i][10] = (string) ($nummern[$id . '|' . (int) $x[0]] ?? '');
             }
         }
         $out[] = ['id' => $id, 'name' => (string) ($k['name'] ?? $id), 'picon' => (string) ($k['picon'] ?? ''),
@@ -435,7 +442,7 @@ if ($api === 'epg') {
     echo json_encode(['ok' => true, 'von' => $von, 'bis' => $bis, 'jetzt' => time(),
                       'stand' => (int) ($stand['stand'] ?? 0), 'quelle' => 'XMLTV',
                       'timerstand' => (int) ($tj['stand'] ?? 0), 'timer' => count($tj['timer'] ?? []),
-                      'bestand' => count($bestand),
+                      'bestand' => count($bestand), 'nummern' => count($nummern),
                       'kanaele' => $out], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     return;
 }
