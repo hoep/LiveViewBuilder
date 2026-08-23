@@ -93,11 +93,10 @@
           +'<option value="spline"'+((w.spStyle||'spline')==='spline'?' selected':'')+'>Spline (glatt)</option>'
           +'<option value="line"'+(w.spStyle==='line'?' selected':'')+'>Linie (eckig)</option>'
           +'<option value="bar"'+(w.spStyle==='bar'?' selected':'')+'>Balken</option></select>')
-        +row('Linienfarbe',selOf('pSpLine',w.lineColor,['accent','ok','warn','crit','info']))
         +row('Linienstärke','<input id="pSpLw" type="number" step="0.2" min="0.5" max="8" style="width:64px" value="'+(w.spLw!=null?w.spLw:1.8)+'"> <span style="font-size:11px;color:var(--muted)">px · bei Balken ohne Wirkung</span>')
         +row('Mittelwert','<input type="checkbox" id="pSpAvg"'+(w.spAvg?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">gestrichelte Linie je Reihe, wie in der Wetterstatistik</span>')
         +row('Füllung','<input type="checkbox" id="pSpFill"'+((w.fill!==false)?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">Fläche unter der Linie · nur bei EINER Reihe</span>')
-        +'<div class="hint" style="font-size:11px;margin-top:4px">Mehrere Reihen: unter <b>Datenreihen</b> anlegen wie bei jedem Diagramm — die Sparkline zeichnet sie alle. Die erste nimmt die Linienfarbe von oben, die weiteren ihre eigene.</div>';
+        +'<div class="hint" style="font-size:11px;margin-top:4px">Farbe je Reihe unter <b>Datenreihen</b> — dort auch weitere Reihen anlegen, die Sparkline zeichnet sie alle.</div>';
       if(V.lineOpt)h+=row('Glätten (Spline)','<input type="checkbox" id="pSmooth"'+(w.smooth!==false?' checked':'')+'>')+row('Punkte','<input type="checkbox" id="pSym"'+(w.symbols?' checked':'')+'> <input id="pSymS" type="number" style="width:52px" value="'+(w.symSize||5)+'" title="Größe">')+row('Linienbreite','<input id="pLw" type="number" step="0.5" value="'+(w.lw||2)+'">')+row('Flächen-Verlauf','<input type="checkbox" id="pGrad"'+(w.grad?' checked':'')+'>');
       if(V.symOpt)h+=row('Punkte-Größe','<input id="pSymS" type="number" style="width:52px" value="'+(w.symSize||7)+'">');
       if(V.wf)h+=row('Y-Einheit','<input id="pWfUnit" value="'+esc(_wfUnit(w))+'" style="width:80px" placeholder="z. B. €">')
@@ -179,7 +178,6 @@
       if($('#pSpStyle'))$('#pSpStyle').onchange=function(){w.spStyle=(this.value==='spline')?undefined:this.value;reChart();};
       if($('#pSpLw'))$('#pSpLw').oninput=function(){var v=parseFloat(this.value);w.spLw=(isNaN(v)||v===1.8)?undefined:v;reChart();};
       if($('#pSpAvg'))$('#pSpAvg').onchange=function(){w.spAvg=this.checked||undefined;reChart();};
-      if($('#pSpLine'))$('#pSpLine').onchange=function(){w.lineColor=this.value||undefined;reChart();};
       if($('#pSpFill'))$('#pSpFill').onchange=function(){w.fill=this.checked?undefined:false;reChart();};
       // --- Wasserfall ---
       if($('#pWfUnit'))$('#pWfUnit').oninput=function(){w.wfUnit=this.value;reChart();};
