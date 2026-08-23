@@ -670,13 +670,16 @@
         itemStyle:{borderColor:cssv('--bg'),borderWidth:2,borderRadius:((donut||rose)?3:0)},minAngle:3}]},true);}
   function chartSeries(w){return (_hist[w.id]&&_hist[w.id].series)?_hist[w.id].series:[];}
   // Sparkline (ctype 'spark') — kompakte Verlaufskurve: keine Achsen, kein Titel, keine Legende.
-  // Linienfarbe: w.lineColor (feste Skin-Liste); Zweitquelle ist die Serien-Farbe der Reihe.
+  // Farbe: JEDE Reihe traegt ihre eigene, aus dem Serien-Editor; ohne Angabe die
+  //   Diagrammfarbe nach Reihenfolge - dieselbe Quelle wie im grossen Diagramm.
+  //   Es gab frueher zusaetzlich eine Linienfarbe FUER DIE GANZE KACHEL (w.lineColor),
+  //   und die stach die Farbe der ersten Reihe. Man stellte im Serien-Editor eine
+  //   Farbe ein und es passierte nichts. Das Feld ist deshalb weg; ein bestehender
+  //   Wert wirkt nur noch dort, wo die erste Reihe selbst keine Farbe traegt.
   // Fuellung: w.fill!==false (undefined = an), aber nur bei EINER Reihe - siehe unten.
   // Linienbreite: w.spLw (Vorgabe 1.8). Mittelwert: w.spAvg.
   function setSpark(w){
     var ec=_ec[w.id];if(!ec)return;
-    var _cs=(w.series&&w.series[0]&&w.series[0].color)||'';                 // Merge-Fallback: Farbe aus dem Serien-Editor
-    var _lc=_skinColor(w.lineColor||_cs||''),_m=_lc&&_lc.match(/^var\((--[\w-]+)\)$/),acc=_m?cssv(_m[1]):(_lc||cssv('--accent'));
     // ALLE Reihen zeichnen, nicht nur die erste. Zwei Verlaeufe nebeneinander sind
     // der halbe Zweck einer Sparkline: heute gegen gestern, innen gegen aussen.
     var reihen=chartSeries(w);
@@ -688,10 +691,11 @@
     var fuellen=(w.fill!==false&&reihen.length===1);
     var ser=reihen.map(function(s0,i){
       var data=s0.data||[];
-      // Farbe: fuer die erste Reihe die Linienfarbe der Kachel (so war es immer),
-      // fuer die weiteren die Farbe aus dem Serien-Editor bzw. die Reihenfolge der
-      // Diagrammfarben - dieselbe Quelle wie im grossen Diagramm.
-      var farbe=(i===0)?acc:_chColor((w.series&&w.series[i]&&w.series[i].color)||s0.color||'',i);
+      // Die Reihe entscheidet ueber ihre Farbe, nicht die Kachel. w.lineColor ist
+      // nur noch der Rueckweg fuer alte Kacheln, in denen die erste Reihe keine
+      // eigene Farbe traegt.
+      var eigen=(w.series&&w.series[i]&&w.series[i].color)||s0.color||'';
+      var farbe=_chColor(eigen||((i===0&&w.lineColor)?w.lineColor:''),i);
       if(_st==='bar'){
         // Schmale Balken mit Mindestbreite, damit sie auf einer 140 px breiten Kachel nicht
         // zu Haarlinien werden; keine Flaeche, kein Endpunkt-Marker.
