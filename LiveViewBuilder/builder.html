@@ -1350,8 +1350,7 @@ border:0;background:transparent;color:var(--muted);cursor:pointer}
 .t-table .tbl-card .tc-row{display:flex;justify-content:space-between;gap:clamp(6px,3cqmin,13px);padding:clamp(2px,1cqmin,4px) 0;font-size:clamp(10px,2.9cqmin,14px)}
 .t-table .tbl-card .tc-k{color:var(--muted);font-family:var(--fm);font-size:clamp(8.5px,2.4cqmin,12px);text-transform:uppercase;letter-spacing:.05em}
 .t-table .tbl-card .tc-v{color:var(--text);text-align:right;word-break:break-word}
-.t-table .tbl-cards.befund{grid-template-columns:repeat(auto-fill,minmax(clamp(240px,62cqmin,430px),1fr));
-align-content:start;gap:clamp(6px,2.2cqmin,10px)}
+.t-table .tbl-cards.befund{grid-template-columns:1fr;align-content:start;gap:clamp(3px,1.2cqmin,6px)}
 .t-table .tc-grp{grid-column:1/-1;display:flex;align-items:center;gap:9px;
 margin:clamp(6px,2cqmin,12px) 0 2px;font-size:clamp(9px,2.4cqmin,11px)}
 .t-table .tc-grp:first-child{margin-top:0}
@@ -1368,7 +1367,8 @@ padding-left:clamp(13px,4cqmin,20px);overflow:hidden}
 text-transform:uppercase;color:var(--faint);flex:none;min-width:clamp(52px,17cqmin,86px)}
 .t-table .tbl-card.bef .tc-haupt{flex:1;min-width:0;color:var(--text);
 font-size:clamp(10.5px,3cqmin,13px);line-height:1.35;overflow:hidden;text-overflow:ellipsis}
-.t-table .tbl-card.bef .tc-zu{flex:none;color:var(--muted);font-size:clamp(9px,2.5cqmin,11px)}
+.t-table .tbl-card.bef .tc-zu{flex:none;margin-left:auto;padding-left:12px;color:var(--muted);
+font-size:clamp(9px,2.5cqmin,11px);font-variant-numeric:tabular-nums;white-space:nowrap}
 @media(max-width:640px){.t-table table.tbl{display:block;overflow-x:auto;white-space:nowrap}}
 #ipspick{position:fixed;inset:0;z-index:2000;background:rgba(0,0,0,.5);-webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px);display:flex;align-items:center;justify-content:center}
 .ipspick-card{background:var(--surface);border:1px solid var(--line);border-radius:16px;width:min(460px,92vw);max-height:80vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 30px 80px -30px #000}

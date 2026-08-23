@@ -1645,8 +1645,10 @@
   /* Befundkarten: nach Schwere gruppiert. Die Gruppenzeile laeuft ueber die ganze
      Breite, damit die Ordnung sichtbar bleibt, auch wenn drei Karten nebeneinander
      stehen. */
-  .t-table .tbl-cards.befund{grid-template-columns:repeat(auto-fill,minmax(clamp(240px,62cqmin,430px),1fr));
-    align-content:start;gap:clamp(6px,2.2cqmin,10px)}
+  /* EINE Spalte: Befunde sind Zeilen, keine Kacheln. Nebeneinander gestellt liest
+     man sie quer statt der Reihe nach, und die Ordnung nach Schwere - der ganze
+     Zweck der Gruppierung - geht dabei verloren. */
+  .t-table .tbl-cards.befund{grid-template-columns:1fr;align-content:start;gap:clamp(3px,1.2cqmin,6px)}
   .t-table .tc-grp{grid-column:1/-1;display:flex;align-items:center;gap:9px;
     margin:clamp(6px,2cqmin,12px) 0 2px;font-size:clamp(9px,2.4cqmin,11px)}
   .t-table .tc-grp:first-child{margin-top:0}
@@ -1663,7 +1665,8 @@
     text-transform:uppercase;color:var(--faint);flex:none;min-width:clamp(52px,17cqmin,86px)}
   .t-table .tbl-card.bef .tc-haupt{flex:1;min-width:0;color:var(--text);
     font-size:clamp(10.5px,3cqmin,13px);line-height:1.35;overflow:hidden;text-overflow:ellipsis}
-  .t-table .tbl-card.bef .tc-zu{flex:none;color:var(--muted);font-size:clamp(9px,2.5cqmin,11px)}
+  .t-table .tbl-card.bef .tc-zu{flex:none;margin-left:auto;padding-left:12px;color:var(--muted);
+    font-size:clamp(9px,2.5cqmin,11px);font-variant-numeric:tabular-nums;white-space:nowrap}
   @media(max-width:640px){.t-table table.tbl{display:block;overflow-x:auto;white-space:nowrap}}
 
   /* IPSView-Auswahl beim Import */
