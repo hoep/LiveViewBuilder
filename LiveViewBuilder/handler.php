@@ -810,6 +810,19 @@ if ($api === 'wxroi') {
     if ($was === 'liste')     { echo WX_Messfelder($wx); return; }
     if ($was === 'pruefe')    { echo WX_MessfeldPruefen($wx, $mid, $z('x', 0), $z('y', 0), $z('w', 100), $z('h', 100)); return; }
     if ($was === 'vorschlag') { echo WX_MessfeldVorschlag($wx, $mid); return; }
+    // Kamera aufnehmen, stilllegen oder herausnehmen - alles Aenderungen an der
+    // Instanz, also mit Token.
+    if ($was === 'binden' || $was === 'loesen' || $was === 'aktiv') {
+        if (!hash_equals($TOKEN, (string) ($_GET['key'] ?? ''))) {
+            http_response_code(403);
+            echo json_encode(['ok' => false, 'fehler' => 'forbidden']);
+            return;
+        }
+        if ($was === 'binden') { echo WX_KameraBinden($wx, $mid); return; }
+        if ($was === 'loesen') { echo WX_KameraLoesen($wx, $mid); return; }
+        echo WX_KameraAktiv($wx, $mid, ((int) ($_GET['an'] ?? 1)) === 1);
+        return;
+    }
     if ($was === 'setze') {
         if (!hash_equals($TOKEN, (string) ($_GET['key'] ?? ''))) {
             http_response_code(403);

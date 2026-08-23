@@ -3575,6 +3575,15 @@
     border:1px solid var(--line);background:var(--surface-2);color:var(--muted);cursor:pointer;text-align:left}
   .camroi .crv b{font-family:var(--fm);font-size:12.5px;color:var(--accent)}
   .camroi .crv .crvm{font-family:var(--fm);color:var(--faint)}
+  .camroi .crp.neu{font-family:var(--fm);font-weight:700;padding:4px 11px;color:var(--accent)}
+  /* Auswahl der Bildquellen: der WEG im Baum ist die Auskunft - die Grabber heissen
+     reihum "Image", und zwoelf Zeilen "Image" sind keine Auswahl. */
+  .camroi .crwahl{border:1px solid var(--line);border-radius:9px;padding:9px 10px;margin-bottom:9px;background:var(--surface-2)}
+  .camroi .crwl{display:flex;flex-wrap:wrap;gap:6px}
+  .camroi .crw{display:flex;flex-direction:column;gap:1px;font-size:10.5px;padding:5px 9px;border-radius:8px;
+    border:1px solid var(--line);background:var(--surface);color:var(--muted);cursor:pointer;text-align:left}
+  .camroi .crw b{font-size:11.5px;color:var(--text);font-weight:600}
+  .camroi .crw span{font-family:var(--fm);color:var(--faint)}
   .camroi .crmsg{font-size:11.5px;color:var(--accent);margin-top:10px;min-height:1.2em}
   .camroi .crhint{font-size:10.5px;color:var(--faint);line-height:1.5;margin-top:6px}
   @media (max-width:720px){ .camroi .crmain{flex-direction:column} .camroi .crside{width:100%} }
