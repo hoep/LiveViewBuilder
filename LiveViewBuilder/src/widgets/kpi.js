@@ -43,7 +43,7 @@
     if(el){
       var lv=_lastVals[S.v];
       // Dieselbe Formatierung wie der Live-Pfad (Praefix/Suffix, Nachkommastellen, Profil).
-      el.textContent=lv?fmtVal(w,lv,(lv.f!==''&&lv.f!=null)?lv.f:lv.v):'–';
+      el.textContent=lv?fmtWidgetVal(w,lv):'–';
     }
     if(S.d)_kpiDelta(w);
   }
@@ -100,6 +100,16 @@
     }, // Vergleich sofort nach Render berechnen (nicht auf ersten Poll warten)
     live:function(w,el,id,d,base,txt,on){
       var v=el.querySelector('[data-role=val]'); // txt enthält bereits Präfix/Suffix (aus applyVal in js/06-live.js)
+      // Mit Kopplung entscheidet der gerade gueltige VARIABLENSATZ, was in der Karte
+      // steht - nicht die Kennung, die gerade hereinkam. Sonst schrieb der Wert des
+      // ersten Satzes ueber den zweiten: die Kennungen kommen aufsteigend an, die des
+      // Jahressatzes sind kleiner als die des YTD-Satzes, und der Vergleich blieb auf
+      // "–" stehen, bis jemand den Umschalter beruehrte.
+      if(w.kSession){
+        _kpiApplySet(w);
+        if(w.cmpOn)computeCompare(w);
+        return true;
+      }
       // Anzeige und Farbe gehoeren der HAUPTVARIABLE. live() laeuft fuer jede gebundene
       // Daten-ID (06-live.js: widgetDataId), also auch fuer die Vergleichsvariable - ohne diese
       // Unterscheidung faerbte die zuletzt eingetroffene ID die Karte. Der Vergleich selbst

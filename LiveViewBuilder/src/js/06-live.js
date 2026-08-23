@@ -1,6 +1,6 @@
   // C1: nutzt das Widget diese Variablen-ID als Daten-Bindung? (spiegelt pollVals, ohne visVar)
   function widgetDataId(w,id){
-    if(w.varId===id||w.varId2===id||w.varId3===id||w.cvActId===id||w.cvAzB===id||w.cvAzE===id||w.cvElv===id||w.cvBlockVid===id||w.cmpVid===id||w.ackVid===id||w.condVar===id||w.vTemp===id||w.vCond===id||w.vHum===id||w.vWind===id||w.vGust===id||w.vRain===id||w.ssAz===id||w.ssEl===id||w.ssRad===id||w.ssRainV===id||w.ssSnowV===id||w.ssPtypeV===id||w.ssFogV===id||w.ssFogStateV===id||w.ssWindV===id||w.ssRainSensV===id||w.ssTempV===id||w.ssDewV===id||w.ssHumV===id||w.ssWetV===id||w.ssCloudV===id||w.vStorm===id||w.vStormDist===id||w.vStormAge===id||w.vStormRate===id||w.vRainRate===id||w.vRainDay===id||w.vFog===id||w.vFogFsi===id||w.ssStormV===id||w.ssStormDistV===id||w.wxFogState===id||w.ssWxJson===id)return true;
+    if(w.varId===id||w.varId2===id||w.varId3===id||w.dVid===id||w.varIdB===id||w.dVidB===id||w.cvActId===id||w.cvAzB===id||w.cvAzE===id||w.cvElv===id||w.cvBlockVid===id||w.cmpVid===id||w.ackVid===id||w.condVar===id||w.vTemp===id||w.vCond===id||w.vHum===id||w.vWind===id||w.vGust===id||w.vRain===id||w.ssAz===id||w.ssEl===id||w.ssRad===id||w.ssRainV===id||w.ssSnowV===id||w.ssPtypeV===id||w.ssFogV===id||w.ssFogStateV===id||w.ssWindV===id||w.ssRainSensV===id||w.ssTempV===id||w.ssDewV===id||w.ssHumV===id||w.ssWetV===id||w.ssCloudV===id||w.vStorm===id||w.vStormDist===id||w.vStormAge===id||w.vStormRate===id||w.vRainRate===id||w.vRainDay===id||w.vFog===id||w.vFogFsi===id||w.ssStormV===id||w.ssStormDistV===id||w.wxFogState===id||w.ssWxJson===id)return true;
     var A=['items','links','rows','src','snk','fc','elements','stages','steps','series'],i,j,o;
     for(i=0;i<A.length;i++){var a=w[A[i]];if(a)for(j=0;j<a.length;j++){o=a[j];if(o&&(o.vid===id||o.subvid===id||o.hi===id||o.lo===id||o.pq===id||o.cond===id||o.speedVid===id||o.socVid===id))return true;}}
     // Alarm-Karte: nur im Text (title/sub/notify) referenzierte Formel-IDs treiben live() ebenfalls
@@ -239,6 +239,21 @@
     $$('[data-viddot]',el).forEach(function(e){var d=_lastVals[e.getAttribute('data-viddot')];if(d)e.classList.toggle('on',(d.v===true||d.v===1||d.v==='1'));});
     $$('[data-vidbar]',el).forEach(function(e){var d=_lastVals[e.getAttribute('data-vidbar')];if(d)_slotBar(e,d);});
   }
+  // Der Wert einer Variablen, so wie ihn dieses Widget anzeigt: Nachkommastellen,
+  // Faktor, Tausendertrennung, Format, Praefix und Suffix. Als eigene Funktion,
+  // damit ein Widget, das seinen Wert selbst setzt (KPI mit gekoppeltem zweiten
+  // Variablensatz), zum selben Ergebnis kommt wie der Live-Pfad - sonst stehen
+  // auf derselben Seite 446 und 446,00 fuer dieselbe Zahl.
+  function fmtWidgetVal(w,d){
+    var base=(d.f!==''&&d.f!=null)?d.f:d.v;
+    var _bs=String(base),_pu=(d.u!=null)?String(d.u):'';
+    var num=(_pu!==''&&_bs.length>=_pu.length&&_bs.slice(-_pu.length)===_pu)?_bs.slice(0,-_pu.length).replace(/\s+$/,''):_bs;
+    var _dn=null;
+    if(!d.s){var _rr=parseFloat(String(d.v).replace(',','.'));if(!isNaN(_rr)){var _scv=(w.scale!=null&&w.scale!==''&&+w.scale!==1)?(_rr*(+w.scale)):_rr;if(w.dec!=null||_scv!==_rr||w.thousand||w.numAbbrev)_dn=_fmtNum(_scv,w);}}
+    var _vb=(_dn!=null)?((w.suf||w.unit)?_dn:(_pu?(_dn+' '+_pu.trim()):_dn)):((w.suf||w.unit)?num:base);
+    var _b=w.fmt?fmtVal(w,d,base):_vb;
+    return (w.pre||w.suf)?((w.pre||'')+_b+(w.suf||'')):_b;
+  }
   function applyVal(id,d){
     if(!id||!d)return;
     var _prev=_lastVals[id];
@@ -255,9 +270,7 @@
     }
     function _apply1(w,root){try{
       var el=$('.w[data-id="'+w.id+'"]',root);if(!el)return;
-      var _dn=null;if(!d.s){var _rr=parseFloat(String(d.v).replace(',','.'));if(!isNaN(_rr)){var _scv=(w.scale!=null&&w.scale!==''&&+w.scale!==1)?(_rr*(+w.scale)):_rr;if(w.dec!=null||_scv!==_rr||w.thousand||w.numAbbrev)_dn=_fmtNum(_scv,w);}} // Nachkommastellen/Faktor/Tausender/Kürzung aus Rohwert (nicht bei String-Formel); ungesetzt = wie bisher
-      var _vb=(_dn!=null)?((w.suf||w.unit)?_dn:(_pu?(_dn+' '+_pu.trim()):_dn)):((w.suf||w.unit)?num:base); // dec -> Zahl (+ Profil-Einheit falls keine Widget-Einheit); sonst wie gehabt
-      var _b=w.fmt?fmtVal(w,d,base):_vb;var txt=(w.pre||w.suf)?((w.pre||'')+_b+(w.suf||'')):_b; // Format + Präfix/Suffix
+      var txt=fmtWidgetVal(w,d); // Nachkommastellen/Faktor/Tausender/Kürzung, Format, Präfix/Suffix
       if(w.nullText!=null&&w.nullText!==''&&(d.v==null||String(d.v).trim()===''))txt=w.nullText; // einheitlicher Text bei leerem Wert
       if(w.icon&&AICONS[w.icon]&&w.varId===id){var _ai=$('svg[data-ai]',el);if(_ai)_ai.outerHTML=iconSVG(w.icon,d.v);} // adaptives Icon (0–100 % / Zustand)
       if(w.assocOn&&w.varId===id)applyAssoc(w,el,d.v); // Icon/Farbe aus Variablen-Assoziation
