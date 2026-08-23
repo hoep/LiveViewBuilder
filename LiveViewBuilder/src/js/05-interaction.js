@@ -64,6 +64,17 @@
   // Hover-Overlay (Desktop-Maus): mouseenter zeigt die Hover-Ansicht als Flyout, Verlassen schliesst (kurzer Nachlauf; Flyout haelt offen).
   (function(){
     var _hovT=null,_liftGrp=null;
+    // Auf einem Tablett gibt es kein Hovern. Der Browser schickt trotzdem ein
+    // mouseover, und zwar VOR dem Klick: die Hover-Ansicht ging auf, der Klick
+    // danach sah sie offen und machte sie wieder zu. Sichtbar war nichts - man
+    // musste zweimal tippen. Deshalb merken wir uns die Art des Zeigers und
+    // ueberspringen das Hovern kurz nach einer Beruehrung; der Klick allein
+    // schaltet die Ansicht dann um (siehe _wClick).
+    var _touchBis=0;
+    document.addEventListener('pointerdown',function(e){
+      if(e&&e.pointerType&&e.pointerType!=='mouse')_touchBis=Date.now()+900;
+    },true);
+    function _perTouch(){return Date.now()<_touchBis;}
     function _sched(){if(_hovT)clearTimeout(_hovT);_hovT=setTimeout(function(){closeHover();},200);}
     function _keep(){if(_hovT){clearTimeout(_hovT);_hovT=null;}}
     // Gruppen-Anhebung: die gehoverte Gruppe als BLOCK auf dieselbe z-Ebene heben, damit der
@@ -77,7 +88,7 @@
       $$('.w[data-grp]',canvas).forEach(function(x){var ww=widget(x.dataset.id);if(ww&&ww.group===g)x.classList.add('glift');});
     }
     canvas.addEventListener('mouseover',function(e){
-      if(mode==='edit')return;
+      if(mode==='edit'||_perTouch())return;
       var el=e.target.closest('.w[data-id]');
       var w=el?widget(el.dataset.id):null;
       _liftGroup(w?w.group:null);
