@@ -393,6 +393,9 @@
     +row('Hover-Ansicht','<select id="pHoverTo"><option value="">—</option>'+Object.keys(store.views).map(function(n){return '<option value="'+esc(n)+'"'+(w.hoverTo===n?' selected':'')+'>'+esc(n)+'</option>';}).join('')+'</select>')
     +(w.hoverTo?'<div style="font-size:11px;color:var(--warn);line-height:1.4;margin:-2px 2px 6px">Flyout beim <b>Überfahren mit der Maus</b> (Desktop). Auf Touch öffnet ein Tipp den Flyout nur, wenn keine andere Klick-Aktion gesetzt ist.</div>':'')
     +row('Region setzen','<input id="pRegSlot" value="'+esc(w.regSlot||'')+'" placeholder="Region" style="width:80px"> <select id="pRegView"><option value="">Ansicht…</option>'+Object.keys(store.views).map(function(n){return '<option value="'+esc(n)+'"'+(w.regView===n?' selected':'')+'>'+esc(n)+'</option>';}).join('')+'</select>')
+    +((w.regSlot&&w.regView)?'<div style="font-size:11px;color:var(--muted);line-height:1.4;margin:-2px 2px 6px">'
+        +(w.navTo?'Zusammen mit „Seite öffnen": Sprung auf <b>'+esc(w.navTo)+'</b> mit diesem Reiter.'
+                 :'Ohne „Seite öffnen" wird nur die Region auf dieser Seite umgeschaltet.')+'</div>':'')
     +row('Zurück','<input type="checkbox" id="pNavBack"'+(w.navBack?' checked':'')+'>')
     +row('Menü öffnen','<input type="checkbox" id="pOpenMenu"'+(w.openMenu?' checked':'')+'>')
     +row('Popup schließen','<input type="checkbox" id="pClosePop"'+(w.closePopup?' checked':'')+'>')
@@ -2010,7 +2013,10 @@
   function _contBBox(w){var cw=0,ch=0;(w.kids||[]).forEach(function(k){if(k&&k.type!=='container'){cw=Math.max(cw,(k.x||0)+(k.w||0));ch=Math.max(ch,(k.y||0)+(k.h||0));}});return {w:Math.max(20,cw+6),h:Math.max(20,ch+6)};}
   var _tickKids=[]; // Ticker-Laufband: darin laufende Widget-Instanzen (Live wie _compKids)
   var _regions={}; // B2: Slot-Name -> aktuell angezeigte Ansicht (Laufzeit)
-  function setRegion(slot,view){if(!slot)return;_regions[slot]=view;render();}
+  // 'still' setzt die Region OHNE zu zeichnen. Gebraucht wird das beim Sprung von
+  // einer anderen Seite herein: dort folgt unmittelbar navGo(), das ohnehin
+  // zeichnet - zweimal zeichnen heisst einmal die alte Seite mit neuem Reiter.
+  function setRegion(slot,view,still){if(!slot)return;_regions[slot]=view;if(!still)render();}
   function expandComponent(w){
     var host=$('.w[data-id="'+w.id+'"] [data-role=comphost]',canvas);if(!host)return;
     var srcName=(w.slot&&_regions[w.slot])||w.comp;
