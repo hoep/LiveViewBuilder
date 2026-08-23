@@ -399,9 +399,11 @@ if ($api === 'epg') {
     // Was schon auf der Platte liegt. Die Liste fuehrt der Serienrecorder; sie
     // aendert sich mit jedem Lauf und gehoert deshalb NICHT ins Zwischenlager,
     // sondern wird hier dazugelegt - wie die Timer der Box.
-    // Dazu die ermittelte Staffel/Folge: das XMLTV liefert sie bei den
-    // Krimireihen nicht (Tatort traegt dort nur eine laufende Nummer), der
-    // Serienrecorder schlaegt sie im Episodenkatalog nach.
+    // Dazu, was der Serienrecorder ueber die Ausstrahlung weiss: Nummer,
+    // Serienname und Episodentitel - alles drei so, wie die Aufnahme auf der
+    // Platte heisst. Das XMLTV kennt diese Namen nicht; es schreibt "Tatort:
+    // Trotzdem" in einen Titel, waehrend die Ablage "Tatort" mit der Folge
+    // "Voss - 10 - Trotzdem" fuehrt.
     $bestand = [];
     $nummern = [];
     $srInst = IPS_GetInstanceListByModuleID('{F7F9F89F-82ED-4478-970F-C3C749912A0A}')[0] ?? 0;
@@ -410,7 +412,7 @@ if ($api === 'epg') {
         if ($mv) {
             $mj = json_decode((string) @GetValueString($mv), true);
             $bestand = is_array($mj['marken'] ?? null) ? $mj['marken'] : [];
-            $nummern = is_array($mj['nummern'] ?? null) ? $mj['nummern'] : [];
+            $nummern = is_array($mj['sendungen'] ?? null) ? $mj['sendungen'] : [];
         }
     }
 
@@ -432,8 +434,20 @@ if ($api === 'epg') {
                 }
                 // 1 = liegt auf der Platte, 2 = liegt mehrfach dort
                 $p[$i][9] = (int) ($bestand[$id . '|' . (int) $x[0]] ?? 0);
-                // Nummer aus dem Katalog - schlaegt die des XMLTV (Index 5)
-                $p[$i][10] = (string) ($nummern[$id . '|' . (int) $x[0]] ?? '');
+                // Nummer, Serie und Episodentitel des Serienrecorders. Sie
+                // schlagen die des XMLTV (Index 2, 3 und 5) - siehe oben.
+                $sr = $nummern[$id . '|' . (int) $x[0]] ?? null;
+                $p[$i][10] = is_array($sr) ? (string) ($sr[0] ?? '') : '';
+                $p[$i][11] = is_array($sr) ? (string) ($sr[1] ?? '') : '';
+                $p[$i][12] = is_array($sr) ? (string) ($sr[2] ?? '') : '';
+                // Inhaltsangabe aus dem Episodenkatalog - nur wo das EPG keine
+                // hat und nur, wenn sie ueberhaupt mitgeliefert wird (die
+                // Detailansicht fragt danach, das Raster nicht).
+                $p[$i][13] = 0;
+                if ($mitDetail && is_array($sr) && ($sr[3] ?? '') !== '' && trim((string) ($p[$i][6] ?? '')) === '') {
+                    $p[$i][6] = (string) $sr[3];
+                    $p[$i][13] = 1;
+                }
             }
         }
         $out[] = ['id' => $id, 'name' => (string) ($k['name'] ?? $id), 'picon' => (string) ($k['picon'] ?? ''),
