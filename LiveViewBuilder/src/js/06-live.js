@@ -212,6 +212,33 @@
     return fall;
   }
   function _slotAttrs(o,noUnit){var s='';if(o.dec!=null&&o.dec!=='')s+=' data-dec="'+(parseInt(o.dec)||0)+'"';if(!noUnit&&o.unit)s+=' data-unit="'+esc(o.unit)+'"';if(o.scale!=null&&o.scale!==''&&+o.scale!==1)s+=' data-scale="'+(+o.scale)+'"';return s;}
+  // Einen Slot fuellen. Als eigene Funktion, weil es zwei Anlaesse gibt: der
+  // eintreffende Wert - und ein Widget, das sich gerade neu gezeichnet hat.
+  function _slotText(e,d){
+    e.textContent=_fmtSlot(e,d,(d.f!==''&&d.f!=null)?d.f:d.v);
+    // data-min: der Slot verschwindet unterhalb dieser Zahl. Fuer Abzeichen
+    // gedacht - eine 0 im roten Kreis meldet etwas, wo nichts ist.
+    if(e.hasAttribute('data-min')){var _mn=parseFloat(e.getAttribute('data-min')),_nv=parseFloat(String(d.v).replace(',','.'));
+      e.style.display=(!isNaN(_mn)&&(isNaN(_nv)||_nv<_mn))?'none':'';}
+  }
+  function _slotBar(e,d){var nb=parseFloat(String(d.v).replace(',','.'));if(!isNaN(nb))e.style.width=Math.max(0,Math.min(100,nb))+'%';}
+  // Nach einem Neuzeichnen: alle Slots dieses Widgets aus dem Zwischenspeicher
+  // nachziehen.
+  //
+  // Warum das noetig ist: ein Widget mit live() zeichnet sich komplett neu, und
+  // frisch gezeichnet steht in jedem Slot wieder der Platzhalter. Die Werte
+  // eines Durchgangs kommen aber NACHEINANDER an - was vor dem Neuzeichnen
+  // gefuellt wurde, war danach wieder leer, und der naechste Wert kam erst,
+  // wenn sich die Variable wieder aenderte. In der Geraetekachel stand der
+  // Trockner deshalb dauerhaft auf "–": seine Kennung ist kleiner als die der
+  // Waschmaschine, er wurde also VOR ihr gefuellt - und ihre Restzeit loeste
+  // das Neuzeichnen aus.
+  function _fillCached(el){
+    if(!el)return;
+    $$('[data-vid]',el).forEach(function(e){var d=_lastVals[e.getAttribute('data-vid')];if(d)_slotText(e,d);});
+    $$('[data-viddot]',el).forEach(function(e){var d=_lastVals[e.getAttribute('data-viddot')];if(d)e.classList.toggle('on',(d.v===true||d.v===1||d.v==='1'));});
+    $$('[data-vidbar]',el).forEach(function(e){var d=_lastVals[e.getAttribute('data-vidbar')];if(d)_slotBar(e,d);});
+  }
   function applyVal(id,d){
     if(!id||!d)return;
     var _prev=_lastVals[id];
@@ -222,14 +249,9 @@
     var _bs=String(base),_pu=(d.u!=null)?String(d.u):''; // Profil-Einheit vom Server
     var num=(_pu!==''&&_bs.length>=_pu.length&&_bs.slice(-_pu.length)===_pu)?_bs.slice(0,-_pu.length).replace(/\s+$/,''):_bs; // Wert ohne Profil-Einheit
     if(!_fIsFormula(id)){ // Formel-Token sind nie echte data-vid-Attribute; ihr String (mit ", =, +) würde den CSS-Selektor sprengen
-      $$('[data-vid="'+id+'"]',canvas).forEach(function(e){e.textContent=_fmtSlot(e,d,base);
-        // data-min: der Slot verschwindet unterhalb dieser Zahl. Fuer Abzeichen
-        // gedacht - eine 0 im roten Kreis meldet etwas, wo nichts ist.
-        if(e.hasAttribute('data-min')){var _mn=parseFloat(e.getAttribute('data-min')),_nv=parseFloat(String(d.v).replace(',','.'));
-          e.style.display=(!isNaN(_mn)&&(isNaN(_nv)||_nv<_mn))?'none':'';}
-      }); // generische Slots (Forecast, Listen …) — optionale Pro-Slot-Formatierung
+      $$('[data-vid="'+id+'"]',canvas).forEach(function(e){_slotText(e,d);}); // generische Slots (Forecast, Listen …) — optionale Pro-Slot-Formatierung
       $$('[data-viddot="'+id+'"]',canvas).forEach(function(e){e.classList.toggle('on',on);}); // Status-Dots / Bewegung
-      $$('[data-vidbar="'+id+'"]',canvas).forEach(function(e){var nb=parseFloat(String(d.v).replace(',','.'));if(!isNaN(nb))e.style.width=Math.max(0,Math.min(100,nb))+'%';}); // Meter-Balken
+      $$('[data-vidbar="'+id+'"]',canvas).forEach(function(e){_slotBar(e,d);}); // Meter-Balken
     }
     function _apply1(w,root){try{
       var el=$('.w[data-id="'+w.id+'"]',root);if(!el)return;
@@ -241,7 +263,7 @@
       if(w.assocOn&&w.varId===id)applyAssoc(w,el,d.v); // Icon/Farbe aus Variablen-Assoziation
       if((w.type==='kpi'||w.type==='delta')&&w.cmpOn&&w.varId===id)computeCompare(w); // Zeitversatz-Vergleich
       if(w.visVar&&w.visVar===id)el.style.display=(mode==='edit'||evalVis(w,d))?'':'none'; // C1: Sichtbarkeit per Variable (nicht im Edit)
-      var _wr=WIDGETS[w.type];if(_wr&&_wr.live){if(widgetDataId(w,id))_wr.live(w,el,id,d,base,txt,on);return;} // Registry-Widget (nur eigene Daten-IDs)
+      var _wr=WIDGETS[w.type];if(_wr&&_wr.live){if(widgetDataId(w,id)){_wr.live(w,el,id,d,base,txt,on);_fillCached(el);}return;} // Registry-Widget (nur eigene Daten-IDs); danach die Slots aus dem Zwischenspeicher nachziehen
       if(w.varId!==id)return;
       var v=$('[data-role=val]',el);if(v)v.textContent=txt;
       var sw=$('[data-role=sw]',el);if(sw)sw.classList.toggle('on',on);
