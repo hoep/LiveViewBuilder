@@ -33,6 +33,8 @@
       s.busy='';
       if(!j||!j.ok){ s.msg=(j&&j.fehler)||'Wetterstation antwortet nicht'; _crPaint(w); return; }
       s.cams=j.kameras||[]; s.schwellen=j.schwellen||{}; s.sonne=j.sonne;
+      s.verfuegbar=j.verfuegbar||[];
+      if(s.zeigeNeu){ s.cams.forEach(function(c,i){ if(c.id===s.zeigeNeu)s.sel=i; }); s.zeigeNeu=null; }
       if(s.sel>=s.cams.length)s.sel=0;
       var c=_crCam(s);
       s.roi=c?{x:c.x,y:c.y,w:c.w,h:c.h}:null;
@@ -75,6 +77,34 @@
         if(j&&j.ok&&s.cams&&s.cams[s.sel]){var cc=s.cams[s.sel];cc.x=r.x;cc.y=r.y;cc.w=r.w;cc.h=r.h;cc.klarwertTag=0;cc.klarwertNacht=0;}
         _crPaint(w);
       }).catch(function(){ s.busy=''; s.msg='nicht übernommen'; _crPaint(w); });
+  }
+
+  /** Kamera aufnehmen, stilllegen, herausnehmen - danach die Liste neu holen. */
+  function _crKamera(w,was,mid,an){
+    var s=_crState(w);
+    s.busy='…'; _crPaint(w);
+    fetch('?api=wxroi&was='+was+'&mid='+mid+(an!=null?('&an='+(an?1:0)):'')
+          +'&key='+encodeURIComponent(TOKEN),{cache:'no-store'})
+      .then(function(x){return x.json();}).then(function(j){
+        s.busy=''; s.msg=(j&&(j.hinweis||j.fehler))||'';
+        s.wahl=false;
+        // Nach dem Aufnehmen gleich die neue Kamera zeigen - sonst sucht man sie.
+        s.zeigeNeu=(was==='binden')?mid:null;
+        _crLade(w);
+      }).catch(function(){ s.busy=''; s.msg='ging nicht'; _crPaint(w); });
+  }
+
+  /** Auswahlliste der Bildquellen im Baum. */
+  function _crWahlHtml(w){
+    var s=_crState(w); if(!s.wahl)return '';
+    var v=(s.verfuegbar||[]).filter(function(q){return !q.gebunden;});
+    if(!v.length)return '<div class="crwahl"><div class="crvh">Kamera aufnehmen</div>'
+      +'<div class="crhint">Alle Bildquellen im Baum sind schon gebunden.</div></div>';
+    return '<div class="crwahl"><div class="crvh">Kamera aufnehmen</div><div class="crwl">'
+      +v.map(function(q){
+        return '<button class="crw" data-crbind="'+q.id+'"><b>'+esc(q.ort||q.name)+'</b>'
+          +'<span>'+esc(q.groesse||'')+'</span></button>';
+      }).join('')+'</div></div>';
   }
 
   // --- Bewertung eines Wertes auf seiner Skala: 0 = schlecht, 1 = gut -----------
@@ -137,10 +167,16 @@
     // Der Rahmen zeigt den Ausschnitt UNGEDIMMT, alles ausserhalb liegt im Schatten -
     // so sieht man beim Ziehen, was gemessen wird, und trotzdem, wo man ist.
     var src=c?('?api=media&id='+c.id+'&t='+(s.bildStand||0)):'';
-    var h='<div class="crbar">'+pills+'<span class="crsp"></span>'
+    var h='<div class="crbar">'+pills
+      +'<button class="crp neu" data-crb="wahl" title="Kamera aufnehmen">+</button>'
+      +'<span class="crsp"></span>'
+      +(c?('<button class="crb" data-crb="aktiv" title="'+(c.aktiv?'zählt mit':'stillgelegt')+'">'
+           +(c.aktiv?'aktiv':'stillgelegt')+'</button>'
+          +'<button class="crb" data-crb="loesen" title="Kamera herausnehmen">entfernen</button>'):'')
       +'<button class="crb" data-crb="ganz">ganzes Bild</button>'
       +'<button class="crb" data-crb="vorschlag">Vorschlag</button>'
       +'<button class="crb pri" data-crb="setze">übernehmen</button></div>'
+      +_crWahlHtml(w)
       +'<div class="crmain"><div class="crpick" data-role="crpick">'
         +'<img src="'+esc(src)+'" alt="" draggable="false">'
         +'<div class="crroi" style="left:'+r.x+'%;top:'+r.y+'%;width:'+r.w+'%;height:'+r.h+'%">'
@@ -169,7 +205,12 @@
       var a=b.getAttribute('data-crb');
       if(a==='ganz'){ s.roi={x:0,y:0,w:100,h:100}; _crPaint(w); _crMessen(w); }
       else if(a==='vorschlag'){ _crVorschlag(w); }
-      else if(a==='setze'){ _crSetzen(w); }};});
+      else if(a==='setze'){ _crSetzen(w); }
+      else if(a==='wahl'){ s.wahl=!s.wahl; _crPaint(w); }
+      else if(a==='aktiv'){ var k=_crCam(s); if(k)_crKamera(w,'aktiv',k.id,!k.aktiv); }
+      else if(a==='loesen'){ var k2=_crCam(s); if(k2)_crKamera(w,'loesen',k2.id); }};});
+    el.querySelectorAll('[data-crbind]').forEach(function(b){b.onclick=function(){
+      _crKamera(w,'binden',parseInt(b.getAttribute('data-crbind')));};});
     el.querySelectorAll('[data-crvor]').forEach(function(b){b.onclick=function(){
       var v=(s.vor&&s.vor.vorschlaege)||[],i=parseInt(b.getAttribute('data-crvor'));
       if(!v[i])return; s.roi={x:v[i].x,y:v[i].y,w:v[i].w,h:v[i].h}; s.mess=v[i].messung; _crPaint(w);};});
