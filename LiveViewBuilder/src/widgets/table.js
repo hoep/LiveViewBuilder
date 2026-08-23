@@ -345,7 +345,34 @@
     if(!rows.length||!cols){bodyHtml='<div class="tbl-empty">'+(w.varId?'Keine Daten (Zeile 0 = Spaltenkopf, JSON o. serialisiertes Array)':'Variable wählen')+'</div>';}
     else if(view==='cards'){
       // Karten arbeiten mit derselben gefilterten und geblaetterten Menge wie die Tabelle.
-      bodyHtml=total?('<div class="tbl-cards">'+paged.map(function(r){return '<div class="tbl-card">'+sicht.map(function(ci){var h=head[ci];return '<div class="tc-row"><span class="tc-k">'+esc(h)+'</span><span class="tc-v'+(numc[ci]?' tbl-mono':'')+'"'+alSt(ci)+'>'+cellHtml(ci,r[ci]!=null?r[ci]:'')+'</span></div>';}).join('')+'</div>';}).join('')+'</div>'):emptyHtml;
+      //
+      // ZWEI Kartenformen. Die allgemeine listet Spaltenkopf und Wert untereinander -
+      // richtig fuer eine beliebige Tabelle, die man auf einem schmalen Schirm liest.
+      // Hat die Tabelle aber eine SCHWERE-Spalte, ist sie eine Befundliste, und dann
+      // ist die Schwere nicht eine Zeile unter anderen, sondern die Ordnung selbst:
+      // Karten mit farbigem Balken, nach Schwere gruppiert, das Schlimmste zuerst.
+      // Sonst steht "4 kritisch" als vier von dreizehn gleich aussehenden Kaertchen da.
+      var _rang={crit:4,warn:3,info:2,ok:1,muted:1,'':0};
+      if(w.sevStyle&&sevIdx>=0&&w.tblKarteRoh!==true){
+        var _oS=sicht.filter(function(ci){return ci!==sevIdx;});
+        var _chip=_oS[0],_haupt=_oS.length>1?_oS[1]:_oS[0],_rest=_oS.slice(2);
+        var _grp={},_wort={};
+        paged.forEach(function(r){var k=_tblSevOf(r[sevIdx])||'';(_grp[k]=_grp[k]||[]).push(r);
+          if(!_wort[k])_wort[k]=String(r[sevIdx]==null?'':r[sevIdx]);});
+        var _keys=Object.keys(_grp).sort(function(a,b){return (_rang[b]||0)-(_rang[a]||0);});
+        bodyHtml=total?('<div class="tbl-cards befund">'+_keys.map(function(k){
+          return '<div class="tc-grp"><span class="tbl-chip tsc-'+(k||'muted')+'">'+esc(_wort[k]||'ohne')+'</span>'
+            +'<b>'+_grp[k].length+'</b><i></i></div>'
+            +_grp[k].map(function(r){
+              return '<div class="tbl-card bef tsev-'+(k||'muted')+'">'
+                +(_chip!=null&&_chip!==_haupt?('<span class="tc-chip">'+esc(String(r[_chip]==null?'':r[_chip]))+'</span>'):'')
+                +'<span class="tc-haupt">'+cellHtml(_haupt,r[_haupt]!=null?r[_haupt]:'')+'</span>'
+                +(_rest.length?('<span class="tc-zu">'+_rest.map(function(ci){return esc(String(r[ci]==null?'':r[ci]));}).filter(Boolean).join(' · ')+'</span>'):'')
+                +'</div>';}).join('');
+        }).join('')+'</div>'):emptyHtml;
+      } else {
+        bodyHtml=total?('<div class="tbl-cards">'+paged.map(function(r){return '<div class="tbl-card">'+sicht.map(function(ci){var h=head[ci];return '<div class="tc-row"><span class="tc-k">'+esc(h)+'</span><span class="tc-v'+(numc[ci]?' tbl-mono':'')+'"'+alSt(ci)+'>'+cellHtml(ci,r[ci]!=null?r[ci]:'')+'</span></div>';}).join('')+'</div>';}).join('')+'</div>'):emptyHtml;
+      }
     }else{
       // Aktionsspalte: ein Knopf je Zeile, der genau DIESE Zeile meint. Der
       // Parameter kommt aus einer (meist versteckten) Spalte - so muss das
