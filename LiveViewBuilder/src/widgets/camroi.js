@@ -178,7 +178,7 @@
       +'<button class="crb" data-crb="vorschlag">Vorschlag</button>'
       +'<button class="crb pri" data-crb="setze">übernehmen</button></div>'
       +_crWahlHtml(w)
-      +'<div class="crmain"><div class="crpick" data-role="crpick">'
+      +'<div class="crmain"><div class="crpick"><div class="crbox" data-role="crpick">'
         +'<img src="'+esc(src)+'" alt="" draggable="false">'
         +'<div class="crroi" style="left:'+r.x+'%;top:'+r.y+'%;width:'+r.w+'%;height:'+r.h+'%">'
           +'<img src="'+esc(src)+'" draggable="false" style="left:'+(-r.x/r.w*100)+'%;top:'+(-r.y/r.h*100)+'%;width:'+(100/r.w*100)+'%;height:'+(100/r.h*100)+'%">'
@@ -187,7 +187,7 @@
           +'<span class="crtag">'+r.x+' · '+r.y+' · '+r.w+' × '+r.h+'</span>'
         +'</div>'
         +'<span class="crinfo">'+esc((c&&c.groesse)||'')+(c&&!c.aktiv?' · nicht aktiv':'')+'</span>'
-      +'</div>'
+      +'</div></div>'
       +'<div class="crside">'+_crPanel(w)+_crVorschlagHtml(w)
         +'<div class="crmsg">'+esc(s.busy||s.msg||'')+'</div>'
         +'<div class="crhint">Übernehmen verwirft den gelernten Klarwert dieser Kamera – er gehört zum alten Feld.</div>'
