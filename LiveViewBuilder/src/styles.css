@@ -311,15 +311,21 @@
      cqmin/cqh/cqi innerhalb der Karte immer den Maximalwert der clamp()-Formeln (gleiche
      Begruendung wie bei .hvcard). Farben ausschliesslich ueber die Kartenvariable --tt und
      die Grundtoene, damit Hell/Dunkel und die Skins ohne Sonderfall stimmen. */
-  .thk{position:relative;height:100%;box-sizing:border-box;container-type:size;display:flex;flex-direction:column;gap:clamp(3px,2.5cqmin,9px);padding:clamp(8px,6cqmin,16px);border-radius:var(--r);background:var(--surface-2);--tt:var(--muted)}
+  /* --thk-bar ist die Breite der Saeule und zugleich Kantenlaenge des Kalender-Knopfs,
+     --thk-col die Breite der ganzen Thermometerspalte. Beide stehen HIER, damit Knopf und
+     Saeule nicht zwei Formeln haben, die auseinanderlaufen koennen. */
+  .thk{position:relative;height:100%;box-sizing:border-box;container-type:size;display:flex;flex-direction:column;gap:clamp(3px,2.5cqmin,9px);padding:clamp(8px,6cqmin,16px);border-radius:var(--r);background:var(--surface-2);--tt:var(--muted);--thk-bar:clamp(16px,11cqi,28px);--thk-col:clamp(26px,14cqi,46px)}
   /* Nur der Ton wird umgesetzt - bewusst OHNE den inset-Rahmen des Klassikers: die Karte hat
      eine eigene Flaeche, ein zusaetzlicher Farbrahmen wirkt darauf wie ein Fehlerzustand. */
   .thk.tone-heat{--tt:var(--warm)}
   .thk.tone-cool{--tt:var(--info)}
   .thk.tone-off{--tt:var(--faint)}
+  .thk.tone-warm{--tt:var(--warn)}
   .thk-top{display:flex;align-items:center;gap:clamp(4px,3cqmin,10px);min-height:clamp(16px,10cqmin,34px)}
   .thk-name{flex:1;min-width:0;font-size:var(--wf-lbl);font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .thk-cal{flex:none;display:grid;place-items:center;padding:0;width:clamp(20px,11cqmin,34px);height:clamp(20px,11cqmin,34px);border-radius:clamp(5px,3cqmin,10px);border:1px solid var(--line);background:var(--surface);color:var(--text);cursor:pointer}
+  /* Der Knopf ist so breit und hoch wie die Saeule und steht genau ueber ihr: der
+     Aussenabstand rechts holt die halbe Differenz zur Spaltenbreite heraus. */
+  .thk-cal{flex:none;display:grid;place-items:center;padding:0;width:var(--thk-bar);height:var(--thk-bar);margin-right:calc((var(--thk-col) - var(--thk-bar)) / 2);border-radius:clamp(4px,2.5cqmin,8px);border:1px solid var(--line);background:var(--surface);color:var(--text);cursor:pointer}
   .thk-cal svg{width:58%;height:58%}
   .thk-cal:active{transform:scale(.94)}
   /* Schatten-Zeichen: nur sichtbar, wenn die Domaene NICHT scharf ist. Es sitzt im Kopf und
@@ -341,12 +347,12 @@
   .thk-pill .thk-ic svg{width:100%;height:100%;overflow:visible}
   /* Die Saeule steht MITTIG unter ihrer Skalenzahl, nicht neben ihr: im Entwurf gehoeren
      28 und 12 ueber und unter das Thermometer, und nur so bleibt die Spalte schmal. */
-  .thk-therm{flex:none;width:clamp(26px,14cqi,46px);display:flex;flex-direction:column;align-items:center;gap:clamp(2px,1.5cqmin,6px)}
+  .thk-therm{flex:none;width:var(--thk-col);display:flex;flex-direction:column;align-items:center;gap:clamp(2px,1.5cqmin,6px)}
   .thk-sc{flex:none;font-family:var(--fm);font-size:var(--wf-cap);color:var(--faint);line-height:1}
   /* overflow bleibt sichtbar: der Griff ragt links und rechts ueber die Saeule hinaus. */
   /* Die Rinne muss man SEHEN, sonst schwebt der Griff im Nichts: var(--surface) liegt zu nah
      an der Kartenflaeche, deshalb ein aufgehellter Zug aus der gedaempften Textfarbe. */
-  .thk-bar{position:relative;flex:1;min-height:0;width:clamp(16px,11cqi,28px);border-radius:999px;background:color-mix(in oklab,var(--muted) 20%,transparent);border:1px solid var(--line)}
+  .thk-bar{position:relative;flex:1;min-height:0;width:var(--thk-bar);border-radius:999px;background:color-mix(in oklab,var(--muted) 20%,transparent);border:1px solid var(--line)}
   .thk-fill{position:absolute;left:0;right:0;bottom:0;height:0;border-radius:999px;background:var(--tt);transition:height .4s}
   /* Der Griff ist eine liegende Kapsel im Betriebston - eine Kugel sass im Entwurf nicht,
      und ein Ring in der Kartenfarbe trennt ihn sichtbar von der Fuellung darunter. */

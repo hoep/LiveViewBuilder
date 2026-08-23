@@ -90,7 +90,10 @@
     if(akt===null)return null;
     if(md==='kuehl')return akt?{tone:'cool',lab:tC,ic:'snowflake'}:{tone:'idle',lab:tI,ic:'temperature'};
     if(akt)return {tone:'heat',lab:tH,ic:'flame'};
-    if(!isNaN(ist)&&!isNaN(soll)&&ist>soll+0.1)return {tone:'idle',lab:tW,ic:'temperature'};
+    // "Zu warm" ist kein Betriebszustand, aber auch kein Nichts: im Sommer steht es
+    // auf JEDER Karte, und in Grau sieht eine ganze Seite davon aus wie abgeschaltet.
+    // Eigener Ton in der Warnfarbe - die Flamme bleibt dem Heizen vorbehalten.
+    if(!isNaN(ist)&&!isNaN(soll)&&ist>soll+0.1)return {tone:'warm',lab:tW,ic:'temperature'};
     return {tone:'idle',lab:tI,ic:'temperature'};
   }
   // Sollwert-Optik (Steller, Abweichung, Griff) - getrennt, weil das Ziehen sie ohne
