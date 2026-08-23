@@ -154,7 +154,9 @@
     var kan=d.kanaele.filter(function(k){
       if(!q)return true;
       if(String(k.name).toLowerCase().indexOf(q)>=0)return true;
-      return (k.p||[]).some(function(p){return String(p[2]+' '+(p[3]||'')).toLowerCase().indexOf(q)>=0;});
+      // Auch ueber die Namen des Serienrecorders suchen: wer "CSI Miami" tippt,
+      // meint die Serie, nicht die Schreibweise des Senders.
+      return (k.p||[]).some(function(p){return String(p[2]+' '+(p[3]||'')+' '+(p[11]||'')+' '+(p[12]||'')).toLowerCase().indexOf(q)>=0;});
     });
 
     // --- Zeitleiste ---
@@ -215,10 +217,19 @@
         // Zeile unter.
         if(rec===1){schraff='';kante+='box-shadow:inset 0 0 0 '+Math.max(1,rw)+'px '+cRec+';';}
         var rest=Math.round((p[1]-jetzt)/60);
+        // Serie und Episode: die Namen des Serienrecorders schlagen die des XMLTV.
+        // Das XMLTV kennt nur einen Titel und presst beides hinein - "Tatort:
+        // Trotzdem", "Der Wien-Krimi: Blind ermittelt". Der Serienrecorder hat den
+        // Titel laengst zerlegt und auf die Ablage abgebildet: die Serie heisst
+        // "Tatort" mit der Folge "Voss - 10 - Trotzdem", "CSI: Miami" liegt unter
+        // "CSI Miami". Genau diese Namen tragen die Aufnahmen auf der Platte, und
+        // nur mit ihnen findet man im Raster wieder, was man dort sucht.
+        var titel=(w.epgSrTitel!==false&&p[11])?p[11]:p[2];
+        var unter=(w.epgSrTitel!==false&&p[12])?p[12]:(p[3]||'');
         var z=laeuft&&w.epgRest!==false
           ? ('noch '+(rest>=60?(Math.floor(rest/60)+' h '+(rest%60)+' min'):(rest+' min')))
           : (_epgUhr(p[0])+' – '+_epgUhr(p[1]));
-        if(w.epgSub!==false&&p[3])z=p[3]+' · '+z;
+        if(w.epgSub!==false&&unter)z=unter+' · '+z;
         if(w.epgCat&&p[4])z=p[4]+' · '+z;
         // Ein Block von 20 Bildpunkten fasst keinen Text - dort steht sonst ein
         // angeschnittener Buchstabe, der wie ein Fehler aussieht. Der Titel bleibt
@@ -229,12 +240,12 @@
         // Folge auch im Aufnahmebestand liegt ("S2024E21").
         var nr=(p[10]||p[5]||'');
         var eng=(bw<30),halb=(bw<110);
-        bl+='<div class="epgp'+(tref?' tref':'')+'" data-epgp="'+esc(k.id)+'|'+p[0]+'" title="'+esc(p[2]+(p[3]?' · '+p[3]:'')+' · '+_epgUhr(p[0])+'–'+_epgUhr(p[1]))+'"'
+        bl+='<div class="epgp'+(tref?' tref':'')+'" data-epgp="'+esc(k.id)+'|'+p[0]+'" title="'+esc(titel+(unter?' · '+unter:'')+' · '+_epgUhr(p[0])+'–'+_epgUhr(p[1]))+'"'
           +' style="left:'+x+'px;width:'+bw+'px;background:'+hg+';'+schraff+kante+'border-radius:'+rad+'px'+(eng?';padding:5px 3px':'')+'">'
           +(eng?(rec?('<div class="epgrec" style="background:'+(rec===1?cRec:cZeit)+'"></div>'):'')
                :('<div class="t" style="font-size:'+fsT+'px;color:'+cTit+'">'
                   +(rec?('<span class="epgrec" style="background:'+(rec===1?cRec:cZeit)+'" title="'+(rec===1?'wird aufgenommen':'Timer abgeschaltet')+'"></span>'):'')
-                  +esc(p[2])+(nr?' <span style="opacity:.6">'+esc(nr)+'</span>':'')+'</div>'))
+                  +esc(titel)+(nr?' <span style="opacity:.6">'+esc(nr)+'</span>':'')+'</div>'))
           +((eng||halb)?'':('<div class="z" style="font-size:'+fsZ+'px;color:'+cZeit+'">'+esc(z)+'</div>'))+'</div>';
       });
       if(!bl)bl='<div class="epgp" style="left:0;width:'+(breite-3)+'px;background:'+cBlk+';border-radius:'+rad+'px">'
@@ -294,14 +305,15 @@
     (kan.p||[]).forEach(function(p){if(p[0]===start)roh=p;});
     if(!roh)return;
     w._epgSelP={kid:kan.id,ref:kan.ref,sender:kan.name,picon:kan.picon,start:roh[0],ende:roh[1],
-                titel:roh[2],kurz:roh[3]||'',cat:roh[4]||'',folge:roh[10]||roh[5]||'',desc:'',art:roh[7]||0,rec:roh[8]||0};
+                titel:roh[11]||roh[2],kurz:roh[12]||roh[3]||'',epgTitel:roh[2],cat:roh[4]||'',
+                folge:roh[10]||roh[5]||'',desc:'',art:roh[7]||0,rec:roh[8]||0};
     w._epgMehr=false;
     _epgOverlay(w);
     fetch('?api=epg&von='+start+'&dauer=1800&detail=1&kanaele='+encodeURIComponent(kid),{cache:'no-store'})
       .then(function(r){return r.json();})
       .then(function(j){
         var k=(j&&j.kanaele&&j.kanaele[0])||null;if(!k)return;
-        (k.p||[]).forEach(function(p){if(p[0]===start&&p[6])w._epgSelP.desc=p[6];});
+        (k.p||[]).forEach(function(p){if(p[0]===start&&p[6]){w._epgSelP.desc=p[6];w._epgSelP.descTvdb=(p[13]===1);}});
         _epgOverlay(w);
       }).catch(function(){});
   }
@@ -326,7 +338,11 @@
         +'<span class="sp"></span><button class="epgb epgb-'+(w.epgBtnStil||'pill')+'" data-epgov="close" style="'+_epgKnopfStil(w)+'">schließen</button></div>'
       +'<div class="epgovt">'+esc(s.titel)+'</div>'
       +(zeile?'<div class="epgovs">'+esc(zeile)+'</div>':'')
-      +(s.desc?'<div class="epgovd">'+esc(s.desc)+'</div>':'')
+      // Woher der Text stammt, gehoert dazu: das EPG beschreibt DIESE Ausstrahlung,
+      // der Episodenkatalog die Folge. Meist dasselbe - aber nicht immer, und wer
+      // eine Abweichung sucht, soll wissen, wen er fragt.
+      +(s.desc?('<div class="epgovd">'+esc(s.desc)
+          +(s.descTvdb?'<span class="epgovq"> · aus dem Episodenkatalog</span>':'')+'</div>'):'')
       +mehr
       +'<div class="epgovb">'+_epgRecKnopf(w,s)
         +_epgSerienKnopf(w,s)
@@ -459,7 +475,11 @@
     var s=w._epgSelP;if(!s)return;
     if(!w.epgSel){w._epgMsg='keine Auftragsvariable eingestellt';_epgOverlay(w);return;}
     var drin=(s.art===1);
-    _epgAuftrag(w,{was:'serie',serie:s.titel,aktion:drin?'aus':'an'},function(){
+    // Fuer die Aufnahmeliste zaehlt der Titel des EPG, nicht der Ablagename:
+    // der Serienrecorder ordnet ihn selbst zu, und seine Liste fuehrt "CSI: Miami",
+    // waehrend die Ablage "CSI Miami" heisst. Mit dem Ablagenamen fuende das
+    // Entfernen seinen Eintrag nicht wieder.
+    _epgAuftrag(w,{was:'serie',serie:(s.epgTitel||s.titel),aktion:drin?'aus':'an'},function(){
       s.art=drin?2:1;
       _epgOverlay(w);
       _EPGD[w.id]=null;_epgFetch(w);
@@ -605,6 +625,7 @@
         +row('Suchfeld','<input type="checkbox" id="pEpgQ"'+(w.epgQ!==false?' checked':'')+'> <input id="pEpgQPh" value="'+esc(w.epgQPh||'')+'" placeholder="Platzhaltertext" style="width:150px">')
         +row('Senderlogo','<input type="checkbox" id="pEpgPic"'+(w.epgPic!==false?' checked':'')+'> <input id="pEpgPicH" type="number" min="10" max="60" value="'+(w.epgPicH||24)+'" style="width:56px" title="Höhe in px">')
         +row('Untertitel','<input type="checkbox" id="pEpgSub"'+(w.epgSub!==false?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">Episodentitel im Block</span>')
+        +row('Namen des Recorders','<input type="checkbox" id="pEpgSrT"'+(w.epgSrTitel!==false?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">Serie und Folge so, wie die Aufnahme auf der Platte heisst</span>')
         +row('Genre','<input type="checkbox" id="pEpgCat"'+(w.epgCat?' checked':'')+'>')
         +row('Restzeit','<input type="checkbox" id="pEpgRest"'+(w.epgRest!==false?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">bei laufender Sendung statt der Zeitspanne</span>')
         +row('Ecken','<input id="pEpgR" type="number" min="0" max="20" value="'+(w.epgR!=null?w.epgR:8)+'"> px')
@@ -649,7 +670,7 @@
         var e=$('#pEpg'+k);
         if(e)e.oninput=function(){w['epg'+k]=parseFloat(this.value)||undefined;render();commit();};
       });
-      chk('#pEpgSub','epgSub',1);chk('#pEpgRest','epgRest',1);chk('#pEpgCat','epgCat');
+      chk('#pEpgSub','epgSub',1);chk('#pEpgSrT','epgSrTitel',1);chk('#pEpgRest','epgRest',1);chk('#pEpgCat','epgCat');
       if($('#pEpgQPh'))$('#pEpgQPh').oninput=function(){w.epgQPh=this.value||undefined;render();commit();};
       ['CB','CR','CT','CZ','CN','CM','CF','CS','CH'].forEach(function(k){sel('#pEpg'+k,'epg'+k);});
       chk('#pEpgArt','epgArt',1);
