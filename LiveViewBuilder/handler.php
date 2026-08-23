@@ -790,6 +790,39 @@ if ($api === 'poolsave') {
 //      Die Zuordnung gehoert dorthin, wo die Luecke auffaellt - in die
 //      Serienuebersicht. Der Browser fasst die Eigenschaft aber nicht selbst an:
 //      hier wird geprueft, das Modul entscheidet.
+// ---- Messfelder der Wetterstation:  ?api=wxroi&was=liste|pruefe|vorschlag|setze ----
+//
+// Lesen ist frei, SETZEN braucht das Token - es aendert die Instanz und verwirft
+// den gelernten Klarwert der Kamera.
+if ($api === 'wxroi') {
+    header('Content-Type: application/json; charset=utf-8');
+    $wx = 0;
+    foreach (IPS_GetInstanceList() as $i) {
+        if ((IPS_GetInstance($i)['ModuleInfo']['ModuleName'] ?? '') === 'WeatherStation') { $wx = $i; break; }
+    }
+    if ($wx <= 0 || !function_exists('WX_Messfelder')) {
+        echo json_encode(['ok' => false, 'fehler' => 'Wetterstation nicht erreichbar']);
+        return;
+    }
+    $was = (string) ($_GET['was'] ?? 'liste');
+    $mid = (int) ($_GET['mid'] ?? 0);
+    $z = fn(string $k, float $vor): float => isset($_GET[$k]) ? (float) $_GET[$k] : $vor;
+    if ($was === 'liste')     { echo WX_Messfelder($wx); return; }
+    if ($was === 'pruefe')    { echo WX_MessfeldPruefen($wx, $mid, $z('x', 0), $z('y', 0), $z('w', 100), $z('h', 100)); return; }
+    if ($was === 'vorschlag') { echo WX_MessfeldVorschlag($wx, $mid); return; }
+    if ($was === 'setze') {
+        if (!hash_equals($TOKEN, (string) ($_GET['key'] ?? ''))) {
+            http_response_code(403);
+            echo json_encode(['ok' => false, 'fehler' => 'forbidden']);
+            return;
+        }
+        echo WX_MessfeldSetzen($wx, $mid, $z('x', 0), $z('y', 0), $z('w', 100), $z('h', 100));
+        return;
+    }
+    echo json_encode(['ok' => false, 'fehler' => 'unbekannte Anfrage']);
+    return;
+}
+
 if ($api === 'srkat') {
     header('Content-Type: application/json; charset=utf-8');
     if (!hash_equals($TOKEN, (string) ($_GET['key'] ?? ''))) {
