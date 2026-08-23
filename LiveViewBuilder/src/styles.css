@@ -3580,6 +3580,14 @@
     border:1px solid var(--line);background:var(--surface-2);color:var(--muted);cursor:pointer;text-align:left}
   .camroi .crv b{font-family:var(--fm);font-size:12.5px;color:var(--accent)}
   .camroi .crv .crvm{font-family:var(--fm);color:var(--faint)}
+  /* Zustandskachel: die zwei Zeilen unter dem Wert. Sie stehen ueber einer feinen
+     Linie, damit die Zahl darueber ihre Ruhe behaelt - ohne Trennung liest sich das
+     als ein Block und die Zahl verliert ihre Wirkung. */
+  .hassoc-zeilen{margin-top:clamp(5px,1.6cqmin,9px);padding-top:clamp(5px,1.6cqmin,9px);
+    border-top:1px solid var(--line);min-width:0}
+  .hassocz{font-size:clamp(10px,3cqmin,12.5px);color:var(--text);line-height:1.35;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .hassocz.klein{font-size:clamp(9px,2.5cqmin,10.5px);color:var(--faint);margin-top:2px}
   /* Angetipptes Feld: ein Ring in der Zustandsfarbe, damit man im Raster wiederfindet,
      wessen Namen die Kopfzeile gerade nennt. */
   .iaw .iac.sel{box-shadow:inset 0 0 0 2px var(--c)}

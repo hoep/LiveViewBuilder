@@ -8,8 +8,14 @@
   function _chevSVG(c){return '<svg viewBox="0 0 24 24" style="width:clamp(12px,7cqmin,22px);height:clamp(12px,7cqmin,22px);fill:none;stroke:'+c+';stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="M9 6l6 6l-6 6"/></svg>';}
   function _assocWid(w){var el=$('.w[data-id="'+w.id+'"]',canvas);if(!el)return;
     var d=w.varId&&_lastVals[w.varId],v=d?d.v:null;
-    var m=stateHit(w.amap,v);   // exakt zuerst, dann Operator/Bereich/Platzhalter (Kern)
-    var a=(!m)?assocFor(w,v):null,rr=a?assocResolved(w,a):null;
+    // Der ZUSTAND darf aus einer anderen Variablen kommen als der Wert. Gebraucht
+    // wird das, sobald die Zahl und ihre Bewertung zwei verschiedene Dinge sind:
+    // drei Sicherheitsbefunde koennen drei Hinweise oder drei kritische sein - die
+    // Zahl allein sagt darueber nichts.
+    var ds=(w.stufeVid&&_lastVals[w.stufeVid])||null;
+    var vs=ds?ds.v:v;
+    var m=stateHit(w.amap,vs);   // exakt zuerst, dann Operator/Bereich/Platzhalter (Kern)
+    var a=(!m)?assocFor(w,vs):null,rr=a?assocResolved(w,a):null;
     var icon=(m&&m.icon)||(rr&&rr.icon)||w.icon||'';
     var ovc=(m&&m.color)||(a&&w.assocMap&&w.assocMap[String(a.v)]?w.assocMap[String(a.v)].color:'');
     var _L=stateLook(ovc,w.fillMode),isAlarm=(_L.mode==='fill');   // Darstellung zentral, je Widget uebersteuerbar
@@ -18,7 +24,8 @@
     var asPill=(w.stateAs==='pill');
     var dfTxt=(d&&d.f!=null&&d.f!=='')?String(d.f):'';
     var dfNum=dfTxt!==''&&/^[+\-]?[\d.,\s]+$/.test(dfTxt);
-    var stTxt=(m&&m.text!=null&&m.text!=='')?m.text:((a&&a.name!=null&&a.name!=='')?a.name:(dfTxt||(d?String(d.v):'–')));
+    var dsTxt=(ds&&ds.f!=null&&ds.f!=='')?String(ds.f):'';
+    var stTxt=(m&&m.text!=null&&m.text!=='')?m.text:((a&&a.name!=null&&a.name!=='')?a.name:(dsTxt||dfTxt||(d?String(d.v):'–')));
     var value,pillTxt;
     if(dfNum){var _an=parseFloat(dfTxt.replace(/\s/g,'').replace(',','.'));value=(w.dec!=null&&!isNaN(_an))?_fmtNum((w.scale!=null&&w.scale!==''&&+w.scale!==1)?_an*(+w.scale):_an,{dec:w.dec,thousand:w.thousand,numAbbrev:w.numAbbrev}):dfTxt;if(w.unit)value+=' '+w.unit;pillTxt=(m&&m.text)||(a&&a.name)||'';}
     else if(asPill){value='';pillTxt=stTxt;}
@@ -66,12 +73,22 @@
       if(w.vfsz){vc+=' tw-vfsz';vst+='--asc-vfsz:'+w.vfsz+'px;';}
       var val='<div class="'+vc+'" data-role="aval"'+(vst?' style="'+vst+'"':'')+'>–</div>';
       var lbl=(s!=='icon'&&w.label)?'<div class="hassocl" data-role="alabel">'+escL(w.label)+'</div>':'';
-      return '<div class="hassoc" data-role="acard"><div class="hassoc-top">'+chip+pill+'</div><div class="hassoc-btm">'+val+lbl+'</div></div>';},
+      // Zwei Zeilen aus Variablen, unter dem Wert. Sie machen aus der Zustandskachel
+      // eine Lagekachel: die Zahl sagt WIE VIEL, die Zeile sagt WAS - ohne dass man
+      // erst die Seite dahinter oeffnen muss.
+      var z1=w.zeileVid?('<div class="hassocz" data-vid="'+w.zeileVid+'">–</div>'):'';
+      var z2=w.zeile2Vid?('<div class="hassocz klein" data-vid="'+w.zeile2Vid+'">–</div>'):'';
+      var zeilen=(z1||z2)?('<div class="hassoc-zeilen">'+z1+z2+'</div>'):'';
+      return '<div class="hassoc" data-role="acard"><div class="hassoc-top">'+chip+pill+'</div><div class="hassoc-btm">'+val+lbl+zeilen+'</div></div>';},
     props:function(w){var FF=[['system-ui,-apple-system,sans-serif','Sans'],['Georgia,\'Times New Roman\',serif','Serif'],['var(--fm)','Mono'],['\'Segoe UI\',Arial,sans-serif','Segoe/Arial'],['\'Courier New\',monospace','Courier'],['Verdana,sans-serif','Verdana']];
       return row('Darstellung','<select id="pFillMode">'+[['','Automatisch (crit füllt)'],['soft','Getönt'],['fill','Vollfläche']].map(function(o){return '<option value="'+o[0]+'"'+((w.fillMode||'')===o[0]?' selected':'')+'>'+o[1]+'</option>';}).join('')+'</select>')
       +row('Anzeige','<select id="pAsShow"><option value="both"'+((w.assocShow||'both')==='both'?' selected':'')+'>Icon + Wert + Label</option><option value="icon"'+(w.assocShow==='icon'?' selected':'')+'>Nur Icon</option><option value="text"'+(w.assocShow==='text'?' selected':'')+'>Wert + Label</option></select>')
       +row('Zustand als','<select id="pStateAs"><option value="value"'+((w.stateAs||'value')==='value'?' selected':'')+'>Großer Wert</option><option value="pill"'+(w.stateAs==='pill'?' selected':'')+'>Pille</option></select>')
       +row('Einheit','<input id="pAsUnit" value="'+esc(w.unit||'')+'" placeholder="z. B. kWh (bei Zählerwerten)">')
+      +row('Zustand aus','<input id="pStufeVid" type="number" value="'+(w.stufeVid||'')+'" placeholder="VarID"> <span style="font-size:11px;color:var(--muted)">eigene Variable für Farbe und Pille — sonst zählt der Wert</span>')
+      +'<div class="pgh">Zeilen unter dem Wert</div>'
+      +row('Zeile 1','<input id="pZeileVid" type="number" value="'+(w.zeileVid||'')+'" placeholder="VarID">')
+      +row('Zeile 2','<input id="pZeile2Vid" type="number" value="'+(w.zeile2Vid||'')+'" placeholder="VarID"> <span style="font-size:11px;color:var(--muted)">kleiner und leiser</span>')
       +listEditor(w,'amap','Manuell: Wert · Icon · Text · Farbe',[{k:'v',ph:'0, >0, 1..5, *'},{k:'icon',ph:'z.B. winopen'},{k:'text',ph:'Text (Pille)'},{k:'color',type:'skincolor'}])
       +'<div class="hint" style="font-size:11px;color:var(--muted)">Wert: exakt (<b>0</b>, <b>1</b>), Vergleich (<b>&gt;0</b>, <b>&gt;=1</b>, <b>&lt;5</b>, <b>!=0</b>), Bereich (<b>1..5</b>) oder Platzhalter (<b>*</b> = Rest). Exakte Treffer haben Vorrang. Die Spalte <b>Text</b> überschreibt den Zustandstext (Pille) — auch für Profil-Assoziationen (Wert eintragen). Farbe <b>crit</b> = Alarm (rote Vollfläche), sonst getönt mit linker Kante. Icons z. B. winopen/winclosed/wintilt, blindopen/blindclosed, lighton/lightoff.</div>'
       +'<div class="pgh">Schrift Wert</div>'
@@ -82,9 +99,12 @@
       if($('#pFillMode'))$('#pFillMode').onchange=function(){w.fillMode=this.value||undefined;render();commit();};if($('#pAsShow'))$('#pAsShow').onchange=function(){w.assocShow=this.value;render();refreshAssocLive(w);commit();};
       if($('#pStateAs'))$('#pStateAs').onchange=function(){w.stateAs=this.value==='value'?undefined:this.value;render();refreshAssocLive(w);commit();};
       if($('#pAsUnit'))$('#pAsUnit').oninput=function(){w.unit=this.value||undefined;render();refreshAssocLive(w);commit();};
+      if($('#pStufeVid'))$('#pStufeVid').onchange=function(){w.stufeVid=parseInt(this.value)||undefined;render();refreshAssocLive(w);commit();};
+      if($('#pZeileVid'))$('#pZeileVid').onchange=function(){w.zeileVid=parseInt(this.value)||undefined;render();commit();};
+      if($('#pZeile2Vid'))$('#pZeile2Vid').onchange=function(){w.zeile2Vid=parseInt(this.value)||undefined;render();commit();};
       if($('#pVff'))$('#pVff').onchange=function(){w.vff=this.value||undefined;render();refreshAssocLive(w);commit();};
       if($('#pVfwt'))$('#pVfwt').onchange=function(){w.vfwt=this.value||undefined;render();refreshAssocLive(w);commit();};
       if($('#pVfsz'))$('#pVfsz').oninput=function(){w.vfsz=parseInt(this.value)||undefined;render();refreshAssocLive(w);commit();};},
-    mount:function(w){if(w.varId)loadAssoc(w.varId,function(){_assocWid(w);});else _assocWid(w);},
-    live:function(w,el,id,d,base,txt,on){if(w.varId===id)_assocWid(w);return true;}
+    mount:function(w){var q=w.stufeVid||w.varId;if(q)loadAssoc(q,function(){_assocWid(w);});else _assocWid(w);},
+    live:function(w,el,id,d,base,txt,on){if(w.varId===id||w.stufeVid===id)_assocWid(w);return true;}
   });
