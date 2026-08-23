@@ -22,6 +22,7 @@
     var st=(w.states&&w.states.length)?w.states:[],n=[],i;
     for(i=0;i<st.length;i++)n.push(0);
     (w.items||[]).forEach(function(r){
+      if(r.luecke)return;                      // Platzhalter zaehlen nicht mit
       var d=(typeof _lastVals!=='undefined')?_lastVals[r.vid]:null;
       var z=_iaZustand(w,d?d.v:(r.probe!=null?r.probe:null),d?d.f:null);
       var ix=st.indexOf(z);if(ix>=0)n[ix]++;
@@ -69,6 +70,12 @@
       var mind=Math.max(16,parseInt(w.iaMin||0)||38);
       var gitter=(cols>0)?('repeat('+cols+',1fr)'):('repeat(auto-fit,minmax('+mind+'px,1fr))');
       var felder=(w.items||[]).map(function(r,i){
+        // Platzhalter: ein leeres Feld, das Platz haelt und sonst nichts tut.
+        // Damit lassen sich Gruppen auf ganze Zeilen bringen - zwoelf Fenster im
+        // Erdgeschoss, zwoelf im Obergeschoss, neun im Dachgeschoss plus drei
+        // Luecken: jedes Geschoss belegt seine eigenen Zeilen. Ohne das steht das
+        // Bad im Dachgeschoss neben der Werkstatt, und die Ordnung ist dahin.
+        if(r.luecke)return '<div class="iac leer"></div>';
         var d=(typeof _lastVals!=='undefined')?_lastVals[r.vid]:null;
         var z=_iaZustand(w,d?d.v:(r.probe!=null?r.probe:null),d?d.f:null);
         var c=_iaFarbe(z.color,'var(--muted)');

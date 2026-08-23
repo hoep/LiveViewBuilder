@@ -202,13 +202,27 @@
     var st=(liste&&liste.length)?liste:[];
     var s=String(roh===true?1:(roh===false?0:(roh==null?'':roh))).trim();
     var f=String(txt==null?'':txt).trim().toLowerCase();
-    var fall=null,i,z,zv;
-    for(i=0;i<st.length;i++){
-      z=st[i];zv=String(z.v==null?'':z.v).trim();
-      if(zv===''||zv==='*'){if(!fall)fall=z;continue;}
-      if(zv===s||(!isNaN(parseFloat(zv))&&!isNaN(parseFloat(s))&&parseFloat(zv)===parseFloat(s)))return z;
-      if(f&&zv.toLowerCase()===f)return z;
+    var fall=null,i,j,z,teile,zv;
+    // Ein Zustand darf MEHRERE Werte tragen, mit | getrennt ("2|Geöffnet"). Dasselbe
+    // Fenster kommt je nach Profil als Zahl oder als Wort - eine Kachel mit beiden
+    // Profilen braucht sonst zwei Zustaende, die dasselbe sagen.
+    function passt(z,wieTxt){
+      teile=String(z.v==null?'':z.v).split('|');
+      for(j=0;j<teile.length;j++){
+        zv=teile[j].trim();
+        if(zv===''||zv==='*'){if(!fall)fall=z;continue;}
+        if(wieTxt){ if(f&&zv.toLowerCase()===f)return true; }
+        else if(zv===s||(!isNaN(parseFloat(zv))&&!isNaN(parseFloat(s))&&parseFloat(zv)===parseFloat(s)))return true;
+      }
+      return false;
     }
+    // ZWEI Durchgaenge, und die Reihenfolge ist der Punkt: erst der formatierte
+    // Text, dann der Rohwert. Der Text kommt aus dem Profil und traegt die
+    // Bedeutung schon in sich; die Zahl bedeutet je Profil etwas anderes. Eine
+    // offene Tuer meldet roh "true" - als Zahl waere das die 1 und hiesse bei
+    // Fenstern "gekippt". Ihr Text sagt "Geöffnet", und der ist eindeutig.
+    for(i=0;i<st.length;i++)if(passt(st[i],true))return st[i];
+    for(i=0;i<st.length;i++)if(passt(st[i],false))return st[i];
     return fall;
   }
   function _slotAttrs(o,noUnit){var s='';if(o.dec!=null&&o.dec!=='')s+=' data-dec="'+(parseInt(o.dec)||0)+'"';if(!noUnit&&o.unit)s+=' data-unit="'+esc(o.unit)+'"';if(o.scale!=null&&o.scale!==''&&+o.scale!==1)s+=' data-scale="'+(+o.scale)+'"';return s;}
