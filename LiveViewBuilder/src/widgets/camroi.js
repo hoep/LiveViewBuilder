@@ -102,8 +102,9 @@
       +'<div class="crhint">Alle Bildquellen im Baum sind schon gebunden.</div></div>';
     return '<div class="crwahl"><div class="crvh">Kamera aufnehmen</div><div class="crwl">'
       +v.map(function(q){
+        // Alter dazu: ein Bild, das seit Stunden steht, misst die Sicht von vorhin.
         return '<button class="crw" data-crbind="'+q.id+'"><b>'+esc(q.ort||q.name)+'</b>'
-          +'<span>'+esc(q.groesse||'')+'</span></button>';
+          +'<span>'+esc(q.groesse||'')+(q.alterMin!=null?(' · vor '+q.alterMin+' min'):'')+'</span></button>';
       }).join('')+'</div></div>';
   }
 
