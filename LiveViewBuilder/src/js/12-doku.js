@@ -33,7 +33,7 @@
   // dadurch faellt ein neu angelegtes Widget auf, statt lautlos zu verschwinden.
   var DOKU_GROUPS = [
     ['Werte & Zahlen',          ['value','valuecard','cval','sval','kpi','delta','calc','chip','icon','bar','meterlist','infolist','iconarray']],
-    ['Schalten & Bedienen',     ['switch','light','button','tile','checkbox','select','slider','stepper','colorpick','textbox','cover','shadingpanel','shading','shadeprofile','thermostat','heatplan','weekedit','alarm','alarmpanel','bot','timer','eventctl']],
+    ['Schalten & Bedienen',     ['switch','light','button','tile','checkbox','select','slider','stepper','colorpick','textbox','cover','shadingpanel','shading','shadeprofile','thermostat','thermokarte','heatplan','weekedit','alarm','alarmpanel','bot','timer','eventctl']],
     ['HomeSuite – Zeitplan (Heizung/Beschattung)', ['rooms','curve','week','slots','slotedit','variantbox','transfer','save']],
     ['HomeSuite – Licht-Automatik', ['lightband','autolist','autoedit','autocard','autotimeline']],
     ['HomeSuite – Navigation & Sonne', ['homesuite','roomnav','zonesync','shadesun','shadeprofiles','shadecal','shadedoors','shadesens','shadearm','shadelog']],
@@ -70,7 +70,8 @@
     //              bei 140 px bliebe fuer die eigentliche Liste keine einzige Zeile uebrig
     //   audioradio Kopfzeile + Senderzeilen: bei 140 px blieben zwei Zeilen, die Liste waere
     //              in der Doku nicht als scrollende Liste erkennbar
-    var DOKU_MAXH = {meteogram:340, heatmap:240, meterlist:190, chart:190, audioqueue:300, audioradio:280};
+    //   thermokarte Kopf + Istwert + Steller + Profilzeile: bei 140 px bliebe von der Karte nichts uebrig
+    var DOKU_MAXH = {meteogram:340, heatmap:240, meterlist:190, chart:190, audioqueue:300, audioradio:280, thermokarte:240};
     var maxH = DOKU_MAXH[t] || 140;
     var maxW = (t === 'meteogram' || t === 'heatmap') ? 460 : DOKU_PREV;
     return [Math.max(150, Math.min(maxW, parseInt(s[0]) || 240)),
@@ -147,7 +148,7 @@
 
   // Lenkt jede varId-artige Zahl auf den Demo-Pool um - auch tief in Listen (items,
   // series, elements ...). Alles andere bleibt unveraendert.
-  var _DOKU_IDK = {varId:1,varId2:1,varId3:1,cmpVid:1,vid:1,socVid:1,speedVid:1,tankVid:1,subvid:1,homeVid:1,tankVid:1};
+  var _DOKU_IDK = {varId:1,varId2:1,varId3:1,cmpVid:1,vid:1,socVid:1,speedVid:1,tankVid:1,subvid:1,homeVid:1,thPresVar:1,thHeatVar:1,thArmVar:1};
   function _dokuRemapDeep(key, val){
     if (val && typeof val === 'object') {
       if (val.length != null) { for (var i=0;i<val.length;i++) val[i]=_dokuRemapWalk(val[i]); return val; }

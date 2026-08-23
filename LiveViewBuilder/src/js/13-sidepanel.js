@@ -21,7 +21,7 @@
     var out=[],seen={};
     function add(t){if(t&&store.views[t]&&t!==name&&!seen[t]){seen[t]=1;out.push(t);}}
     v.widgets.forEach(function(w){
-      ['navTo','popupTo','longNav','longPopup','regView'].forEach(function(k){add(w[k]);});
+      ['navTo','popupTo','longNav','longPopup','regView','thCalView','thCalNav'].forEach(function(k){add(w[k]);});
       if(w.type==='component'){add(w.comp);}
       if(w.type==='regiontabs'&&w.tabs&&w.tabs.forEach){w.tabs.forEach(function(t){add(t&&t.view);});add(w.default);}
     });

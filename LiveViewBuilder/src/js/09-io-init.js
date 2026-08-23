@@ -108,7 +108,7 @@
   function _renameViewRefs(old,n){ // alle Verweise auf einen Ansichtsnamen mitziehen (Actions, Home, Mobil)
     var cnt=0;Object.keys(store.views).forEach(function(vn){var v=store.views[vn];
       if(v.page&&v.page.mobileView===old){v.page.mobileView=n;cnt++;}
-      (v.widgets||[]).forEach(function(w){['popupTo','longPopup','navTo','longNav','regView'].forEach(function(k){if(w[k]===old){w[k]=n;cnt++;}});});
+      (v.widgets||[]).forEach(function(w){['popupTo','longPopup','navTo','longNav','regView','thCalView','thCalNav'].forEach(function(k){if(w[k]===old){w[k]=n;cnt++;}});});
     });
     if(store.home===old)store.home=n;if(store.homeMobile===old)store.homeMobile=n;
     return cnt;}
