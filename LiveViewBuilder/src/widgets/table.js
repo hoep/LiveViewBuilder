@@ -273,7 +273,7 @@
     // Status-Stil: Status-Spalte (Chip+Streifen) und %-Spalte (Ladebalken) erkennen
     var sevIdx=-1,barIdx=-1,_barMax=0;
     if(w.sevStyle){for(var hi=0;hi<cols;hi++){var hs=String(head[hi]||'').toLowerCase();
-      if(sevIdx<0&&/status|zustand/.test(hs))sevIdx=hi;
+      if(sevIdx<0&&/status|zustand|schwere/.test(hs))sevIdx=hi;
       // Balken: neben den Prozentspalten auch Zaehlspalten, die eine Menge
       // beschreiben. Ohne sie steht in der Spalte eine nackte Zahl, deren
       // Groessenverhaeltnis man Zeile fuer Zeile selbst ausrechnen muesste.
