@@ -305,6 +305,68 @@
   .stage.preview .htc-modes .htmbtn,.stage.preview .htc-set button{cursor:pointer}
   .httval{font-family:var(--fm);font-size:var(--wf-txt);font-weight:600;color:var(--accent);min-width:clamp(42px,18cqmin,76px);text-align:center}
   .htnm{font-size:var(--wf-lbl);color:var(--muted)}
+  /* ===== Thermostat-Raumkarte (thk) — zweite Bauform, greift nur bei w.thStil='karte' =====
+     Eigener Namensraum: keine einzige .htc-Regel wird beruehrt, die klassische Kachel bleibt
+     damit buchstaeblich unveraendert. .thk ist SELBST Groessen-Container - ohne das liefern
+     cqmin/cqh/cqi innerhalb der Karte immer den Maximalwert der clamp()-Formeln (gleiche
+     Begruendung wie bei .hvcard). Farben ausschliesslich ueber die Kartenvariable --tt und
+     die Grundtoene, damit Hell/Dunkel und die Skins ohne Sonderfall stimmen. */
+  .thk{position:relative;height:100%;box-sizing:border-box;container-type:size;display:flex;flex-direction:column;gap:clamp(3px,2.5cqmin,9px);padding:clamp(8px,6cqmin,16px);border-radius:var(--r);background:var(--surface-2);--tt:var(--muted)}
+  /* Nur der Ton wird umgesetzt - bewusst OHNE den inset-Rahmen des Klassikers: die Karte hat
+     eine eigene Flaeche, ein zusaetzlicher Farbrahmen wirkt darauf wie ein Fehlerzustand. */
+  .thk.tone-heat{--tt:var(--warm)}
+  .thk.tone-cool{--tt:var(--info)}
+  .thk.tone-off{--tt:var(--faint)}
+  .thk-top{display:flex;align-items:center;gap:clamp(4px,3cqmin,10px);min-height:clamp(16px,10cqmin,34px)}
+  .thk-name{flex:1;min-width:0;font-size:var(--wf-lbl);font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .thk-cal{flex:none;display:grid;place-items:center;padding:0;width:clamp(20px,11cqmin,34px);height:clamp(20px,11cqmin,34px);border-radius:clamp(5px,3cqmin,10px);border:1px solid var(--line);background:var(--surface);color:var(--text);cursor:pointer}
+  .thk-cal svg{width:58%;height:58%}
+  .thk-cal:active{transform:scale(.94)}
+  /* Schatten-Zeichen: nur sichtbar, wenn die Domaene NICHT scharf ist. Es sitzt im Kopf und
+     nicht in der Fusszeile, weil dort der Steller bzw. die Profilzeile die ganze Breite braucht
+     und ein ueberlagertes Zeichen auf dem Plus-Knopf laege. */
+  .thk-shadow-badge{display:none;flex:none;align-items:center;font-size:var(--wf-cap);color:var(--faint);border:1px solid var(--line);border-radius:999px;padding:0 clamp(4px,3cqmin,8px);white-space:nowrap;cursor:help}
+  .thk.thk-shadow .thk-shadow-badge{display:inline-flex}
+  .thk-body{flex:1;min-height:0;display:flex;gap:clamp(8px,6cqmin,18px)}
+  .thk-l{flex:1;min-width:0;min-height:0;overflow:hidden;display:flex;flex-direction:column;justify-content:center;gap:clamp(2px,2cqh,6px)}
+  .thk-ist{display:flex;align-items:baseline;gap:clamp(2px,1.5cqmin,6px);min-width:0}
+  .thk-ist b{font-family:var(--fm);font-variant-numeric:tabular-nums;font-size:clamp(16px,24cqh,52px);font-weight:600;line-height:1;color:var(--text)}
+  /* Mit Heizprofil-Zeile teilen sich fuenf Baender die Hoehe - dann muss die grosse Zahl kleiner
+     werden, sonst draengt sie Kappe und Pille aus der Karte. Die Klasse setzt _thkPaint. */
+  .thk.thk-full .thk-ist b{font-size:clamp(15px,18cqh,42px)}
+  .thk-unit{font-size:var(--wf-lbl);color:var(--muted)}
+  .thk-cap{font-size:var(--wf-cap);letter-spacing:.08em;text-transform:uppercase;color:var(--faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .thk-pill{display:inline-flex;align-items:center;align-self:flex-start;max-width:100%;gap:clamp(3px,2.4cqmin,8px);padding:clamp(1px,1cqmin,4px) clamp(5px,3.5cqmin,10px);border-radius:999px;font-size:var(--wf-lbl);font-weight:700;white-space:nowrap;color:var(--tt);background:color-mix(in oklab,var(--tt) 15%,transparent)}
+  .thk-pill .thk-ic{flex:none;width:clamp(11px,4.5cqmin,20px);height:clamp(11px,4.5cqmin,20px);display:inline-flex}
+  .thk-pill .thk-ic svg{width:100%;height:100%;overflow:visible}
+  /* Die Saeule steht MITTIG unter ihrer Skalenzahl, nicht neben ihr: im Entwurf gehoeren
+     28 und 12 ueber und unter das Thermometer, und nur so bleibt die Spalte schmal. */
+  .thk-therm{flex:none;width:clamp(26px,14cqi,46px);display:flex;flex-direction:column;align-items:center;gap:clamp(2px,1.5cqmin,6px)}
+  .thk-sc{flex:none;font-family:var(--fm);font-size:var(--wf-cap);color:var(--faint);line-height:1}
+  /* overflow bleibt sichtbar: der Griff ragt links und rechts ueber die Saeule hinaus. */
+  /* Die Rinne muss man SEHEN, sonst schwebt der Griff im Nichts: var(--surface) liegt zu nah
+     an der Kartenflaeche, deshalb ein aufgehellter Zug aus der gedaempften Textfarbe. */
+  .thk-bar{position:relative;flex:1;min-height:0;width:clamp(16px,11cqi,28px);border-radius:999px;background:color-mix(in oklab,var(--muted) 20%,transparent);border:1px solid var(--line)}
+  .thk-fill{position:absolute;left:0;right:0;bottom:0;height:0;border-radius:999px;background:var(--tt);transition:height .4s}
+  /* Der Griff ist eine liegende Kapsel im Betriebston - eine Kugel sass im Entwurf nicht,
+     und ein Ring in der Kartenfarbe trennt ihn sichtbar von der Fuellung darunter. */
+  .thk-grip{position:absolute;left:50%;bottom:0;transform:translate(-50%,50%);width:calc(100% + clamp(4px,2cqi,8px));height:clamp(11px,6cqi,20px);border-radius:999px;background:var(--surface-2);border:2px solid var(--tt);touch-action:none;cursor:ns-resize;z-index:2}
+  .stage.edit .thk-grip{pointer-events:none}
+  .thk-set{flex:none;display:flex;align-items:center;justify-content:space-between;gap:clamp(5px,4cqmin,12px)}
+  .thk-rb{flex:none;display:grid;place-items:center;padding:0;width:clamp(22px,12cqmin,40px);height:clamp(22px,12cqmin,40px);border-radius:50%;border:1px solid var(--line);background:var(--surface);color:var(--text);cursor:pointer}
+  .thk-rb svg{width:50%;height:50%;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round}
+  .thk-rb:active{transform:scale(.94)}
+  .thk-mid{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;text-align:center}
+  .thk-tval{font-family:var(--fm);font-variant-numeric:tabular-nums;font-size:clamp(13px,14cqh,26px);font-weight:600;color:var(--text);white-space:nowrap}
+  .thk-tsub{max-width:100%;font-size:var(--wf-cap);color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  /* .swm rechnet seine Hoehe sonst aus 82cqh der KARTE (in switch.js ist der Container die
+     ganze Kachel) - in der Raumkarte waere die Profilzeile damit 60 px hoch. */
+  .thk-prof{flex:none}
+  .thk-prof .swm{height:clamp(22px,15cqh,40px)}
+  /* Flache Kachel: zuerst faellt die Kappe, dann die Profilzeile - die grosse Zahl, der
+     Zustand und der Steller bleiben bis zuletzt stehen. */
+  @container (max-height:150px){.thk-cap{display:none}}
+  @container (max-height:120px){.thk-cap,.thk-prof{display:none}}
   /* ===== Rollo (cover) — Fenster-Slider + Steuerung + Sonne ===== */
   .hc2{position:absolute;inset:0;container-type:size}
   .hc2in{position:absolute;inset:0;display:flex;font-size:clamp(9px,3.15cqmin,17px);color:var(--text)}

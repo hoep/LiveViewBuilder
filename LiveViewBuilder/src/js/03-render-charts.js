@@ -41,7 +41,7 @@
     sun:{val:'[data-role=val]',ico:null}, objinfo:{val:'[data-role=oival]',ico:null},
     clock:{val:'.hctime',ico:null},
     timer:{val:'.httime',ico:null}, tempbar:{val:'.htval',ico:null},
-    bot:{val:'.hvst',ico:null}, thermostat:{val:'.htc-ist',ico:null},
+    bot:{val:'.hvst',ico:null}, thermostat:{val:'.htc-ist,.thk-ist',ico:null}, // beide Bauformen; die Klassen kommen nie zusammen vor
     slider:{val:'[data-role=val]',ico:null}, cover:{val:'[data-role=val]',ico:null}
   };
   // position:relative + left/top statt transform: wirkt auch auf inline-Elemente (z. B. der Wert-<span>),
@@ -167,7 +167,10 @@
     if(w.type==='eventctl')fetchEvent(w,root);
     if(w.type==='objinfo')fetchObjInfo(w,root);
     if(w.visVar&&mode!=='edit'&&_lastVals[w.visVar]){var _ve=$('.w[data-id="'+w.id+'"]',(root||canvas));if(_ve)_ve.style.display=evalVis(w,_lastVals[w.visVar])?'':'none';}
-    if(w.type==='thermostat'){buildThermModes(w,root);updateTherm(w,root);}
+    // Nur die klassische Bauform: die Raumkarte (thStil='karte') zeichnet sich ueber ihren
+    // eigenen mount-Hook. Liefe updateTherm auch dort, wuerde es Rollen wie [data-role=modes]
+    // vergeblich suchen und die Klasse auf ein .htc-Element setzen, das es dort nicht gibt.
+    if(w.type==='thermostat'&&w.thStil!=='karte'){buildThermModes(w,root);updateTherm(w,root);}
     if((w.assocOn||w.type==='assoc')&&w.varId)loadAssoc(w.varId,function(){if(_lastVals[w.varId])applyVal(w.varId,_lastVals[w.varId]);});
   }
   function _renderRest(){
