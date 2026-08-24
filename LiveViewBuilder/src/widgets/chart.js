@@ -103,7 +103,8 @@
         // Die Serie entscheidet darueber (Feld X-ID), nicht dieses Feld.
         +row('X-Achse','<input id="pXName" value="'+esc(w.xname||'')+'" placeholder="z. B. Außentemperatur" style="flex:1"> '
             +'<input id="pXUnit" value="'+esc(w.xunit||'')+'" placeholder="°C" style="width:52px" title="Einheit">')
-        +'<div class="hint" style="font-size:11px;margin:-2px 2px 8px">Trägt eine Serie eine <b>X-ID</b>, wird aus dem Punktdiagramm ein XY-Diagramm: beide Reihen werden über den Zeitstempel gepaart. Ohne X-ID liegt weiterhin die Zeit auf der X-Achse.</div>';
+        +row('Verdichten','<input id="pXBin" type="number" step="0.5" style="width:64px" value="'+(w.xBin||'')+'" placeholder="aus"> <span style="font-size:11px;color:var(--muted)">Klassenbreite der X-Achse; je Klasse ein Mittelwert</span>')
+        +'<div class="hint" style="font-size:11px;margin:-2px 2px 8px">Trägt eine Serie eine <b>X-ID</b>, wird aus dem Punktdiagramm ein XY-Diagramm: beide Zeitreihen werden über den Zeitstempel gepaart (zur nächsten Marke, sonst mit dem zuletzt bekannten X-Wert). Ohne X-ID liegt weiterhin die Zeit auf der X-Achse. <b>Verdichten</b> macht aus der Punktwolke eine Kennlinie: 0,5 fasst je halbes Grad zusammen.</div>';
       if(V.wf)h+=row('Y-Einheit','<input id="pWfUnit" value="'+esc(_wfUnit(w))+'" style="width:80px" placeholder="z. B. €">')
         +row('Datenlabels','<input type="checkbox" id="pDl"'+(w.labels?' checked':'')+'>')
         +row('Verbindungslinien','<input type="checkbox" id="pWfConn"'+(w.wfConnect!==false?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">gestrichelt, zwischen den Balken</span>');
@@ -207,6 +208,7 @@
       if($('#pSymS'))$('#pSymS').oninput=function(){w.symSize=parseFloat(this.value)||5;reChart();};
       if($('#pXName'))$('#pXName').oninput=function(){w.xname=this.value||undefined;reChart();commit();};
       if($('#pXUnit'))$('#pXUnit').oninput=function(){w.xunit=this.value||undefined;reChart();commit();};
+      if($('#pXBin'))$('#pXBin').oninput=function(){w.xBin=parseFloat(this.value)||undefined;delete _hist[w.id];fetchHist(w);commit();};
       if($('#pLw'))$('#pLw').oninput=function(){w.lw=parseFloat(this.value)||2;reChart();};
       if($('#pBr'))$('#pBr').oninput=function(){w.barRadius=parseFloat(this.value)||0;reChart();};
       if($('#pBarHoriz'))$('#pBarHoriz').onchange=function(){w.barHoriz=this.checked||undefined;reChart();};

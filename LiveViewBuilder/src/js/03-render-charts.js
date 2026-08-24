@@ -203,6 +203,59 @@
   // ---------- ECharts / Kamera ----------
   var _ec={},_hist={},_lastVals={},_chAnim={};   // _chAnim: Bar-Race-Timer je Widget
 
+  /**
+   * Aus ZWEI ZEITREIHEN eine Punktwolke machen. Das ist der ganze Trick am
+   * XY-Diagramm: das Archiv kennt nur Werte ueber der Zeit, ein Kennlinienbild
+   * braucht Wertepaare.
+   *
+   * Drei Dinge, die dabei schiefgehen koennen, und was dagegen getan wird:
+   *
+   * 1. Die Reihen treffen sich nicht exakt. Ein Sollwert aendert sich alle paar
+   *    Stunden, die Aussentemperatur staendig; auf derselben Aggregationsstufe
+   *    passen die Bloecke zwar zusammen, aber es fehlen einzelne. Deshalb wird
+   *    zur naechstgelegenen X-Marke gesucht und, wenn keine im Fenster liegt,
+   *    der zuletzt bekannte X-Wert fortgeschrieben - eine Aussentemperatur
+   *    springt nicht.
+   * 2. Es werden zu viele Punkte. Ein Jahr auf Stundenmitteln sind 8.760 Paare
+   *    je Reihe; das ist eine Wolke, keine Kennlinie. Mit einer Klassenbreite
+   *    (xBin) wird je X-Intervall der Mittelwert gebildet - aus der Wolke wird
+   *    die Linie, die man tatsaechlich sehen will.
+   * 3. Ausreisser aus Umschaltmomenten. Sie bleiben stehen; sie zu tilgen hiesse,
+   *    Messwerte zu erfinden. Wer sie los werden will, verdichtet.
+   */
+  function _xyPaare(xp,yp,w){
+    if(!xp.length||!yp.length)return [];
+    var tol=0,k;
+    for(k=1;k<xp.length&&k<8;k++){var d=xp[k][0]-xp[k-1][0];if(d>0&&(tol===0||d<tol))tol=d;}
+    if(!tol)tol=3600000;                       // ohne Anhalt: eine Stunde
+    var pts=[],xi=0,letzt=null,letztT=0;
+    for(k=0;k<yp.length;k++){
+      var t=yp[k][0];
+      while(xi<xp.length-1&&xp[xi+1][0]<=t)xi++;
+      var kand=xp[xi],naechst=xp[xi+1];
+      var beste=kand,ab=Math.abs(t-kand[0]);
+      if(naechst&&Math.abs(naechst[0]-t)<ab){beste=naechst;ab=Math.abs(naechst[0]-t);}
+      if(ab<=tol){letzt=beste[1];letztT=beste[0];}
+      // Fortschreiben ja - aber nicht endlos. Faellt die X-Reihe laenger aus,
+      // waeren alle Y-Werte an denselben X-Wert geheftet: im Bild ein senkrechter
+      // Strich, der wie eine Messung aussieht und keine ist.
+      if(letzt==null||Math.abs(t-letztT)>3*tol)continue;
+      pts.push([letzt,yp[k][1]]);
+    }
+    var bin=parseFloat(w&&w.xBin);
+    if(bin>0){
+      var eimer={};
+      for(k=0;k<pts.length;k++){
+        var b=Math.round(pts[k][0]/bin)*bin;
+        if(!eimer[b])eimer[b]=[0,0];
+        eimer[b][0]+=pts[k][1];eimer[b][1]++;
+      }
+      pts=Object.keys(eimer).map(function(b){return [parseFloat(b),eimer[b][0]/eimer[b][1]];});
+    }
+    pts.sort(function(a,b){return a[0]-b[0];});
+    return pts;
+  }
+
   // Liegt auf der X-Achse eine zweite MESSGROESSE statt der Zeit? Das entscheidet
   // die Serie (xvid), nicht der Diagrammtyp allein. Damit wird aus dem
   // Punktdiagramm ein XY-Diagramm - eine Heizkurve ist ein Vorlauf ueber der
@@ -1559,11 +1612,8 @@
           fetch(hUrl(s.xvid,mFrom,mTo,lvx),{cache:'no-store'}).then(function(r){return r.json();}),
           fetch(hUrl(id,mFrom,mTo,lvx),{cache:'no-store'}).then(function(r){return r.json();})
         ]).then(function(js){
-          var xp=hPts(js[0],lvx,sAgg(s)),yp=conv(hPts(js[1],lvx,af)),m={},pts=[],k;
-          for(k=0;k<xp.length;k++)m[xp[k][0]]=xp[k][1];
-          for(k=0;k<yp.length;k++){var xv=m[yp[k][0]];if(xv!=null)pts.push([xv,yp[k][1]]);}
-          pts.sort(function(a,b){return a[0]-b[0];});
-          out[i]={data:pts,color:scol,name:snm,xy:true};
+          var xp=hPts(js[0],lvx,sAgg(s)),yp=conv(hPts(js[1],lvx,af));
+          out[i]={data:_xyPaare(xp,yp,w),color:scol,name:snm,xy:true};
           fin();
         }).catch(function(){out[i]={data:[],color:scol,name:snm,xy:true};fin();});
         return;
