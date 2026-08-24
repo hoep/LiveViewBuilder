@@ -28,9 +28,33 @@
     return out;
   }
 
+  // Wer eine Seite als TAB oder KOMPONENTE fuehrt, ist ihr Zuhause.
+  //
+  // Der Baum folgt sonst dem ersten Weg, auf dem er eine Seite erreicht - und das
+  // ist oft ein beilaeufiger: die Kalender-Knoepfe der Thermostate zeigen auf die
+  // Programmierung, also hing sie unter dem Geschoss, das zufaellig zuerst
+  // aufgeklappt wurde, statt unter ihrem Reiter-Hub. Diese Tabelle sagt vorher,
+  // wo eine Seite hingehoert; alle anderen Verweise darauf werden im Baum nicht
+  // noch einmal aufgeklappt.
+  function _hubEltern(){
+    var m={};
+    Object.keys(store.views).forEach(function(h){
+      var v=store.views[h];if(!v||!v.widgets)return;
+      v.widgets.forEach(function(w){
+        if(w.type==='component'&&w.comp&&store.views[w.comp]&&!m[w.comp])m[w.comp]=h;
+        if(w.type==='regiontabs'&&w.tabs&&w.tabs.forEach){
+          w.tabs.forEach(function(t){if(t&&t.view&&store.views[t.view]&&!m[t.view])m[t.view]=h;});
+          if(w.default&&store.views[w.default]&&!m[w.default])m[w.default]=h;
+        }
+      });
+    });
+    return m;
+  }
+
   function buildPageTree(){
     var box=$('#pageTree');if(!box)return;
     var names=Object.keys(store.views);
+    var hub=_hubEltern();
     if(!names.length){box.innerHTML='<div class="hint">Keine Seiten.</div>';return;}
     var home=(store.home&&store.views[store.home])?store.home:names[0];
     var reached={};
@@ -48,7 +72,11 @@
         +'</div>';
       if(cyc)return h;
       var np=path.concat([name]);
-      _viewLinks(name).forEach(function(k){if(reached[k])return;h+=node(k,depth+1,np);}); // jede View nur 1x (Spanning-Tree; Mehrfach-Links nicht erneut expandieren)
+      _viewLinks(name).forEach(function(k){
+        if(reached[k])return;
+        if(hub[k]&&hub[k]!==name)return;   // gehoert unter ihren Reiter-Hub, nicht hierher
+        h+=node(k,depth+1,np);
+      }); // jede View nur 1x (Spanning-Tree; Mehrfach-Links nicht erneut expandieren)
       return h;
     }
     var html=node(home,0,[]);
