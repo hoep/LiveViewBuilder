@@ -320,6 +320,9 @@
   .thk.tone-heat{--tt:var(--warm)}
   .thk.tone-cool{--tt:var(--info)}
   .thk.tone-off{--tt:var(--faint)}
+  /* Kein Betrieb, aber auch nicht tot: ein ruhiger Ton aus der gedaempften
+     Textfarbe. Die Karte bleibt lesbar, ohne einen Zustand zu behaupten. */
+  .thk.tone-ruhe{--tt:color-mix(in oklab,var(--muted) 80%,var(--text))}
   .thk.tone-warm{--tt:var(--warn)}
   .thk-top{display:flex;align-items:center;gap:clamp(4px,3cqmin,10px);min-height:clamp(16px,10cqmin,34px)}
   .thk-name{flex:1;min-width:0;font-size:var(--wf-lbl);font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
