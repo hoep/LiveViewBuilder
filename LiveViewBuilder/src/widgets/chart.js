@@ -98,7 +98,12 @@
         +row('Füllung','<input type="checkbox" id="pSpFill"'+((w.fill!==false)?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">Fläche unter der Linie · nur bei EINER Reihe</span>')
         +'<div class="hint" style="font-size:11px;margin-top:4px">Farbe je Reihe unter <b>Datenreihen</b> — dort auch weitere Reihen anlegen, die Sparkline zeichnet sie alle.</div>';
       if(V.lineOpt)h+=row('Glätten (Spline)','<input type="checkbox" id="pSmooth"'+(w.smooth!==false?' checked':'')+'>')+row('Punkte','<input type="checkbox" id="pSym"'+(w.symbols?' checked':'')+'> <input id="pSymS" type="number" style="width:52px" value="'+(w.symSize||5)+'" title="Größe">')+row('Linienbreite','<input id="pLw" type="number" step="0.5" value="'+(w.lw||2)+'">')+row('Flächen-Verlauf','<input type="checkbox" id="pGrad"'+(w.grad?' checked':'')+'>');
-      if(V.symOpt)h+=row('Punkte-Größe','<input id="pSymS" type="number" style="width:52px" value="'+(w.symSize||7)+'">');
+      if(V.symOpt)h+=row('Punkte-Größe','<input id="pSymS" type="number" style="width:52px" value="'+(w.symSize||7)+'">')
+        // Beschriftung der X-Achse: nur sinnvoll, wenn dort eine Messgroesse liegt.
+        // Die Serie entscheidet darueber (Feld X-ID), nicht dieses Feld.
+        +row('X-Achse','<input id="pXName" value="'+esc(w.xname||'')+'" placeholder="z. B. Außentemperatur" style="flex:1"> '
+            +'<input id="pXUnit" value="'+esc(w.xunit||'')+'" placeholder="°C" style="width:52px" title="Einheit">')
+        +'<div class="hint" style="font-size:11px;margin:-2px 2px 8px">Trägt eine Serie eine <b>X-ID</b>, wird aus dem Punktdiagramm ein XY-Diagramm: beide Reihen werden über den Zeitstempel gepaart. Ohne X-ID liegt weiterhin die Zeit auf der X-Achse.</div>';
       if(V.wf)h+=row('Y-Einheit','<input id="pWfUnit" value="'+esc(_wfUnit(w))+'" style="width:80px" placeholder="z. B. €">')
         +row('Datenlabels','<input type="checkbox" id="pDl"'+(w.labels?' checked':'')+'>')
         +row('Verbindungslinien','<input type="checkbox" id="pWfConn"'+(w.wfConnect!==false?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">gestrichelt, zwischen den Balken</span>');
@@ -200,6 +205,8 @@
       if($('#pSmooth'))$('#pSmooth').onchange=function(){w.smooth=this.checked;reChart();};
       if($('#pSym'))$('#pSym').onchange=function(){w.symbols=this.checked;reChart();};
       if($('#pSymS'))$('#pSymS').oninput=function(){w.symSize=parseFloat(this.value)||5;reChart();};
+      if($('#pXName'))$('#pXName').oninput=function(){w.xname=this.value||undefined;reChart();commit();};
+      if($('#pXUnit'))$('#pXUnit').oninput=function(){w.xunit=this.value||undefined;reChart();commit();};
       if($('#pLw'))$('#pLw').oninput=function(){w.lw=parseFloat(this.value)||2;reChart();};
       if($('#pBr'))$('#pBr').oninput=function(){w.barRadius=parseFloat(this.value)||0;reChart();};
       if($('#pBarHoriz'))$('#pBarHoriz').onchange=function(){w.barHoriz=this.checked||undefined;reChart();};

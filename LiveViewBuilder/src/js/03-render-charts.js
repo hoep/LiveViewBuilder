@@ -202,6 +202,17 @@
 
   // ---------- ECharts / Kamera ----------
   var _ec={},_hist={},_lastVals={},_chAnim={};   // _chAnim: Bar-Race-Timer je Widget
+
+  // Liegt auf der X-Achse eine zweite MESSGROESSE statt der Zeit? Das entscheidet
+  // die Serie (xvid), nicht der Diagrammtyp allein. Damit wird aus dem
+  // Punktdiagramm ein XY-Diagramm - eine Heizkurve ist ein Vorlauf ueber der
+  // Aussentemperatur, kein Verlauf ueber dem Tag.
+  function _chXY(w){
+    if(!w||(w.ctype||'')!=='scatter')return false;
+    var S=w.series||[];
+    for(var i=0;i<S.length;i++)if(S[i]&&S[i].xvid)return true;
+    return false;
+  }
   function cssv(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim();}
   function _rgb(h){h=(h||'').trim();if(h.charAt(0)==='#')h=h.slice(1);if(h.length===3)h=h.charAt(0)+h.charAt(0)+h.charAt(1)+h.charAt(1)+h.charAt(2)+h.charAt(2);var n=parseInt(h||'0',16);return [(n>>16)&255,(n>>8)&255,n&255];}
   function accA(a,hex){var c=_rgb(hex||cssv('--accent'));return 'rgba('+c[0]+','+c[1]+','+c[2]+','+a+')';}
@@ -1165,10 +1176,23 @@
         scale:(a.min==null||a.min===''),min:(a.min!=null&&a.min!==''?parseFloat(a.min):null),max:(a.max!=null&&a.max!==''?parseFloat(a.max):null),
         axisLine:{show:ax0.line,lineStyle:{color:cssv('--line')}},axisTick:{show:ax0.ticks,lineStyle:{color:cssv('--line')}},axisLabel:_axLabY(w,ax0,a),splitLine:{show:(ax0.yGrid&&ix===0),lineStyle:{color:cssv('--line-soft')}},splitNumber:(w.gridDivs>0?parseInt(w.gridDivs):null)};});
     var lp=w.legend?(w.legPos||'top'):''; // Legende reserviert Platz am jeweiligen Rand (sonst Ueberlappung)
-    var opt={backgroundColor:'transparent',animation:!!bcfg().chartAnim,grid:{left:6+Math.max(0,nL-1)*48+(lp==='left'?60:0),right:8+Math.max(0,nR-1)*48+(lp==='right'?60:0),top:6+_titleSpace(w)+(lp==='top'?20:0)+_annTopSpace(w),bottom:(w.zoom?34:14)+(lp==='bottom'?18:0)+_navSpace(w),containLabel:true},tooltip:{trigger:'axis',valueFormatter:_lineFmt},
+    var opt={backgroundColor:'transparent',animation:!!bcfg().chartAnim,grid:{left:6+Math.max(0,nL-1)*48+(lp==='left'?60:0),right:8+Math.max(0,nR-1)*48+(lp==='right'?60:0),top:6+_titleSpace(w)+(lp==='top'?20:0)+_annTopSpace(w),bottom:(w.zoom?34:14)+(lp==='bottom'?18:0)+_navSpace(w),containLabel:true},tooltip:(_chXY(w)
+        ? {trigger:'item',formatter:function(p){
+            return (p.seriesName?(p.seriesName+'<br>'):'')
+              +_lineFmt(p.value[0])+(w.xunit?(' '+w.xunit):'')+' \u2192 '
+              +_lineFmt(p.value[1])+(w.yunit?(' '+w.yunit):'');}}
+        : {trigger:'axis',valueFormatter:_lineFmt}),
       legend:_legendOpt(w,w.legend),
       title:_titleOpt(w),
-      xAxis:{type:'time',boundaryGap:anyBar,splitNumber:_axSplitX(w),axisLine:{show:ax0.line,lineStyle:{color:cssv('--line')}},axisTick:{show:ax0.ticks},axisLabel:_axLabX(w,ax0,false),splitLine:{show:ax0.xGrid,lineStyle:{color:cssv('--line-soft')}}},
+      xAxis:(_chXY(w)
+        ? {type:'value',scale:true,name:(w.xname||''),nameLocation:'middle',nameGap:22,
+           nameTextStyle:{color:cssv('--faint'),fontSize:_ecF(w,'axis',10)},
+           splitNumber:_axSplitX(w),axisLine:{show:ax0.line,lineStyle:{color:cssv('--line')}},
+           axisTick:{show:ax0.ticks},
+           axisLabel:{show:ax0.xLab,color:cssv('--faint'),fontSize:_axFs(w),
+                      formatter:function(v){return _lineFmt(v)+(w.xunit?(' '+w.xunit):'');}},
+           splitLine:{show:ax0.xGrid,lineStyle:{color:cssv('--line-soft')}}}
+        : {type:'time',boundaryGap:anyBar,splitNumber:_axSplitX(w),axisLine:{show:ax0.line,lineStyle:{color:cssv('--line')}},axisTick:{show:ax0.ticks},axisLabel:_axLabX(w,ax0,false),splitLine:{show:ax0.xGrid,lineStyle:{color:cssv('--line-soft')}}}),
       yAxis:yA,series:series};
     if(w.zoom)opt.dataZoom=[{type:'inside'},{type:'slider',height:13,bottom:4,borderColor:'transparent',backgroundColor:accA(.06),fillerColor:accA(.18),handleStyle:{color:cssv('--accent')},dataBackground:{lineStyle:{color:cssv('--line')},areaStyle:{color:accA(.08)}},textStyle:{color:cssv('--faint'),fontSize:_ecF(w,'axis',8)}}];
     // ===== ANNOTATIONEN =========================================================
@@ -1526,6 +1550,24 @@
         var o=[],k,v;
         for(k=0;k<pts.length;k++){ v=cf(Number(pts[k][1]),pts[k][0]); if(v!=null)o.push([pts[k][0],v]); }
         return o; };
+      // XY-Punkte: beide Reihen auf DERSELBEN Stufe holen und ueber den Zeitstempel
+      // paaren. Ohne gleiche Stufe gaebe es keine gemeinsamen Zeitpunkte, also auch
+      // keine Paare - die Stufe ist hier keine freie Wahl je Serie.
+      if(w.ctype==='scatter'&&s.xvid){
+        var lvx=(lv==null?_CHLVL.hour:lv);
+        Promise.all([
+          fetch(hUrl(s.xvid,mFrom,mTo,lvx),{cache:'no-store'}).then(function(r){return r.json();}),
+          fetch(hUrl(id,mFrom,mTo,lvx),{cache:'no-store'}).then(function(r){return r.json();})
+        ]).then(function(js){
+          var xp=hPts(js[0],lvx,sAgg(s)),yp=conv(hPts(js[1],lvx,af)),m={},pts=[],k;
+          for(k=0;k<xp.length;k++)m[xp[k][0]]=xp[k][1];
+          for(k=0;k<yp.length;k++){var xv=m[yp[k][0]];if(xv!=null)pts.push([xv,yp[k][1]]);}
+          pts.sort(function(a,b){return a[0]-b[0];});
+          out[i]={data:pts,color:scol,name:snm,xy:true};
+          fin();
+        }).catch(function(){out[i]={data:[],color:scol,name:snm,xy:true};fin();});
+        return;
+      }
       fetch(hUrl(id,mFrom,mTo,lv),{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
         out[i]={data:conv(hPts(j,lv,af)),color:scol,name:snm};
       }).catch(function(){out[i]={data:[],color:scol,name:snm};}).then(fin);
@@ -2115,6 +2157,7 @@
             +_CHAGGF.map(function(o){return '<option value="'+o[0]+'"'+((s.aggF||'')===o[0]?' selected':'')+'>'+o[1]+'</option>';}).join('')+'</select>'))
         // Umrechnen und Schreiben sind zwei Dinge: die Formel aendert den WERT,
         // das Format nur seine Darstellung.
+        +((w.ctype==='scatter')?('<input data-sf="'+i+'.xvid" value="'+(s.xvid||'')+'" placeholder="X-ID" title="Variable der X-Achse (leer = Zeit)" style="width:56px">'):'')
         +'<input data-sf="'+i+'.calc" value="'+esc(s.calc||'')+'" placeholder="Formel, z. B. y/1000" title="Umrechnung. y = Wert, x = Zeit. Funktionen: log ln log10 sqrt abs round floor ceil exp" style="flex:1;min-width:96px">'
         +'<select data-sf="'+i+'.vfmt" title="Wertformat dieser Serie (gilt auch fuer ihre Achse)">'
             +_CHVFMT.map(function(o){return '<option value="'+o[0]+'"'+((s.vfmt||'')===o[0]?' selected':'')+'>'+o[1]+'</option>';}).join('')+'</select>'
