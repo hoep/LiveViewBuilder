@@ -225,8 +225,11 @@
         : '<span class="lbdot"></span>';
       // Das Zeichen sagt "an dieser Leuchte haengt ein Melder" - es verschwindet also
       // NICHT, wenn gerade Ruhe ist. Ob der Melder in diesem Moment anspricht, sagt die
-      // Farbe: warm bei Bewegung, sonst gedaempft.
-      var melder=l.motion?('<span class="lbmd'+(l.motionOn?' on':'')+'" title="'+(l.motionOn?'Bewegung erkannt':'Bewegungsmelder, gerade ruhig')+'">'+((typeof iconSVG==='function')?iconSVG('motion',100):'')+'</span>'):'';
+      // FORM und die Farbe: in Ruhe nur das Maennchen und gedaempft, bei Bewegung kommen
+      // die Funkboegen dazu und es wird warm. Der Zustand muss durchgereicht werden -
+      // fest 100 hiess: die Boegen standen immer da, und nur die Farbe unterschied noch,
+      // was auf einem Wandpanel kaum auffiel.
+      var melder=l.motion?('<span class="lbmd'+(l.motionOn?' on':'')+'" title="'+(l.motionOn?'Bewegung erkannt':'Bewegungsmelder, gerade ruhig')+'">'+((typeof iconSVG==='function')?iconSVG('motion',l.motionOn?100:0):'')+'</span>'):'';
       var fuell='';
       if(on){
         fuell='<span class="lbfill" style="width:'+lvl+'%"></span>';
@@ -266,7 +269,8 @@
         +'<span><span class="lbcore" style="width:11px;height:11px;box-shadow:0 0 6px var(--licht-glow)"></span>Leuchte an</span>'
         +'<span><span style="width:16px;height:10px;border-radius:4px;background:var(--licht-bg);border:1px solid var(--licht-bd)"></span>brennt im Raum</span>'
         +'<span><span class="lbtrk lbsw" style="width:16px;display:inline-block"></span>nicht dimmbar</span>'
-        +'<span><span class="lbmd" style="position:static">'+((typeof iconSVG==='function')?iconSVG('motion',100):'')+'</span>Melder beteiligt (warm = Bewegung)</span>'
+        +'<span><span class="lbmd" style="position:static">'+((typeof iconSVG==='function')?iconSVG('motion',0):'')+'</span>Melder beteiligt'
+        +'<span class="lbmd on" style="position:static;margin:0 4px 0 9px">'+((typeof iconSVG==='function')?iconSVG('motion',100):'')+'</span>Bewegung</span>'
         +'</div>';
     }
     function lbRender(w,lamps){
