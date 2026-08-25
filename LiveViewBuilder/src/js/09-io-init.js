@@ -490,9 +490,15 @@
             if(m.x+m.w>gx1)gx1=m.x+m.w;if(m.y+m.h>gy1)gy1=m.y+m.h;});
           units.push({grp:1,mem:mem,x0:gx0,y0:gy0,gw:(gx1-gx0),gh:(gy1-gy0)});return;}
       }
-      units.push({grp:0,w:w,gw:w.w,gh:w.h});
+      units.push({grp:0,w:w,gw:w.w,gh:(w.reflowH||w.h),full:!!w.reflowFull});
     });
-    units.forEach(function(u){var s=1,bw=u.gw;if(bw>AW){s=AW/u.gw;bw=AW;}u.s=s;u.bw=bw;u.bh=u.gh*s;}); // zu breite Einheit -> negativer Zoom
+    // reflowFull: das Widget bekommt die volle Breite und BEHAELT seine Entwurfshoehe,
+    // statt heruntergerechnet zu werden. Eine breite Leiste (Szenen ueber die ganze
+    // Wandtafel) wuerde sonst auf ein Fuenftel schrumpfen und waere ein unleserlicher
+    // Streifen; so ordnet sie ihren Inhalt stattdessen neu an.
+    units.forEach(function(u){
+      if(u.full){u.s=1;u.bw=AW;u.bh=u.gh;return;}
+      var s=1,bw=u.gw;if(bw>AW){s=AW/u.gw;bw=AW;}u.s=s;u.bw=bw;u.bh=u.gh*s;}); // zu breite Einheit -> negativer Zoom
     // Zeilen greedy füllen (maximale Anzahl nebeneinander)
     var lines=[],cur=[],curW=0;
     for(i=0;i<units.length;i++){var u=units[i],need=(cur.length?G:0)+u.bw;
@@ -511,6 +517,15 @@
       var x=M+Math.max(0,(AW-lineW)/2);
       line.forEach(function(u){var uy=y+Math.max(0,(rowH-u.bh)/2);
         if(u.grp){u.mem.forEach(function(m){placeW(m,x+(m.x-u.x0)*u.s,uy+(m.y-u.y0)*u.s,u.s);});} // Gruppe: relative Anordnung erhalten
+        else if(u.full){
+          var elF=sfEl(u.w),winF=elF&&elF.firstElementChild;
+          if(winF){
+            elF.style.transform='none';elF.style.left=x.toFixed(1)+'px';elF.style.top=uy.toFixed(1)+'px';
+            elF.style.width=u.bw.toFixed(1)+'px';elF.style.height=u.bh.toFixed(1)+'px';
+            winF.style.transform='';winF.style.width='';winF.style.height='';
+            wPadVars(elF,u.w,1);stretched.push(u.w);   // Inhalt richtet sich neu ein, kein Zoom
+          }
+        }
         else{placeW(u.w,x,uy,u.s);}
         x+=u.bw+G;
       });

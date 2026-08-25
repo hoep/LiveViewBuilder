@@ -28,11 +28,11 @@
       +'.sbtaste .tx i{font:400 10.5px var(--fu);font-style:normal;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}'
       +'.sbtaste.busy{opacity:.6;pointer-events:none}'
       // Schmale Zeile (Handy): die Tasten stehen untereinander statt nebeneinander.
-      // Gemessen wird die ENTWURFSbreite der Kachel, nicht die Geraetebreite - die
+      // Gemessen wird die Breite der KACHEL, nicht die des Geraets - die
       // breite Zeile auf der Wandtafel bleibt also unberuehrt. align-content:stretch
       // teilt die Hoehe auf die Zeilen auf, damit auch eine fuenfte Szene noch passt
       // statt unten herauszulaufen.
-      +'@container (max-width:360px){.sbtasten{flex-wrap:wrap;align-content:stretch;gap:8px}'
+      +'@container (max-width:520px){.sbtasten{flex-wrap:wrap;align-content:stretch;gap:8px}'
       +'.sbtaste{flex:1 1 100%;min-height:0;padding:0 11px}'
       +'.sbtaste.aus{flex:1 1 100%}}';
       document.head.appendChild(_sb);}
