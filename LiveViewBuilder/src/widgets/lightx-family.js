@@ -373,6 +373,17 @@
     // einmal endgueltig. Unter 3 % bedeutet aus. Der zuletzt gestellte Wert wird je
     // Leuchte gemerkt, damit Tippen aus dem Aus-Zustand dorthin zurueckkehrt.
     var _lbLast={};
+    // Nach dem Schalten muss das Widget mit SEINEM EIGENEN Zeichner neu gezeichnet werden.
+    // lbWire bedient drei Widgets: die Licht-Uebersicht (lightgrid), die einzelne Leuchte
+    // (lightbar) und die Raumkarte (lightroomcard). Fest lxSchedule() aufzurufen war ein
+    // Fehler: das ist der Zeichner der UEBERSICHT. Auf einer einzelnen Leuchtenzeile wurde
+    // damit beim Tippen der gesamte Widget-Inhalt durch eine Uebersicht ersetzt - sichtbar
+    // als "die Zeile verschwindet, sobald ich sie schalten will".
+    function lbRepaint(w){
+      if(w.type==='lightbar'){ lbOneSchedule(w); return; }
+      if(w.type==='lightroomcard'){ lbCardSchedule(w); return; }
+      lxSchedule(w);
+    }
     function lbWire(w,host){
       host.querySelectorAll('[data-lbtrk]').forEach(function(tr){
         var id=parseInt(tr.getAttribute('data-lbtrk'));
@@ -408,7 +419,7 @@
           var v=roh<3?0:roh;
           if(v>0)_lbLast[id]=v;
           if(v===0){ if(l.on)lxToggle(l); } else { lxDim(l,v); }
-          lxSchedule(w); if(ev)ev.stopPropagation();
+          lbRepaint(w); if(ev)ev.stopPropagation();
         }
         tr.addEventListener('pointerup',ende);
         tr.addEventListener('pointercancel',ende);
@@ -422,7 +433,7 @@
           if(l.on){ lxToggle(l); }
           else if(lbDimBar(l)){ var z=Math.max(10,_lbLast[id]||100); lxDim(l,z); }
           else { lxToggle(l); }
-          lxSchedule(w);
+          lbRepaint(w);
         });
       });
       host.querySelectorAll('[data-lbcoloff]').forEach(function(b){
@@ -438,7 +449,7 @@
           ev.stopPropagation();
           var k=decodeURIComponent(b.getAttribute('data-lboff')).split('|');
           var lamps=(_lxData||[]).filter(function(l){return (l.floor||'')===k[0]&&(l.room||'')===k[1];});
-          lxMaster(lamps,false); lxSchedule(w);
+          lxMaster(lamps,false); lbRepaint(w);
         });
       });
       host.querySelectorAll('[data-lbcoloff]').forEach(function(b){
@@ -446,7 +457,7 @@
           ev.stopPropagation();
           var ids=(b.getAttribute('data-lbcoloff')||'').split(',').map(function(x){return parseInt(x);});
           var lamps=(_lxData||[]).filter(function(l){return ids.indexOf(l.id)>=0;});
-          lxMaster(lamps,false); lxSchedule(w);
+          lxMaster(lamps,false); lbRepaint(w);
         });
       });
     }
