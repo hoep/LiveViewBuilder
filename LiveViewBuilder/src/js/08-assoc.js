@@ -23,6 +23,11 @@
     if(pat==null)return false;var p=String(pat).trim();
     if(p==='')return false;                                     // leere Zeile matcht nichts
     if(p==='*'||/^(else|sonst|default|rest|any)$/i.test(p))return true;  // expliziter Platzhalter
+    // "~text" = ENTHAELT (ohne Gross-/Kleinschreibung). Fuer Klartexte, die eine
+    // Anlage selbst formuliert: "Zündung läuft", "Ausbrand aktiv" - da trifft
+    // kein exakter Vergleich, und eine Zahl ist es auch nicht.
+    if(p.charAt(0)==='~'){var nadel=p.slice(1).trim().toLowerCase();
+      return nadel!==''&&String(v==null?'':v).toLowerCase().indexOf(nadel)>=0;}
     var num=function(x){return parseFloat(String(x).replace(',','.'));},n=num(v);
     var op=p.match(/^(>=|<=|!=|<>|>|<|=)\s*(-?\d+(?:[.,]\d+)?)$/);
     if(op){if(isNaN(n))return false;var t=num(op[2]);switch(op[1]){case '>':return n>t;case '<':return n<t;case '>=':return n>=t;case '<=':return n<=t;case '!=':case '<>':return n!==t;case '=':return n===t;}}
