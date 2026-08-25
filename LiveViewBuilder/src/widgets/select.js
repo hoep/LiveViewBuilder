@@ -83,9 +83,18 @@
       // Label-Zeile an der Kachel: gleiches Schrift-Token wie die Knoepfe (--wf-lbl), damit
       // Beschriftung und Auswahl endlich dieselbe Groesse haben; Icon folgt der Kachel.
       var ico=w.icon?'<span style="width:clamp(12px,7cqmin,20px);height:clamp(12px,7cqmin,20px);display:inline-flex;flex:none">'+iconSVG(w.icon)+'</span>':'';
+      var lab='<span style="font-size:var(--wf-lbl);font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:clamp(4px,2.5cqmin,8px)">'+ico+escL(w.label)+'</span>';
+      // Beschriftung OBEN statt daneben: eine Bedienzeile mit langem Namen und drei
+      // Knoepfen wird nebeneinander unlesbar - der Name frisst die Knopfreihe auf.
+      // Untereinander bleibt beides ganz, und darunter passt noch ein Hinweis, was
+      // die Auswahl bewirkt.
+      if(w.selTop){
+        var hint=w.selHint?('<span style="font-size:var(--wf-cap);color:var(--faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escL(w.selHint)+'</span>'):'';
+        return '<div style="display:flex;flex-direction:column;justify-content:center;gap:clamp(3px,2cqh,7px);height:100%;min-width:0">'
+          +lab+'<div style="display:flex;min-width:0">'+host+'</div>'+hint+'</div>';
+      }
       return '<div style="display:flex;align-items:center;gap:clamp(5px,3cqmin,10px);height:100%">'
-        +'<span style="font-size:var(--wf-lbl);font-weight:600;color:var(--text);white-space:nowrap;display:flex;align-items:center;gap:clamp(4px,2.5cqmin,8px)">'+ico+escL(w.label)+'</span>'
-        +host+'</div>';
+        +lab+host+'</div>';
     },
     mount:function(w){_selLoad(w);},
     // Klappliste schreibt beim Wechsel; die Knopfreihe laeuft weiter ueber _wClick.
@@ -96,7 +105,9 @@
     },
     live:function(w,el,id,d,base,txt,on){if(w.varId===id)_selMark(w,el,d.v);},
     props:function(w){
-      return row('Darstellung','<select id="pSelMode"><option value="btn"'+(_selMode(w)==='btn'?' selected':'')+'>Knopfreihe</option><option value="list"'+(_selMode(w)==='list'?' selected':'')+'>Klappliste</option><option value="slider"'+(_selMode(w)==='slider'?' selected':'')+'>Schieber</option></select>')
+      return row('Beschriftung oben','<input type="checkbox" id="pSelTop"'+(w.selTop?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">Name über der Knopfreihe statt daneben</span>')
+        +(w.selTop?row('Hinweis darunter','<input id="pSelHint" value="'+esc(w.selHint||'')+'" placeholder="was die Auswahl bewirkt">'):'')
+        +row('Darstellung','<select id="pSelMode"><option value="btn"'+(_selMode(w)==='btn'?' selected':'')+'>Knopfreihe</option><option value="list"'+(_selMode(w)==='list'?' selected':'')+'>Klappliste</option><option value="slider"'+(_selMode(w)==='slider'?' selected':'')+'>Schieber</option></select>')
         +(_selMode(w)==='slider'?row('Rundung','<select id="pSelShape">'+[['','Pille'],['round','Abgerundet'],['square','Eckig']].map(function(o){return '<option value="'+o[0]+'"'+((w.swmShape||'')===o[0]?' selected':'')+'>'+o[1]+'</option>';}).join('')+'</select>'):'')
         +row('Optionen aus','<select id="pSelSrc"><option value=""'+(w.optSrc!=='profile'?' selected':'')+'>eigener Liste</option><option value="profile"'+(w.optSrc==='profile'?' selected':'')+'>Variablenprofil</option></select>')
         +(w.optSrc==='profile'
@@ -104,6 +115,8 @@
           : listEditor(w,'options','Optionen: Wert · Text · Gruppe · Icon · Farbe',[{k:'value',ph:'Wert'},{k:'text',ph:'Text'},{k:'group',ph:'Gruppe (optional)'},{k:'icon',type:'icon',ph:'Icon'},{k:'color',type:'skincolor'}]));
     },
     wire:function(w){
+      if($('#pSelTop'))$('#pSelTop').onchange=function(){w.selTop=this.checked||undefined;render();renderProps();commit();};
+      if($('#pSelHint'))$('#pSelHint').oninput=function(){w.selHint=this.value||undefined;render();commit();};
       if($('#pSelMode'))$('#pSelMode').onchange=function(){var v=this.value;w.smode=(v==='list'||v==='slider')?v:undefined;render();renderProps();commit();};
       if($('#pSelShape'))$('#pSelShape').onchange=function(){w.swmShape=this.value||undefined;render();commit();};
       if($('#pSelSrc'))$('#pSelSrc').onchange=function(){w.optSrc=(this.value==='profile'?'profile':undefined);render();renderProps();commit();};

@@ -339,6 +339,96 @@
     props:function(w){return hfSessRow(w);}, wire:function(w){hfSessWire(w);}
   });
 
+  // ---------- Geraete-Abgleich: der Weg zwischen Editor und Thermostat ----------
+  //
+  //  Der Editor arbeitet auf dem Plan IM MODUL. Bei Geraeten, die ihr Wochenprogramm
+  //  selbst fahren (HomeMatic), ist das nur die halbe Wahrheit: was tatsaechlich
+  //  heizt, steht im Thermostat. Bis hierher konnte man speichern - aber weder
+  //  nachsehen, ob beide Seiten dasselbe fuehren, noch die eine in die andere
+  //  ueberfuehren. Genau das machen diese drei Knoepfe, und zwar AUF BEFEHL:
+  //  seit dem 23.08.2026 schreibt der Routinedurchlauf nicht mehr von selbst
+  //  (HeatingZone-Eigenschaft WeekWrite).
+  //
+  //    Vergleichen  liest das Geraet und stellt Plan und Geraet gegenueber
+  //    Ins Geraet   schreibt den gespeicherten Plan der aktiven Variante
+  //    Vom Geraet   uebernimmt ALLE Profile des Geraets in den Modul-Plan
+  function hsyState(w){var s=hfSess(w);return s.sync||(s.sync={});}
+  function hsyBusy(w,an){hsyState(w).busy=!!an;hfEmit(w);}
+  function hsyText(w){
+    var q=hsyState(w);
+    if(q.busy)return {t:'… '+(q.busyTxt||'Abgleich läuft'),k:''};
+    if(q.err)return {t:q.err,k:'crit'};
+    if(!q.info)return {t:'Noch nicht verglichen',k:''};
+    var i=q.info;
+    if(i.applicable===false||i.error)return {t:i.error||'Für dieses Gerät nicht anwendbar',k:''};
+    if(i.gleich)return {t:'Gerät und Plan stimmen überein · '+(i.variante||''),k:'ok'};
+    return {t:'Gerät und Plan gehen auseinander'+(i.abweichungSeit?(' · seit '+i.abweichungSeit):'')
+            +(i.variante?(' · '+i.variante):''),k:'warn'};
+  }
+  function hsyRun(w,op,args,txt,nachher){
+    var s=hfSess(w),q=hsyState(w);
+    if(!hfHS(w)){toast('Nur für HomeSuite-Zonen');return;}
+    if(!s.roomIdx){toast('Keine Zone geladen');return;}
+    q.err='';q.busyTxt=txt;hsyBusy(w,true);
+    hpHSManage(s.roomIdx,{op:op,args:args||{}}).then(function(j){
+      q.busy=false;
+      if(!j||!j.ok){q.err=(j&&j.error)?j.error:'Befehl fehlgeschlagen';hfEmit(w);toast(q.err);return;}
+      nachher?nachher(j):hfEmit(w);
+    }).catch(function(){q.busy=false;q.err='Verbindungsfehler';hfEmit(w);toast(q.err);});
+  }
+  defWidget('heatsync', {
+    label:'Geräte-Abgleich', cat:'HomeSuite · Zeitplan (Heizung/Beschattung)', paletteIcon:'refresh',
+    size:[1176,46],
+    defaults:function(w){w.session='heat';},
+    render:function(w){
+      var r=hfReady(w);if(r.err)return hfMsg(r.err);if(r.loading)return hfMsg('lädt …');
+      var st=hsyText(w),q=hsyState(w),ds=q.busy?' disabled':'';
+      return '<div class="hplan hfbox hsync">'
+        +'<span class="hsy-st '+st.k+'">'+escL(st.t)+'</span>'
+        +'<span class="hsy-btn">'
+        +'<button data-hsy="check"'+ds+'><svg class="hp-ic"><use href="#ic-eye"/></svg> Vergleichen</button>'
+        +'<button data-hsy="push"'+ds+'><svg class="hp-ic"><use href="#ic-download"/></svg> Ins Gerät schreiben</button>'
+        +'<button data-hsy="pull"'+ds+'><svg class="hp-ic"><use href="#ic-undo"/></svg> Vom Gerät übernehmen</button>'
+        +'</span></div>';
+    },
+    mount:hfMount2,
+    _bind:function(w,el){
+      var s=hfSess(w),q=hsyState(w);
+      var b1=$('[data-hsy=check]',el);
+      if(b1)b1.onclick=function(){
+        hsyRun(w,'pruefePush',{},'liest das Gerät',function(j){q.info=j;hfEmit(w);});
+      };
+      var b2=$('[data-hsy=push]',el);
+      if(b2)b2.onclick=function(){
+        if(s.dirty){toast('Erst speichern — geschrieben wird der gespeicherte Plan');return;}
+        if(!confirm('Den gespeicherten Plan der aktiven Variante ins Gerät schreiben?'))return;
+        hsyRun(w,'syncToDevice',{},'schreibt ins Gerät',function(j){
+          if(j.wrote===false&&j.error){toast(j.error);}
+          else toast('Ins Gerät geschrieben');
+          hsyRun(w,'pruefePush',{},'liest das Gerät',function(k){q.info=k;hfEmit(w);});
+        });
+      };
+      var b3=$('[data-hsy=pull]',el);
+      if(b3)b3.onclick=function(){
+        if(s.dirty&&!confirm('Ungespeicherte Änderungen verwerfen?'))return;
+        if(!confirm('ALLE Profile des Geräts in den Plan dieser Zone übernehmen?'))return;
+        hsyRun(w,'adoptDevice',{},'liest alle Profile',function(){
+          toast('Vom Gerät übernommen');
+          s.dirty=false;
+          hfLoadRoomHS(w,s.roomIdx,function(){
+            hsyRun(w,'pruefePush',{},'liest das Gerät',function(k){q.info=k;hfEmit(w);});
+          });
+        });
+      };
+    },
+    props:function(w){return hfSessRow(w)
+      +'<div style="font-size:11px;color:var(--muted);line-height:1.45;margin:4px 2px 2px">'
+      +'Gilt für Geräte mit eigenem Wochenprogramm (HomeMatic). „Vergleichen" liest das '
+      +'Gerät und schreibt nichts. „Ins Gerät" schreibt den <b>gespeicherten</b> Plan der '
+      +'aktiven Variante. „Vom Gerät" ersetzt <b>alle</b> Profile der Zone durch die des Geräts.</div>';},
+    wire:function(w){hfSessWire(w);}
+  });
+
   // save: Speichern-Knopf
   defWidget('save',{
     label:'Speichern', cat:'HomeSuite · Zeitplan (Heizung/Beschattung)', paletteIcon:'check', size:[300,54],

@@ -9,6 +9,12 @@
   // Panels ohne Daten werden automatisch weggelassen; per Eigenschaften zuschaltbar. Skin-Farben.
   function _mgNum(v){if(v==null||v==='')return null;var n=parseFloat(v);return isNaN(n)?null:n;}
   function _mgDir(deg){var d=['N','NNO','NO','ONO','O','OSO','SO','SSO','S','SSW','SW','WSW','W','WNW','NW','NNW'];return d[Math.round(((deg%360)/22.5))%16];}
+  /** Schwellenwert: fester Wert oder Variable (die Anlage verschiebt ihn selbst). */
+  function _mgSchwelle(w){
+    if(w.mgThrVid){var d=_lastVals[w.mgThrVid];if(!d)return null;var n=parseFloat(String(d.v).replace(',','.'));return isNaN(n)?null:n;}
+    if(w.mgThr==null||w.mgThr==='')return null;
+    var q=parseFloat(String(w.mgThr).replace(',','.'));return isNaN(q)?null:q;
+  }
   function _mgSnow(r,t){if(!r)return false;var c=((r.cond||'')+' '+(r.icon||'')).toLowerCase();if(/schnee|snow|flurr|sleet|graupel/.test(c))return true;return (t!=null&&t<=0.5&&(r.precip>0));}
   function _mgGrad(stops,gmin,gmax){
     if(typeof echarts==='undefined'||!echarts.graphic||!echarts.graphic.LinearGradient||!stops||!stops.length)return null;
@@ -121,6 +127,22 @@
     // Max-Marke immer auf der Max-Kurve; Min-Marke im Bandmodus an der Min-Linie, sonst hier
     tempSer.markPoint={symbol:'pin',symbolSize:0,label:_mkLbl,data:bandMode?[{type:'max',label:{position:'top'}}]:[{type:'max',label:{position:'top'}},{type:'min',label:{position:'bottom'}}]};
     series.push(tempSer);
+    // ---- Schwelle im Temperatur-Panel ----------------------------------
+    // Eine Vorhersage-Kurve allein sagt nicht, was sie bedeutet. Erst die
+    // Schwelle macht daraus eine Aussage: unterhalb der Abschalttemperatur
+    // heizt die Anlage. Der getoente Bereich darunter ist die Antwort auf
+    // "muss ich morgen mit Heizbetrieb rechnen".
+    var _thr=_mgSchwelle(w);
+    if(_thr!=null){
+      series.push({name:'_thr',type:'line',xAxisIndex:gIdx.temp,yAxisIndex:yIdx.temp,data:[],silent:true,z:1,
+        markArea:{silent:true,itemStyle:{color:info,opacity:0.13},
+                  data:[[{yAxis:gmin},{yAxis:_thr}]]},
+        markLine:{silent:true,symbol:'none',precision:1,
+          lineStyle:{color:muted,type:'dashed',width:1.2},
+          label:{show:true,position:'insideEndTop',fontSize:fL,color:muted,fontFamily:_ff,
+                 formatter:(w.mgThrLbl||'Schwelle')+' '+_mgFmt(_thr)+unit},
+          data:[{yAxis:_thr}]}});
+    }
     if(some(feels))series.push({name:'Gefühlt',type:'line',xAxisIndex:gIdx.temp,yAxisIndex:yIdx.temp,data:feels,smooth:true,showSymbol:false,lineStyle:{width:1,type:'dashed',color:muted},z:3});
     if(bandMode){
       // Min/Max-Band: unsichtbare Basis-Linie auf Min + gestapelte Fläche (Max-Min) mit dem Temperatur-Farbverlauf
@@ -204,6 +226,10 @@
         +row('Wolken','<input type="checkbox" id="pMgCloud"'+(w.mgCloud!==false?' checked':'')+'>')
         +row('Wind','<input type="checkbox" id="pMgWind"'+(w.mgWind!==false?' checked':'')+'>')
         +row('Windrichtung (Pfeile)','<input type="checkbox" id="pMgWdir"'+(w.mgWdir!==false?' checked':'')+'>');
+      h+='<div class="pgh">Schwelle im Temperatur-Panel</div>'
+        +'<div style="font-size:11px;color:var(--muted);margin:-2px 2px 6px">Gestrichelte Linie mit getöntem Bereich darunter — z.&nbsp;B. die Abschalttemperatur der Heizung. Leer = keine Linie.</div>'
+        +row('Wert / Variable','<input id="pMgThr" type="number" step="any" style="width:84px" value="'+(w.mgThr!=null?w.mgThr:'')+'" placeholder="z. B. 18"> <input id="pMgThrVid" type="number" style="width:84px" value="'+(w.mgThrVid||'')+'" placeholder="Var-ID">')
+        +row('Beschriftung','<input id="pMgThrLbl" value="'+esc(w.mgThrLbl||'')+'" placeholder="Schwelle">');
       h+='<div class="pgh">Beschriftung & Format</div>';
       if(hourly)h+=row('Zeitformat','<select id="pMgTimeFmt">'+[['hm','14:00'],['h','14 (nur Stunde)'],['hmwd','14:00 · Mitternacht = Wochentag'],['hwd','14 · Mitternacht = Wochentag']].map(function(o){return '<option value="'+o[0]+'"'+((w.mgTimeFmt||'hm')===o[0]?' selected':'')+'>'+o[1]+'</option>';}).join('')+'</select>');
       else h+=row('Tagesformat','<select id="pMgDayFmt">'+[['dm','4.8'],['dmp','4.8.'],['ddmm','04.08'],['wdd','Mo 4.'],['wddm','Mo 4.8.'],['wd','Mo (Wochentag)']].map(function(o){return '<option value="'+o[0]+'"'+((w.mgDayFmt||'dm')===o[0]?' selected':'')+'>'+o[1]+'</option>';}).join('')+'</select>');
@@ -222,6 +248,9 @@
       [['pMgPrecip','mgPrecip'],['pMgCloud','mgCloud'],['pMgWind','mgWind'],['pMgWdir','mgWdir']].forEach(function(p){var _e=$('#'+p[0]);if(_e)_e.onchange=function(){w[p[1]]=this.checked?undefined:false;reMg();};});
       if($('#pMgTimeFmt'))$('#pMgTimeFmt').onchange=function(){w.mgTimeFmt=this.value;reMg();};
       if($('#pMgDayFmt'))$('#pMgDayFmt').onchange=function(){w.mgDayFmt=this.value;reMg();};
+      if($('#pMgThr'))$('#pMgThr').oninput=function(){w.mgThr=this.value===''?undefined:parseFloat(this.value);render();};
+      if($('#pMgThrVid'))$('#pMgThrVid').onchange=function(){w.mgThrVid=parseInt(this.value)||undefined;render();commit();};
+      if($('#pMgThrLbl'))$('#pMgThrLbl').oninput=function(){w.mgThrLbl=this.value||undefined;render();};
       if($('#pMgDec'))$('#pMgDec').oninput=function(){w.mgDec=(this.value===''?undefined:Math.max(0,Math.min(3,parseInt(this.value)||0)));reMg();};
       if($('#pMgShowSrc'))$('#pMgShowSrc').onchange=function(){w.showSrc=this.checked?undefined:false;reMg();};
     },
