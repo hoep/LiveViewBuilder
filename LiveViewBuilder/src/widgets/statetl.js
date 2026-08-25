@@ -36,7 +36,10 @@
     else if(period==='hour'){var sh=new Date(from*1000).getHours();[0,15,30,45,60].forEach(function(mm){push(mm/60,(sh<10?'0':'')+sh+':'+(mm===60?'00':(mm<10?'0'+mm:mm)));});}
     else{function tl(f){var d=new Date((from+span*f)*1000);return ('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2);}push(0,tl(0));push(.5,tl(.5));push(1,tl(1));}
     // Achsenhoehe/-schrift aus der Kachel ableiten, sonst frisst die Achse auf flachen Kacheln den Balken.
-    return '<div class="stl-axis" style="position:relative;height:clamp(10px,9cqh,16px);font-size:clamp(7px,2.8cqmin,11px);color:var(--faint);margin-top:2px">'+out.join('')+'</div>';
+    // Die Achse gehoert UNTER die Spuren. Sie lag bisher im normalen Fluss, waehrend
+    // die Spuren absolut liegen - dadurch stand die Uhrzeit oben IM ersten Balken.
+    // Die Spuren sparen unten 16 px aus (.stl-lanes), genau dort sitzt sie jetzt.
+    return '<div class="stl-axis" style="position:absolute;left:0;right:0;bottom:0;display:block;height:clamp(10px,9cqh,16px);font-size:clamp(7px,2.8cqmin,11px);color:var(--faint)">'+out.join('')+'</div>';
   }
   var _STL_HATCH='repeating-linear-gradient(45deg,var(--line-soft) 0 5px,transparent 5px 10px)';
   function _stlFetch(w){

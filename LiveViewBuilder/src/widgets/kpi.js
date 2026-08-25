@@ -47,10 +47,47 @@
     }
     if(S.d)_kpiDelta(w);
   }
+  /**
+   * Unterzeile aus einer Variablen: die BEGRUENDUNG der Antwort.
+   *
+   * "74 Tage" allein ist eine Zahl; "705 kg im Lager" macht sie nachvollziehbar.
+   * Text davor und dahinter bleibt frei, damit die Zeile ein ganzer Satz wird
+   * und nicht nur ein zweiter nackter Wert.
+   */
+  function _kpiSub(w,el){
+    if(!w.kSubVid||!el)return;
+    var n=el.querySelector('[data-role=sub]');if(!n)return;
+    var d=_lastVals[w.kSubVid];
+    var t=d?((d.f!=null&&d.f!=='')?d.f:String(d.v)):'–';
+    n.textContent=(w.kSubPre||'')+t+(w.kSubSuf||'');
+  }
+  /**
+   * Ton der Karte: FARBE BEKOMMT NUR, WAS GERADE ETWAS TUT.
+   *
+   * Eine Antwortkarte ("Läuft sie?") soll sich abheben, solange die Antwort
+   * "ja" lautet, und danach wieder ruhig werden. Der Ton haengt deshalb an
+   * einer Bedingung, nicht am Wert selbst: Zahl, Text, ">=3", "3..5", "*".
+   * Ohne eigene Variable gilt die Hauptvariable der Karte.
+   */
+  function _kpiTon(w,el){
+    if(!el)return;
+    var k=el.querySelector('.hkpi');if(!k)return;
+    var muster=w.kToneOn;
+    if(muster==null||muster===''){k.classList.remove('kpi-on');return;}
+    var vid=w.kToneVid||w.varId, d=vid&&_lastVals[vid];
+    var an=false;
+    if(d){
+      var txt=(d.f!=null&&d.f!=='')?d.f:String(d.v);
+      an=_assocMatch(muster,d.v)||_assocMatch(muster,txt);
+    }
+    k.classList.toggle('kpi-on',!!an);
+    var c=w.kToneCol?_cssColorOrEmpty(w.kToneCol):'';
+    if(c)k.style.setProperty('--kton',c); else k.style.removeProperty('--kton');
+  }
   defWidget('kpi',{
     label:'KPI', cat:'Anzeige', paletteIcon:'wkpi', size:[240,96],
     defaults:function(w){w.label='Autarkie';w.unit='%';w.icon='home';w.dir='up';w.delta='+6 % ggü. gestern';},
-    render:function(w){return '<div class="hkpi"><span class="hkbi">'+iconSVG(w.icon||'home')+'</span><div class="hkm"><div class="hkl">'+escL(w.label||'')+'</div><div class="hkn"><span data-role="val">–</span>'+(w.unit?'<small> '+esc(w.unit)+'</small>':'')+'</div>'+(w.cmpOn?'<div class="hks" data-role="cmp">…</div>':(w.dVid?'<div class="hks" data-role="dlt">…</div>':(w.delta?'<div class="hks '+(w.dir==='dn'?'dn':(w.dir==='up'?'up':''))+'">'+(w.dir==='dn'?'▼ ':(w.dir==='up'?'▲ ':''))+esc(w.delta)+'</div>':'')))+'</div></div>';},
+    render:function(w){return '<div class="hkpi'+(w.kRows?' kpi-rows':'')+'"><span class="hkbi">'+iconSVG(w.icon||'home')+'</span><div class="hkm"><div class="hkl">'+escL(w.label||'')+'</div><div class="hkn"><span data-role="val">–</span>'+(w.unit?'<small> '+esc(w.unit)+'</small>':'')+'</div>'+(w.kSubVid?'<div class="hks" data-role="sub">…</div>':(w.cmpOn?'<div class="hks" data-role="cmp">…</div>':(w.dVid?'<div class="hks" data-role="dlt">…</div>':(w.delta?'<div class="hks '+(w.dir==='dn'?'dn':(w.dir==='up'?'up':''))+'">'+(w.dir==='dn'?'▼ ':(w.dir==='up'?'▲ ':''))+esc(w.delta)+'</div>':''))))+'</div></div>';},
     props:function(w){return (w.type==='kpi'?(row('Einheit','<input id="pUnit" value="'+esc(w.unit||'')+'">')
       +'<div class="pgh">Farbe nach Schwelle</div>'
       +row('Aktiv','<input type="checkbox" id="pColThr"'+(w.colThr?' checked':'')+'>')
@@ -75,7 +112,18 @@
                  +row('Weniger ist besser','<input type="checkbox" id="pDInv"'+(w.dInv?' checked':'')+'>')
                  +row('Ohne Wertung','<input type="checkbox" id="pDNeu"'+(w.dNeu?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">keine Färbung — für Größen ohne „besser"</span>')):'')
         +(w.dVid?'':row('Delta-Text','<input id="pDelta" value="'+esc(w.delta||'')+'">')+row('Richtung',dirSel('pDir',w.dir)))
-      ))):'');},
+      ))
+      +'<div class="pgh">Ton der Karte</div>'
+      +'<div style="font-size:11px;color:var(--muted);margin:-2px 2px 5px">Die Karte hebt sich hervor, solange die Bedingung zutrifft — Ruhe bleibt neutral. Zahl, Text, <code>&gt;=3</code>, <code>3..5</code> oder <code>*</code>. Leer = nie.</div>'
+      +row('Aktiv wenn','<input id="pKTonOn" value="'+esc(w.kToneOn||'')+'" style="width:110px" placeholder="z. B. 1 oder >=3"> <input id="pKTonVid" type="number" style="width:84px" value="'+(w.kToneVid||'')+'" placeholder="Var (leer=Var 1)">')
+      +row('Farbe',skinSel(w.kToneCol||'','id="pKTonCol"'))
+      +'<div class="pgh">Aufbau</div>'
+      +row('Immer dreizeilig','<input type="checkbox" id="pKRows"'+(w.kRows?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">Frage, Antwort und Begründung untereinander — auch auf flachen Karten</span>')
+      +'<div class="pgh">Unterzeile aus einer Variablen</div>'
+      +'<div style="font-size:11px;color:var(--muted);margin:-2px 2px 5px">Die Begründung der Antwort — ein Livewert mit Text davor und dahinter. Gesetzt, schlägt sie Vergleich und Delta-Text.</div>'
+      +row('Variable','<input id="pKSubVid" type="number" style="width:96px" value="'+(w.kSubVid||'')+'" placeholder="Var-ID">')
+      +(w.kSubVid?row('Text davor / dahinter','<input id="pKSubPre" value="'+esc(w.kSubPre||'')+'" style="width:110px" placeholder="davor"> <input id="pKSubSuf" value="'+esc(w.kSubSuf||'')+'" style="width:110px" placeholder="dahinter">'):'')
+      ):'');},
     wire:function(w){function relive(){if(w.varId&&_lastVals[w.varId])applyVal(w.varId,_lastVals[w.varId]);}
       if($('#pUnit'))$('#pUnit').oninput=function(){w.unit=this.value;render();};if($('#pDelta'))$('#pDelta').oninput=function(){w.delta=this.value;render();};
       if($('#pColThr'))$('#pColThr').onchange=function(){w.colThr=this.checked||undefined;renderProps();relive();};
@@ -90,15 +138,25 @@
       if($('#pKSes'))$('#pKSes').onchange=function(){w.kSession=this.value||undefined;render();renderProps();commit();};
       if($('#pVarB'))$('#pVarB').onchange=function(){w.varIdB=parseInt(this.value)||undefined;render();commit();};
       if($('#pDVidB'))$('#pDVidB').onchange=function(){w.dVidB=parseInt(this.value)||undefined;render();commit();};
-      if($('#pDSufB'))$('#pDSufB').oninput=function(){w.dSufB=this.value||undefined;_kpiApplySet(w);commit();};},
+      if($('#pDSufB'))$('#pDSufB').oninput=function(){w.dSufB=this.value||undefined;_kpiApplySet(w);commit();};
+      if($('#pKTonOn'))$('#pKTonOn').oninput=function(){w.kToneOn=this.value||undefined;var e=$('.w[data-id="'+w.id+'"]',canvas);if(e)_kpiTon(w,e);commit();};
+      if($('#pKTonVid'))$('#pKTonVid').onchange=function(){w.kToneVid=parseInt(this.value)||undefined;var e=$('.w[data-id="'+w.id+'"]',canvas);if(e)_kpiTon(w,e);commit();};
+      if($('#pKTonCol'))$('#pKTonCol').onchange=function(){w.kToneCol=this.value||undefined;var e=$('.w[data-id="'+w.id+'"]',canvas);if(e)_kpiTon(w,e);commit();};
+      if($('#pKRows'))$('#pKRows').onchange=function(){w.kRows=this.checked||undefined;render();commit();};
+      if($('#pKSubVid'))$('#pKSubVid').onchange=function(){w.kSubVid=parseInt(this.value)||undefined;render();renderProps();commit();};
+      if($('#pKSubPre'))$('#pKSubPre').oninput=function(){w.kSubPre=this.value||undefined;var e=$('.w[data-id="'+w.id+'"]',canvas);if(e)_kpiSub(w,e);commit();};
+      if($('#pKSubSuf'))$('#pKSubSuf').oninput=function(){w.kSubSuf=this.value||undefined;var e=$('.w[data-id="'+w.id+'"]',canvas);if(e)_kpiSub(w,e);commit();};},
     mount:function(w){
       if(w.cmpOn)computeCompare(w);
       if(w.dVid)_kpiDelta(w);
       // An der Matrix anmelden: bei jedem Umschalten Wert und Vergleich neu setzen.
       if(w.kSession&&typeof mxOn==='function')mxOn(w.kSession,function(){_kpiApplySet(w);});
       if(w.kSession)_kpiApplySet(w);
+      var _e=$('.w[data-id="'+w.id+'"]',canvas)||$('.w[data-id="'+w.id+'"]',$('#ovcanvas'));
+      if(_e){_kpiTon(w,_e);_kpiSub(w,_e);}
     }, // Vergleich sofort nach Render berechnen (nicht auf ersten Poll warten)
     live:function(w,el,id,d,base,txt,on){
+      _kpiTon(w,el);_kpiSub(w,el);
       var v=el.querySelector('[data-role=val]'); // txt enthält bereits Präfix/Suffix (aus applyVal in js/06-live.js)
       // Mit Kopplung entscheidet der gerade gueltige VARIABLENSATZ, was in der Karte
       // steht - nicht die Kennung, die gerade hereinkam. Sonst schrieb der Wert des

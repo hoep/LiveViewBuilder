@@ -204,6 +204,41 @@
     pill.className='hpill '+(Math.abs(metric)<=tol?'ok':'warn');
     pill.innerHTML='<span class="hpd"></span>'+esc(arrow+txt);
   }
+  /**
+   * Marken auf dem Fortschrittsbalken: Schwellen, Taktgrenzen, Ein-/Ausschaltpunkte.
+   *
+   * Ein Balken ohne Bezug ist eine Zahl in Balkenform. Die Marke sagt, WO die
+   * Aussage kippt - unterhalb der Taktgrenze taktet der Kessel, oberhalb der
+   * Einschaltschwelle fordert der Puffer Waerme an. Die Marke darf fest sein
+   * (Taktgrenze 30 %) oder an einer Variablen haengen (die Anlage verschiebt
+   * ihre Schwellen selbst); deshalb `v` ODER `vid`.
+   *
+   * Gezeichnet wird sie NACH der Fuellung - sonst deckt die Fuellung sie zu,
+   * sobald der Wert darueber liegt. Beschriftet wird ueber dem Balken, weil
+   * zwei Marken dicht beieinander ihre Beschriftung sonst uebereinander legen.
+   */
+  function _vcMkListe(w){
+    return (w.barMarks||[]).filter(function(m){return m&&((m.v!=null&&m.v!=='')||m.vid);});
+  }
+  function _vcMkZahl(m){
+    if(m.vid){var d=_lastVals[m.vid];return d?parseFloat(String(d.v).replace(',','.')):NaN;}
+    return parseFloat(String(m.v).replace(',','.'));
+  }
+  function _vcMkText(v){var n=Math.round(v*10)/10;return String(n).replace('.',',');}
+  function _vcMarken(w,el){
+    var mk=_vcMkListe(w); if(!mk.length||!el)return;
+    var mn=(w.barMin!=null?w.barMin:0),mx=(w.barMax!=null?w.barMax:100);
+    mk.forEach(function(m,i){
+      var v=_vcMkZahl(m);
+      var u=el.querySelector('u.bmk[data-bmk="'+i+'"]'),
+          la=el.querySelector('[data-role=bmklab] [data-bmk="'+i+'"]');
+      if(isNaN(v)){if(u)u.style.display='none';if(la)la.style.display='none';return;}
+      var p=Math.max(0,Math.min(100,(v-mn)/((mx-mn)||1)*100));
+      if(u){u.style.display='';u.style.left=p.toFixed(2)+'%';}
+      if(la){la.style.display='';la.style.left=p.toFixed(2)+'%';
+             la.textContent=(m.label?(m.label+' '):'')+_vcMkText(v);}
+    });
+  }
   defWidget('valuecard',{
     label:'Wertkarte', cat:'Anzeige', paletteIcon:'wkpi', size:[240,120],
     defaults:function(w){w.icon='home';w.label='Wert';w.unit='';w.badgeState='ok';},
@@ -230,7 +265,10 @@
       // Leeres valfs bleibt unveraendert bei var(--wf-val) aus styles.css.
       var val='<div class="hvcval"'+(w.valfs?' style="font-size:min('+(parseInt(w.valfs)||0)+'px,22cqh)"':'')+'><span data-role="val">–</span>'+(w.unit?'<small> '+esc(w.unit)+'</small>':'')+'</div>';
       var cap=w.label?'<div class="hvccap">'+escL(w.label)+'</div>':'';
-      var bar=(!isSel&&w.barOn)?('<div class="hvcbar"><div class="btrack"><i data-role="bar"></i></div>'+((w.barCap!=null&&w.barCap!=='')?'<div class="hvcbarcap" data-role="barcap">'+esc(w.barCap)+'</div>':'')+'</div>'):'';
+      var _mk=(!isSel&&w.barOn)?_vcMkListe(w):[];
+      var _mkLab=_mk.length?('<div class="hvcbmk" data-role="bmklab">'+_mk.map(function(m,i){return '<span data-bmk="'+i+'"></span>';}).join('')+'</div>'):'';
+      var _mkTick=_mk.map(function(m,i){var c=m.color?_cssColorOrEmpty(m.color):'';return '<u class="bmk" data-bmk="'+i+'"'+(c?(' style="--bmkc:'+c+'"'):'')+'></u>';}).join('');
+      var bar=(!isSel&&w.barOn)?('<div class="hvcbar">'+_mkLab+'<div class="btrack"><i data-role="bar"></i>'+_mkTick+'</div>'+((w.barCap!=null&&w.barCap!=='')?'<div class="hvcbarcap" data-role="barcap">'+esc(w.barCap)+'</div>':'')+'</div>'):'';
       var rng=(!isSel&&w.rngOn)?('<div class="hvcrng"><span class="rmin" data-role="rmin">–</span><span class="rtrack"><i class="rdot" data-role="rdot"></i></span><span class="rmax" data-role="rmax">–</span></div>'):'';
       var sel=isSel?('<div class="hvcselhost" data-role="vcselhost">'+_vcSelBody(w)+'</div>'):'';
       var scl='';
@@ -255,7 +293,10 @@
       }
       return '<div class="hvcard" data-role="card"><div class="hvctop"><div class="hvctl">'+icon+title+'</div>'+tr+'</div>'+val+cap+scl+rng+bar+sel+'</div>';
     },
-    mount:function(w){if(_vcSel(w))_vcSelLoad(w);if(w.cmpVid){var el=$('.w[data-id="'+w.id+'"]',canvas);if(el)_vcCmp(w,el);}},
+    mount:function(w){if(_vcSel(w))_vcSelLoad(w);
+      var _el=$('.w[data-id="'+w.id+'"]',canvas)||$('.w[data-id="'+w.id+'"]',$('#ovcanvas'));
+      if(w.cmpVid&&_el)_vcCmp(w,_el);
+      if(_el)_vcMarken(w,_el);},
     props:function(w){if(w.type!=='valuecard')return '';
       var vm=_vcMode(w);
       var MODES=[['value','Einfacher Wert'],['target','Zielbereich (Badge)'],['range','Bereich Min–Max'],['bar','Balken'],['toggle','Schalter'],['select','Auswahl (schaltbar)']];
@@ -330,7 +371,13 @@
         +row('Balken zeigen','<input type="checkbox" id="pVcBarOn"'+(w.barOn?' checked':'')+'>')
         +(w.barOn?('<div style="font-size:11px;color:var(--muted);margin:-2px 2px 4px">Quelle = Balken-Var (Var 3), sonst Hauptwert.'+(w.varId3?'':' <span style="color:var(--warm)">— keine Balken-Var gesetzt.</span>')+'</div>'
           +row('Balken min/max','<input id="pVcBarMin" type="number" style="width:74px" value="'+(w.barMin!=null?w.barMin:0)+'"> <input id="pVcBarMax" type="number" style="width:74px" value="'+(w.barMax!=null?w.barMax:100)+'">')
-          +row('Text rechts','<input id="pVcBarCap" value="'+esc(w.barCap||'')+'" placeholder="z. B. 81 % Kanister">')):'');
+          +row('Text rechts','<input id="pVcBarCap" value="'+esc(w.barCap||'')+'" placeholder="z. B. 81 % Kanister">')
+          +'<div style="font-size:11px;color:var(--muted);margin:6px 2px 4px">Marken sagen, wo die Aussage kippt (Taktgrenze, Ein-/Ausschaltschwelle). Fester <b>Wert</b> oder eine <b>Variable</b>, wenn die Anlage die Schwelle selbst verschiebt. Beschriftet wird über dem Balken.</div>'
+          +listEditor(w,'barMarks','Marken: Wert · Variable · Name · Farbe',[
+                {k:'v',    ph:'Wert',   h:'Wert'},
+                {k:'vid',  ph:'ID',     h:'Variable'},
+                {k:'label',ph:'Name',   h:'Name'},
+                {k:'color',ph:'Farbe',  h:'Farbe', type:'skincolor'}])):'');
       // Farbe der Kachel/des Werts: entweder aus der Zustandsliste oder aus den Farbstufen
       var _grad=(w.colFrom==='grad');
       s+='<div class="pgh">Farbe nach Zustand</div>'
@@ -414,6 +461,9 @@
       return false;
     },
     live:function(w,el,id,d,base,txt,on){
+      // Marken zuerst: eine Schwelle, die die Anlage selbst verschiebt, muss auch
+      // dann wandern, wenn der Hauptwert derselbe bleibt.
+      if(_vcMkListe(w).length)_vcMarken(w,el);
       if(_vcSel(w)){if(w.varId===id){var vs=$('[data-role=val]',el);if(vs)vs.textContent=txt;_vcSelMark(w,el,d.v);}_vcState(w,el);return true;}
       if(w.rngOn&&(id===w.varId||id===w.varId2||id===w.varId3)){
         var _n=function(vid){var lv=vid&&_lastVals[vid];if(!lv)return null;var q=parseFloat(String(lv.v).replace(',','.'));return isNaN(q)?null:q;};

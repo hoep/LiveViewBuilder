@@ -135,6 +135,21 @@
       var fd=floorData();
       if(fd.items.length){
         var sel=st.floorSel;
+        // DAS GESCHOSS FOLGT DEM RAUM, nicht umgekehrt.
+        //
+        // Der Geschoss-Reiter wurde bisher nur durch einen Klick auf ihn selbst
+        // gesetzt. Wird der Raum von aussen gewaehlt - der Kalender-Knopf einer
+        // Thermostatkarte im Obergeschoss springt hierher, oder der Startraum
+        // liegt im Dachgeschoss -, blieb der Reiter auf dem alten Geschoss
+        // stehen. Die Raumreihe darunter zeigte dann Zimmer, unter denen der
+        // gewaehlte gar nicht vorkam: kein Reiter hervorgehoben, Titel und
+        // Reihe widersprachen sich. Darum zuerst nachsehen, in welchem
+        // Geschoss der aktuelle Raum wohnt, und den Reiter dorthin mitnehmen.
+        var heim=null;
+        for(var _g in fd.byG){
+          if((fd.byG[_g]||[]).some(function(r){return r.idx==st.roomIdx;})){heim=_g;break;}
+        }
+        if(heim!==null&&heim!==sel&&fd.items.some(function(x){return x.key===heim;})){sel=st.floorSel=heim;}
         if(!fd.items.some(function(x){return x.key===sel;})){sel=st.floorSel=fd.items[0].key;}
         if(lvls==='floors')return '<div class="hp-rooms">'+floorBar(fd.items,sel)+'</div>';
         return '<div class="hp-rooms hp-hastabs">'+floorBar(fd.items,sel)+roomBar(fd.byG[sel]||[])+'</div>';

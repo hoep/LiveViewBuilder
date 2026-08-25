@@ -122,6 +122,20 @@
   .wcont{--cont-ttlh:clamp(20px,7cqmin,34px);position:absolute;inset:0;border-radius:8px;overflow:hidden}
   .wcont.panel{background:var(--surface);border:1px solid var(--line)}
   .wcont .contttl{position:absolute;left:0;top:0;right:0;height:var(--cont-ttlh);display:flex;align-items:center;padding:0 clamp(6px,4cqmin,13px);font-size:var(--wf-lbl);color:var(--muted);text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--line-soft);background:var(--surface-2);z-index:3;pointer-events:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  /* Kopfzeile mit Symbol und Live-Angabe rechts: nicht mehr eine Zeile Text, sondern
+     Symbol | Titel | rechtsbuendige Angabe. „plain" nimmt die Versalien zurueck, weil
+     eine Panel-Ueberschrift mit Symbol als Satz gelesen wird, nicht als Etikett. */
+  .wcont .contttl.plain{text-transform:none;letter-spacing:0;color:var(--text);font-weight:600;gap:clamp(5px,3cqmin,11px)}
+  .wcont .contttl .cttl-ic{flex:none;width:24px;height:24px;border-radius:7px;background:var(--surface);
+      display:grid;place-items:center;color:var(--wicon,var(--accent))}
+  .wcont .contttl .cttl-ic svg{width:13px;height:13px}
+  .wcont .contttl .cttl-tx{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .wcont .contttl .cttl-re{flex:none;margin-left:auto;display:inline-flex;align-items:center;gap:6px;
+      font-weight:500;color:var(--muted);font-size:var(--wf-cap);white-space:nowrap;padding-left:10px;
+      min-width:0;overflow:hidden;text-overflow:ellipsis}
+  .wcont .contttl .cttl-re.has-dot{padding:5px 11px;border-radius:999px;background:var(--surface);border:1px solid var(--line)}
+  .wcont .contttl .cttl-dot{width:6px;height:6px;border-radius:50%;background:var(--warm);flex:none}
+  .wcont .contttl .cttl-lbl{color:var(--faint)}
   .wcont .conthost2{position:absolute;left:0;right:0;top:0;bottom:0;overflow:hidden}
   .wcont.has-ttl .conthost2{top:var(--cont-ttlh)}
   .wcont .continner{background:transparent}
@@ -933,10 +947,16 @@
   .htemp .htbarwrap{position:relative;display:flex;align-items:flex-end;gap:clamp(3px,2cqmin,8px);flex:1;min-height:0}
   .htemp .htscale{display:flex;flex-direction:column;justify-content:space-between;height:100%;font-size:var(--wf-cap);color:var(--faint);font-family:var(--fm);text-align:right}
   /* Saeulenbreite waechst mit der Kachelbreite; Radius als 999px, damit die Kappe bei jeder Breite rund bleibt. */
-  .htemp .htbar{position:relative;width:clamp(18px,26cqi,44px);height:100%;border-radius:999px;background:var(--surface-2);border:1px solid var(--line);overflow:hidden}
+  .htemp .htbar{position:relative;width:var(--htbar-w,clamp(18px,26cqi,44px));height:100%;border-radius:999px;background:var(--surface-2);border:1px solid var(--line);overflow:hidden}
   .htemp .htfill{position:absolute;left:0;right:0;bottom:0;width:auto;height:0;background:linear-gradient(180deg,var(--accent),var(--accent-2));transition:height .4s}
   .htemp.warm .htfill{background:linear-gradient(180deg,var(--warm),#d98a1a)}
   .htemp .htsoll{position:absolute;left:-1px;right:-1px;width:auto;height:0;border-top:2px dashed var(--text);opacity:.7}
+  .htemp .htwarn{position:absolute;left:-1px;right:-1px;width:auto;height:0;border-top:2px dashed var(--warn);opacity:.85}
+  .htemp .htmk{position:relative;height:100%;flex:none;min-width:clamp(26px,20cqi,58px)}
+  .htemp .htwarnlab{position:absolute;left:0;transform:translateY(50%);white-space:nowrap;
+      font-family:var(--fm);font-size:var(--wf-cap);color:var(--warn);line-height:1;pointer-events:none}
+  .htemp .htfrei{position:absolute;left:0;right:0;top:clamp(4px,6cqmin,12px);text-align:center;z-index:1;
+      font-family:var(--fm);font-size:var(--wf-cap);color:var(--faint);line-height:1.3;pointer-events:none}
   .htemp .htzn{font-size:var(--wf-lbl);color:var(--muted);font-weight:600}
   /* Status-Grid */
   /* auto-fit statt starrer Zweispaltigkeit: schmale Kachel -> eine Spalte, breite -> mehr */
@@ -1085,14 +1105,14 @@
   .hkpi .hks{font-size:var(--wf-cap)} .hkpi .hks.up{color:var(--ok)} .hkpi .hks.dn{color:var(--crit)}
   /* Einzeilig-Auto: bei geringer Kachelhoehe alle Daten in EINE Zeile (Label · Wert · Vergleich) — dann breiter ziehen */
   @container (max-height: 58px){
-    .hkpi{gap:9px;padding:6px 11px}
-    .hkpi .hkbi{width:26px;height:26px;border-radius:7px}
-    .hkpi .hkbi svg{width:14px;height:14px}
-    .hkpi .hkm{display:flex;flex-flow:row nowrap;align-items:baseline;gap:9px;overflow:hidden}
-    .hkpi .hkl{order:1;flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:var(--wf-lbl)}
-    .hkpi .hkn{order:2;flex:none;font-size:var(--wf-val);line-height:1;white-space:nowrap}
-    .hkpi .hkn small{font-size:var(--wf-lbl)}
-    .hkpi .hks{order:3;flex:none;margin-left:auto;white-space:nowrap;padding-left:6px}
+    .hkpi:not(.kpi-rows){gap:9px;padding:6px 11px}
+    .hkpi:not(.kpi-rows) .hkbi{width:26px;height:26px;border-radius:7px}
+    .hkpi:not(.kpi-rows) .hkbi svg{width:14px;height:14px}
+    .hkpi:not(.kpi-rows) .hkm{display:flex;flex-flow:row nowrap;align-items:baseline;gap:9px;overflow:hidden}
+    .hkpi:not(.kpi-rows) .hkl{order:1;flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:var(--wf-lbl)}
+    .hkpi:not(.kpi-rows) .hkn{order:2;flex:none;font-size:var(--wf-val);line-height:1;white-space:nowrap}
+    .hkpi:not(.kpi-rows) .hkn small{font-size:var(--wf-lbl)}
+    .hkpi:not(.kpi-rows) .hks{order:3;flex:none;margin-left:auto;white-space:nowrap;padding-left:6px}
   }
   /* Optionale Einzeilig-Umbrechung (Toggle "Einzeilig bei geringer Hoehe"): Kachel wird Container, flach ziehen -> eine Zeile */
   .w.wline{container-type:size}
@@ -1274,7 +1294,11 @@
   .hvcval small{font-size:var(--wf-cap);color:var(--muted);font-weight:500}
   .hvccap{font-size:var(--wf-cap);color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .hvcbar{display:flex;flex-direction:column;gap:4px;margin-top:4px}
-  .hvcbar .btrack{height:var(--wf-track);border-radius:6px;background:var(--surface-2);border:1px solid var(--line);overflow:hidden}
+  .hvcbar .btrack{position:relative;height:var(--wf-track);border-radius:6px;background:var(--surface-2);border:1px solid var(--line);overflow:hidden}
+  /* Marke auf dem Balken: zuletzt gezeichnet, damit die Fuellung sie nicht zudeckt. */
+  .hvcbar .btrack u.bmk{position:absolute;top:0;bottom:0;width:2px;margin-left:-1px;background:var(--bmkc,var(--muted));opacity:.95}
+  .hvcbmk{position:relative;height:calc(var(--wf-cap) + 3px);margin-bottom:1px}
+  .hvcbmk span{position:absolute;top:0;transform:translateX(-50%);white-space:nowrap;font-family:var(--fm);font-size:var(--wf-cap);color:var(--muted);line-height:1}
   .hvcbar .btrack i{display:block;height:100%;width:0;border-radius:6px;background:linear-gradient(90deg,var(--accent-2),var(--accent));transition:width .3s}
   .hvcbarcap{font-size:var(--wf-cap);color:var(--muted);text-align:right}
   .hpill.warm{color:var(--warm);background:color-mix(in oklab,var(--warm) 15%,transparent)}
@@ -3727,3 +3751,68 @@
   .epgw .epgovv{color:var(--text);line-height:1.45}
   .epgw .epgovm2{margin-top:10px;padding-top:9px;border-top:1px solid var(--line);
                  font-size:12.5px;color:var(--muted)}
+
+/* ===== Ablaufkette (phaseband) =====================================
+   Farbe bekommt nur, was gerade gilt: der aktive Schritt traegt Akzentkante
+   und getoente Flaeche, Durchlaufenes wird gedaempft, Offenes bleibt neutral.
+   Masse aus der Kachel (cqmin/cqi), damit dasselbe Band am Wandtablet und am
+   Handy lesbar bleibt.                                                      */
+.pbnd{display:flex;width:100%;height:100%;box-sizing:border-box;gap:clamp(3px,0.9cqi,8px);
+      font-size:clamp(9px,2.6cqmin,13px)}
+.pbnd.pb-h{flex-direction:row;align-items:stretch}
+.pbnd.pb-v{flex-direction:column;justify-content:flex-start;gap:clamp(2px,1.2cqmin,6px)}
+.pbst{display:flex;align-items:center;gap:clamp(4px,1.4cqmin,9px);min-width:0;
+      padding:clamp(3px,1.4cqmin,9px) clamp(5px,1.8cqmin,12px);
+      border:1px solid var(--line);border-radius:8px;background:var(--surface);
+      color:var(--muted);transition:background .2s,border-color .2s,color .2s}
+.pbnd.pb-h .pbst{flex:1}
+.pbnd.pb-v .pbst{width:100%;flex:1;min-height:0}
+.pbst .pbtx{display:flex;flex-direction:column;min-width:0;line-height:1.25}
+.pbst .pbtx b{font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pbst .pbtx i{font-style:normal;font-size:.85em;color:var(--faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pbst .pbdot{flex:none;width:clamp(5px,1.5cqmin,9px);height:clamp(5px,1.5cqmin,9px);border-radius:50%;
+      background:var(--line);box-shadow:none}
+.pbst .pbnr{flex:none;display:inline-flex;align-items:center;justify-content:center;
+      width:clamp(15px,4.6cqmin,22px);height:clamp(15px,4.6cqmin,22px);border-radius:50%;
+      border:1px solid var(--line);background:var(--surface-2);color:var(--faint);
+      font-family:var(--fm);font-size:.85em;font-weight:600}
+.pbnd .pbsep{flex:none;align-self:center;width:clamp(4px,1.2cqi,12px);height:1px;background:var(--line)}
+/* durchlaufen: der Punkt bleibt, die Aussage tritt zurueck */
+.pbst.done{opacity:.55}
+.pbst.done .pbdot{background:var(--faint)}
+/* aktiv */
+.pbst.on{border-color:color-mix(in oklab,var(--warm) 60%,var(--line));
+         background:color-mix(in oklab,var(--warm) 12%,var(--tile));color:var(--text)}
+.pbst.on .pbtx b{color:var(--warm)}
+.pbst.on .pbtx i{color:var(--muted)}
+.pbst.on .pbdot{background:var(--warm);box-shadow:0 0 0 3px color-mix(in oklab,var(--warm) 22%,transparent)}
+.pbst.on .pbnr{border-color:color-mix(in oklab,var(--warm) 55%,var(--line));
+         background:color-mix(in oklab,var(--warm) 18%,var(--tile));color:var(--warm)}
+
+/* KPI-Karte mit Ton: hervorgehoben, solange die Bedingung zutrifft. */
+.hkpi.kpi-on{--kton:var(--warm)}
+.w .hkpi.kpi-on{background:color-mix(in oklab,var(--kton) 11%,transparent);
+  box-shadow:inset 0 0 0 1px color-mix(in oklab,var(--kton) 55%,transparent);border-radius:10px}
+.hkpi.kpi-on .hkn{color:var(--kton)}
+.hkpi.kpi-on .hkbi{color:var(--kton)}
+
+/* ===== Geräte-Abgleich im Zeitplan-Editor (heatsync) ==================
+   Eine Zeile: links wo beide Seiten stehen, rechts die drei Handgriffe.
+   Farbe bekommt nur die Aussage, nicht die Knöpfe — die sind neutral,
+   solange man sie nicht drückt.                                        */
+.hplan.hsync{display:flex;flex-direction:row;align-items:center;gap:clamp(8px,2cqi,18px);
+  height:100%;padding:0 clamp(8px,1.6cqi,16px);box-sizing:border-box}
+.hplan.hsync .hsy-st{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  font-size:clamp(10px,2.2cqmin,13px);color:var(--muted)}
+.hplan.hsync .hsy-st.ok{color:var(--ok)}
+.hplan.hsync .hsy-st.warn{color:var(--warn)}
+.hplan.hsync .hsy-st.crit{color:var(--crit)}
+.hplan.hsync .hsy-btn{flex:none;display:flex;gap:clamp(5px,1cqi,10px)}
+.hplan.hsync .hsy-btn button{display:inline-flex;align-items:center;gap:6px;white-space:nowrap;
+  font:inherit;font-size:clamp(10px,2.2cqmin,13px);color:var(--text);cursor:pointer;
+  background:var(--surface-2);border:1px solid var(--line);border-radius:8px;
+  padding:clamp(5px,1.4cqmin,9px) clamp(8px,2cqmin,14px)}
+.hplan.hsync .hsy-btn button:hover{border-color:var(--accent);color:var(--accent)}
+.hplan.hsync .hsy-btn button[disabled]{opacity:.5;cursor:default}
+.hplan.hsync .hsy-btn button[disabled]:hover{border-color:var(--line);color:var(--text)}
+.hplan.hsync .hsy-btn .hp-ic{width:14px;height:14px;flex:none}

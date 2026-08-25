@@ -154,7 +154,11 @@
             +'><span class="hpd"></span>'+ptxt+'</span>')
           :'';
         var rt=(wert||pille)?(wert+pille):'<span class="hiv"></span>';
-        var _ic=r.color?(_cssColorOrEmpty(r.color)||''):'';
+        // Dieselbe Lehre wie bei der Pille, eine Zeile weiter oben: eine von Hand
+        // gesetzte Farbe sagt nichts ueber den Wert. Steht „Icon folgt dem Zustand",
+        // traegt auch das Symbol die Farbe des getroffenen Zustands - sonst leuchtet
+        // die Haustuere bernstein, waehrend die Pille daneben gruen „Verriegelt" sagt.
+        var _ic=(pz&&pz.color&&(w.ilIcoState||r.icoState))?_ilFarbe(pz.color,''):(r.color?(_cssColorOrEmpty(r.color)||''):'');
         // In der Kartenform traegt die Zeile die Toenung: eigene Kartenfarbe, sonst
         // die Farbe des Icons. Ohne beides bleibt sie neutral - eine Karte ohne
         // Aussage soll nicht bunt sein.
@@ -237,6 +241,7 @@
         +listEditor(w,'items','Zeile: Icon · Farbe · Name · Zusatz · Wert · Pill (Text oder VarID) · Status(Pill-Farbe) · VarID',[{k:'icon',type:'icon',h:'Icon',ph:'Icon wählen'},{k:'color',type:'skincolor',h:'Farbe (Icon)'},{k:'label',h:'Name',ph:'Name'},{k:'sub',h:'Zusatz',ph:'Zusatz'},{k:'subVid',h:'Zusatz-ID',ph:'VarID'},{k:'value',h:'Wert',ph:'Wert'},{k:'dec',h:'Dez',ph:'Dez'},{k:'unit',h:'Einh',ph:'Einh'},{k:'pill',h:'Pill',ph:'Pill'},{k:'pillVid',h:'Pill-ID',ph:'VarID'},{k:'state',type:'select',def:'ok',h:'Status (Pill)',ph:'Status',options:[['ok','OK · grün'],['on','An · Akzent'],['off','Aus · grau'],['warn','Warnung · gelb'],['crit','Kritisch · rot'],['warm','Warm · orange']]},{k:'vid',h:'ID',ph:'ID'}])
         +'<div class="pgh">Farbe der Pille nach Wert</div>'
         +'<div class="hint" style="font-size:11px;margin:0 2px 8px">Ohne Eintrag gilt die feste Farbe aus der Spalte „Status". Mit Einträgen folgt die Pille dem WERT — gleicher Wert, gleiche Farbe, über alle Zeilen hinweg. Verglichen wird gegen den Rohwert <i>und</i> den angezeigten Text; leerer Wert oder <code>*</code> gilt für alles Übrige.</div>'
+        +row('Icon folgt dem Zustand','<input type="checkbox" id="pIlIcoState"'+(w.ilIcoState?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">Symbol nimmt die Farbe des getroffenen Zustands statt der fest gesetzten</span>')
         +listEditor(w,'pillStates','Wert · Farbe',[{k:'v',h:'Wert',ph:'aus / 0'},{k:'color',type:'skincolor',h:'Farbe'}])
         +'<div class="pgh">Je Zeile: hervorheben, Balken, Wertfarbe</div>'
         +listEditor(w,'items','Karte · Tönung · Wertfarbe · Balken(fest) · Balken(VarID) · Balkenfarbe',[{k:'karte',type:'select',h:'Karte',options:[['','nein'],['1','ja']]},{k:'bg',type:'skincolor',h:'Tönung'},{k:'valCol',type:'skincolor',h:'Wertfarbe'},{k:'prog',h:'Balken %',ph:'0–100'},{k:'progVid',h:'Balken-ID',ph:'VarID'},{k:'progCol',type:'skincolor',h:'Balkenfarbe'}])
@@ -248,6 +253,7 @@
         +listEditor(w,'items','Knopf-Icon · Farbe · VarID · Wert · Skript · Popup · Hinweis',[{k:'btn2',type:'icon',h:'Knopf 2',ph:'Icon'},{k:'btn2Col',type:'skincolor',h:'Farbe'},{k:'act2Vid',h:'VarID',ph:'wie oben'},{k:'act2Val',h:'Wert',ph:'Wert'},{k:'act2Script',h:'Skript',ph:'ID'},{k:'act2To',h:'Popup',ph:'Popup'},{k:'btn2Title',h:'Hinweis',ph:'Hinweis'}])
       :'');},
     wire:function(w){
+      if($('#pIlIcoState'))$('#pIlIcoState').onchange=function(){w.ilIcoState=this.checked||undefined;render();commit();};
       if($('#pIlBare'))$('#pIlBare').onchange=function(){w.ilBare=this.checked||undefined;render();commit();};
       if($('#pIlTpl'))$('#pIlTpl').onchange=function(){w.ilTpl=this.value||undefined;commit();};
       if($('#pIlTplGo'))$('#pIlTplGo').onclick=function(){_ilVorlage(w,(($('#pIlTpl')||{}).value)||'');render();renderProps();commit();};
