@@ -6,6 +6,14 @@
   var $=function(s,r){return (r||document).querySelector(s)},$$=function(s,r){return Array.prototype.slice.call((r||document).querySelectorAll(s))};
   // ===== Icon-Bibliothek (Line-Style, Heimautomation). id -> [Kategorie, SVG-Inhalt] =====
   var ICONS={
+    // --- ergaenzt fuer Szenen: Kinoabend, Essen, Feiern, Lesen ---
+    // Stil wie der Rest: 24x24, nur Konturen, keine Fuellung (die .ic24-Regel setzt
+    // stroke:currentColor und stroke-width:1.7).
+    popcorn:['Medien','<path d="M6.4 10h11.2l-1.1 10.1a1 1 0 0 1 -1 .9h-7a1 1 0 0 1 -1 -.9z" /> <path d="M9.6 10.3l.7 10.4" /> <path d="M14.4 10.3l-.7 10.4" /> <path d="M7.6 10a2.1 2.1 0 1 1 1.2 -3.8a2.3 2.3 0 0 1 3.2 -1.3a2.1 2.1 0 0 1 3.2 1.2a2.1 2.1 0 1 1 1.3 3.9" />'],
+    film:['Medien','<path d="M4 5h16a1 1 0 0 1 1 1v12a1 1 0 0 1 -1 1h-16a1 1 0 0 1 -1 -1v-12a1 1 0 0 1 1 -1z" /> <path d="M7 5v14" /> <path d="M17 5v14" /> <path d="M3.5 8.5h3.5" /> <path d="M3.5 12h3.5" /> <path d="M3.5 15.5h3.5" /> <path d="M17 8.5h3.5" /> <path d="M17 12h3.5" /> <path d="M17 15.5h3.5" />'],
+    wine:['Diverse','<path d="M8 3h8l-.6 6.2a3.45 3.45 0 0 1 -6.8 0z" /> <path d="M12 12.7v7.3" /> <path d="M9 21h6" />'],
+    book:['Diverse','<path d="M12 7.2a8.4 8.4 0 0 0 -8 -2.2v12.6a8.4 8.4 0 0 1 8 2.2a8.4 8.4 0 0 1 8 -2.2v-12.6a8.4 8.4 0 0 0 -8 2.2z" /> <path d="M12 7.2v12.6" />'],
+    party:['Symbole','<path d="M3.6 20.9l4.9 -12.4l7.5 7.5z" /> <path d="M8.5 8.5l7.5 7.5" /> <path d="M14.2 7.4a2.2 2.2 0 1 0 3 -3" /> <path d="M19.5 3.2l.01 .01" /> <path d="M21.3 8.4l.01 .01" /> <path d="M15.4 2.2l.01 .01" /> <path d="M20.6 13l.01 .01" />'],
     // --- ergaenzt fuer den Energiefluss: Anlagenteile, die bisher fehlten ---
     grid:['Energie','<path d="M7.5 21L11 3M16.5 21L13 3"/><path d="M4 7h16M5.5 11.5h13"/><path d="M10.4 7L14 11.5M13.6 7L10 11.5"/><path d="M9.6 11.5L14.6 16.5M14.4 11.5L9.4 16.5"/><path d="M4 7v2M20 7v2M5.5 11.5v1.8M18.5 11.5v1.8"/><path d="M6 21h12"/>'],
     inverter:['Energie','<rect x="4" y="5" width="16" height="14" rx="2"/><path d="M7 15c1.5-4 3.5-4 5 0s3.5 4 5 0"/><path d="M9 3v2M15 3v2M9 19v2M15 19v2"/>'],
