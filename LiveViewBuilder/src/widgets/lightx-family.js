@@ -74,10 +74,20 @@
       +'.lbcore{border-radius:50%;background:radial-gradient(circle at 50% 42%,var(--licht-core) 0%,var(--licht) 65%);transition:width .2s ease-out,height .2s ease-out,box-shadow .2s ease-out}'
       +'.lbbar.drag .lbcore{transition:none}'
       +'.lbdot{width:10px;height:10px;border-radius:50%;background:var(--track)}'
-      +'.lbmd{position:absolute;top:-3px;right:-3px;width:12px;height:12px;border-radius:50%;background:var(--surface);display:flex;align-items:center;justify-content:center}'
-      +'.lbmd svg{width:9px;height:9px;stroke:var(--muted)}'
-      +'.lbmd.on{background:var(--licht-bg);box-shadow:0 0 5px var(--licht-glow)}'
-      +'.lbmd.on svg{stroke:var(--licht)}'
+      // Melderzeichen. Es muss ZWEI Dinge auf einmal sagen: dass ueberhaupt ein
+      // Melder beteiligt ist (dauerhaft, aber leise) und ob er gerade anspricht
+      // (deutlich). Mit 12 px und blossem --muted war schon das erste kaum zu
+      // sehen. Jetzt traegt es einen eigenen Rand und sitzt auf --surface-2, wird
+      // also als Plakette lesbar, ohne laut zu werden - und bei Bewegung springt
+      // es auf Warm samt Ring und Schein, ein Unterschied, den man im Vorbeigehen
+      // erkennt.
+      +'.lbmd{position:absolute;top:-4px;right:-4px;width:15px;height:15px;border-radius:50%;'
+      +'background:var(--surface-2);border:1px solid var(--line);box-sizing:border-box;'
+      +'display:flex;align-items:center;justify-content:center}'
+      +'.lbmd svg{width:11px;height:11px;stroke:var(--muted);stroke-width:2.1}'
+      +'.lbmd.on{background:var(--licht-bg);border-color:var(--licht);'
+      +'box-shadow:0 0 0 2px color-mix(in oklab,var(--licht) 30%,transparent),0 0 8px var(--licht-glow)}'
+      +'.lbmd.on svg{stroke:var(--licht);stroke-width:2.4}'
       +'.lbtxt{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}'
       +'.lbtop{display:flex;align-items:baseline;gap:6px}'
       +'.lbnm{font:600 11.5px/1.2 var(--fu);color:var(--muted);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}'
@@ -202,6 +212,12 @@
     }
     function lbBar(l,zh){
       var on=!!l.on, dim=lbDimBar(l), lvl=lbLvl(l), reach=(l.reachable!==false);
+      // Eine NICHT dimmbare Leuchte kennt nur ganz oder gar nicht. Sie hat zwar
+      // meist trotzdem eine Brightness-Variable, und der Live-Weg schreibt deren
+      // Wert nach l.level - eine Leuchte mit stehengebliebenen 59 % bekaeme dann
+      // eine 59-Prozent-Fuellung und saehe aus wie ein Dimmer, den es nicht gibt.
+      // Die Fuellung folgt hier also der Faehigkeit, nicht dem Zahlenwert.
+      if(!dim) lvl = on ? 100 : 0;
       var kern=(11+15*lvl/100).toFixed(0), glow=(7+18*lvl/100).toFixed(0), opa=(0.6+0.4*lvl/100).toFixed(2);
       var wert=(dim&&lvl>0&&lvl<100)?(lvl+' %'):(on?'ein':'aus');
       var blende=on
