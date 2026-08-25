@@ -266,6 +266,14 @@ if ($api === 'messages') {
     if (isset($_GET['sev']) && $_GET['sev'] !== '') {
         foreach (explode(',', strtoupper((string) $_GET['sev'])) as $s) { $s = trim($s); if ($s !== '') $sevf[$s] = true; }
     }
+    // Optionale Sperrliste: Quellen, die gar nicht erst mitgezaehlt werden. Muss
+    // HIER greifen und nicht erst im Frontend - die Schleife bricht nach $max
+    // Treffern ab, und eine gespraechige Quelle (Z-Wave) haette die Ausbeute sonst
+    // schon aufgebraucht, bevor die interessanten Zeilen an der Reihe sind.
+    $hidef = [];
+    if (isset($_GET['hide']) && $_GET['hide'] !== '') {
+        foreach (explode(',', (string) $_GET['hide']) as $h) { $h = trim($h); if ($h !== '') $hidef[] = mb_strtolower($h); }
+    }
     $out = [];
     $fp = @fopen($path, 'rb');
     if ($fp) {
@@ -281,7 +289,12 @@ if ($api === 'messages') {
             $sev = trim($p[2]);
             if ($sev === '' || $sev === 'DEBUG') continue;
             if ($sevf && empty($sevf[$sev])) continue; // nur angeforderte Kategorien
-            $out[] = ['t' => trim($p[0]), 'sev' => $sev, 'src' => trim($p[3]), 'm' => mb_substr(trim($p[4]), 0, 300)];
+            $quelle = trim($p[3]);
+            if ($hidef) {
+                $ql = mb_strtolower($quelle);
+                foreach ($hidef as $h) { if (mb_strpos($ql, $h) !== false) continue 2; } // continue 2 = naechste Logzeile
+            }
+            $out[] = ['t' => trim($p[0]), 'sev' => $sev, 'src' => $quelle, 'm' => mb_substr(trim($p[4]), 0, 300)];
         }
     }
     echo json_encode(['messages' => $out, 'file' => basename($path)]);

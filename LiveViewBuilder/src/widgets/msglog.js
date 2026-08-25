@@ -42,6 +42,33 @@
     return d;
   }
   function _ifParam(w){var f=_hmIf(w),a=[];if(f.bidcos)a.push('bidcos');if(f.hmip)a.push('hmip');return a.join(',');}
+  // ---- Quellen ausblenden ---------------------------------------------------
+  // Manche Module reden viel (Z-Wave meldet jede abgelaufene Wartezeit). Wer die
+  // Liste nach echten Stoerungen absucht, will sie stummschalten koennen - ohne
+  // sie zu verlieren. Jede Quelle aus msgHide bekommt einen Chip; gedaempft heisst
+  // stumm, angetippt kommt sie zurueck. Wie bei den Severity-Chips gilt der
+  // Builder-Wert als Vorgabe und der Klick nur im Live-Betrieb (localStorage).
+  function _hideTerms(w){
+    return String(w.msgHide||'').split(',').map(function(t){return t.trim();}).filter(function(t){return t!=='';});
+  }
+  function _hideState(w){
+    var t=_hideTerms(w),d={};
+    t.forEach(function(x){d[x]=1;});                 // Vorgabe: ausgeblendet
+    if(typeof RUN!=='undefined'&&RUN){try{var o=localStorage.getItem('lvmsghide_'+w.id);
+      if(o){var j=JSON.parse(o);if(j&&typeof j==='object')t.forEach(function(x){if(x in j)d[x]=j[x]?1:0;});}}catch(e){}}
+    return d;
+  }
+  function _hideParam(w){
+    var d=_hideState(w);
+    return Object.keys(d).filter(function(k){return d[k];}).join(',');
+  }
+  function _hideChips(w){
+    var t=_hideTerms(w); if(!t.length||_msgSrc(w)!=='symcon')return '';
+    var d=_hideState(w);
+    return t.map(function(x){
+      return '<span class="hmsgchip'+(d[x]?' off':'')+'" data-hidechip="'+esc(x)+'" style="--cc:var(--muted);'+_MSG_CHIP+'" title="'+(d[x]?'Meldungen dieser Quelle einblenden':'Meldungen dieser Quelle ausblenden')+'">'+escL(x)+'</span>';
+    }).join('');
+  }
   function _msgIfOk(w,m){var f=_hmIf(w);return (m.iface==='HmIP-RF')?f.hmip:(m.iface==='BidCos-RF'?f.bidcos:true);}
   function _ifChips(w){ // nur bei Homematic-Quelle (Liste) — HM/IP live filtern
     if(_msgSrc(w)!=='homematic')return '';
@@ -109,16 +136,17 @@
     if(!isCount)box.classList.remove('is-count');
     if(!sevOn.length){box.classList.remove('is-count');box.innerHTML='<div class="hmsge">Keine Kategorie aktiv</div>';box._sig='none';return;}
     var url=(src==='homematic')?('?api=hmmsg&ip='+encodeURIComponent(w.hmIP)+'&if='+encodeURIComponent(_ifParam(w)))
-                              :('?api=messages&n='+(w.max||25)+'&sev='+encodeURIComponent(sevOn.join(',')));   // Kompakt zaehlt bis „Max. Eintraege" (max 500)
+                              :('?api=messages&n='+(w.max||25)+'&sev='+encodeURIComponent(sevOn.join(','))
+                                 +(_hideParam(w)?('&hide='+encodeURIComponent(isCount?_hideTerms(w).join(','):_hideParam(w))):''));   // Kompakt zaehlt bis „Max. Eintraege" (max 500), stummgeschaltete Quellen zaehlen nie mit
     fetch(url,{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
       if(j&&j.error){box.classList.remove('is-count');box.innerHTML='<div class="hmsge" style="color:var(--crit)">CCU nicht erreichbar</div>';box._sig='err';return;}
       var all=((j&&j.messages)||[]).filter(function(m){return f[m.sev]&&(src!=='homematic'||_msgIfOk(w,m));});
       var data=_ackData(w),hist=_msgHist(w);
       var open=(src==='symcon'&&!hist)?all.filter(function(m){return !_msgIsAcked(w,src,data,m);}):all; // bestaetigte (Cutoff ODER einzeln, nur Symcon) ausblenden
-      if(isCount){var sigC=src+'|count|'+open.length+'|'+data.cutoff+'|'+Object.keys(data.keys).length+'|'+w.cntGreen+'|'+w.cntYellow;if(box._sig===sigC)return;box._sig=sigC;_renderCount(box,w,open,sevOn);return;} // Anzahl der OFFENEN gefilterten Liste der aktiven Quelle
+      if(isCount){var sigC=src+'|count|'+_hideParam(w)+'|'+open.length+'|'+data.cutoff+'|'+Object.keys(data.keys).length+'|'+w.cntGreen+'|'+w.cntYellow;if(box._sig===sigC)return;box._sig=sigC;_renderCount(box,w,open,sevOn);return;} // Anzahl der OFFENEN gefilterten Liste der aktiven Quelle
       var base=(src==='symcon'&&hist)?all:open;
       var msgs=(src==='homematic')?base.slice(0,w.max||60):base.slice(0,w.max||25).reverse(); // Symcon: neueste unten; HM: wie geliefert (nach Severity)
-      var sig=src+'|'+isCount+'|'+msgs.map(function(m){return (m.t||'')+m.m;}).join('|');
+      var sig=src+'|'+isCount+'|'+_hideParam(w)+'|'+msgs.map(function(m){return (m.t||'')+m.m;}).join('|');
       if(box._sig===sig)return;
       var wasBottom=(box._sig===undefined)||(box.scrollTop+box.clientHeight>=box.scrollHeight-6);
       box._sig=sig;
@@ -156,7 +184,7 @@
         ?('<span class="hmsgackw"><button class="hmsgackb" data-msgack="1" title="Alle als bestätigt ausblenden" style="'+_MSG_CHIP+'">Bestätigen</button><button class="hmsgackb ghost'+(_msgHist(w)?' on':'')+'" data-msghist="1" title="Verlauf (bestätigte zeigen)" style="'+_MSG_CHIP+'">Verlauf</button></span>')
         :'';
       var ackC=(compact&&symAck)?('<button class="hmsgackx" data-msgack="1" title="Alle bestätigen" style="'+_MSG_ICOB+'"><svg class="i"><use href="#ic-check"/></svg></button>'):''; // Kompakt: kleiner Haken oben rechts
-      return '<div class="hmsg'+(compact?' is-count':'')+'"><div class="hmsgtop"><span class="hmsgt">'+escL(w.label||'Meldungen')+'</span>'+(compact?ackC:(_srcSwitch(w)+_ifChips(w)+'<span class="hmsgchips">'+_chips(w)+'</span>'+ackUI))+'</div><div class="hmsgl'+(compact?' is-count':'')+'" data-role="msgl"><div class="hmsge">…</div></div></div>';},
+      return '<div class="hmsg'+(compact?' is-count':'')+'"><div class="hmsgtop"><span class="hmsgt">'+escL(w.label||'Meldungen')+'</span>'+(compact?ackC:(_srcSwitch(w)+_ifChips(w)+'<span class="hmsgchips">'+_chips(w)+_hideChips(w)+'</span>'+ackUI))+'</div><div class="hmsgl'+(compact?' is-count':'')+'" data-role="msgl"><div class="hmsge">…</div></div></div>';},
     props:function(w){return '<div class="pgh">Quelle</div>'
       +row('Typ','<select id="pMsgSrc"><option value="symcon"'+(w.msgSrc!=='homematic'?' selected':'')+'>Symcon-Log</option><option value="homematic"'+(w.msgSrc==='homematic'?' selected':'')+'>Homematic-CCU</option></select>')
       +(w.msgSrc==='homematic'?(
@@ -180,10 +208,14 @@
       +'<div class="pgh">Severity-Filter (Standard)</div>'
       +'<div style="display:flex;flex-wrap:wrap;gap:6px 12px">'+_SEVS.map(function(s){return '<label style="display:inline-flex;align-items:center;gap:4px;font-size:11px"><input type="checkbox" data-sev="'+s+'"'+(_sevDef(w,s)?' checked':'')+'> <span style="color:'+_SEVCLR[s]+';font-weight:600">'+s+'</span></label>';}).join('')+'</div>'
       +'<div class="hint" style="font-size:11px;color:var(--muted)">Im Live-Modus per Tipp auf die Pills umschaltbar (je Gerät gespeichert).</div>'
+      +'<div class="pgh">Quellen ausblenden</div>'
+      +row('Stumm','<input id="pMsgHide" style="width:100%" value="'+esc(w.msgHide||'')+'" placeholder="z. B. Z-Wave, FritzBox">')
+      +'<div style="font-size:11px;color:var(--muted);margin:-2px 2px 6px">Kommaliste. Jede Angabe wird als Teil des Quellennamens gesucht (Groß-/Kleinschreibung egal), „Z-Wave" trifft also „Z-Wave Module". Diese Meldungen werden schon beim Lesen des Logs übersprungen — sie verbrauchen damit keinen der „Max. Einträge". Je Angabe erscheint im Kopf ein Chip: gedämpft = stumm, angetippt kommt die Quelle im Live-Betrieb zurück (nur Symcon-Quelle).</div>'
       +row('Neuen folgen','<input type="checkbox" id="pMsgAuto"'+(w.noAuto?'':' checked')+'> <span style="font-size:11px;color:var(--muted)">bei neuen Meldungen ans Ende scrollen (nur Symcon-Liste)</span>')
       +row('Max. Einträge','<input id="pMsgN" type="number" min="1" max="500" value="'+(w.max||25)+'">')
       +row('Aktualisierung (Sek.)','<input id="pMsgIv" type="number" min="1" max="600" value="'+(w.refreshSec||'')+'" placeholder="'+(bcfg().refreshSec||15)+' (global)">');},
     wire:function(w){
+      if($('#pMsgHide'))$('#pMsgHide').onchange=function(){w.msgHide=this.value.trim()||undefined;render();fetchMsgs(w);commit();};
       if($('#pMsgSrc'))$('#pMsgSrc').onchange=function(){w.msgSrc=(this.value==='homematic')?'homematic':undefined;render();renderProps();fetchMsgs(w);commit();};
       if($('#pMsgHmIP'))$('#pMsgHmIP').onchange=function(){w.hmIP=this.value.trim()||undefined;render();fetchMsgs(w);commit();};
       if($('#pMsgHmAck'))$('#pMsgHmAck').onchange=function(){w.hmAck=this.checked?1:undefined;fetchMsgs(w);commit();};
@@ -227,6 +259,16 @@
       if(mr){if(w.ackVid){var d2=_ackData(w);delete d2.keys[mr.getAttribute('data-mkey')];_ackWrite(w,d2);}var b4=$('[data-role=msgl]',el);if(b4)b4._sig=undefined;fetchMsgs(w);return true;}
       var mh=e.target.closest('[data-msghist]'); // Verlauf ein/aus (bestätigte wieder zeigen)
       if(mh){var on=!_msgHist(w);try{localStorage.setItem('lvmsghist_'+w.id,on?'1':'0');}catch(_){}mh.classList.toggle('on',on);var b2=$('[data-role=msgl]',el);if(b2)b2._sig=undefined;fetchMsgs(w);return true;}
+      var hc=e.target.closest('[data-hidechip]'); // Quelle stummschalten / zurueckholen
+      if(hc){
+        var term=hc.getAttribute('data-hidechip'),hs=_hideState(w);
+        hs[term]=hs[term]?0:1;
+        try{localStorage.setItem('lvmsghide_'+w.id,JSON.stringify(hs));}catch(_){}
+        hc.classList.toggle('off',!!hs[term]);
+        hc.setAttribute('title',hs[term]?'Meldungen dieser Quelle einblenden':'Meldungen dieser Quelle ausblenden');
+        var b5=$('[data-role=msgl]',el);if(b5)b5._sig=undefined;   // Signatur loeschen, sonst haelt der Vergleich die alte Liste fest
+        fetchMsgs(w);return true;
+      }
       var chip=e.target.closest('[data-sevchip]'); // Severity live filtern
       if(!chip)return false;
       var s=chip.getAttribute('data-sevchip'),f=_msgFilter(w);f[s]=f[s]?0:1;
