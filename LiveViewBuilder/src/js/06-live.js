@@ -308,11 +308,59 @@
     var ids=Object.keys(_vidx).filter(function(k){return /^[0-9]+$/.test(k);}); // nur echte IDs pollen (Formel-Token ausgenommen)
     if(!ids.length){_recalcFormulas();return;}
     fetch('?api=val&ids='+ids.join(',')+'&since='+_pvSince,{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
-      if(!j)return;if(j.ts)_pvSince=j.ts;if(!j.values)return;
+      if(!j)return;if(j.ts)_pvSince=j.ts;_bauPruefen(j.build);if(!j.values)return;
       _liveSrc='poll';for(var id in j.values){applyVal(parseInt(id),j.values[id]);}
       _recalcFormulas();
     }).catch(function(){});
   }
+  // ---- Selbstauffrischung nach einem neuen Bau -------------------------------
+  //
+  // Eine Wandtafel laeuft wochenlang, ohne je neu geladen zu werden. Sie holt frische
+  // WERTE, behaelt aber das JavaScript vom Tag des Aufrufs - nach einem Modul-Update
+  // zeigt sie also Fehler, die es nicht mehr gibt. Am 25.08.2026 hat das zweimal zu
+  // einer Fehlersuche gefuehrt, die keine war.
+  //
+  // Der Server gibt beim Wertabruf den Bauzeitstempel mit. Aendert er sich gegenueber
+  // dem beim Laden gesehenen, laedt sich die Seite selbst neu - aber nur unter vier
+  // Bedingungen, damit niemandem etwas unter den Haenden wegfliegt:
+  //   1. NUR in der Laufzeit. Im Builder wuerde ein Neuladen ungesicherte Arbeit kosten.
+  //   2. Nicht in den ersten 60 s nach dem Laden - sonst koennte ein laufender Bau eine
+  //      Schleife ausloesen.
+  //   3. Nur wenn 20 s lang niemand getippt hat.
+  //   4. Abschaltbar ueber bcfg().noAutoReload.
+  var _bauStand=0,_bauTat=false,_bauSeit=Date.now(),_bauTipp=0;
+  ['pointerdown','keydown','wheel','touchstart'].forEach(function(ev){
+    document.addEventListener(ev,function(){_bauTipp=Date.now();},{passive:true});
+  });
+  function _bauPruefen(stempel){
+    stempel=parseInt(stempel)||0;
+    if(!stempel)return;
+    if(!_bauStand){_bauStand=stempel;return;}          // erster gesehener Stand = Vergleichsmass
+    if(stempel===_bauStand||_bauTat)return;
+    if(typeof RUN==='undefined'||!RUN)return;          // niemals im Builder
+    if(typeof DOKU!=='undefined'&&DOKU)return;
+    if(typeof bcfg==='function'&&bcfg().noAutoReload)return;
+    var jetzt=Date.now();
+    if(jetzt-_bauSeit<60000)return;
+    if(jetzt-_bauTipp<20000)return;                    // jemand bedient gerade - spaeter
+    _bauTat=true;
+    if(typeof toast==='function')toast('Neuer Stand — Seite wird aufgefrischt');
+    setTimeout(function(){location.reload();},900);
+  }
+  // Eigener, langsamer Takt fuer die Bauversion. Er darf NICHT am Wertabruf haengen:
+  // steht der WebSocket, wird der Abruf ausgesetzt (bcfg().noSafetyPoll) - und genau in
+  // dieser Anlage ist das der Normalfall. Alle zwei Minuten eine Antwort von 20 Byte.
+  function _bauTakt(){
+    if(typeof RUN==='undefined'||!RUN)return;
+    if(typeof DOKU!=='undefined'&&DOKU)return;
+    setInterval(function(){
+      if(document.hidden)return;
+      fetch('?api=build',{cache:'no-store'}).then(function(r){return r.json();})
+        .then(function(j){ if(j)_bauPruefen(j.build); }).catch(function(){});
+    },120000);
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',_bauTakt);
+  else _bauTakt();
   function startPV(ms){stopPV();_pvT=setInterval(pollVals,ms||1200);}
   function stopPV(){if(_pvT){clearInterval(_pvT);_pvT=null;}}
   document.addEventListener('visibilitychange',function(){if(document.hidden){stopPV();}else{_pvSince=0;pollVals();startPV(_wsOK?5000:1200);}});

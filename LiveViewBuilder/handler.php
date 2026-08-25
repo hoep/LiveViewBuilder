@@ -477,6 +477,16 @@ if ($api === 'epg') {
     return;
 }
 
+// ---- Bauzeitstempel allein: winzige Antwort, damit die Laufzeit merkt, dass es einen
+// neuen Stand gibt. Eigener Endpunkt, weil der Wertabruf bei stehendem WebSocket ganz
+// ausgesetzt wird (noSafetyPoll) - eine Pruefung, die daran haengt, liefe dann nie.
+if ($api === 'build') {
+    header('Content-Type: application/json; charset=utf-8');
+    header('Cache-Control: no-store');
+    echo json_encode(['build' => (int) @filemtime(__DIR__ . '/builder.html')]);
+    return;
+}
+
 if ($api === 'val') {
     header('Content-Type: application/json; charset=utf-8');
     $ids   = array_filter(array_map('intval', explode(',', (string) ($_GET['ids'] ?? ''))));
@@ -503,7 +513,12 @@ if ($api === 'val') {
                          'c' => (int) $vi['VariableChanged']];
         }
     }
-    echo json_encode(['ts' => time(), 'values' => $out]);
+    // Bauzeitstempel mitgeben. Eine Wandtafel laeuft wochenlang, ohne die Seite je neu zu
+    // laden - sie holt zwar frische WERTE, behaelt aber das JavaScript vom Tag des Aufrufs.
+    // Nach einem Modul-Update zeigt sie dann alte Fehler, die laengst behoben sind, und man
+    // sucht sie zweimal. Der Client vergleicht den Stempel mit dem beim Laden gesehenen und
+    // laedt sich in einem ruhigen Moment selbst neu. filemtime kostet einen stat-Aufruf.
+    echo json_encode(['ts' => time(), 'build' => (int) @filemtime(__DIR__ . '/builder.html'), 'values' => $out]);
     return;
 }
 
