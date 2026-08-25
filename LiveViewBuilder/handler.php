@@ -125,7 +125,9 @@ if ($api === 'tree') {
         }
         // Volltext: Variablen (Name + voller Pfad) UND Instanzen (Geraete per Name/Pfad
         // findbar, dann aufklappbar). Doppelte IDs werden uebersprungen.
-        $cand = array_merge(IPS_GetVariableList(), IPS_GetInstanceList());
+        // Skripte gehoeren dazu: eine Szene kann eines ausfuehren, und ohne sie in der
+        // Suche waere es im Editor nicht auffindbar.
+        $cand = array_merge(IPS_GetVariableList(), IPS_GetInstanceList(), IPS_GetScriptList());
         $seen = [];
         $rest = [];
         foreach ($cand as $vid) {
@@ -1769,10 +1771,20 @@ if ($api === 'light') {
         $pIdent = $parent > 0 ? (string) (@IPS_GetObject($parent)['ObjectIdent'] ?? '') : '';
         // Direkt unter einer HSLT-Geschoss-Haltekategorie => noch kein Raum
         if (strpos($pIdent, 'HSLT_FLOOR_') === 0) {
-            return ['room' => '', 'roomId' => 0, 'floor' => $pName];
+            return ['room' => '', 'roomId' => 0, 'floor' => $pName, 'presenceVid' => 0];
         }
         $gp = $parent > 0 ? (int) @IPS_GetParent($parent) : 0;
-        return ['room' => $pName, 'roomId' => $parent, 'floor' => $gp > 0 ? (string) @IPS_GetName($gp) : ''];
+        // Praesenzmelder gehoert zum RAUM (HSSP-Eigenschaft PresenceVid), nicht zum
+        // Geraet: derselbe Melder gilt fuer jede Leuchte darin. Ueber die Konfiguration
+        // gelesen statt ueber IPS_GetProperty - letzteres wirft, wenn die Eigenschaft
+        // (noch) fehlt, etwa bei Raeumen aus der Zeit vor dem Modul-Update.
+        $pres = 0;
+        if ($parent > 0) {
+            $rcfg = json_decode((string) @IPS_GetConfiguration($parent), true);
+            $pres = is_array($rcfg) ? (int) ($rcfg['PresenceVid'] ?? 0) : 0;
+        }
+        return ['room' => $pName, 'roomId' => $parent, 'floor' => $gp > 0 ? (string) @IPS_GetName($gp) : '',
+                'presenceVid' => $pres];
     };
     $stateOf = function ($iid) {
         if (!function_exists('HSLT_Manage')) return ['state' => [], 'caps' => [], 'driverActive' => false];
@@ -1790,6 +1802,7 @@ if ($api === 'light') {
                 'id'    => $iid,
                 'name'  => (string) IPS_GetName($iid),
                 'room'  => $rm['room'], 'roomId' => $rm['roomId'], 'floor' => $rm['floor'],
+                'presenceVid' => (int) ($rm['presenceVid'] ?? 0),
                 'on'    => (bool) ($st['on'] ?? false),
                 'level' => (int) ($st['level'] ?? -1),
                 'color' => (int) ($st['color'] ?? -1),
@@ -1832,7 +1845,7 @@ if ($api === 'light') {
     }
 
     // ---- Szenen (Haus-Ebene, Hub/HSH): scenes lesen frei; capture/apply/save/delete token ----
-    if ($op === 'scenes' || $op === 'scene' || $op === 'sceneapply' || $op === 'scenecapture'
+    if ($op === 'scenes' || $op === 'scene' || $op === 'sceneapply' || $op === 'sceneoff' || $op === 'scenecapture'
         || $op === 'scenesave' || $op === 'scenedelete' || $op === 'scenerename'
         || $op === 'autoget' || $op === 'autoset' || $op === 'autotick' || $op === 'sensors'
         || $op === 'bandget' || $op === 'bandset' || $op === 'housegeo') {
@@ -1877,7 +1890,7 @@ if ($api === 'light') {
         $body = (string) ($_POST['data'] ?? '');
         if ($body === '') $body = (string) file_get_contents('php://input');
         $args = json_decode($body ?: '{}', true); if (!is_array($args)) $args = [];
-        $mapOp = ['sceneapply' => 'lightSceneApply', 'scenecapture' => 'lightSceneCapture',
+        $mapOp = ['sceneapply' => 'lightSceneApply', 'sceneoff' => 'lightSceneOff', 'scenecapture' => 'lightSceneCapture',
                   'scenesave' => 'lightSceneSave', 'scenedelete' => 'lightSceneDelete', 'scenerename' => 'lightSceneRename'];
         echo HSH_Manage($hub, json_encode(['op' => $mapOp[$op], 'args' => $args]));
         return;

@@ -114,12 +114,15 @@
   function _collectIds(w,add){ // alle Variablen-IDs eines Widgets an add() geben
     add(w.varId);add(w.varId2);add(w.varId3);add(w.cvActId);add(w.cvAzB);add(w.cvAzE);add(w.cvElv);add(w.cvBlockVid);add(w.cmpVid);add(w.dVid);add(w.varIdB);add(w.dVidB);add(w.ackVid);add(w.visVar);add(w.condVar);add(w.vTemp);add(w.vCond);add(w.vHum);add(w.vWind);add(w.vGust);add(w.vRain);add(w.ssAz);add(w.ssEl);add(w.ssRad);add(w.ssRainV);add(w.ssSnowV);add(w.ssPtypeV);add(w.ssFogV);add(w.ssFogStateV);add(w.ssWindV);add(w.ssRainSensV);add(w.ssTempV);add(w.ssDewV);add(w.ssHumV);add(w.ssWetV);add(w.ssCloudV);add(w.ssWxJson);add(w.vStorm);add(w.vStormDist);add(w.vStormAge);add(w.vStormRate);add(w.vRainRate);add(w.vRainDay);add(w.vFog);add(w.vFogFsi);add(w.ssStormV);add(w.ssStormDistV);add(w.wxFog);add(w.wxFogState);add(w.wxPrecip);add(w.wxRainRate);add(w.wxStorm);add(w.wxStormDist);add(w.wxSnow);
     if(w.fc)w.fc.forEach(function(r){add(r.hi);add(r.lo);add(r.pq);add(r.cond);});
-    ['links','src','snk','items','rows','steps','series'].forEach(function(k){if(w[k])w[k].forEach(function(o){if(o)add(o.vid);});});
+    ['links','src','snk','items','rows','steps','series','barMarks','phases'].forEach(function(k){if(w[k])w[k].forEach(function(o){if(o)add(o.vid);});});
     if(w.stages)w.stages.forEach(function(o){if(o){add(o.vid);add(o.subvid);add(o.sv);}}); // Pipeline-Stationen (Wert + Zusatzwert + Status-Var fuer bedingten Fluss)
     if(w.elements)w.elements.forEach(function(o){if(o){add(o.vid);add(o.speedVid);add(o.socVid);}});
     if(w.tankVid)add(w.tankVid);
+    add(w.sollVid);add(w.tbWarnVid);add(w.mgThrVid);add(w.kToneVid);add(w.kSubVid);add(w.ttlRightVid);                                  // Saeule: Soll-Marke und Warnschwelle aus Variablen
+    if(w.phases)w.phases.forEach(function(o){if(o)add(o.hintVid);});   // Ablaufkette: Unterzeile je Schritt
     add(w.ilhBadgeVid);add(w.ilhSubVid);add(w.ilfVid);   // Info-Liste: Kopf- und Fusszeile
     add(w.stufeVid);add(w.zeileVid);add(w.zeile2Vid);    // Zustandskachel: Stufe und die zwei Zeilen
+    add(w.motionVid);                                    // Leuchtenzeile: Praesenzmelder - liegt zwar auch in w.items, das wird aber erst beim Aufbau gefuellt
     add(w.thPresVar);add(w.thHeatVar);add(w.thArmVar); // Thermostat-Raumkarte: Heizprofil, Ventil-/Statusquelle, „scharf" - ohne sie wuerden diese IDs nie gepollt
     // Fortschrittsbalken je Zeile - und die Schaltvariable: ohne sie im Kanal
     // wuesste "Wert leer = umschalten" nicht, was gerade an ist.
