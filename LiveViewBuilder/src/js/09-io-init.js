@@ -160,13 +160,23 @@
     // NIE im Doku-Modus speichern: die Doku baut ihren Store aus der Registry (buildDokuStore)
     // und darf das echte Live-Layout niemals ueberschreiben. Bulletproof-Guard, egal welcher Pfad ruft.
     if(typeof DOKU!=='undefined'&&DOKU){if(!silent&&typeof toast==='function')toast('Doku-Modus: nichts gespeichert');return Promise.resolve();}
+    // UND NIE AUS EINER LAUFZEIT-ANSICHT. Eine Anzeige ist kein Editor.
+    //
+    // Am 24.08.2026 verschwand dreimal eine frisch gesetzte Kachel wieder, obwohl der
+    // Builder geschlossen war. Der Grund: `commit()` kennt keinen Betriebsmodus, und
+    // `scheduleSave()` schickt anderthalb Sekunden spaeter den GANZEN Store. Jede
+    // Laufzeit-Ansicht - Wandtablet, Handy, ein vergessener Tab - traegt ihren Stand
+    // von IHREM Ladezeitpunkt mit sich herum und schreibt ihn bei der ersten
+    // Gelegenheit ueber alles, was inzwischen geaendert wurde. Je laenger die Ansicht
+    // offen ist, desto aelter der Stand, den sie zurueckschreibt.
+    if(typeof RUN!=='undefined'&&RUN){return Promise.resolve();}
     return fetch('?api=layout&key='+encodeURIComponent(TOKEN)+(_target?('&file='+encodeURIComponent(_target)):''),{method:'POST',body:JSON.stringify(store,_ohneLaufzeit)})
       .then(function(r){return r.json();}).then(function(j){
         if(j&&j.ok){markSaved();if(!silent)toast('Gespeichert: '+(_target||'Standard (live)')+' ('+j.bytes+' B)');}
         else if(!silent)toast('Fehler: '+((j&&j.error)||'?'));
       }).catch(function(){if(!silent)toast('Speichern fehlgeschlagen');});
   }
-  function scheduleSave(){if(!bcfg().autosave)return;clearTimeout(_saveT);_saveT=setTimeout(function(){saveStore(true);},1500);}
+  function scheduleSave(){if(typeof RUN!=='undefined'&&RUN)return;if(!bcfg().autosave)return;clearTimeout(_saveT);_saveT=setTimeout(function(){saveStore(true);},1500);}
   function buildLayoutList(){var s=$('#layoutSel');if(!s)return;fetch('?api=layout&list=1',{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
     var files=(j&&j.files)||[];if(!files.some(function(f){return f.file==='';}))files.unshift({file:'',name:'Standard (live)'});
     s.innerHTML=files.map(function(f){return '<option value="'+esc(f.file)+'"'+(f.file===_target?' selected':'')+'>'+esc(f.name)+'</option>';}).join('');
@@ -367,6 +377,18 @@
     canvas.style.width=state.page.w+'px';canvas.style.height=state.page.h+'px';
   }
   var _fitVP={w:0,h:0}; // zuletzt zugrunde gelegter Viewport; Run/Kiosk auf Mobil: iOS-Adressleisten-Wackeln (nur Höhe) NICHT neu skalieren
+  // Sichtbarkeit je Layoutmodus. reflowHide nahm das Widget bisher nur aus dem
+  // Fluss - versteckt wurde es nie, es blieb an seiner Desktop-Position liegen und
+  // schwebte ueber dem gestapelten Inhalt. Dasselbe gilt fuer uebersprungene
+  // Overlays. anchorHide ist das Gegenstueck: nur im Reflow zeigen, also
+  // Widgets, die es allein fuer das Handy gibt.
+  function sfVis(reflow,platziert){
+    state.widgets.forEach(function(w){
+      var el=sfEl(w);if(!el)return;
+      var weg=reflow ? (w.reflowHide||(platziert&&!platziert[w.id])) : !!w.anchorHide;
+      el.style.display=weg?'none':'';
+    });
+  }
   function fitCanvas(){
     if(!document.body.classList.contains('run'))return;
     var p=state.page,mode=effFit(p),vw=window.innerWidth,vh=window.innerHeight;
@@ -380,13 +402,13 @@
       canvas.style.margin='0';canvas.style.marginLeft=ml+'px';
       canvas.style.width=p.w+'px';canvas.style.height=p.h+'px';canvas.style.zoom=dsc;return;}
     if(bcfg().mobileOpt!==false&&isMobile()&&mode!=='reflow'&&!(p&&p.fitLock))mode='auto'; // Mobil: automatisch — Hochformat->Reflow (stapeln), Querformat->SmartFit (skaliert). page.fitLock=true haelt eine Seite immer im gewaehlten Fit (z. B. Heizplan: immer Querformat/Letterbox, kein Reflow).
-    if(mode==='letterbox'||!p||p.w<=0||p.h<=0||vw<8||vh<8||!state.widgets.length){document.body.classList.remove('reflow');if(typeof chromeFitReset==='function')chromeFitReset();return letterboxFit();}
+    if(mode==='letterbox'||!p||p.w<=0||p.h<=0||vw<8||vh<8||!state.widgets.length){document.body.classList.remove('reflow');if(typeof chromeFitReset==='function')chromeFitReset();sfVis(false,null);return letterboxFit();}
     var m=(mode==='auto')?sfPick(vw,vh,p):mode;
     canvas.style.transform='none';canvas.style.transformOrigin='top left';canvas.style.left='0';canvas.style.top='0';canvas.style.width=vw+'px';
     // Leisten auf Geraetemasse; ab hier wird INNERHALB des Inhaltsrechtecks gerechnet
     var CR=(typeof chromeFitViewport==='function')?chromeFitViewport(vw,vh):{x:0,y:0,w:vw,h:vh};
     if(m==='reflow'){document.body.classList.add('reflow');canvas.style.position='relative';return reflowFit(CR.w,CR.h,CR);}
-    document.body.classList.remove('reflow');canvas.style.position='absolute';canvas.style.height=vh+'px';smartFit(CR.w,CR.h);
+    document.body.classList.remove('reflow');canvas.style.position='absolute';canvas.style.height=vh+'px';sfVis(false,null);smartFit(CR.w,CR.h);
     if(typeof chromeFitBottom==='function')chromeFitBottom(vh);
   }
   function sfPick(vw,vh,p){
@@ -452,6 +474,7 @@
     var p=state.page,S=sfStructure(p),c=sfCfg(p),order=[],stretched=[],ALL=state.widgets;
     S.bands.forEach(function(b){order=order.concat(b);});
     order=order.filter(function(w){return !w.reflowHide&&(!!w.group||!_reflowOverlay(w,ALL));}); // Overlays raus – ausser gruppiert (Kinder bleiben am Master)
+    var _plz={};order.forEach(function(w){_plz[w.id]=1;});sfVis(true,_plz); // Nichtplatziertes wirklich verstecken, sonst schwebt es ueber dem Stapel
     // Flow-Packing nach echter Breite. Gruppen zählen als EIN Block (Bounding-Box), bleiben also zusammen.
     var M=8,G=8,AW=vw-2*M,i;
     var seen={},units=[];

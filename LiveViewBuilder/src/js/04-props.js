@@ -204,6 +204,7 @@
     if($('#pMinW'))$('#pMinW').oninput=function(){var v=parseInt(this.value);w.minW=isNaN(v)?undefined:v;commit();};
     if($('#pMinH'))$('#pMinH').oninput=function(){var v=parseInt(this.value);w.minH=isNaN(v)?undefined:v;commit();};
     if($('#pRHide'))$('#pRHide').onchange=function(){w.reflowHide=this.checked||undefined;commit();};
+    if($('#pAHide'))$('#pAHide').onchange=function(){w.anchorHide=this.checked||undefined;commit();};
     $$('#pAnchor .anbtn').forEach(function(bt){bt.onclick=function(){w.anchor=bt.dataset.an;commit();renderProps();};});
     if($('#pFmt'))$('#pFmt').onchange=function(){w.fmt=this.value==='auto'?undefined:this.value;render();if(w.varId&&_lastVals[w.varId])applyVal(w.varId,_lastVals[w.varId]);};
     if($('#pDec'))$('#pDec').oninput=function(){w.dec=this.value===''?undefined:Math.max(0,Math.min(6,parseInt(this.value)||0));render();if(w.type==='cval')computeCounterVal(w);else if(w.type==='sval')computeAggVal(w);else if(w.varId&&_lastVals[w.varId])applyVal(w.varId,_lastVals[w.varId]);commit();};

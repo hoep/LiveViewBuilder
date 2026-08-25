@@ -184,8 +184,25 @@
     _compKids=[];allWidgets().forEach(function(w){if(w.type==='component')expandComponent(w);}); // M3: Komponenten-Instanzen expandieren
     _contKids=[];state.widgets.forEach(function(w){if(w.type==='container')expandContainer(w);}); // Container-Kinder zeichnen (echte, editierbare Widgets)
     state.widgets.forEach(function(w){if(w.type==='alarmpanel'&&typeof expandAlarmPanel==='function')expandAlarmPanel(w);}); // Alarm-Panel: aktive Alarm-Karten einhaengen
-    // In einer Komponente eingebettete Container/Alarm-Panels ebenfalls auffuellen (sonst leer, z.B. Pool-CFG-Seiten im Tab-Hub).
-    if(_compKids&&_compKids.length)_compKids.slice().forEach(function(w){try{if(w.type==='container')expandContainer(w);else if(w.type==='alarmpanel'&&typeof expandAlarmPanel==='function')expandAlarmPanel(w);}catch(_e){}});
+    // In einer Komponente eingebettete Container/Alarm-Panels/KOMPONENTEN ebenfalls auffuellen.
+    //
+    // Eine Komponente IN einer Komponente ist der Reiter-Hub in einem Reiter-Hub: die
+    // Heizungsseite zeigt „Pellets" als Komponente, und diese Seite hat selbst wieder
+    // Reiter (Ueberblick/Kessel/Waermefluss). Die inneren Kinder stehen in _compKids und
+    // nicht in state.widgets - ohne diesen Durchlauf bliebe der innere Bereich leer.
+    // Neue Kinder entstehen waehrend des Durchlaufs, darum wird bis zur Ruhe gearbeitet;
+    // die Tiefengrenze faengt einen Ringschluss ab (A zeigt B, B zeigt A).
+    if(_compKids&&_compKids.length){
+      var _cOff=0,_cTief=0;
+      while(_cOff<_compKids.length&&_cTief++<4){
+        var _cTeil=_compKids.slice(_cOff);_cOff=_compKids.length;
+        _cTeil.forEach(function(w){try{
+          if(w.type==='component')expandComponent(w);
+          else if(w.type==='container')expandContainer(w);
+          else if(w.type==='alarmpanel'&&typeof expandAlarmPanel==='function')expandAlarmPanel(w);
+        }catch(_e){}});
+      }
+    }
     // mount-Hooks auch für Klone (Laufband/Komponenten) + Werte aus Cache spiegeln -> Status-Bild/Wetter/cval usw. erscheinen sofort, nicht erst bei Wertänderung
     function _mountKid(w){try{var _mw=WIDGETS[w.type];if(_mw&&_mw.mount)_mw.mount(w);}catch(e){}}
     // Komponenten-Kinder brauchen DIESELBE Behandlung wie Container-Kinder: erst
@@ -2327,5 +2344,6 @@
     h+=row('Gruppe','<input id="pGrp" value="'+esc(w.grp||'')+'" placeholder="leer = auto">');
     h+=row('Min B/H','<input id="pMinW" type="number" style="width:58px" value="'+(w.minW||'')+'" placeholder="B"> <input id="pMinH" type="number" style="width:58px" value="'+(w.minH||'')+'" placeholder="H">');
     h+=row('Reflow','<label style="font-size:12px;display:inline-flex;align-items:center;gap:6px"><input type="checkbox" id="pRHide"'+(w.reflowHide?' checked':'')+'> ausblenden</label>');
+    h+=row('Nur mobil','<label style="font-size:12px;display:inline-flex;align-items:center;gap:6px"><input type="checkbox" id="pAHide"'+(w.anchorHide?' checked':'')+'> im Reflow zeigen, sonst ausblenden</label>');
     return h;
   }
