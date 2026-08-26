@@ -405,6 +405,7 @@
           if(bar)bar.classList.toggle('on',v>0);
         }
         tr.addEventListener('pointerdown',function(ev){
+          if(typeof mode!=='undefined'&&mode==='edit')return;   // im Builder wird gebaut, nicht geschaltet
           zieht=true; roh=wert(ev); if(bar)bar.classList.add('drag');
           try{tr.setPointerCapture(ev.pointerId);}catch(e){}
           malen(roh); ev.preventDefault(); ev.stopPropagation();
@@ -426,6 +427,7 @@
       });
       host.querySelectorAll('[data-lb]').forEach(function(bar){
         bar.addEventListener('click',function(ev){
+          if(typeof mode!=='undefined'&&mode==='edit')return;
           if(ev.target.closest('[data-lbtrk]'))return;
           var id=parseInt(bar.getAttribute('data-lb'));
           var l=(_lxData||[]).find(function(x){return x.id===id;});
@@ -439,6 +441,7 @@
       host.querySelectorAll('[data-lbcoloff]').forEach(function(b){
         b.addEventListener('click',function(ev){
           ev.stopPropagation();
+          if(typeof mode!=='undefined'&&mode==='edit')return;
           var ids=(b.getAttribute('data-lbcoloff')||'').split(',').map(function(x){return parseInt(x);});
           var lamps=(_lxData||[]).filter(function(l){return ids.indexOf(l.id)>=0;});
           lxMaster(lamps,false); lbCardSchedule(w);
@@ -447,6 +450,7 @@
       host.querySelectorAll('[data-lboff]').forEach(function(b){
         b.addEventListener('click',function(ev){
           ev.stopPropagation();
+          if(typeof mode!=='undefined'&&mode==='edit')return;
           var k=decodeURIComponent(b.getAttribute('data-lboff')).split('|');
           var lamps=(_lxData||[]).filter(function(l){return (l.floor||'')===k[0]&&(l.room||'')===k[1];});
           lxMaster(lamps,false); lbRepaint(w);
@@ -455,6 +459,7 @@
       host.querySelectorAll('[data-lbcoloff]').forEach(function(b){
         b.addEventListener('click',function(ev){
           ev.stopPropagation();
+          if(typeof mode!=='undefined'&&mode==='edit')return;
           var ids=(b.getAttribute('data-lbcoloff')||'').split(',').map(function(x){return parseInt(x);});
           var lamps=(_lxData||[]).filter(function(l){return ids.indexOf(l.id)>=0;});
           lxMaster(lamps,false); lbRepaint(w);
@@ -793,6 +798,7 @@
       host.querySelectorAll('[data-lboff]').forEach(function(b){
         b.addEventListener('click',function(ev){
           ev.stopPropagation();
+          if(typeof mode!=='undefined'&&mode==='edit')return;
           var k=decodeURIComponent(b.getAttribute('data-lboff')).split('|');
           var lamps=(_lxData||[]).filter(function(l){return (String(l.floor||'')===k[0])&&(String(l.room||'')===k[1]);});
           lxMaster(lamps,false); lbCardSchedule(w);
