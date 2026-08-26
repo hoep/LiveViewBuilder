@@ -86,6 +86,7 @@
     }
     function barWire(w,host){
       host.querySelectorAll('[data-scapply]').forEach(function(b){b.onclick=function(){
+        if(typeof mode!=='undefined'&&mode==='edit')return;   // eine Szene im Builder anzuwenden schaltet echte Lampen
         var id=b.getAttribute('data-scapply');b.classList.add('busy');
         // Zweites Tippen auf die AKTIVE Szene schaltet sie aus: Leuchten aus, Variablen
         // auf ihren Aus-Wert. Ohne Gegenrichtung waere "Fernsehen" nur halb bedienbar.
@@ -96,6 +97,7 @@
       };});
       var ab=host.querySelector('[data-scalloff]');
       if(ab)ab.onclick=function(){
+        if(typeof mode!=='undefined'&&mode==='edit')return;
         ab.classList.add('busy');
         loadLights(function(){
           (_lights||[]).forEach(function(l){ if(l.on&&l.vars&&l.vars.Power&&typeof setVar==='function'){ setVar(l.vars.Power,0); l.on=false; } });
