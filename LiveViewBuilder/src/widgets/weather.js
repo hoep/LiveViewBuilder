@@ -179,7 +179,7 @@
       var dd=_ln(w.vRainDay); if(dd!=null&&dd>0) side='heute '+_wtxt(dd,1)+' mm';
     } else if(fg!=null && fg>0){
       kind='info'; box.setAttribute('data-k','fog');
-      main=(fg>=3)?'Dichter Nebel':((fg>=2)?'Nebel':'Diesig');
+      main=lvNebelText(fg);   // eine Quelle fuer alle Anzeigen (siehe 00-registry.js)
       var fs=_ln(w.vFogFsi); if(fs!=null&&fs>0) main+=' · <b>FSI '+_wtxt(fs)+'</b>';
     }
     if(kind===''){ box.style.display='none'; return; }

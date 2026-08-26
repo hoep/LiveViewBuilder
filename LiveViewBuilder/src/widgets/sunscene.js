@@ -1377,8 +1377,16 @@
     function ssWxText(wx) {
       var np = ssPrecipText(wx);
       if (np) return np;
+      // Die STUFE ist massgeblich, nicht die Dichte. Frueher rechnete diese Karte aus
+      // der Nebeldichte mit eigenen Schwellen (>0,5 dicht, >0,22 Nebel) - und sagte damit
+      // "dichter Nebel", waehrend Wetter+ aus derselben Lage "Morgendunst" machte. Ist die
+      // Stufe gebunden, gilt sie; die Dichte bleibt nur der Rueckfall fuer Aufbauten ohne
+      // Wetterstation.
+      if (wx && wx.fogState !== null && wx.fogState !== undefined) {
+        return lvNebelText(wx.fogState);
+      }
       if (wx && wx.fog > 0.05) {
-        return wx.fog > 0.5 ? 'dichter Nebel' : (wx.fog > 0.22 ? 'Nebel' : 'Nebelschwaden');
+        return wx.fog > 0.5 ? 'Dichter Nebel' : (wx.fog > 0.22 ? 'Nebel' : 'Diesig');
       }
       return '';
     }
@@ -1616,7 +1624,7 @@
       // Entfernung des letzten Blitzes. Ohne Bindung bleibt es bei 0 - dann zeichnet die
       // Szene auch kein Gewitter, statt eines zu erfinden.
       var storm = ssVal(w.ssStormV), sdist = ssVal(w.ssStormDistV);
-      return { rain: rain || 0, snow: snow || 0, fog: fog || 0, wind: ws,
+      return { rain: rain || 0, snow: snow || 0, fog: fog || 0, fogState: fogState, wind: ws,
                storm: Math.max(0, Math.min(3, Math.round(storm || 0))), stormDist: sdist,
                cloud: cloud == null ? 0 : cloud, cloudSrc: cloudSrc, nass: nass };
     }
