@@ -163,28 +163,28 @@
           h+=fld('Uhrzeit','<input class="ax-time" type="time" id="axTime" value="'+esc(t.time||'20:00')+'">');
         }
         h+=fld('Wochentage','<div class="ax-days">'+daychips(t.days,'data-axday')+'</div><div class="ax-hint">nichts gewählt = täglich</div>');
-        h+=fld('Aktion',sceneSel(r.sceneId,'id="axScene"')
-          +'<div class="ax-seg" style="margin-top:6px">'
-          +'<button data-axdir="on" class="'+(r.sceneAction!=='off'?'on':'')+'">einschalten</button>'
-          +'<button data-axdir="off" class="'+(r.sceneAction==='off'?'on':'')+'">ausschalten</button></div>'
-          +'<div class="ax-hint">Jede Szene kennt beide Richtungen — eine zweite „Aus"-Szene braucht es nicht.</div>');
+        // Aktion und Gegenrichtung in EINER Zeile: der Bereich ist auf manchen Seiten
+        // nur gut 350 px hoch, zwei zusaetzliche Zeilen schoben den Endzeitpunkt unter
+        // die Kante - vorhanden, aber unerreichbar.
+        h+=fld('Aktion','<div class="ax-r">'+sceneSel(r.sceneId,'id="axScene"')
+          +'<div class="ax-seg">'
+          +'<button data-axdir="on" class="'+(r.sceneAction!=='off'?'on':'')+'">ein</button>'
+          +'<button data-axdir="off" class="'+(r.sceneAction==='off'?'on':'')+'">aus</button></div></div>');
         // Endzeitpunkt: schaltet dieselbe Szene wieder in die Gegenrichtung.
         var et = r.endTrigger;
-        h+=fld('Endzeitpunkt (optional)',
-          '<div class="ax-seg"><button data-axend="off" class="'+(!et?'on':'')+'">keiner</button>'
+        h+=fld('Endzeitpunkt','<div class="ax-r">'
+          +'<div class="ax-seg"><button data-axend="off" class="'+(!et?'on':'')+'">keiner</button>'
           +'<button data-axend="time" class="'+(et&&et.kind!=='sun'?'on':'')+'">Uhrzeit</button>'
           +'<button data-axend="sun" class="'+(et&&et.kind==='sun'?'on':'')+'">Sonne</button></div>'
           +(et
             ? (et.kind==='sun'
-                ? '<div class="ax-r" style="margin-top:6px"><select class="ax-sel" id="axEndEv">'
+                ? '<select class="ax-sel" id="axEndEv">'
                   +'<option value="sunset"'+(et.event!=='sunrise'?' selected':'')+'>Sonnenuntergang</option>'
                   +'<option value="sunrise"'+(et.event==='sunrise'?' selected':'')+'>Sonnenaufgang</option></select>'
-                  +'<span class="ax-mono ax-mut">Versatz</span>'+stepper('axEndOff',(et.offsetMin||0),'min')+'</div>'
-                : '<div style="margin-top:6px"><input class="ax-time" type="time" id="axEndTime" value="'+esc(et.time||'23:00')+'"></div>')
-            : '')
-          +'<div class="ax-hint">'+(et
-              ? 'Dieselbe Szene wird dann '+(r.sceneAction==='off'?'eingeschaltet':'ausgeschaltet')+'.'
-              : 'Ohne Endzeitpunkt schaltet die Regel nur einmal.')+'</div>');
+                  +stepper('axEndOff',(et.offsetMin||0),'min')
+                : '<input class="ax-time" type="time" id="axEndTime" value="'+esc(et.time||'23:00')+'">')
+            : '<span class="ax-mut" style="font-size:11px">schaltet dann '+(r.sceneAction==='off'?'ein':'aus')+'</span>')
+          +'</div>');
       }
       else if(r.type==='circadian'){
         h+=fld('Lampen',devChips(r.devices,'data-axdev'));
