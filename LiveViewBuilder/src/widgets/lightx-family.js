@@ -140,6 +140,16 @@
     // ---- Steuerung ----
     function lxToggle(l){ if(!l.vars||!l.vars.Power)return; if(typeof setVar==='function')setVar(l.vars.Power, l.on?0:1); l.on=!l.on; }
     function lxDim(l,val){ if(!l.vars||!l.vars.Brightness)return; if(typeof setVar==='function')setVar(l.vars.Brightness, val); l.level=val; if(val>0&&!l.on){l.on=true;if(l.vars.Power)setVar(l.vars.Power,1);} }
+    // Raumtaste: EIN Druck, beide Richtungen.
+    //
+    // Brennt im Raum noch irgendetwas, schaltet sie alles aus; ist alles dunkel, schaltet
+    // sie alles an. Vorher konnte sie nur aus - bei dunklem Raum passierte also nichts, und
+    // die Taste wirkte tot. Die aeltere Kartenansicht hatte das laengst richtig
+    // (lxMaster(lamps,!anyOn)); die Leuchtbank-Raumkarte war die Ausnahme.
+    function lbRaumSchalten(lamps){
+      var an=lamps.some(function(l){return !!l.on;});
+      lxMaster(lamps,!an);
+    }
     function lxMaster(lamps,on){ lamps.forEach(function(l){ if(l.vars&&l.vars.Power&&(!!l.on!==on)){ if(typeof setVar==='function')setVar(l.vars.Power,on?1:0); l.on=on; } }); }
 
     // Farbe/Farbtemperatur/Scharfschalten ueber die Modul-Management-Op (Token noetig).
@@ -250,7 +260,7 @@
         +'<div class="lbrh"><span class="nm">'+escL(k.titel)+'</span>'
         +(an?'<span class="dot"></span>':'')
         +'<span class="ct'+(an?' on':'')+'">'+an+'/'+k.items.length+'</span>'
-        +'<button data-lboff="'+key+'" title="Raum aus">'+((typeof iconSVG==='function')?iconSVG('power',0):'\u23FB')+'</button>'
+        +'<button data-lboff="'+key+'" title="'+(an?'Raum aus':'Raum ein')+'">'+((typeof iconSVG==='function')?iconSVG('power',0):'\u23FB')+'</button>'
         +'</div>'+k.items.map(function(l){return lbBar(l,zh);}).join('')+'</div>';
     }
     function lbCol(karten,zh){
@@ -453,7 +463,7 @@
           if(typeof mode!=='undefined'&&mode==='edit')return;
           var k=decodeURIComponent(b.getAttribute('data-lboff')).split('|');
           var lamps=(_lxData||[]).filter(function(l){return (l.floor||'')===k[0]&&(l.room||'')===k[1];});
-          lxMaster(lamps,false); lbRepaint(w);
+          lbRaumSchalten(lamps); lbRepaint(w);
         });
       });
       host.querySelectorAll('[data-lbcoloff]').forEach(function(b){
@@ -715,7 +725,7 @@
           +'<div class="lbrh"><span class="nm">'+escL(titel)+'</span>'
           +(an?'<span class="dot"></span>':'')
           +(lamps.length?('<span class="ct'+(an?' on':'')+'">'+an+'/'+lamps.length+'</span>'):'')
-          +'<button data-lboff="'+key+'" title="Raum aus">'+((typeof iconSVG==='function')?iconSVG('power',0):'')+'</button>'
+          +'<button data-lboff="'+key+'" title="'+(an?'Raum aus':'Raum ein')+'">'+((typeof iconSVG==='function')?iconSVG('power',0):'')+'</button>'
           +'</div></div>';
       },
       mount:function(w){
@@ -809,7 +819,7 @@
           if(typeof mode!=='undefined'&&mode==='edit')return;
           var k=decodeURIComponent(b.getAttribute('data-lboff')).split('|');
           var lamps=(_lxData||[]).filter(function(l){return (String(l.floor||'')===k[0])&&(String(l.room||'')===k[1]);});
-          lxMaster(lamps,false); lbCardSchedule(w);
+          lbRaumSchalten(lamps); lbCardSchedule(w);
         });
       });
     }
