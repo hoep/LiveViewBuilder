@@ -1564,6 +1564,19 @@
           fog = 0;
         } else if (fogRaw == null) {
           fog = Math.max(0, Math.min(1, an > 1 ? an / 3 : an));   // Stufe 1..3 als Staerke
+        } else {
+          // DIE STUFE DECKELT AUCH DAS BILD, nicht nur den Text.
+          //
+          // Die Dichte ist eine Neigung und laeuft der Stufe voraus: am 26.08.2026 stand sie
+          // bei 38 %, waehrend die Wetterstation laengst "diesig" (Stufe 1) meldete. Ungedeckelt
+          // zeichnete die Szene daraus eine Nebelwand - die Karte sagte "Morgendunst" und zeigte
+          // dichten Nebel. Wer beides nebeneinander sieht, glaubt dem Bild.
+          //
+          // Also gibt die Stufe die Obergrenze vor, und die Dichte darf innerhalb davon
+          // abstufen: Stufe 1 bleibt ein Schleier, Stufe 2 eine spuerbare Truebung, erst
+          // Stufe 3 darf zumachen.
+          var kappe = (an >= 3) ? 1.0 : ((an >= 2) ? 0.45 : 0.16);
+          fog = Math.min(fog, kappe);
         }
       }
       // Bewoelkung aus der besten verfuegbaren Quelle. Reihenfolge bewusst so:
