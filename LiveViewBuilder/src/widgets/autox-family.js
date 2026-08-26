@@ -5,7 +5,8 @@
   //    autolist   : Regel-Liste + Gesamt-Automatik-Schalter (+ Regel anlegen) — waehlt eine Regel
   //    autoedit   : Detail-Editor der gewaehlten Regel (folgt autolist auf derselben Seite)
   //    autocard   : EINE Kategorie als Karte (w.kind = schedule|circadian|wake|motion|presence)
-  //    autotimeline: 24-h-Tagesverlauf mit Sonnenauf/-untergang + Regel-Markern
+  //    autotimeline: Verlauf ueber einen Tag ODER die ganze Woche (tlSpan), mit
+  //                  Sonnenauf/-untergang, Regel-Markern und Band-Schaltpunkten
   //  Schatten-sicher: Aenderungen schreiben die Konfig; der Hub-Timer wertet aus.
   (function(){
     var A={cfg:null,scenes:[],lights:[],zones:[],motionSensors:[],awaySensors:[],sel:-1,subs:[]};
@@ -83,10 +84,20 @@
       if(JSON.stringify(d.slice().sort())==='[1,2,3,4,5]')return 'Mo–Fr';return d.map(function(x){return DAYS[x];}).join(' ');}
     function rulesOf(kind){return (A.cfg&&A.cfg.rules||[]).map(function(r,i){return {r:r,i:i};}).filter(function(o){return o.r.type===kind;});}
 
+    // Ausloeser als Text - fuer trigger wie fuer endTrigger dieselbe Schreibweise.
+    function trigTxt(t){
+      t=t||{};
+      return (t.kind==='sun')
+        ? ((t.event==='sunrise'?'Sonnenaufgang':'Sonnenuntergang')+(t.offsetMin?(' '+(t.offsetMin>0?'+':'')+t.offsetMin+'′'):''))
+        : (t.time||'—');
+    }
     function aSummary(r){
-      if(r.type==='schedule'){var t=r.trigger||{};return (t.kind==='sun'
-        ?((t.event==='sunrise'?'Sonnenaufgang':'Sonnenuntergang')+(t.offsetMin?(' '+(t.offsetMin>0?'+':'')+t.offsetMin+'′'):''))
-        :(t.time||'—'))+' → '+sceneName(r.sceneId);}
+      if(r.type==='schedule'){
+        var aus=(r.sceneAction==='off');
+        var txt=trigTxt(r.trigger)+' '+(aus?'aus':'→')+' '+sceneName(r.sceneId);
+        if(r.endTrigger)txt+=' · bis '+trigTxt(r.endTrigger);
+        return txt;
+      }
       if(r.type==='circadian')return (r.devices?r.devices.length:0)+' Lampen · '+r.minK+'–'+r.maxK+' K';
       if(r.type==='wake')return (r.time||'—')+' · '+daysTxt(r.days)+' → '+sceneName(r.sceneId)+(r.audioZone?' + ♪':'');
       if(r.type==='motion')return '< '+(r.luxMax||0)+' lux · '+Math.round((r.holdSec||0)/60)+' min';
@@ -152,7 +163,28 @@
           h+=fld('Uhrzeit','<input class="ax-time" type="time" id="axTime" value="'+esc(t.time||'20:00')+'">');
         }
         h+=fld('Wochentage','<div class="ax-days">'+daychips(t.days,'data-axday')+'</div><div class="ax-hint">nichts gewählt = täglich</div>');
-        h+=fld('Aktion — Szene anwenden',sceneSel(r.sceneId,'id="axScene"'));
+        h+=fld('Aktion',sceneSel(r.sceneId,'id="axScene"')
+          +'<div class="ax-seg" style="margin-top:6px">'
+          +'<button data-axdir="on" class="'+(r.sceneAction!=='off'?'on':'')+'">einschalten</button>'
+          +'<button data-axdir="off" class="'+(r.sceneAction==='off'?'on':'')+'">ausschalten</button></div>'
+          +'<div class="ax-hint">Jede Szene kennt beide Richtungen — eine zweite „Aus"-Szene braucht es nicht.</div>');
+        // Endzeitpunkt: schaltet dieselbe Szene wieder in die Gegenrichtung.
+        var et = r.endTrigger;
+        h+=fld('Endzeitpunkt (optional)',
+          '<div class="ax-seg"><button data-axend="off" class="'+(!et?'on':'')+'">keiner</button>'
+          +'<button data-axend="time" class="'+(et&&et.kind!=='sun'?'on':'')+'">Uhrzeit</button>'
+          +'<button data-axend="sun" class="'+(et&&et.kind==='sun'?'on':'')+'">Sonne</button></div>'
+          +(et
+            ? (et.kind==='sun'
+                ? '<div class="ax-r" style="margin-top:6px"><select class="ax-sel" id="axEndEv">'
+                  +'<option value="sunset"'+(et.event!=='sunrise'?' selected':'')+'>Sonnenuntergang</option>'
+                  +'<option value="sunrise"'+(et.event==='sunrise'?' selected':'')+'>Sonnenaufgang</option></select>'
+                  +'<span class="ax-mono ax-mut">Versatz</span>'+stepper('axEndOff',(et.offsetMin||0),'min')+'</div>'
+                : '<div style="margin-top:6px"><input class="ax-time" type="time" id="axEndTime" value="'+esc(et.time||'23:00')+'"></div>')
+            : '')
+          +'<div class="ax-hint">'+(et
+              ? 'Dieselbe Szene wird dann '+(r.sceneAction==='off'?'eingeschaltet':'ausgeschaltet')+'.'
+              : 'Ohne Endzeitpunkt schaltet die Regel nur einmal.')+'</div>');
       }
       else if(r.type==='circadian'){
         h+=fld('Lampen',devChips(r.devices,'data-axdev'));
@@ -194,6 +226,24 @@
       var en=h.querySelector('#axEnEd'); if(en)en.onclick=function(){r.enabled=!(r.enabled!==false);aSave();};
       h.querySelectorAll('[data-axtk]').forEach(function(e){e.onclick=function(){r.trigger=r.trigger||{};r.trigger.kind=e.getAttribute('data-axtk');paintOnly(w);};});
       var ev=h.querySelector('#axEv'); if(ev)ev.onchange=function(){r.trigger.event=this.value;};
+      // Richtung der Aktion: dieselbe Szene anwenden oder ausschalten
+      h.querySelectorAll('[data-axdir]').forEach(function(e){e.onclick=function(){
+        r.sceneAction=e.getAttribute('data-axdir'); paintOnly(w);
+      };});
+      // Endzeitpunkt an/aus und seine Art. 'off' entfernt ihn ganz.
+      h.querySelectorAll('[data-axend]').forEach(function(e){e.onclick=function(){
+        var art=e.getAttribute('data-axend');
+        if(art==='off'){ delete r.endTrigger; }
+        else {
+          var alt=r.endTrigger||{};
+          r.endTrigger = (art==='sun')
+            ? {kind:'sun', event:alt.event||'sunrise', offsetMin:alt.offsetMin||0}
+            : {kind:'time', time:alt.time||'23:00'};
+        }
+        paintOnly(w);
+      };});
+      var ee=h.querySelector('#axEndEv');   if(ee)ee.onchange=function(){r.endTrigger.event=this.value;};
+      var et2=h.querySelector('#axEndTime');if(et2)et2.onchange=function(){r.endTrigger.time=this.value;};
       var tm=h.querySelector('#axTime'); if(tm)tm.onchange=function(){if(r.type==='schedule'){r.trigger.time=this.value;}else{r.time=this.value;}};
       var sc=h.querySelector('#axScene'); if(sc)sc.onchange=function(){r.sceneId=this.value;};
       var zn=h.querySelector('#axZone'); if(zn)zn.onchange=function(){r.audioZone=parseInt(this.value)||0;};
@@ -205,7 +255,7 @@
       h.querySelectorAll('[data-axday]').forEach(function(e){e.onclick=function(){var d=(r.type==='schedule')?(r.trigger.days=r.trigger.days||[]):(r.days=r.days||[]);var i=+e.getAttribute('data-axday');var p=d.indexOf(i);if(p>=0)d.splice(p,1);else d.push(i);paintOnly(w);};});
       h.querySelectorAll('[data-axdev]').forEach(function(e){e.onclick=function(){r.devices=r.devices||[];var i=+e.getAttribute('data-axdev');var p=r.devices.indexOf(i);if(p>=0)r.devices.splice(p,1);else r.devices.push(i);paintOnly(w);};});
       // Stepper
-      var steps={axOff:['trigger.offsetMin',5,'min'],axMinK:['minK',100,'K'],axMaxK:['maxK',100,'K'],axMinLvl:['minLevel',5,'%'],axMaxLvl:['maxLevel',5,'%'],axRamp:['rampMin',5,'min Rampe'],axLuxMax:['luxMax',10,'lux max'],axHold:['holdSecMin',1,'min'],axLevel:['level',5,'%'],axEvery:['every',5,'min']};
+      var steps={axOff:['trigger.offsetMin',5,'min'],axEndOff:['endTrigger.offsetMin',5,'min'],axMinK:['minK',100,'K'],axMaxK:['maxK',100,'K'],axMinLvl:['minLevel',5,'%'],axMaxLvl:['maxLevel',5,'%'],axRamp:['rampMin',5,'min Rampe'],axLuxMax:['luxMax',10,'lux max'],axHold:['holdSecMin',1,'min'],axLevel:['level',5,'%'],axEvery:['every',5,'min']};
       function stepGet(key){if(key==='holdSecMin')return Math.round((r.holdSec||0)/60);if(key==='minLevel')return (r.minLevel!=null?r.minLevel:0);if(key==='maxLevel')return (r.maxLevel!=null?r.maxLevel:100);if(key.indexOf('.')>0){var pp=key.split('.');return (r[pp[0]]||{})[pp[1]]||0;}return r[key]||0;}
       function stepSet(key,v){if(key==='holdSecMin'){r.holdSec=Math.max(5,v)*60;return;}if(key==='minLevel'||key==='maxLevel'){r[key]=Math.max(0,Math.min(100,v));return;}if(key.indexOf('.')>0){var pp=key.split('.');r[pp[0]]=r[pp[0]]||{};r[pp[0]][pp[1]]=v;return;}r[key]=v;}
       function stepTxt(id,s){if(id==='axHold')return Math.round((r.holdSec||0)/60)+' '+s[2];if(id==='axLevel')return lvlTxt(r.level);return stepGet(s[0])+' '+s[2];}
@@ -242,34 +292,143 @@
     }
 
     // ============================= autotimeline =============================
-    function tlRender(){
+    // Wochentage einer Regel. Sie stehen je nach Regelart woanders: bei einem
+    // Zeitplan im Ausloeser, bei Wecker/Bewegung/Anwesenheit an der Regel selbst.
+    // Leere Liste heisst TAEGLICH - deshalb null statt [] als "gilt immer".
+    function tlTage(r){
+      var d = (r.type==='schedule') ? ((r.trigger||{}).days||[]) : (r.days||[]);
+      return (d && d.length) ? d : null;
+    }
+    function tlLaeuft(r,wd){ var d=tlTage(r); return !d || d.indexOf(wd)>=0; }
+
+    function tlRender(w){
       if(!A.cfg)return '<div class="ax"><div class="ax-msg">lädt …</div></div>';
       var sun=A.cfg.sun||{sunrise:360,sunset:1200};
+      var woche = !!(w && w.tlSpan==='woche');
       function pc(min){return Math.max(0,Math.min(100,min/1440*100));}
       var srp=pc(sun.sunrise), ssp=pc(sun.sunset);
-      var marks='';
-      (A.cfg.rules||[]).forEach(function(r,i){
-        var off=(r.enabled===false)?' off':'';
-        var min=-1,sunc=false,lbl=r.name||TYPES[r.type].label,tm='';
-        if(r.type==='schedule'){var t=r.trigger||{};if(t.kind==='sun'){min=(t.event==='sunrise'?sun.sunrise:sun.sunset)+(t.offsetMin||0);sunc=true;tm=(t.event==='sunrise'?'SA':'SU')+(t.offsetMin?(t.offsetMin>0?'+':'')+t.offsetMin:'');}else{var p=(t.time||'0:0').split(':');min=(+p[0])*60+(+p[1]);tm=t.time;}}
-        else if(r.type==='wake'){var q=(r.time||'6:30').split(':');min=(+q[0])*60+(+q[1]);tm=r.time;}
-        if(min>=0){marks+='<div class="ax-mk'+(sunc?' sun':'')+off+'" style="left:'+pc(min)+'%" data-axopen="'+i+'"><span class="ax-mk-d">'+aIcon(r.type)+'</span><span class="ax-mk-l">'+escL(lbl)+'</span><span class="ax-mk-t">'+esc(tm)+'</span></div>';}
-      });
-      // spannen: motion (ganztags), presence (fenster) — auch deaktivierte, gedimmt
-      var spans='';
-      (A.cfg.rules||[]).forEach(function(r,i){var off=(r.enabled===false)?' off':'';
-        // Spannen relativ zur Timeline-Hoehe (65 %/78 % entsprechen den bisherigen 150/230 bzw. 180/230 px),
-        // damit sie jeder spaeteren Hoehenaenderung von .ax-tl folgen.
-        if(r.type==='motion')spans+='<div class="ax-span motion'+off+'" style="left:1%;width:98%;top:65%" data-axopen="'+i+'">Bewegung: '+escL(r.name||'')+'</div>';
-        if(r.type==='presence'){var f=(r.from||'18:00').split(':'),t2=(r.to||'23:30').split(':');var a=pc((+f[0])*60+(+f[1])),b=pc((+t2[0])*60+(+t2[1]));spans+='<div class="ax-span pres'+off+'" style="left:'+a+'%;width:'+Math.max(4,b-a)+'%;top:78%" data-axopen="'+i+'">Anwesenheit</div>';}
-      });
+      // Zeitpunkt einer Regel auf der 24-h-Achse. Gibt min<0 zurueck, wenn die
+      // Regel keinen festen Zeitpunkt hat (Bewegung, Anwesenheit) - die zeichnen
+      // als Spannen.
+      function tlPos(r){
+        var min=-1,sunc=false,tm='';
+        if(r.type==='schedule'){
+          var t=r.trigger||{};
+          if(t.kind==='sun'){min=(t.event==='sunrise'?sun.sunrise:sun.sunset)+(t.offsetMin||0);sunc=true;
+            tm=(t.event==='sunrise'?'SA':'SU')+(t.offsetMin?(t.offsetMin>0?'+':'')+t.offsetMin:'');}
+          else{var p=(t.time||'0:0').split(':');min=(+p[0])*60+(+p[1]);tm=t.time;}
+        } else if(r.type==='wake'){var q=(r.time||'6:30').split(':');min=(+q[0])*60+(+q[1]);tm=r.time;}
+        return {min:min,sun:sunc,tm:tm};
+      }
+
+      // Eine Tagesbahn fuer den Wochentag wd (0=So .. 6=Sa), JS-Zaehlung.
+      // anhang wird VOR dem Schliessen der Bahn eingesetzt (Stundenachse im Tagesbild).
+      function bahn(wd,anhang){
+        // Der Tagesverlauf zeigt BEIDE Wege: die Regeln aus dem Editor UND die aus
+        // den Baendern abgeleiteten. Letztere stehen absichtlich nicht im Editor,
+        // muessen aber sichtbar sein - sonst versteckt der eine Weg den anderen.
+        var pkt=[];
+        var spannen=[];                                    // Regeln mit Endzeitpunkt: von-bis
+        (A.cfg.rules||[]).forEach(function(r,i){
+          if(!tlLaeuft(r,wd))return;                       // Regel schaltet an dem Tag gar nicht
+          var p=tlPos(r); if(p.min<0)return;
+          pkt.push({r:r,min:p.min,sun:p.sun,tm:p.tm,idx:i,band:false,
+                    lbl:r.name||TYPES[r.type].label,an:r.enabled!==false});
+          // Endzeitpunkt: derselbe Name, aber die Gegenrichtung - und dazwischen ein Balken,
+          // damit man die Dauer sieht statt zweier zusammenhangloser Punkte.
+          if(r.type==='schedule'&&r.endTrigger){
+            var pe=tlPos({type:'schedule',trigger:r.endTrigger});
+            if(pe.min>=0){
+              pkt.push({r:r,min:pe.min,sun:pe.sun,tm:pe.tm,idx:i,band:false,
+                        lbl:(r.name||'')+' Ende',an:r.enabled!==false});
+              spannen.push({von:p.min,bis:pe.min,idx:i,an:r.enabled!==false,lbl:r.name||''});
+            }
+          }
+        });
+        (A.cfg.bandRules||[]).forEach(function(r){
+          if(!tlLaeuft(r,wd))return;
+          var p=tlPos(r); if(p.min<0)return;
+          pkt.push({r:r,min:p.min,sun:p.sun,tm:p.tm,idx:-1,band:true,
+                    lbl:r.name||'Band',an:r.enabled!==false});
+        });
+        // Marker stapeln, statt sie uebereinanderzulegen. Massgeblich ist nicht die
+        // Uhrzeit, sondern der PLATZ: mit Etikett belegt ein Marker rund zwei Stunden
+        // der Achse, in der Wochenansicht (nur Punkte) knapp eine halbe.
+        var BREIT = woche ? 40 : 105;
+        var NAH   = 6;                       // darunter gilt es als GLEICHZEITIG
+        pkt.sort(function(a,b){return a.min-b.min;});
+        var letzte=[];
+        pkt.forEach(function(p){
+          var r=0; while(letzte[r]!==undefined && (p.min-letzte[r])<BREIT) r++;
+          letzte[r]=p.min; p.row=woche?Math.min(r,1):r;    // schmale Bahn traegt hoechstens zwei Reihen
+        });
+        // Echte Gleichzeitigkeit getrennt bestimmen - die faellt sonst im Gestapel
+        // unter den Tisch, ist aber das eigentlich Wichtige.
+        pkt.forEach(function(p){
+          p.stoss = p.an && pkt.some(function(q){
+            return q!==p && q.an && Math.abs(q.min-p.min)<=NAH;
+          });
+        });
+        var marks=pkt.map(function(p){
+          var cls='ax-mk'+(p.sun?' sun':'')+(p.an?'':' off')+(p.band?' band':'')+(p.stoss?' clash':'');
+          var titel=p.lbl+' · '+p.tm+(p.band?' · aus den Bändern, dort bearbeiten':'')
+                   +(p.stoss?' · trifft mit einer anderen Regel zusammen':'');
+          return '<div class="'+cls+'" style="left:'+pc(p.min)+'%;--mkrow:'+p.row+'"'
+            +(p.band?'':' data-axopen="'+p.idx+'"')+' title="'+esc(titel)+'">'
+            +'<span class="ax-mk-d">'+aIcon(p.r.type)+'</span>'
+            +'<span class="ax-mk-l">'+escL(p.lbl)+'</span>'
+            +'<span class="ax-mk-t">'+esc(p.tm)+'</span></div>';
+        }).join('');
+        // spannen: erst die Von-bis-Regeln, dann motion/presence - auch deaktivierte, gedimmt
+        var spans='';
+        spannen.forEach(function(sp){
+          var off=sp.an?'':' off';
+          // Ueber Mitternacht hinaus wird in zwei Stuecke zerlegt, sonst liefe der Balken rueckwaerts.
+          var teile = (sp.bis>=sp.von) ? [[sp.von,sp.bis]] : [[sp.von,1440],[0,sp.bis]];
+          teile.forEach(function(t){
+            var a=pc(t[0]), b=pc(t[1]);
+            spans+='<div class="ax-span dauer'+off+'" style="left:'+a+'%;width:'+Math.max(1,b-a)+'%;top:52%"'
+              +' data-axopen="'+sp.idx+'" title="'+esc(sp.lbl)+'">'+(woche?'':escL(sp.lbl))+'</div>';
+          });
+        });
+        (A.cfg.rules||[]).forEach(function(r,i){
+          if(!tlLaeuft(r,wd))return;
+          var off=(r.enabled===false)?' off':'';
+          // Spannen relativ zur Timeline-Hoehe, damit sie jeder Hoehenaenderung folgen.
+          if(r.type==='motion')spans+='<div class="ax-span motion'+off+'" style="left:1%;width:98%;top:65%" data-axopen="'+i+'">'+(woche?'':'Bewegung: ')+escL(r.name||'')+'</div>';
+          if(r.type==='presence'){var f=(r.from||'18:00').split(':'),t2=(r.to||'23:30').split(':');
+            var a=pc((+f[0])*60+(+f[1])),b=pc((+t2[0])*60+(+t2[1]));
+            spans+='<div class="ax-span pres'+off+'" style="left:'+a+'%;width:'+Math.max(4,b-a)+'%;top:78%" data-axopen="'+i+'">'+(woche?'':'Anwesenheit')+'</div>';}
+        });
+        return '<div class="ax-tl">'
+          +'<div class="ax-tl-band night"></div><div class="ax-tl-band day" style="left:'+srp+'%;width:'+(ssp-srp)+'%"></div>'
+          +'<div class="ax-tl-tick" style="left:'+srp+'%"></div><div class="ax-tl-tick" style="left:'+ssp+'%"></div>'
+          +(woche?'':'<div class="ax-sun" style="left:'+srp+'%">☀</div><div class="ax-sun" style="left:'+ssp+'%">☾</div>')
+          +marks+spans+(anhang||'')+'</div>';
+      }
+
       var hours='';[0,6,12,18,24].forEach(function(hh){hours+='<span class="ax-tl-h" style="left:'+(hh/24*100)+'%">'+hh+'</span>';});
-      return '<div class="ax ax-tlwrap"><div class="ax-tl-scroll"><div class="ax-tl">'
-        +'<div class="ax-tl-band night"></div><div class="ax-tl-band day" style="left:'+srp+'%;width:'+(ssp-srp)+'%"></div>'
-        +'<div class="ax-tl-tick" style="left:'+srp+'%"></div><div class="ax-tl-tick" style="left:'+ssp+'%"></div>'
-        +'<div class="ax-sun" style="left:'+srp+'%">☀</div><div class="ax-sun" style="left:'+ssp+'%">☾</div>'
-        +marks+spans
-        +'<div class="ax-tl-hours">'+hours+'</div></div></div>'
+
+      if(woche){
+        // Montag zuerst - So ist in JS die 0, steht im Wochenbild aber hinten.
+        var KUERZEL=['So','Mo','Di','Mi','Do','Fr','Sa'];
+        var heute=new Date().getDay(), zeilen='';
+        [1,2,3,4,5,6,0].forEach(function(wd){
+          zeilen+='<div class="ax-tlw-row'+(wd===heute?' heute':'')+'">'
+            +'<span class="ax-tlw-d">'+KUERZEL[wd]+'</span>'+bahn(wd)+'</div>';
+        });
+        // Sonnenzeiten gelten fuer HEUTE und werden fuer alle sieben Bahnen benutzt;
+        // innerhalb einer Woche wandern sie um weniger als zehn Minuten. Der
+        // Baender-Editor haelt es genauso.
+        return '<div class="ax ax-tlwrap wk"><div class="ax-tl-scroll"><div class="ax-tlweek">'
+          +zeilen+'<div class="ax-tlw-row axis"><span class="ax-tlw-d"></span>'
+          +'<div class="ax-tl"><div class="ax-tl-hours">'+hours+'</div></div></div>'
+          +'</div></div></div>';
+      }
+
+      return '<div class="ax ax-tlwrap"><div class="ax-tl-scroll">'
+        +bahn(new Date().getDay(),'<div class="ax-tl-hours">'+hours+'</div>')
+        +'</div>'
         +'<div class="ax-circ"><div class="ax-circ-l">Circadian über den Tag</div><div class="ax-ramp" style="height:clamp(8px,3cqmin,14px)"></div></div></div>';
     }
     function tlWire(h,w){h.querySelectorAll('[data-axopen]').forEach(function(e){e.onclick=function(){A.sel=+e.getAttribute('data-axopen');aEmit();};});}
@@ -277,7 +436,7 @@
     // =============================== Registrierung ===============================
     function mk(name,kind,size,rnd,wire){
       defWidget(name,{
-        label:({autolist:'Automatik-Liste',autoedit:'Automatik-Detail',autocard:'Automatik-Karte',autotimeline:'Automatik-Tagesverlauf'})[name],
+        label:({autolist:'Automatik-Liste',autoedit:'Automatik-Detail',autocard:'Automatik-Karte',autotimeline:'Automatik-Verlauf'})[name],
         cat:({autolist:'HomeSuite · Automatik',autoedit:'HomeSuite · Automatik',autocard:'HomeSuite · Automatik',autotimeline:'HomeSuite · Automatik'})[name],
         paletteIcon:'clock', size:size,
         defaults:function(w){if(name==='autocard')w.kind=w.kind||'schedule';},
@@ -289,12 +448,23 @@
           LVB.panel.startPoll('autox:'+w.id,45000,function(){aLoad(paint);});
         },
         props:function(w){
+          if(name==='autotimeline'){
+            // Tag = eine Achse fuer heute; Woche = sieben Bahnen, Mo bis So.
+            return '<div class="pgh">Zeitraum</div>'
+              +row('Umfang','<select id="axSpan">'
+                +'<option value="tag"'+(w.tlSpan!=='woche'?' selected':'')+'>Tag (heute)</option>'
+                +'<option value="woche"'+(w.tlSpan==='woche'?' selected':'')+'>Ganze Woche (Mo–So)</option></select>')
+              +'<div style="font-size:11px;color:var(--muted);padding:4px 2px">Zeigt Regeln UND die aus Bändern abgeleiteten Schaltpunkte — jeweils nur an den Wochentagen, an denen sie wirklich schalten.</div>';
+          }
           if(name!=='autocard')return '<div style="font-size:11px;color:var(--muted);padding:4px 2px">Teil der Automatik-Familie. Auf einer Seite mit autolist+autoedit kombinieren.</div>';
           var h='<div class="pgh">Kategorie</div>';
           h+=row('Typ','<select id="axKind">'+Object.keys(TYPES).map(function(k){return '<option value="'+k+'"'+(w.kind===k?' selected':'')+'>'+esc(TYPES[k].plural)+'</option>';}).join('')+'</select>');
           return h;
         },
-        wire:function(w){if($('#axKind'))$('#axKind').onchange=function(){w.kind=this.value;commit();var hh=host(w);if(hh){hh.innerHTML=rnd(w);}};}
+        wire:function(w){
+          if($('#axKind'))$('#axKind').onchange=function(){w.kind=this.value;commit();var hh=host(w);if(hh){hh.innerHTML=rnd(w);}};
+          if($('#axSpan'))$('#axSpan').onchange=function(){w.tlSpan=this.value;commit();var hh=host(w);if(hh){hh.innerHTML=rnd(w);wire(hh,w);}};
+        }
       });
     }
     mk('autolist',null,[300,520],listRender,listWire);
