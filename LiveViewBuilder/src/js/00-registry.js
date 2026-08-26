@@ -1,4 +1,26 @@
   // ===== Sichtbarer Fehler-Overlay (Diagnose) — zeigt jeden JS-Fehler als rote Box auf dem Bildschirm =====
+
+  // ---- Nebel in Worte, EINMAL fuer alle Anzeigen -----------------------------
+  //
+  // Wetter+ und Sonnenszene sagten dasselbe verschieden: die eine rechnete aus der
+  // STUFE, die andere aus der DICHTE mit eigenen Schwellen. Am 26.08.2026 stand
+  // deshalb auf der einen Karte "Morgendunst" und auf der anderen "dichter Nebel" -
+  // bei denselben Messwerten. Wer zwei Karten nebeneinander haengen hat, darf nicht
+  // raten muessen, welche recht hat.
+  //
+  // Die Stufe ist die Wahrheit (0 kein, 1 diesig, 2 Nebel, 3 dicht); sie kommt aus
+  // der Wetterstation, wo Regelsatz, FSI und Kameramessung zusammenlaufen. Hier wird
+  // sie nur noch benannt - inklusive der Tageszeit, denn vormittags loest sich
+  // Strahlungsnebel auf und abends bildet er sich. Nach der UHR und nicht nach dem
+  // Sonnenstand, sonst hiesse es im Winter mittags "Morgendunst".
+  function lvNebelText(stufe){
+    stufe=parseInt(stufe);
+    if(!(stufe>0))return '';
+    if(stufe>=3)return 'Dichter Nebel';
+    if(stufe>=2)return 'Nebel';
+    var h=new Date().getHours();
+    return (h<11)?'Morgendunst':((h>=16)?'Abenddunst':'Diesig');
+  }
   (function(){
     function box(msg){
       try{
