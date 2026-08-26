@@ -528,7 +528,13 @@
             // Istzustand heisst: brennt die Leuchte wirklich? Ohne Schalter entscheidet
             // die Helligkeit. MIT Schalter entscheidet er - ausser die Helligkeit faellt
             // auf 0, dann ist es trotz eingeschaltetem Schalter dunkel.
-            if(!l.vars.Power) l.on=(l.level>0); else if(l.level===0) l.on=false;}}
+            // NUR bei dimmbaren Leuchten sagt die Helligkeit etwas ueber an/aus.
+            // Eine Schaltsteckdose hat trotzdem eine Helligkeitsvariable - als Platzhalter,
+            // und die steht auf 0. Ohne diese Bedingung loeschte jeder eingehende
+            // Helligkeitswert den Zustand: die Leuchte flackerte kurz an und ging wieder
+            // aus, und nach jedem Seitenwechsel stand sie auf aus, obwohl Power true war
+            // (gemessen am Brunnenlicht, 26.08.2026).
+            if(lbDimBar(l)){ if(!l.vars.Power) l.on=(l.level>0); else if(l.level===0) l.on=false; }}}
           if(l.vars.ColorTemp===id){var c=parseInt(v);if(!isNaN(c))l.cct=c;}
           lxSchedule(w);
         },
@@ -603,7 +609,8 @@
         if(!l.vars)return;
         if(l.vars.Power===id){l.on=(v===true||v===1||v==='1'||String(v).toLowerCase()==='true');}
         else if(l.vars.Brightness===id){var nn=parseFloat(String(v).replace(',','.'));if(!isNaN(nn)){l.level=Math.round(nn);
-          if(!l.vars.Power) l.on=(l.level>0); else if(l.level===0) l.on=false;}}
+          // Siehe oben: die Helligkeit entscheidet nur bei dimmbaren Leuchten.
+          if(lbDimBar(l)){ if(!l.vars.Power) l.on=(l.level>0); else if(l.level===0) l.on=false; }}}
         else if(l.vars.ColorTemp===id){var c=parseInt(v);if(!isNaN(c))l.cct=c;}
         else return;
         lbOneSchedule(w);
@@ -724,7 +731,8 @@
         var v=d&&d.v;
         if(tr.vars.Power===id){tr.on=(v===true||v===1||v==='1'||String(v).toLowerCase()==='true');}
         else {var nn=parseFloat(String(v).replace(',','.'));if(!isNaN(nn)){tr.level=Math.round(nn);
-          if(!tr.vars.Power) tr.on=(tr.level>0); else if(tr.level===0) tr.on=false;}}
+          // Siehe oben: die Helligkeit entscheidet nur bei dimmbaren Leuchten.
+          if(lbDimBar(tr)){ if(!tr.vars.Power) tr.on=(tr.level>0); else if(tr.level===0) tr.on=false; }}}
         lbCardSchedule(w);
       },
       _bind:function(w){lbCardItems(w);lbCardPaint(w);},
