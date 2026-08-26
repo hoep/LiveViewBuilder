@@ -2379,7 +2379,8 @@
   .ax-tl-hours{position:absolute;left:0;right:0;bottom:3.5%;height:7%;min-height:12px}
   .ax-tl-h{position:absolute;transform:translateX(-50%);font-family:var(--fm,monospace);font-size:clamp(8px,2.6cqmin,13px);color:var(--faint)}
   .ax-sun{position:absolute;top:1.7%;transform:translateX(-50%);font-size:clamp(9px,3.2cqmin,16px);color:var(--sun,#f5c026)}
-  .ax-mk{position:absolute;top:17.4%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:clamp(2px,.8cqmin,5px);cursor:pointer;max-width:26%}
+  /* --mkrow staffelt gleichzeitig faellige Regeln nach unten, statt sie zu stapeln. */
+  .ax-mk{position:absolute;top:calc(17.4% + var(--mkrow,0) * clamp(15px,5.4cqmin,28px));transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:clamp(2px,.8cqmin,5px);cursor:pointer;max-width:26%}
   .ax-mk-d{width:clamp(19px,6.4cqmin,34px);height:clamp(19px,6.4cqmin,34px);border-radius:clamp(6px,2cqmin,10px);flex:none;border:1px solid var(--line);background:var(--surface);display:flex;align-items:center;justify-content:center;color:var(--accent)}
   .ax-mk.sun .ax-mk-d{color:var(--sun,#f5c026);border-color:color-mix(in oklab,var(--sun,#f5c026) 50%,var(--line))}
   .ax-mk-d svg{width:58%;height:58%} .ax-mk .ax-ic{width:58%;height:58%}
@@ -2388,7 +2389,32 @@
   .ax-span{position:absolute;height:8.3%;min-height:13px;border-radius:6px;display:flex;align-items:center;padding:0 clamp(4px,2cqmin,10px);font-size:clamp(8px,2.6cqmin,13px);color:var(--text);cursor:pointer;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
   .ax-span.motion{background:color-mix(in oklab,var(--info,#5ab6ff) 16%,var(--tile));border:1px solid color-mix(in oklab,var(--info,#5ab6ff) 45%,var(--line))}
   .ax-span.pres{background:color-mix(in oklab,var(--accent) 14%,var(--tile));border:1px solid color-mix(in oklab,var(--accent) 45%,var(--line))}
+  /* Dauer einer Regel mit Endzeitpunkt: von der Aktion bis zur Gegenrichtung. */
+  .ax-span.dauer{background:color-mix(in oklab,var(--sun,#f5c026) 15%,var(--tile));border:1px solid color-mix(in oklab,var(--sun,#f5c026) 50%,var(--line));cursor:pointer}
   .ax-mk.off,.ax-span.off{opacity:.42;filter:grayscale(.4)}
+  /* Aus Baendern abgeleitet: sichtbar, aber hier nicht bearbeitbar. */
+  .ax-mk.band{cursor:default}
+  .ax-mk.band .ax-mk-d{border-style:dashed}
+  /* Zwei Regeln zur selben Zeit - die spaeter angewandte gewinnt je Leuchte. */
+  .ax-mk.clash .ax-mk-d{border-color:var(--warn);box-shadow:0 0 0 2px color-mix(in oklab,var(--warn) 32%,transparent)}
+  /* Wochenansicht: sieben Tagesbahnen untereinander, Montag oben. */
+  .ax-tlweek{display:flex;flex-direction:column;gap:clamp(2px,.7cqh,5px);flex:1;min-height:0;width:100%}
+  .ax-tlw-row{display:flex;align-items:stretch;gap:6px;flex:1 1 0;min-height:0}
+  .ax-tlw-row.axis{flex:0 0 auto;height:clamp(14px,4cqh,22px)}
+  .ax-tlw-d{flex:0 0 clamp(18px,4cqmin,26px);display:flex;align-items:center;justify-content:center;
+            font-family:var(--fu);font-size:clamp(8px,2.4cqmin,11px);font-weight:600;color:var(--muted)}
+  .ax-tlw-row.heute .ax-tlw-d{color:var(--accent)}
+  .ax-tlw-row.heute .ax-tl{outline:1px solid color-mix(in oklab,var(--accent) 35%,transparent);outline-offset:0}
+  .ax-tlweek .ax-tl{min-width:0}
+  /* In der Wochenbahn ist kein Platz fuer Etiketten - nur Punkte, Text steht im Titel. */
+  .ax-tlwrap.wk .ax-mk-l,.ax-tlwrap.wk .ax-mk-t{display:none}
+  .ax-tlwrap.wk .ax-mk{top:calc(14% + var(--mkrow,0) * clamp(9px,2.4cqmin,15px))}
+  .ax-tlwrap.wk .ax-mk-d{width:clamp(12px,3.4cqmin,19px);height:clamp(12px,3.4cqmin,19px);border-radius:clamp(4px,1.4cqmin,7px)}
+  .ax-tlwrap.wk .ax-span{font-size:0;padding:0;min-height:clamp(4px,1.4cqmin,7px)}
+  /* Die Tagesbahn fordert sonst mindestens 94 px - sieben davon sprengen jeden Rahmen. */
+  .ax-tlwrap.wk .ax-tl{min-height:0;padding:0 4px}
+  .ax-tlwrap.wk .ax-tl-scroll{overflow-y:visible}
+  .ax-tlw-row.axis .ax-tl-hours{position:absolute;top:0;bottom:auto;height:100%;min-height:0}
   .ax-circ{margin-top:clamp(4px,2.5cqh,10px);flex:none}
   /* Enge Kachel: lieber das Beiwerk weglassen als alles beschneiden. Unter rund 190 px
      Hoehe faellt der Circadian-Streifen weg, unter 150 px zusaetzlich die Uhrzeit unter
