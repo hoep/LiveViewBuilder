@@ -69,9 +69,12 @@
     if(isNaN(ist)||isNaN(soll))return null;
     return (w.thMode==='kuehl')?(ist>soll+0.1):(ist<soll-0.1);
   }
-  // Ton, Text und Icon der Zustandspille. w.thMode begrenzt, was die Karte behaupten darf:
-  // in dieser Anlage kann NICHT gekuehlt werden, deshalb ist 'heiz' die Vorgabe und "Ist ueber
-  // Soll" ergibt den neutralen Text "Zu warm" statt eines erfundenen Kuehlbetriebs.
+  // Ton, Text und Icon der Zustandspille. w.thMode begrenzt, was die Karte behaupten darf.
+  // 'heiz' bleibt die Vorgabe, weil die meisten Zonen dieser Anlage Heizkoerper sind; dort
+  // ergibt "Ist ueber Soll" den neutralen Text "Zu warm" statt eines erfundenen Kuehlbetriebs.
+  // Seit August 2026 gibt es aber sieben Klimazonen (HSAC), die heizen UND kuehlen - fuer die
+  // ist 'auto' richtig: dann entscheidet die Beschriftung der Modus-Variablen, und bei "Auto"
+  // die Abweichung in beide Richtungen.
   function _thkTone(w){
     if((w.thStatQ||'calc')==='aus')return null;
     var md=w.thMode||'heiz',akt=_thkAktiv(w);
@@ -84,6 +87,16 @@
       var m=(typeof thermMode==='function')?thermMode(w):null;
       if(m&&m.isOff)return {tone:'off',lab:'Aus',ic:'power'};
       if(m&&m.isCool){var dc=(!isNaN(ist)&&!isNaN(soll)&&ist>soll+0.1);return dc?{tone:'cool',lab:tC,ic:'snowflake'}:{tone:'idle',lab:tI,ic:'snowflake'};}
+      if(m&&m.isHeat){var dh=(!isNaN(ist)&&!isNaN(soll)&&ist<soll-0.1);return dh?{tone:'heat',lab:tH,ic:'flame'}:{tone:'idle',lab:tI,ic:'temperature'};}
+      // Weder Kuehlen noch Heizen benannt - also "Auto", "Trocknen" oder
+      // "Ventilator". Ein Geraet in Auto kann in BEIDE Richtungen arbeiten;
+      // die Heizrechnung allein wuerde ein kuehlendes Geraet als "bereit"
+      // ausgeben. Deshalb hier beide Richtungen pruefen.
+      if(m&&!isNaN(ist)&&!isNaN(soll)){
+        if(ist>soll+0.1)return {tone:'cool',lab:tC,ic:'snowflake'};
+        if(ist<soll-0.1)return {tone:'heat',lab:tH,ic:'flame'};
+        return {tone:'idle',lab:tI,ic:'temperature'};
+      }
       if(akt===null)return null;
       return akt?{tone:'heat',lab:tH,ic:'flame'}:{tone:'idle',lab:tI,ic:'temperature'};
     }
@@ -220,7 +233,11 @@
         +'<option value="heiz"'+(md==='heiz'?' selected':'')+'>Nur Heizen (Vorgabe)</option>'
         +'<option value="kuehl"'+(md==='kuehl'?' selected':'')+'>Nur Kühlen</option>'
         +'<option value="auto"'+(md==='auto'?' selected':'')+'>Aus Modus-Variable ableiten</option></select>')
-      +(md==='auto'?_thkHint('Braucht ein Variablenprofil mit sprechenden Namen an der Modus-Variablen.'):'')
+      +(md==='auto'?(_thkHint('Die Richtung kommt aus der BESCHRIFTUNG der Modus-Variablen (Feld "Modus" der Kachel): '
+        +'"Kühlen" und "Heizen" werden erkannt, bei "Auto", "Trocknen" oder "Ventilator" entscheidet Ist gegen Soll in beide Richtungen.')
+        +fieldPick(w,'thPowerVar','Ein/Aus-Variable (optional)')
+        +_thkHint('Klimageraete fuehren Ein/Aus getrennt vom Modus. Ohne diese Bindung zeigt die Karte '
+        +'"Heizt" oder "Kühlt", obwohl das Geraet aus ist.')):'')
       +row('Heizt-Anzeige','<select id="pThStatQ">'
         +'<option value="calc"'+(q==='calc'?' selected':'')+'>Berechnet (Ist unter Soll)</option>'
         +'<option value="var"'+(q==='var'?' selected':'')+'>Aus Variable</option>'
@@ -232,7 +249,8 @@
         +(md!=='heiz'?row('Text kühlt','<input id="pThCoolTxt" value="'+esc(w.thCoolTxt!=null?w.thCoolTxt:'Kühlt')+'">'):'')
         +row('Text bereit','<input id="pThIdleTxt" value="'+esc(w.thIdleTxt!=null?w.thIdleTxt:'Bereit')+'">')
         +(md==='heiz'?(row('Text zu warm','<input id="pThWarmTxt" value="'+esc(w.thWarmTxt!=null?w.thWarmTxt:'Zu warm')+'">')
-          +_thkHint('Kühlen gibt es in dieser Anlage nicht - Ist über Soll wird deshalb neutral benannt.')):'')):'')
+          +_thkHint('Bei "Nur Heizen" ist Ist über Soll kein Kühlbetrieb, sondern nur ein Hinweis. '
+          +'Geräte, die auch kühlen, gehören auf "Nur Kühlen" oder "Aus Modus-Variable ableiten".')):'')):'')
       +'<div class="pgh">Sollwert-Grenzen &amp; Steller</div>'
       +row('Soll min','<input id="pThSpMin" type="number" step="0.5" value="'+sp.min+'">')
       +row('Soll max','<input id="pThSpMax" type="number" step="0.5" value="'+sp.max+'">')

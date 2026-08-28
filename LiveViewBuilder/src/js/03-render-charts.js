@@ -1738,7 +1738,20 @@
   }
   function refreshAggVal(w){delete _aggData[w.id];render();computeAggVal(w);}
   // ===== Thermostat (erweiterte Karte) =====
+  // Betriebsart eines Thermostats. Erkennt die Richtung an der BESCHRIFTUNG der
+  // Modus-Variablen, nicht an ihrem Zahlenwert - jeder Hersteller zaehlt anders.
+  //
+  // Seit es Klimageraete gibt (HSAC, August 2026), reicht die Modus-Variable
+  // allein nicht mehr: bei diesen Geraeten steht das Ein/Aus in einer EIGENEN
+  // Variablen, und der Modus sagt "Auto", waehrend das Geraet aus ist. Steht
+  // w.thPowerVar, entscheidet die zuerst - sonst zeigte die Karte "Heizt" fuer
+  // ein abgeschaltetes Geraet.
   function thermMode(w){
+    if(w.thPowerVar){
+      var pv=_lastVals[w.thPowerVar];
+      if(pv&&(pv.v===false||pv.v===0||String(pv.v).toLowerCase()==='false'))
+        return {raw:pv.v,name:'Aus',isOff:true,isCool:false,isHeat:false};
+    }
     if(!w.varId3)return null;var lv=_lastVals[w.varId3];if(!lv)return {raw:null,name:'',isOff:false,isCool:false,isHeat:true};
     var name='',d=_assocData[w.varId3];if(d){var a=assocFor(w,lv.v);if(a)name=a.name||'';}
     if(!name)name=String(lv.f!=null&&lv.f!==''?lv.f:lv.v);var l=name.toLowerCase();
