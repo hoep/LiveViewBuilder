@@ -93,6 +93,24 @@
 
   // ---- schwebendes Panel --------------------------------------------------------------
   var _sideFloat=false;
+
+  /** Position so begrenzen, dass immer ein greifbarer Rest im Fenster bleibt. */
+  function _klemmL(l){ return Math.max(4, Math.min((window.innerWidth||1024)-60, l|0)); }
+  function _klemmT(t){ return Math.max(4, Math.min((window.innerHeight||768)-40, t|0)); }
+
+  /**
+   * Seitenleiste zurueckholen: andocken, Position vergessen, Eigenschaften zeigen.
+   * Muss von AUSSERHALB der Leiste erreichbar sein - wer sie sucht, sieht sie ja nicht.
+   */
+  function resetSidePanel(){
+    var s=$('.side'); if(!s) return;
+    s.style.left=''; s.style.top=''; s.style.width='';
+    if(_sideFloat){ _sideFloat=false; s.classList.remove('float'); }
+    if(typeof showTab==='function') showTab('props');
+    if(typeof toast==='function') toast('Seitenleiste zurückgesetzt');
+    _bsSave();
+  }
+  window.LVBResetSidePanel=resetSidePanel;
   function toggleSideFloat(){
     var s=$('.side');if(!s)return;
     _sideFloat=!_sideFloat;
@@ -113,6 +131,15 @@
   (function(){
     var s=$('.side'),grip=$('#sideGrip'),btn=$('#sideFloat');
     if(btn)btn.onclick=function(e){e.stopPropagation();toggleSideFloat();};
+    var rb=$('#panelReset');
+    if(rb)rb.onclick=function(e){e.stopPropagation();resetSidePanel();};
+    // Wird das Fenster kleiner, wandert eine schwebende Leiste mit zurueck ins Bild.
+    window.addEventListener('resize',function(){
+      var sd=$('.side');
+      if(!_sideFloat||!sd)return;
+      sd.style.left=_klemmL(parseInt(sd.style.left)||0)+'px';
+      sd.style.top =_klemmT(parseInt(sd.style.top)||0)+'px';
+    });
     if(!grip||!s)return;
     var drag=null;
     grip.addEventListener('pointerdown',function(e){
@@ -167,8 +194,12 @@
       if(s.float&&!_sideFloat){
         toggleSideFloat();
         var sd=$('.side');
-        if(sd){ if(typeof s.floatL==='number')sd.style.left=s.floatL+'px';
-                if(typeof s.floatT==='number')sd.style.top=s.floatT+'px'; }
+        // BEGRENZEN, nicht bloss uebernehmen. Beim Ziehen wird die Position auf das
+        // Fenster geklemmt, beim Wiederherstellen fehlte das: eine auf einem grossen
+        // Bildschirm gespeicherte Position liegt auf einem kleineren ausserhalb, und
+        // die Seitenleiste ist dann unerreichbar - samt ihres eigenen Andock-Knopfes.
+        if(sd){ if(typeof s.floatL==='number')sd.style.left=_klemmL(s.floatL)+'px';
+                if(typeof s.floatT==='number')sd.style.top=_klemmT(s.floatT)+'px'; }
       }
     }catch(_e){}
     _bsRestoring=false;
