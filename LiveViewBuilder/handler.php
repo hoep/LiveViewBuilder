@@ -827,10 +827,31 @@ if ($api === 'poolsave') {
 // den gelernten Klarwert der Kamera.
 if ($api === 'wxroi') {
     header('Content-Type: application/json; charset=utf-8');
-    $wx = 0;
+    // Welche Wetterstation? Bis 28.08.2026 gab es genau eine, und "die erste
+    // gefundene" war eindeutig. Seit es je Standort eine gibt - Hausleitnerweg,
+    // BellaDuna, BellaVista, Bennogasse - ist die erste die mit der kleinsten ID
+    // und damit rein zufaellig. Die Feinjustierung landete so bei einer Station
+    // ohne Kameras und lief ins Leere.
+    //
+    // Massgeblich ist deshalb, WER KAMERAS HAT: die Messfelder gehoeren zu den
+    // Kameras, nicht zum Standort. Mit ?wx=<id> laesst sich eine bestimmte
+    // Station ansprechen, falls spaeter mehrere Kameras fuehren.
+    $wx    = 0;
+    $erste = 0;
+    $wunsch = (int) ($_GET['wx'] ?? 0);
     foreach (IPS_GetInstanceList() as $i) {
-        if ((IPS_GetInstance($i)['ModuleInfo']['ModuleName'] ?? '') === 'WeatherStation') { $wx = $i; break; }
+        if ((IPS_GetInstance($i)['ModuleInfo']['ModuleName'] ?? '') !== 'WeatherStation') {
+            continue;
+        }
+        if ($erste === 0) { $erste = $i; }
+        if ($wunsch > 0) {
+            if ($i === $wunsch) { $wx = $i; break; }
+            continue;
+        }
+        $kams = json_decode((string) @IPS_GetProperty($i, 'Cameras'), true);
+        if (is_array($kams) && $kams !== []) { $wx = $i; break; }
     }
+    if ($wx <= 0 && $wunsch <= 0) { $wx = $erste; }   // keine fuehrt Kameras: alte Wahl
     if ($wx <= 0 || !function_exists('WX_Messfelder')) {
         echo json_encode(['ok' => false, 'fehler' => 'Wetterstation nicht erreichbar']);
         return;
