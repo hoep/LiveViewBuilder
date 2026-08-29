@@ -28,7 +28,12 @@ if (($seg[1] ?? '') === 'run') {
 // ---- Statische Assets (ECharts, offline gehostet) ----
 if ($api === 'asset') {
     $name  = (string) ($_GET['name'] ?? '');
-    $files = ['echarts' => $DIR . '/assets/echarts.min.js', 'dokudata' => $DIR . '/src/js/12-doku-data.js'];
+    // 'app' = volles Buendel (Builder/Doku), 'run' = ausgeduennte Laufzeit-Fassung.
+    // Beide tragen den Inhalts-Hash in der Adresse, deshalb duerfen sie lange gelten.
+    $files = ['echarts' => $DIR . '/assets/echarts.min.js',
+              'dokudata' => $DIR . '/src/js/12-doku-data.js',
+              'app' => $DIR . '/assets/app.js',
+              'run' => $DIR . '/assets/run.js'];
     if (!isset($files[$name]) || !is_file($files[$name])) {
         http_response_code(404);
         echo '// not found';
@@ -44,13 +49,29 @@ if ($api === 'asset') {
     $blob = (string) file_get_contents($files[$name]);
     $etag = '"' . md5($blob) . '"';
     header('Content-Type: application/javascript; charset=utf-8');
-    header('Cache-Control: public, max-age=604800');
+    // Die Buendel sind ueber ihren Hash adressiert und aendern sich unter derselben
+    // Adresse nie - deshalb 'immutable': der Browser fragt gar nicht erst nach.
+    header('Cache-Control: public, max-age=' . (($name === 'app' || $name === 'run') ? '31536000, immutable' : '604800'));
     header('ETag: ' . $etag);
     // Bei "Neu laden erzwingen" umgeht der Browser den Zwischenspeicher, schickt aber das
     // ETag mit. Dann genuegt 304 - ohne die 1 MB erneut durch die Hook-Schicht zu pressen.
     if (trim((string) ($_SERVER['HTTP_IF_NONE_MATCH'] ?? '')) === $etag) {
         http_response_code(304);
         return;
+    }
+    // Gzip, wenn der Browser es anbietet. Ohne das ginge das Laufzeit-Buendel mit
+    // 1,3 MB roh ueber die Leitung - komprimiert sind es rund 350 KB. Der ETag
+    // bleibt der des UNKOMPRIMIERTEN Inhalts, damit 304 weiter passt.
+    $ae = (string) ($_SERVER['HTTP_ACCEPT_ENCODING'] ?? '');
+    if (function_exists('gzencode') && stripos($ae, 'gzip') !== false) {
+        $gz = gzencode($blob, 6);
+        if ($gz !== false && strlen($gz) < strlen($blob)) {
+            header('Content-Encoding: gzip');
+            header('Vary: Accept-Encoding');
+            header('Content-Length: ' . strlen($gz));
+            echo $gz;
+            return;
+        }
     }
     header('Content-Length: ' . strlen($blob));
     echo $blob;
@@ -2826,6 +2847,16 @@ $html = str_replace('__LV_WSPORT__', (string) ($WSPORT ?? ''), $html);     // We
 $html = str_replace('__LV_WSURL__', (string) ($WSURL ?? ''), $html);       // volle wss-Adresse (Reverse Proxy) - schlaegt den Port
 $html = str_replace('__LV_RUN__', ($LV_MODE === 'run' ? '1' : ''), $html); // /hook/run/<site> -> Laufzeit
 $html = str_replace('__LV_DOKU__', ($LV_MODE === 'doku' ? '1' : ''), $html); // /hook/doku -> Doku/Demo
+// Welches Buendel? Der Laeufer bekommt die ausgeduennte Fassung ohne die
+// Eigenschaften-Bloecke der Widgets; Builder und Doku brauchen das volle.
+// Der Hash steht in der Adresse, damit ein Rebuild sofort durchschlaegt und
+// die Datei dazwischen dauerhaft im Zwischenspeicher bleiben darf.
+$bn = ($LV_MODE === 'run' && is_file($DIR . '/assets/run.js')) ? 'run' : 'app';
+$bh = json_decode((string) @file_get_contents($DIR . '/assets/bundles.json'), true);
+$bv = is_array($bh) ? (string) ($bh[$bn] ?? '') : '';
+if ($bv === '') { $bv = (string) @filemtime($DIR . '/assets/' . $bn . '.js'); }
+$html = str_replace('__LV_BUNDLE__', $bn, $html);
+$html = str_replace('__LV_BUNDLEV__', $bv, $html);
 header('Content-Type: text/html; charset=utf-8');
 // Nicht "no-store", sondern "immer nachfragen": der Browser darf die Seite behalten,
 // muss aber jedes Mal fragen, ob sie noch stimmt. Das ETag ist der Inhalt selbst -

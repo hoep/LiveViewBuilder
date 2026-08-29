@@ -366,7 +366,7 @@
   document.addEventListener('visibilitychange',function(){if(document.hidden){stopPV();}else{_pvSince=0;pollVals();startPV(_wsOK?5000:1200);}});
 
   // ===== WebSocket-Push (deckt MAP-Variablen sofort; Poll bleibt für alle Bindungen) =====
-  var WS_PORT="__LV_WSPORT__",WS_URL="__LV_WSURL__",_ws=null,_wsOK=false,_wsTries=0,_wsLast=0,_wsWd=null,_wsWhy='';
+  var WS_PORT=(window.LVCFG&&window.LVCFG.wsp)||"",WS_URL=(window.LVCFG&&window.LVCFG.wsu)||"",_ws=null,_wsOK=false,_wsTries=0,_wsLast=0,_wsWd=null,_wsWhy='';
   // Adresse des Push-Servers. Es gibt keinen Weg, der ueberall stimmt, also werden mehrere
   // durchprobiert und der erste behalten, der antwortet:
   //   1. ausdruecklich konfigurierte Adresse (Instanz -> WebSocket-Adresse) - gewinnt immer
