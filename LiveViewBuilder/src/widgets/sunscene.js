@@ -485,6 +485,7 @@
       ssHouse(ctx, cam, K, sun, day, clrE, w, geo, pal);
       if (geo) ssAttrib(ctx, W, Hs, K, pal, 0, w);
       ssSunDisc(ctx, cam, K, sun, clrE, w, cloud);
+      ssFlugzeuge(ctx, cam, w, day);       // Flugzeuge auf der Kuppel (zuschaltbar)
       // Fuer die Kopfzeile die GEMESSENE Klarheit (Strahlung gegen Klarhimmelwert), nicht clrE.
       // clrE ist durch die Bewoelkung gedeckelt und steuert Halo, Dunst und Schattenhaerte -
       // als Text neben dem W/m2-Wert war es irrefuehrend: 310 von 423 W/m2 sind 73 % klar,
@@ -1085,6 +1086,91 @@
      * Blickgeometrie und stimmt damit auch, wenn die Sonne unter dem Horizont steht.
      * Rueckgabe: die Monddaten fuer die Beschriftung (oder null, wenn nicht sichtbar).
      */
+    /* Flugzeuge auf der Himmelskuppel - BEWUSST ohne Radaranzeige.
+     *
+     * Die Bodenebene dieser Szene hat 55 Meter Radius, die Flugszene braucht 30 000.
+     * Das ist Faktor 545; in dieselbe Ebene bekommt man Flugzeuge nicht. Auf der
+     * Kuppel geht es trotzdem, denn dort steht auch die Sonne nur als RICHTUNG.
+     * Gezeigt werden also Azimut und Hoehenwinkel, keine Entfernungen und keine
+     * Bodenspuren - alles Zaehlbare gehoert auf die eigene Flugseite.
+     *
+     * Nachts werden aus den Silhouetten Positionslichter: rot links, gruen rechts,
+     * weisser Blitz. Das ist die Ansicht, die man tatsaechlich am Himmel sieht.
+     */
+    var _ssFlug = { stand: 0, flug: [], geholt: 0, laeuft: false };
+    function ssFlugLade(w) {
+      var r = ssNum(w.ssFlightR, 30);
+      if (_ssFlug.laeuft || (Date.now() - _ssFlug.geholt) < 28000) { return; }
+      _ssFlug.laeuft = true;
+      fetch('?api=flights&r=' + r, { cache: 'no-store' })
+        .then(function (x) { return x.json(); })
+        .then(function (j) { _ssFlug = { stand: j.stand || 0, flug: j.flug || [], geholt: Date.now(), laeuft: false }; })
+        .catch(function () { _ssFlug.laeuft = false; _ssFlug.geholt = Date.now(); });
+    }
+    function ssFlugzeuge(ctx, cam, w, day) {
+      if (!_covOn2(w, 'ssFlights', false)) { return; }
+      ssFlugLade(w);
+      var vs = Math.max(0, (Date.now() / 1000) - (_ssFlug.stand || 0));
+      var nacht = day < 0.28;
+      _ssFlug.flug.forEach(function (f) {
+        // Koppelnavigation: zwischen zwei Abfragen liegen 30 Sekunden, in denen ein
+        // Jet siebeneinhalb Kilometer zuruecklegt - ohne Weiterrechnen springt er.
+        var v = (f.tempo || 0) / 3.6 / 1000, k = (f.kurs || 0) * Math.PI / 180;
+        var dn = f.dn + v * Math.cos(k) * vs, de = f.de + v * Math.sin(k) * vs;
+        var alt = Math.max(0, f.alt + (f.steig || 0) * vs);
+        var dist = Math.sqrt(dn * dn + de * de);
+        if (dist < 0.05) { dist = 0.05; }
+        var el = Math.atan2(alt / 1000, dist) * 180 / Math.PI;
+        // Unter 6 Grad bleibt die Maschine draussen: so flach projiziert steht sie
+        // mitten zwischen den Nachbarhaeusern statt am Himmel, und die Aussage
+        // "dort oben fliegt etwas" kippt ins Gegenteil.
+        if (el < 6) { return; }
+        var az = (Math.atan2(de, dn) * 180 / Math.PI + 360) % 360;
+        var q = ssSky3(cam, az, el, cam.skyR);
+        if (!q || q.hidden) { return; }
+        var sk = Math.max(0.32, Math.min(0.7, cam.skyR / 180));
+        var col = alt < 1000 ? '#f2b23c' : (alt < 6000 ? '#00cdab' : '#7fc0ff');
+        ctx.save();
+        if (nacht) {
+          ctx.save(); ctx.translate(q.x, q.y); ctx.rotate(k);
+          ssFlugForm(ctx, sk * 0.9); ctx.fillStyle = 'rgba(160,190,200,.28)'; ctx.fill(); ctx.restore();
+          var blitz = ((Date.now() / 1000) % 1.6) < 0.09;
+          ctx.save(); ctx.translate(q.x, q.y); ctx.rotate(k);
+          [[-9 * sk, 3.6 * sk, '#ff4d4d'], [9 * sk, 3.6 * sk, '#3ddc63']].forEach(function (p) {
+            ctx.beginPath(); ctx.arc(p[0], p[1], 1.8 * sk, 0, 7);
+            ctx.fillStyle = p[2]; ctx.shadowColor = p[2]; ctx.shadowBlur = 7 * sk; ctx.fill();
+          });
+          if (blitz) {
+            ctx.beginPath(); ctx.arc(0, 9 * sk, 2.4 * sk, 0, 7);
+            ctx.fillStyle = '#fff'; ctx.shadowColor = '#fff'; ctx.shadowBlur = 11 * sk; ctx.fill();
+          }
+          ctx.shadowBlur = 0; ctx.restore();
+        } else {
+          ctx.save(); ctx.translate(q.x, q.y); ctx.rotate(k);
+          ssFlugForm(ctx, sk);
+          ctx.fillStyle = col; ctx.shadowColor = col; ctx.shadowBlur = 7; ctx.fill(); ctx.shadowBlur = 0;
+          ctx.restore();
+        }
+        if (w.ssFlightLbl !== false && f.ruf) {
+          ctx.font = '600 ' + Math.max(8, 11 * sk) + 'px ui-monospace,monospace';
+          ctx.fillStyle = nacht ? 'rgba(190,210,220,.75)' : col;
+          ctx.fillText(f.ruf, q.x + 11 * sk, q.y + 3);
+        }
+        ctx.restore();
+      });
+    }
+    /** Schlichte Flugzeugform, Nase nach oben - auf der Kuppel ist wenig Platz. */
+    function ssFlugForm(ctx, s) {
+      ctx.beginPath();
+      ctx.moveTo(0, -10 * s); ctx.lineTo(1.6 * s, -3.5 * s); ctx.lineTo(9.5 * s, 3.2 * s);
+      ctx.lineTo(9.5 * s, 5.2 * s); ctx.lineTo(1.6 * s, 2.2 * s); ctx.lineTo(1.4 * s, 7.5 * s);
+      ctx.lineTo(3.9 * s, 9.8 * s); ctx.lineTo(3.9 * s, 10.9 * s); ctx.lineTo(0, 9.8 * s);
+      ctx.lineTo(-3.9 * s, 10.9 * s); ctx.lineTo(-3.9 * s, 9.8 * s); ctx.lineTo(-1.4 * s, 7.5 * s);
+      ctx.lineTo(-1.6 * s, 2.2 * s); ctx.lineTo(-9.5 * s, 5.2 * s); ctx.lineTo(-9.5 * s, 3.2 * s);
+      ctx.lineTo(-1.6 * s, -3.5 * s);
+      ctx.closePath();
+    }
+
     function ssMoonDisc(ctx, cam, K, sun, day, w, cloud) {
       if (!_covOn2(w, 'ssMoon', true)) return null;
       // Dieselbe Regel wie fuer die Sonne: hinter einer geschlossenen Decke ist er weg.
@@ -2314,6 +2400,14 @@
         h += row('Höhe der Zeitleiste (%)', '<input id="ssStripPct" type="number" min="50" max="200" step="5" value="' + ssNum(w.ssStripPct, 100) + '" style="width:64px"> <span style="font-size:11px;color:var(--muted)">100 % = automatisch, kleiner = flacher</span>');
         h += '<div style="font-size:11px;color:var(--muted);margin:2px 2px 6px">Zeigt die Tageskurve der Sonnenhöhe. Ziehen fährt den Tag durch — Schatten, Sonnenstand und Mond folgen. Doppeltippen kehrt zu „jetzt" zurück; die gewählte Zeit wird nicht gespeichert.</div>';
         h += row('Mond', '<input type="checkbox" id="ssMoon"' + (_covOn2(w, 'ssMoon', true) ? ' checked' : '') + '>');
+        // Flugverkehr - bewusst nur als Richtung auf der Kuppel, ohne Radaranzeige.
+        // Die Bodenebene hier hat 55 m Radius, die Flugszene braucht 30 000.
+        h += row('Flugzeuge', '<input type="checkbox" id="ssFlights"' + (_covOn2(w, 'ssFlights', false) ? ' checked' : '')
+              + '> <span style="font-size:11px;color:var(--muted)">auf der Himmelskuppel, nachts als Positionslichter</span>');
+        if (_covOn2(w, 'ssFlights', false)) {
+          h += row('Umkreis (km)', '<input id="ssFlightR" type="number" min="5" max="200" style="width:80px" value="' + ssNum(w.ssFlightR, 30) + '">')
+            + row('Rufzeichen', '<input type="checkbox" id="ssFlightLbl"' + (w.ssFlightLbl !== false ? ' checked' : '') + '>');
+        }
         h += row('Sterne', '<input type="checkbox" id="ssStars"' + (_covOn2(w, 'ssStars', true) ? ' checked' : '') + '>');
         h += '<div style="font-size:11px;color:var(--muted);margin:2px 2px 6px">Der Mond steht an seinem berechneten Platz am Himmel und zeigt die echte Phase; die beleuchtete Seite weist zur Sonne. Ab Dämmerung blendet er ein, tagsüber aus.</div>';
         h += row('Einfallstrahl', '<input type="checkbox" id="ssRay"' + (_covOn2(w, 'ssRay', true) ? ' checked' : '') + '>');
@@ -2359,9 +2453,10 @@
         });
         [['ssRay', 'ssRay'], ['ssInfo', 'ssInfo'], ['ssCompass', 'ssCompass'], ['ssPlot', 'ssPlot'],
          ['ssBuildings', 'ssBuildings'], ['ssOwnFromOsm', 'ssOwnFromOsm'], ['ssBldRoof', 'ssBldRoof'],
-         ['ssMoon', 'ssMoon'], ['ssStars', 'ssStars'], ['ssStrip', 'ssStrip'], ['ssEnChip', 'ssEnChip'], ['ssEnAnim', 'ssEnAnim'], ['ssWeather', 'ssWeather']].forEach(function (o) {
+         ['ssMoon', 'ssMoon'], ['ssFlights', 'ssFlights'], ['ssFlightLbl', 'ssFlightLbl'], ['ssStars', 'ssStars'], ['ssStrip', 'ssStrip'], ['ssEnChip', 'ssEnChip'], ['ssEnAnim', 'ssEnAnim'], ['ssWeather', 'ssWeather']].forEach(function (o) {
           var e = $('#' + o[0]); if (e) e.onchange = function () { w[o[1]] = this.checked; up(); };
         });
+        if ($('#ssFlightR')) $('#ssFlightR').onchange = function () { w.ssFlightR = parseInt(this.value) || 30; up(); };
         if ($('#ssHouseColor')) $('#ssHouseColor').onchange = function () { w.ssHouseColor = this.value || undefined; up(); };
         if ($('#ssBldColor')) $('#ssBldColor').onchange = function () { w.ssBldColor = this.value || undefined; up(); };
         // fieldPick (data-fid/-fpick/-fclr) wird zentral in 04-props.js verdrahtet - hier nichts zu tun.
