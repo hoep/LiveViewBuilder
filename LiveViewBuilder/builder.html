@@ -552,6 +552,8 @@ body.run .w.run-hidden{display:none}
 .flwave path{fill:none;stroke:var(--accent);stroke-width:1.5}
 @keyframes flwv{to{transform:translateX(-50%)}}
 .efsvg{width:100%;height:100%;display:block;overflow:visible}
+@container (max-width:300px),(max-height:250px){.efnetz .efval2{display:none}}
+@container (max-width:210px),(max-height:180px){.efnetz .efname{display:none}}
 .efwire{fill:none;stroke-width:2;opacity:.22}
 .efflow{fill:none;stroke-width:2.6;stroke-dasharray:0.5 11;stroke-linecap:round;animation:efdash 2s linear infinite;transition:opacity .3s}
 @keyframes efdash{to{stroke-dashoffset:-23}}

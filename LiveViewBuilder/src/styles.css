@@ -670,6 +670,11 @@
 
   /* ===== Fluss-Widget: energy-Modus (Power-Flow, Kreis-Knoten) ===== */
   .efsvg{width:100%;height:100%;display:block;overflow:visible}
+  /* Netz-Fluss, stufenweise: auf einer kleinen Kachel entfaellt zuerst die Standzeit,
+     dann die Beschriftung. Bewusst NUR fuer .efnetz - die Energiekachel zeigt in der
+     zweiten Zeile Bezug/Einspeisung, die dort nicht wegfallen darf. */
+  @container (max-width:300px),(max-height:250px){.efnetz .efval2{display:none}}
+  @container (max-width:210px),(max-height:180px){.efnetz .efname{display:none}}
   .efwire{fill:none;stroke-width:2;opacity:.22}
   .efflow{fill:none;stroke-width:2.6;stroke-dasharray:0.5 11;stroke-linecap:round;animation:efdash 2s linear infinite;transition:opacity .3s}
   @keyframes efdash{to{stroke-dashoffset:-23}}
