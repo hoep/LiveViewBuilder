@@ -458,6 +458,10 @@
     else if(w.type==='multiring'){setMultiring(w);}
     else if(w.type==='waterfall'||w.ctype==='waterfall'){setWaterfall(w);} // Live-Werte, KEINE Historie
     else if(w.ctype==='pie'||w.ctype==='donut'){renderChartData(w);}
+    // An den Umschalter der Kennzahlen-Matrix anmelden: wechselt dort die Ansicht,
+    // holt das Diagramm seine Zeile aus der anderen Tabelle.
+    if(w.chTblA&&w.chSession&&typeof mxOn==='function')
+      mxOn(w.chSession,function(){delete _hist[w.id];fetchHist(w);});
     else{ fetchHist(w); } // immer frisch laden (auch ctype 'spark') (Query ~2ms); _hist-Cache ist wegen seiten-kollidierender IDs nicht verlaesslich
   }
   // Per-Zustand-Styling (Ein/Aus) fuer button/tile — IPSView ToggleButton/Value-Button
@@ -1098,7 +1102,7 @@
   function _titleOpt(w){
     if(!_titleOn(w))return {show:false};
     // "\n" (getippt als Backslash-n) bzw. CR/LF -> echter Zeilenumbruch (ECharts bricht bei \n).
-    var _tt=String(w.label||'').replace(/\\n|\r\n|\r|\n/g,'\n');
+    var _tt=String(w._chLab||w.label||'').replace(/\\n|\r\n|\r|\n/g,'\n');
     var o={text:_tt,top:2,textStyle:{color:cssv('--muted'),fontSize:_ecF(w,'title',11),fontWeight:'normal',lineHeight:_ecF(w,'title',11)+3}};
     var p=w.titlePos||'left';
     if(p==='center')o.left='center';else if(p==='right')o.right=6;else o.left=4;
@@ -1589,11 +1593,55 @@
       visualMap:{min:H.min,max:H.max,calculable:true,orient:'horizontal',left:'center',bottom:2,itemWidth:12,itemHeight:90,textStyle:{color:muted,fontSize:fs},inRange:{color:pal}},
       series:[{type:'heatmap',data:H.data,progressive:0,itemStyle:{borderColor:cssv('--surface'),borderWidth:(thin?0:1)},label:{show:!!w.labels&&!thin,fontSize:fs,color:cssv('--text'),formatter:function(p){return _chNum(w,p.value[2]);}},emphasis:{itemStyle:{shadowBlur:6,shadowColor:'rgba(0,0,0,.45)'}}}]},true);
   }
+  /* Tabellen-Quelle: Balken aus einer Kennzahlen-Tabelle statt aus dem Archiv.
+   *
+   * Die Jahreswerte liegen fertig in denselben Tabellen-Variablen, aus denen die
+   * Kennzahlen-Matrix ihre Spalten nimmt (Zeile 0 = Jahre, Spalte 0 = Bezeichner).
+   * Sie von dort zu lesen, statt sie erneut aus dem Archiv zu aggregieren, hat zwei
+   * Gruende: die Zahlen koennen gar nicht mehr von der Matrix daneben abweichen,
+   * und "bis heute" laesst sich mit einer Archiv-Aggregation ueberhaupt nicht
+   * ausdruecken - dafuer muesste jedes Jahr am selben Kalendertag abgeschnitten
+   * werden, und genau das rechnen die Statistik-Skripte schon.
+   *
+   * Die Punkte bekommen den 1. Januar ihres Jahres als Zeitstempel. Damit bleibt
+   * die bestehende Balken-Darstellung samt Farbstufen, Mittellinie und
+   * Beschriftung unveraendert - es ist kein zweiter Renderer noetig.
+   */
+  function fetchTblRow(w){
+    var b=(w.chSession&&typeof mxSrcOf==='function'&&mxSrcOf(w.chSession)===1);
+    var vid=b?(w.chTblB||w.chTblA):w.chTblA;
+    var lab=b?w.chLabB:w.chLabA;
+    w._chLab=(lab!=null&&lab!=='')?lab:null;      // Titel folgt der Ansicht, sonst behauptet er das Falsche
+    var s0=_chSeries(w)[0]||{},col=_chColor(s0.color,0),nm=s0.name||w.label||'';
+    function fertig(pts){
+      _hist[w.id]={series:[{data:pts,color:col,name:nm}],cmp:null};
+      if(_ec[w.id])renderChartData(w);
+    }
+    if(!vid){fertig([]);return;}
+    fetch('?api=tabledata&id='+encodeURIComponent(vid),{cache:'no-store'})
+      .then(function(r){return r.json();})
+      .then(function(j){
+        var rows=(j&&j.rows)||[],head=rows[0]||[],ziel=String(w.chTblRow||'').toLowerCase(),zeile=null;
+        // Treffer ueber den ANFANG des Bezeichners - genau wie die Matrix zuordnet,
+        // damit "T Avg" auch "T Avg." findet.
+        for(var i=1;i<rows.length&&!zeile;i++)
+          if(String(rows[i][0]==null?'':rows[i][0]).toLowerCase().indexOf(ziel)===0)zeile=rows[i];
+        var pts=[];
+        if(zeile)for(var c=1;c<head.length;c++){
+          var jahr=parseInt(String(head[c]).replace(/[^0-9]/g,''),10);
+          var v=parseFloat(String(zeile[c]==null?'':zeile[c]).replace(',','.'));
+          if(!isNaN(jahr)&&jahr>1900&&!isNaN(v))pts.push([new Date(jahr,0,1).getTime(),Math.round(v*100)/100]);
+        }
+        pts.sort(function(a,b){return a[0]-b[0];});
+        fertig(pts);
+      }).catch(function(){fertig([]);});
+  }
   function fetchHist(w){
     if(w.ctype==='heatmap'){fetchHeatmap(w);return;} // Wochentag x Stunde (eigener Aggregat-Weg)
     if(w.ctype==='daylight')  {fetchDaylight(w);return;} // eigener Datenweg (Jahresberechnung, keine Historie)
     if(w.ctype==='waterfall'||w.type==='waterfall')return; // Wasserfall liest ausschliesslich Live-Werte (_lastVals)
     if(w.ctype==='barrace'&&w.brLive){if(_ec[w.id])setBarRaceLive(w);return;} // Live-Bar-Race: keine Historie, nur _lastVals
+    if(w.chTblA){fetchTblRow(w);return;}                 // Balken aus einer Kennzahlen-Tabelle (eigener Datenweg)
     var W=_chWindow(w);
     if(w.type==='chart'&&_chCalMode(w)){fetchCalYear(w);return;}
     var S=_chSeries(w).filter(function(s){return s&&s.vid;});if(!S.length)return;

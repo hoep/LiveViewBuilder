@@ -51,6 +51,15 @@
       if(w.type!=='chart')return '';
       var ct=w.ctype||'area',V=_chartVis(ct);
       var h=row('Chart-Typ','<select id="pCType"><optgroup label="Zeitreihe"><option value="area"'+(ct==='area'?' selected':'')+'>Fläche</option><option value="areaspline"'+(ct==='areaspline'?' selected':'')+'>Fläche glatt (Spline)</option><option value="line"'+(ct==='line'?' selected':'')+'>Linie</option><option value="spline"'+(ct==='spline'?' selected':'')+'>Linie glatt (Spline)</option><option value="step"'+(ct==='step'?' selected':'')+'>Stufen</option><option value="steparea"'+(ct==='steparea'?' selected':'')+'>Stufenfläche</option><option value="bar"'+(ct==='bar'?' selected':'')+'>Balken</option><option value="barstack"'+(ct==='barstack'?' selected':'')+'>Balken gestapelt</option><option value="scatter"'+(ct==='scatter'?' selected':'')+'>Punkte</option></optgroup><optgroup label="Animiert"><option value="barrace"'+(ct==='barrace'?' selected':'')+'>Bar Race (Balken-Wettlauf)</option></optgroup><optgroup label="Kompakt"><option value="spark"'+(ct==='spark'?' selected':'')+'>Sparkline (kompakt)</option></optgroup><optgroup label="Anteile (ohne Zeit)"><option value="pie"'+(ct==='pie'?' selected':'')+'>Kreis (Pie)</option><option value="donut"'+(ct==='donut'?' selected':'')+'>Donut</option><option value="rose"'+(ct==='rose'?' selected':'')+'>Rose (Nightingale)</option></optgroup><optgroup label="Ohne Zeit"><option value="waterfall"'+(ct==='waterfall'?' selected':'')+'>Wasserfall</option></optgroup><optgroup label="Matrix"><option value="heatmap"'+(ct==='heatmap'?' selected':'')+'>Heatmap (Wochentag × Stunde)</option></optgroup><optgroup label="Astronomie"><option value="daylight"'+(ct==='daylight'?' selected':'')+'>Tageslänge (ganzes Jahr)</option></optgroup></select>');
+      // ---- Tabellen-Quelle: Balken aus einer Kennzahlen-Tabelle statt aus dem Archiv ----
+      // Gedacht fuer Jahresreihen, die ein Skript ohnehin schon rechnet (Statistik-Tabellen).
+      // Mit der Kopplung folgt das Diagramm dem Umschalter einer Kennzahlen-Matrix.
+      h+=row('Tabelle A (ID)','<input id="pChTblA" type="number" value="'+(w.chTblA||'')+'" style="width:90px" placeholder="aus"> <span style="font-size:11px;color:var(--muted)">gesetzt = Balken kommen aus der Tabelle, nicht aus dem Archiv</span>');
+      if(w.chTblA)h+=row('Zeile','<input id="pChTblRow" value="'+esc(w.chTblRow||'')+'" placeholder="z. B. T Avg" style="flex:1"> <span style="font-size:11px;color:var(--muted)">Anfang des Bezeichners genügt</span>')
+        +row('Tabelle B (ID)','<input id="pChTblB" type="number" value="'+(w.chTblB||'')+'" style="width:90px" placeholder="ohne"> <span style="font-size:11px;color:var(--muted)">zweite Ansicht, z. B. bis heute</span>')
+        +row('Kopplung (Kennung)','<input id="pChSes" value="'+esc(w.chSession||'')+'" placeholder="z. B. wxstat" style="width:120px"> <span style="font-size:11px;color:var(--muted)">schaltet mit der Matrix gleicher Kennung um</span>')
+        +row('Titel A','<input id="pChLabA" value="'+esc(w.chLabA||'')+'" placeholder="leer = Beschriftung" style="flex:1">')
+        +row('Titel B','<input id="pChLabB" value="'+esc(w.chLabB||'')+'" placeholder="leer = Beschriftung" style="flex:1">');
       // ---- Tageslänge: Datenquelle ist der Standort (date_sun_info serverseitig), keine Variablen ----
       if(V.dayl){
         h+='<div style="font-size:11px;color:var(--muted);margin:2px 2px 6px">Auf- und Untergang für jeden Tag des Jahres, Fläche dazwischen = Tageslänge. Der Standort wird automatisch aus der Location-Instanz gelesen.</div>'
@@ -195,6 +204,13 @@
       if($('#pHmRes'))$('#pHmRes').onchange=function(){w.hmRes=parseInt(this.value)||60;delete _hist[w.id];fetchHist(w);commit();};
       if($('#pHmAgg'))$('#pHmAgg').onchange=function(){w.aggField=(this.value==='sum')?'sum':undefined;delete _hist[w.id];fetchHist(w);commit();};
       // --- Bar Race ---
+      function _chTblNeu(){delete _hist[w.id];fetchHist(w);commit();}
+      if($('#pChTblA'))$('#pChTblA').onchange=function(){w.chTblA=parseInt(this.value)||undefined;renderProps();_chTblNeu();};
+      if($('#pChTblB'))$('#pChTblB').onchange=function(){w.chTblB=parseInt(this.value)||undefined;_chTblNeu();};
+      if($('#pChTblRow'))$('#pChTblRow').onchange=function(){w.chTblRow=this.value||undefined;_chTblNeu();};
+      if($('#pChSes'))$('#pChSes').onchange=function(){w.chSession=this.value||undefined;_chTblNeu();};
+      if($('#pChLabA'))$('#pChLabA').onchange=function(){w.chLabA=this.value||undefined;_chTblNeu();};
+      if($('#pChLabB'))$('#pChLabB').onchange=function(){w.chLabB=this.value||undefined;_chTblNeu();};
       if($('#pBrLive'))$('#pBrLive').onchange=function(){w.brLive=this.value?true:undefined;delete _hist[w.id];fetchHist(w);renderProps();commit();};
       if($('#pBrTop'))$('#pBrTop').oninput=function(){w.brTop=this.value===''?undefined:Math.max(3,Math.min(30,parseInt(this.value)||10));reChart();};
       if($('#pBrSpeed'))$('#pBrSpeed').oninput=function(){w.brSpeed=this.value===''?undefined:Math.max(150,Math.min(4000,parseInt(this.value)||700));reChart();};
