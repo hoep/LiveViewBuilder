@@ -39,9 +39,16 @@
     // Behauptung. "Aus °C" waere schlechter als ein blankes "Aus".
     return {txt:s,unit:''};
   }
-  // Zustaende der Heizprofile. Die Praesenz-Variable hat KEIN Variablenprofil, deshalb kommen
-  // die Beschriftungen aus dem Feld (Werte implizit 0,1,2 - abweichend per "Text=Wert").
+  // Zustaende der Heizprofile. VORRANG hat das Variablenprofil: seit die Zone ihre
+  // Presence-Beschriftungen als echte Assoziationen fuehrt, kommen Namen und Werte von
+  // dort - eine Umbenennung wirkt damit sofort auf jeder Kachel, ohne dass jemand 23
+  // Textfelder nachpflegt. Das Feld bleibt die Ausnahme fuer Variablen OHNE Profil
+  // (Werte implizit 0,1,2 - abweichend per "Text=Wert").
   function _thkPres(w){
+    var a=(w.thPresVar&&typeof _assocData!=='undefined'&&_assocData[w.thPresVar])?_assocData[w.thPresVar].assocs:null;
+    if(a&&a.length&&!(w.thPresLbl!=null&&w.thPresLbl!=='')){
+      return a.map(function(x){return {v:x.v,text:String(x.name||x.v)};});
+    }
     var raw=(w.thPresLbl!=null&&w.thPresLbl!=='')?String(w.thPresLbl):'Normal,Erweitert,Abgesenkt',out=[];
     raw.split(',').forEach(function(s,i){
       s=String(s).trim();if(!s)return;
@@ -143,7 +150,15 @@
     var st=$('[data-role=hstate]',el),to=_thkTone(w);
     if(st){if(to){st.innerHTML='<span class="thk-ic">'+iconSVG(to.ic)+'</span>'+esc(to.lab);st.style.display='';}else st.style.display='none';}
     var pf=$('[data-role=prof]',el);
-    if(pf&&w.thPresVar){var pv=_lastVals[w.thPresVar];if(pv)_sldMark(pf,_thkPres(w),pv.v);}
+    if(pf&&w.thPresVar){
+      // Profile treffen spaeter ein als der erste Aufbau, deshalb wird die Zeile neu
+      // gesetzt, sobald sich die Beschriftungen aendern - sonst blieben die beim
+      // Rendern erzeugten Segmente stehen.
+      var ps=_thkPres(w),sig=ps.map(function(x){return x.v+':'+x.text;}).join('|');
+      if(pf.getAttribute('data-sig')!==sig){pf.innerHTML=_sldBody(ps,w.thPresShape||'pill');pf.setAttribute('data-sig',sig);}
+      var pv=_lastVals[w.thPresVar];if(pv)_sldMark(pf,ps,pv.v);
+      if(typeof _assocData!=='undefined'&&!_assocData[w.thPresVar]){loadAssoc(w.thPresVar,function(){_thkPaint(w,el);});}
+    }
     // Klasse vollstaendig neu setzen: classList.add wuerde das naechste Neuzeichnen nicht ueberleben.
     var arm=(w.thArmVar&&_lastVals[w.thArmVar])?_lastVals[w.thArmVar]:null;
     var schatten=!!(arm&&!(arm.v===true||arm.v===1||arm.v==='1'||arm.v==='true'));
@@ -437,7 +452,7 @@
       +row('Heizprofile','<label style="font-size:12px"><input type="checkbox" id="pThPresOn"'+(w.thPresOn?' checked':'')+'> Profilzeile anzeigen</label>')
       +(w.thPresOn?(fieldPick(w,'thPresVar','Profil-Variable (Präsenz)')
         +_thkHint('Diese Variable hat kein Profil - die Beschriftungen kommen aus dem Feld darunter.')
-        +row('Beschriftungen','<input id="pThPresLbl" value="'+esc(w.thPresLbl!=null?w.thPresLbl:'Normal,Erweitert,Abgesenkt')+'">')
+        +row('Beschriftungen <span class="hint" style="font-size:10px">(leer = Namen aus dem Variablenprofil)</span>','<input id="pThPresLbl" value="'+esc(w.thPresLbl!=null?w.thPresLbl:'Normal,Erweitert,Abgesenkt')+'">')
         +row('Form','<select id="pThPresShape">'+[['pill','Pille'],['round','Abgerundet'],['square','Eckig']].map(function(o){return '<option value="'+o[0]+'"'+((w.thPresShape||'pill')===o[0]?' selected':'')+'>'+o[1]+'</option>';}).join('')+'</select>')):'')
       +'<div class="pgh">Schatten-Hinweis</div>'
       +fieldPick(w,'thArmVar','„Scharf"-Variable (optional)')
