@@ -78,6 +78,194 @@ if ($api === 'asset') {
     return;
 }
 
+// ---- Flugverkehr: OpenSky-Zustaende, angereichert um Route und Geometrie ----
+//
+// EIN Abrufer fuer das ganze Haus. Das Kontingent von OpenSky sind 4000 Punkte je
+// Tag (anonym 400), eine Bereichsabfrage kostet einen Punkt - das ist eine Abfrage
+// alle 21,6 Sekunden. Wuerde jede offene Kachel selbst fragen, waere das Kontingent
+// bei drei Tablets vor Mittag leer. Deshalb: Zwischenspeicher hier, alle Kacheln
+// lesen daraus.
+//
+// Routen kommen von adsbdb.com (kostenlos, ohne Konto) und landen in einem eigenen,
+// langlebigen Zwischenspeicher - ein Rufzeichen behaelt seine Strecke wochenlang.
+// Auch die Fehlanzeige wird gemerkt, sonst fragen wir fuer jede Privatmaschine bei
+// jedem Durchlauf erneut.
+if ($api === 'flights') {
+    header('Content-Type: application/json; charset=utf-8');
+
+    $LV_FL_CID  = 46729;   // OpenSky Client-ID          (Baum: Hausleitnerweg/Flugverkehr)
+    $LV_FL_SEC  = 21002;   // OpenSky Geheimnis
+    $LV_FL_ANZ  = 35965;   // Flugzeuge im Umkreis
+    $LV_FL_NAE  = 23007;   // Naechste Entfernung
+    $LV_FL_RUF  = 20389;   // Naechstes Rufzeichen
+    $LV_FL_ZEN  = 49347;   // Fast senkrecht ueber uns
+    $LV_FL_HOE  = 57532;   // Hoehe der naechsten
+
+    $r    = max(5.0, min(200.0, (float) ($_GET['r'] ?? 30)));
+    $lat  = (float) ($_GET['lat'] ?? 48.0657);
+    $lon  = (float) ($_GET['lon'] ?? 14.1241);
+    $datei = $DATADIR . '/flights-' . (int) round($r) . '.json';
+    $alt   = @json_decode((string) @file_get_contents($datei), true);
+    if (is_array($alt) && (time() - (int) ($alt['stand'] ?? 0)) < 30) {
+        echo json_encode($alt);            // frisch genug
+        return;
+    }
+
+    /* Zugriffstoken: client_credentials, 30 Minuten gueltig, im Datenordner gemerkt. */
+    $tokDat = $DATADIR . '/flights-token.json';
+    $tok    = '';
+    $tk = @json_decode((string) @file_get_contents($tokDat), true);
+    if (is_array($tk) && (int) ($tk['bis'] ?? 0) > time() + 60) {
+        $tok = (string) $tk['t'];
+    } else {
+        /* Zugang bevorzugt aus der HomeSuite-Hub-Konfiguration (dort wird er wie bei
+           tado und Toshiba in der Oberflaeche gepflegt). Die Baumvariablen bleiben
+           als Rueckfall - die Hub-Eigenschaften stehen erst nach einem Kernel-Start
+           zur Verfuegung, und bis dahin soll es trotzdem laufen. */
+        $cid = $sec = '';
+        foreach (@IPS_GetInstanceListByModuleID('{A0C082B4-9E74-430E-BD97-F9CEBB364257}') ?: [] as $hub) {
+            $cid = trim((string) @IPS_GetProperty($hub, 'FlightClientId'));
+            $sec = trim((string) @IPS_GetProperty($hub, 'FlightSecret'));
+            break;
+        }
+        if ($cid === '' || $sec === '') {
+            $cid = trim((string) @GetValue($LV_FL_CID));
+            $sec = trim((string) @GetValue($LV_FL_SEC));
+        }
+        if ($cid !== '' && $sec !== '') {
+            $ch = curl_init();
+            curl_setopt_array($ch, [
+                CURLOPT_URL => 'https://auth.opensky-network.org/auth/realms/opensky-network/protocol/openid-connect/token',
+                CURLOPT_RETURNTRANSFER => true, CURLOPT_POST => true, CURLOPT_TIMEOUT => 20,
+                CURLOPT_POSTFIELDS => http_build_query([
+                    'grant_type' => 'client_credentials', 'client_id' => $cid, 'client_secret' => $sec]),
+            ]);
+            $a = curl_exec($ch); curl_close($ch);
+            $j = json_decode((string) $a, true);
+            if (isset($j['access_token'])) {
+                $tok = (string) $j['access_token'];
+                @file_put_contents($tokDat, json_encode(
+                    ['t' => $tok, 'bis' => time() + (int) ($j['expires_in'] ?? 1800) - 60]));
+            }
+        }
+    }
+
+    $dlat = $r / 111.0;
+    $dlon = $r / (111.0 * max(0.1, cos(deg2rad($lat))));
+    // ACHTUNG: sprintf('%.4f') liefert in dieser Symcon-Laufzeit ein KOMMA als
+    // Dezimaltrennzeichen (deutsches Zahlenformat, PHP 8.5). OpenSky weist das mit
+    // HTTP 400 ab: "Failed to convert value of type java.lang.String to double;
+    // For input string: 47,7954". number_format erzwingt den Punkt.
+    $z = fn(float $v): string => number_format($v, 4, '.', '');
+    $url = 'https://opensky-network.org/api/states/all?lamin=' . $z($lat - $dlat)
+         . '&lamax=' . $z($lat + $dlat) . '&lomin=' . $z($lon - $dlon) . '&lomax=' . $z($lon + $dlon);
+    $kopf = ['User-Agent: IP-Symcon LiveViewBuilder'];
+    if ($tok !== '') { $kopf[] = 'Authorization: Bearer ' . $tok; }
+    $rest = -1;
+    $ch = curl_init();
+    curl_setopt_array($ch, [CURLOPT_URL => $url, CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT => 25, CURLOPT_HTTPHEADER => $kopf,
+        CURLOPT_HEADERFUNCTION => function ($c, $z) use (&$rest) {
+            if (stripos($z, 'x-rate-limit-remaining:') === 0) { $rest = (int) trim(substr($z, 23)); }
+            return strlen($z);
+        }]);
+    $antwort = curl_exec($ch);
+    $code    = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    $d = json_decode((string) $antwort, true);
+    if ($code !== 200 || !is_array($d)) {
+        // Bei Stoerung den letzten guten Stand weiterreichen, statt die Kachel zu leeren.
+        if (is_array($alt)) { $alt['stoerung'] = 'HTTP ' . $code; echo json_encode($alt); return; }
+        echo json_encode(['stand' => time(), 'radius' => $r, 'flug' => [], 'stoerung' => 'HTTP ' . $code]);
+        return;
+    }
+
+    $flug = [];
+    foreach (($d['states'] ?? []) as $s) {
+        if (!is_array($s) || $s[5] === null || $s[6] === null || !empty($s[8])) { continue; }
+        $hoehe = ($s[13] !== null) ? (float) $s[13] : (float) ($s[7] ?? 0);
+        $dn = ((float) $s[6] - $lat) * 111.0;
+        $de = ((float) $s[5] - $lon) * 111.0 * cos(deg2rad($lat));
+        $dist = sqrt($dn * $dn + $de * $de);
+        if ($dist > $r) { continue; }
+        $az = fmod(rad2deg(atan2($de, $dn)) + 360.0, 360.0);
+        $el = ($dist > 0.01) ? rad2deg(atan2($hoehe / 1000.0, $dist)) : 90.0;
+        $tempo = (float) ($s[9] ?? 0) * 3.6;
+        $kurs  = (float) ($s[10] ?? 0);
+        // Naechste Annaeherung aus Kurs und Tempo
+        $v = $tempo / 3600.0; $k = deg2rad($kurs);
+        $vn = $v * cos($k); $ve = $v * sin($k); $vv = $vn * $vn + $ve * $ve;
+        $t  = ($vv > 1e-9) ? max(0.0, -($dn * $vn + $de * $ve) / $vv) : 0.0;
+        $flug[] = [
+            'icao' => (string) $s[0], 'ruf' => trim((string) ($s[1] ?? '')), 'land' => (string) ($s[2] ?? ''),
+            'lat' => (float) $s[6], 'lon' => (float) $s[5], 'alt' => round($hoehe),
+            'kurs' => round($kurs, 1), 'tempo' => round($tempo), 'steig' => round((float) ($s[11] ?? 0), 1),
+            'dn' => round($dn, 2), 'de' => round($de, 2), 'dist' => round($dist, 1),
+            'az' => round($az, 1), 'el' => round($el, 1),
+            'cpa_km' => round(sqrt(pow($dn + $vn * $t, 2) + pow($de + $ve * $t, 2)), 1),
+            'cpa_min' => round($t / 60.0, 1),
+        ];
+    }
+    usort($flug, fn($a, $b) => $a['dist'] <=> $b['dist']);
+
+    /* Routen: eigener Zwischenspeicher, 30 Tage gueltig, Fehlanzeige 7 Tage. */
+    $rDat = $DATADIR . '/flights-routen.json';
+    $rC = @json_decode((string) @file_get_contents($rDat), true);
+    if (!is_array($rC)) { $rC = []; }
+    $neu = 0;
+    foreach ($flug as &$f) {
+        $ruf = $f['ruf'];
+        $f['von'] = $f['nach'] = null;
+        if ($ruf === '') { continue; }
+        $e = $rC[$ruf] ?? null;
+        $frisch = is_array($e) && (time() - (int) ($e['t'] ?? 0)) < (empty($e['von']) ? 604800 : 2592000);
+        if (!$frisch && $neu < 4) {              // hoechstens vier Nachschlaege je Durchlauf
+            $neu++;
+            $ch = curl_init();
+            curl_setopt_array($ch, [CURLOPT_URL => 'https://api.adsbdb.com/v0/callsign/' . rawurlencode($ruf),
+                CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 8,
+                CURLOPT_HTTPHEADER => ['User-Agent: IP-Symcon LiveViewBuilder']]);
+            $ra = curl_exec($ch); $rcode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE); curl_close($ch);
+            $rj = json_decode((string) $ra, true);
+            $fr = $rj['response']['flightroute'] ?? [];
+            $e = ['t' => time(), 'von' => null];
+            if ($rcode === 200 && !empty($fr['origin']['iata_code'])) {
+                $e['von']     = (string) $fr['origin']['iata_code'];
+                $e['vonort']  = mb_substr((string) ($fr['origin']['municipality'] ?? ''), 0, 18);
+                $e['nach']    = (string) ($fr['destination']['iata_code'] ?? '');
+                $e['nachort'] = mb_substr((string) ($fr['destination']['municipality'] ?? ''), 0, 18);
+            }
+            $rC[$ruf] = $e;
+        }
+        if (is_array($e) && !empty($e['von'])) {
+            $f['von'] = $e['von']; $f['nach'] = $e['nach'] ?? '';
+            $f['vonort'] = $e['vonort'] ?? ''; $f['nachort'] = $e['nachort'] ?? '';
+        }
+    }
+    unset($f);
+    if ($neu > 0) {
+        if (count($rC) > 4000) { $rC = array_slice($rC, -3000, null, true); }
+        @file_put_contents($rDat, json_encode($rC));
+    }
+
+    $erg = ['stand' => time(), 'radius' => $r, 'lat' => $lat, 'lon' => $lon,
+            'rest' => $rest, 'flug' => $flug];
+    @file_put_contents($datei, json_encode($erg));
+
+    /* Statuswerte in den Baum - fuer Kennzahlkacheln, Regeln und Meldungen. */
+    $erste = $flug[0] ?? null;
+    @SetValue($LV_FL_ANZ, count($flug));
+    @SetValue($LV_FL_NAE, $erste ? (float) $erste['dist'] : 0.0);
+    @SetValue($LV_FL_RUF, $erste ? (string) $erste['ruf'] : '');
+    @SetValue($LV_FL_HOE, $erste ? (float) ($erste['alt'] / 1000.0) : 0.0);
+    $zenit = false;
+    foreach ($flug as $f2) { if ($f2['el'] >= 45.0) { $zenit = true; break; } }
+    @SetValue($LV_FL_ZEN, $zenit);
+
+    echo json_encode($erg);
+    return;
+}
+
 // ---- Selbst gehostete Schriften (OFL/gratis, lokal ausgeliefert) ----
 // ?api=font&file=<name>.woff2 -> assets/fonts/<name>.woff2 (kein externes CDN).
 if ($api === 'font') {
