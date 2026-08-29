@@ -194,8 +194,10 @@
     // Kontrollpunkte - sonst setzten sie neben dem Kreis an statt daran.
     var netz=(_flowMode(w)==='netz');
     var G=_energyGeo(w,netz?function(){return 2;}:null),pos=G.pos,els=w.elements||[];
+    if(netz){var box=$('.w[data-id="'+w.id+'"]',canvas);
+      if(box)_nzFit(G,pos,box.clientWidth,box.clientHeight);}
     var spread=(w.nzSpread!=null&&w.nzSpread!==''?+w.nzSpread:15);
-    var s='<svg class="efsvg" viewBox="0 0 '+G.W+' '+G.H+'" preserveAspectRatio="xMidYMid meet">';
+    var s='<svg class="efsvg'+(netz?' efnetz':'')+'" viewBox="0 0 '+G.W+' '+G.H+'" preserveAspectRatio="xMidYMid meet">';
     els.forEach(function(e,i){var p=pos[i];if(!p)return;var col=_efCol(e.color);
       if(netz){
         _nzBahnen(p.x,p.y,G.hx,G.hy,spread).forEach(function(pd,k){
@@ -340,6 +342,48 @@
     return {elements:(w.elements||[]).map(function(e){return {name:e.name,x:e.x,y:e.y,type:_nzPos(e.pos)};}),
             efPad:w.efPad,efGap:w.efGap,efMaxCol:w.efMaxCol};
   }
+  var _efRO={};   // KachelID -> ResizeObserver
+  // Voll responsiv: statt die fertige Buehne mit Leerrand einzupassen (preserveAspectRatio
+  // meet), wird sie auf das Seitenverhaeltnis der Kachel GEZOGEN. Die Knoten behalten dabei
+  // ihre Groesse - dadurch nutzt das Bild die ganze Flaeche und die Beschriftung bleibt
+  // lesbar, statt auf einem schmalen Handy mitzuschrumpfen. Der Rand fuer Beschriftung und
+  // Wertblock bleibt reserviert, gestreckt wird nur der Raum dazwischen.
+  function _nzFit(G,pos,bw,bh){
+    if(!(bw>0&&bh>0)||!G.W||!G.H)return;
+    var ziel=bw/bh, ist=G.W/G.H;
+    if(Math.abs(ziel-ist)<0.02)return;
+    var nW=G.W,nH=G.H;
+    if(ziel>ist)nW=G.H*ziel; else nH=G.W/ziel;
+    // Aus der TATSAECHLICHEN Ausdehnung der Knoten rechnen, nicht aus einem angenommenen
+    // Rand: der aeusserste Knoten sitzt nicht auf dem Rand, und wer das unterstellt,
+    // drueckt ihn beim Strecken hinaus statt herein - die Namen liefen links aus der Kachel.
+    var minx=1e9,maxx=-1e9,miny=1e9,maxy=-1e9,n=0;
+    pos.forEach(function(p){if(!p)return;n++;
+      if(p.x<minx)minx=p.x;if(p.x>maxx)maxx=p.x;if(p.y<miny)miny=p.y;if(p.y>maxy)maxy=p.y;});
+    if(!n)return;
+    var randX=_EF_RN+40, randY=_EF_RN+36;          // Kreis + mittige Beschriftung darueber
+    var halbX=Math.max(1,(maxx-minx)/2), halbY=Math.max(1,(maxy-miny)/2);
+    var fx=Math.max(.5,Math.min(3,(nW/2-randX)/halbX)), fy=Math.max(.5,Math.min(3,(nH/2-randY)/halbY));
+    var cx=(minx+maxx)/2, cy=(miny+maxy)/2, nx=nW/2, ny=nH/2;
+    pos.forEach(function(p){if(!p)return;p.x=nx+(p.x-cx)*fx;p.y=ny+(p.y-cy)*fy;});
+    G.W=nW;G.H=nH;G.hx=nx;G.hy=ny;
+  }
+
+  function _efNeuZeichnen(w){
+    var el=$('.w[data-id="'+w.id+'"]',canvas);if(!el)return;
+    var alt=el.querySelector('svg.efsvg');if(!alt)return;
+    var t=document.createElement('div');t.innerHTML=energySVG(w);
+    var neu=t.firstChild;if(!neu)return;
+    alt.parentNode.replaceChild(neu,alt);
+    refreshEnergy(w);
+  }
+  function _efBeobachte(w){
+    if(typeof ResizeObserver==='undefined')return;
+    var el=$('.w[data-id="'+w.id+'"]',canvas);if(!el)return;
+    if(_efRO[w.id])_efRO[w.id].disconnect();
+    var ro=new ResizeObserver(function(){_efNeuZeichnen(w);});
+    ro.observe(el);_efRO[w.id]=ro;
+  }
   function _nzBahnen(nx,ny,hx,hy,d){
     var dx=hx-nx,dy=hy-ny;
     if(Math.abs(dx)>=Math.abs(dy)){var mx=(nx+hx)/2;
@@ -444,7 +488,7 @@
       if($('#pNzSpread'))$('#pNzSpread').onchange=function(){w.nzSpread=(this.value===''?undefined:Math.max(0,parseInt(this.value)||0));render();_flowRefresh(w);commit();};
       if($('#pNzDur'))$('#pNzDur').onchange=function(){var v=parseFloat(this.value);w.nzDur=(isNaN(v)||v<=0)?undefined:v;_flowRefresh(w);commit();};
     },
-    mount:function(w){var m=_flowMode(w);if(m==='energy'||m==='netz')refreshEnergy(w);else if(m!=='hub')applyFlowState(w);},
+    mount:function(w){var m=_flowMode(w);if(m==='netz'){_efBeobachte(w);_efNeuZeichnen(w);}else if(m==='energy')refreshEnergy(w);else if(m!=='hub')applyFlowState(w);},
     live:function(w,el,id,d,base,txt,on){var m=_flowMode(w);if(m==='energy'||m==='netz')refreshEnergy(w);else if(w.varId===id)applyFlowState(w);return true;}
   });
   WIDGETS.powerflow=WIDGETS.flow; // Alias: alte 'powerflow'-Instanzen weiter rendern (Migration setzt sie auf 'flow')
