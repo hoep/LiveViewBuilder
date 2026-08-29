@@ -148,7 +148,21 @@
     var arm=(w.thArmVar&&_lastVals[w.thArmVar])?_lastVals[w.thArmVar]:null;
     var schatten=!!(arm&&!(arm.v===true||arm.v===1||arm.v==='1'||arm.v==='true'));
     var voll=!!$('[data-role=prof]',el);                          // mit Profilzeile ist weniger Hoehe fuer die grosse Zahl da
-    root.className='thk'+(voll?' thk-full':'')+' tone-'+((to&&to.tone)||'idle')+(schatten?' thk-shadow':'');
+    /* Klimateil: Farbe der Karte folgt der Betriebsart - blau beim Kuehlen,
+       warm beim Heizen. Die Klasse muss HIER gesetzt werden, weil className
+       oben komplett neu gebaut wird und einen frueheren Zusatz verwerfen wuerde. */
+    var acKl = '';
+    if (_thkAcAn(w)) {
+      var r = _thkAcRichtung(w);
+      if (r) { acKl = ' ac-' + r; }
+    }
+    root.className='thk'+(voll?' thk-full':'')+(_thkAcAn(w)?' thk-ac-on':'')+' tone-'+((to&&to.tone)||'idle')+(schatten?' thk-shadow':'')+acKl;
+    if (_thkAcAn(w)) {
+      // Fehlen noch Profile, werden sie geholt und danach neu gezeichnet - ohne
+      // das blieben Betriebsart und Luefterstufen dauerhaft leer.
+      _thkAcPaint(w, el);
+      _thkAcLaden(w, function () { _thkAcPaint(w, el); });
+    }
   }
 
   // ---------------------------------------------------------------- Griff ziehen
@@ -189,6 +203,165 @@
   }
 
   // ---------------------------------------------------------------- Markup der Karte
+  /* ---- Klimabedienung in der Raumkarte -------------------------------------
+   *
+   * Die Karte bleibt eine reine Heizungskarte, solange keine Klimavariablen
+   * gebunden sind - dann aendert sich am Aussehen NICHTS. Jedes Bedienelement
+   * haengt an seiner eigenen Variablen und verschwindet, wenn sie fehlt.
+   *
+   * Die Auswahlmoeglichkeiten kommen aus dem PROFIL der jeweiligen Variablen,
+   * nicht aus einer festen Liste. Damit zeigt eine tado-Zone ihre Luefterstufen
+   * und eine Toshiba-Zone ihre eigenen, ohne dass das Widget die Geraete kennen
+   * muss - und ein spaeterer dritter Hersteller braucht keine Codeaenderung.
+   */
+  var _THKAC = [
+    { k: 'thAcMode',   rolle: 'acmode',  lab: 'Betriebsart', art: 'zeile' },
+    { k: 'thAcFan',    rolle: 'acfan',   lab: 'Lüfter',      art: 'balken' },
+    { k: 'thAcSwing',  rolle: 'acswing', lab: 'Schwenken',   art: 'knopf', ic: '↕' },
+    { k: 'thAcLevel',  rolle: 'aclevel', lab: 'Leistung',    art: 'reihe' },
+    { k: 'thAcPreset', rolle: 'acpre',   lab: 'Sonderfunktion', art: 'reihe' },
+    { k: 'thAcIon',    rolle: 'acion',   lab: 'Ionisator',   art: 'knopf', ic: '✧' }
+  ];
+  function _thkAcAn(w) {
+    if (w.thAcPower) { return true; }
+    for (var i = 0; i < _THKAC.length; i++) { if (w[_THKAC[i].k]) { return true; } }
+    return false;
+  }
+  /** Profile aller gebundenen Klimavariablen holen, dann neu zeichnen. */
+  function _thkAcLaden(w, fertig) {
+    var offen = 0, fertigGerufen = false;
+    var ende = function () { if (--offen <= 0 && !fertigGerufen) { fertigGerufen = true; fertig(); } };
+    _THKAC.forEach(function (f) {
+      var id = w[f.k];
+      if (!id || (typeof _assocData !== 'undefined' && _assocData[id])) { return; }
+      offen++;
+      loadAssoc(id, ende);
+    });
+    if (offen === 0) { fertig(); }
+  }
+  /** Geruest - die Inhalte entstehen erst beim Fuellen, weil Profile spaeter kommen. */
+  function _thkAcBody(w) {
+    if (!_thkAcAn(w)) { return ''; }
+    var h = '<div class="thk-ac" data-role="acbox">';
+    if (w.thAcMode) { h += '<div class="thk-aclab">BETRIEBSART</div><div class="thk-acseg" data-role="acmode"></div>'; }
+    h += '<div class="thk-acrow">';
+    if (w.thAcPower) { h += '<button class="thk-acbtn" data-role="acpower" title="Ein/Aus">' + iconSVG('power') + '</button>'; }
+    if (w.thAcFan)   { h += '<div class="thk-acfan" data-role="acfan"></div>'; }
+    if (w.thAcSwing) { h += '<button class="thk-acbtn" data-role="acswing" title="Schwenken">' + iconSVG('airvent') + '</button>'; }
+    h += '</div>';
+    if (w.thAcLevel || w.thAcPreset || w.thAcIon) {
+      h += '<div class="thk-acrow" data-role="acextra"></div>';
+    }
+    return h + '</div>';
+  }
+  function _thkAcWert(id) {
+    var d = (typeof _lastVals !== 'undefined') ? _lastVals[id] : null;
+    return d ? d.v : null;
+  }
+  function _thkAcAssocs(id) {
+    var d = (typeof _assocData !== 'undefined') ? _assocData[id] : null;
+    return (d && d.assocs && d.assocs.length) ? d.assocs : [];
+  }
+  /** Aktive Betriebsart als Kuerzel - faerbt Balken und Sollwert. */
+  function _thkAcRichtung(w) {
+    if (!w.thAcMode) { return ''; }
+    var a = _thkAcAssocs(w.thAcMode), v = _thkAcWert(w.thAcMode);
+    for (var i = 0; i < a.length; i++) {
+      if (String(a[i].v) === String(v)) {
+        var n = String(a[i].name || '').toLowerCase();
+        if (n.indexOf('kühl') === 0 || n.indexOf('kuehl') === 0 || n.indexOf('cool') === 0) { return 'kuehl'; }
+        if (n.indexOf('heiz') === 0 || n.indexOf('heat') === 0) { return 'heiz'; }
+        return '';
+      }
+    }
+    return '';
+  }
+  function _thkAcPaint(w, el) {
+    var box = el.querySelector('[data-role=acbox]');
+    if (!box) { return; }
+    var an = w.thAcPower ? !!_thkAcWert(w.thAcPower) : true;
+    box.classList.toggle('aus', !an);
+
+    var seg = el.querySelector('[data-role=acmode]');
+    if (seg && w.thAcMode) {
+      var a = _thkAcAssocs(w.thAcMode), v = _thkAcWert(w.thAcMode), h = '';
+      a.forEach(function (o) {
+        var aktiv = String(o.v) === String(v);
+        var n = String(o.name || '').toLowerCase();
+        var ton = (n.indexOf('kühl') === 0 || n.indexOf('cool') === 0) ? ' kuehl'
+                : ((n.indexOf('heiz') === 0 || n.indexOf('heat') === 0) ? ' heiz' : '');
+        /* Symbol aus dem Namen ableiten, nicht aus dem Zahlenwert: die Reihenfolge
+           der Betriebsarten ist herstellerabhaengig, die Benennung nicht. */
+        var ic = (n.indexOf('kühl') === 0 || n.indexOf('cool') === 0) ? 'cool'
+               : ((n.indexOf('heiz') === 0 || n.indexOf('heat') === 0) ? 'heat'
+               : ((n.indexOf('trock') === 0 || n.indexOf('dry') === 0) ? 'dehumidifier'
+               : ((n.indexOf('vent') === 0 || n.indexOf('lüft') === 0 || n.indexOf('fan') === 0) ? 'fan' : 'ac')));
+        h += '<button class="thk-acs' + (aktiv ? (' an' + ton) : '') + '" data-acset="' + esc(String(w.thAcMode))
+           + '" data-acval="' + esc(String(o.v)) + '" title="' + esc(String(o.name || o.v)) + '">'
+           + iconSVG(ic) + '<span>' + escL(String(o.name || o.v)) + '</span></button>';
+      });
+      seg.innerHTML = h;
+    }
+    var pw = el.querySelector('[data-role=acpower]');
+    if (pw) { pw.classList.toggle('an', an); }
+
+    var fan = el.querySelector('[data-role=acfan]');
+    if (fan && w.thAcFan) {
+      var fa = _thkAcAssocs(w.thAcFan), fv = _thkAcWert(w.thAcFan), idx = -1, nam = '';
+      fa.forEach(function (o, i) { if (String(o.v) === String(fv)) { idx = i; nam = String(o.name || o.v); } });
+      var bh = '<i>Lüfter</i>';
+      fa.forEach(function (o, i) {
+        // Balken wachsen von links nach rechts; alles bis zur aktiven Stufe leuchtet.
+        bh += '<span class="thk-acbal' + (i <= idx ? ' an' : '') + '" data-acset="' + esc(String(w.thAcFan))
+            + '" data-acval="' + esc(String(o.v)) + '" title="' + esc(String(o.name || o.v))
+            + '" style="height:' + (6 + i * 2.6) + 'px"></span>';
+      });
+      fan.innerHTML = bh + '<b>' + escL(nam) + '</b>';
+    }
+    var sw = el.querySelector('[data-role=acswing]');
+    if (sw && w.thAcSwing) {
+      var sa = _thkAcAssocs(w.thAcSwing), sv = _thkAcWert(w.thAcSwing);
+      var erst = sa.length ? sa[0].v : 0;
+      sw.classList.toggle('an', String(sv) !== String(erst));
+      // Weiterschalten statt Auswahlliste: der Knopf soll klein bleiben.
+      var naechst = erst, gefunden = false;
+      for (var i2 = 0; i2 < sa.length; i2++) {
+        if (String(sa[i2].v) === String(sv)) { naechst = sa[(i2 + 1) % sa.length].v; gefunden = true; break; }
+      }
+      if (!gefunden && sa.length > 1) { naechst = sa[1].v; }
+      sw.setAttribute('data-acset', String(w.thAcSwing));
+      sw.setAttribute('data-acval', String(naechst));
+      var akt = null;
+      sa.forEach(function (o) { if (String(o.v) === String(sv)) { akt = o; } });
+      sw.title = 'Schwenken' + (akt ? ' · ' + (akt.name || akt.v) : '');
+    }
+    var ex = el.querySelector('[data-role=acextra]');
+    if (ex) {
+      var eh = '';
+      if (w.thAcLevel) {
+        _thkAcAssocs(w.thAcLevel).forEach(function (o) {
+          var aktiv = String(o.v) === String(_thkAcWert(w.thAcLevel));
+          eh += '<button class="thk-acbtn wide' + (aktiv ? ' an' : '') + '" data-acset="' + esc(String(w.thAcLevel))
+              + '" data-acval="' + esc(String(o.v)) + '">' + escL(String(o.name || o.v)) + '</button>';
+        });
+      }
+      if (w.thAcIon) {
+        var ion = !!_thkAcWert(w.thAcIon);
+        eh += '<button class="thk-acbtn' + (ion ? ' an' : '') + '" data-acset="' + esc(String(w.thAcIon))
+            + '" data-acval="' + (ion ? '0' : '1') + '" title="Ionisator">' + iconSVG('airquality') + '</button>';
+      }
+      if (w.thAcPreset) {
+        var pa = _thkAcAssocs(w.thAcPreset), pv = _thkAcWert(w.thAcPreset), pn = '';
+        pa.forEach(function (o) { if (String(o.v) === String(pv)) { pn = String(o.name || o.v); } });
+        var pAus = pa.length ? pa[0] : null;
+        var pAktiv = pAus && String(pv) !== String(pAus.v);
+        eh += '<button class="thk-acbtn wide' + (pAktiv ? ' an' : '') + '" data-role="acpre" title="Sonderfunktion">'
+            + escL(pn || 'Sonderfunktion') + '</button>';
+      }
+      ex.innerHTML = eh;
+    }
+  }
+
   function _thkBody(w){
     var sc=_thkScale(w),u=_thkUnit(w);
     var cap=(w.thCapTxt==null?'ISTWERT':String(w.thCapTxt));
@@ -200,7 +373,8 @@
     var set=w.varId2?('<button class="thk-rb" data-role="dn" title="kälter"><svg><use href="#ic-minus"/></svg></button>'):'';
     var set2=w.varId2?('<button class="thk-rb" data-role="up" title="wärmer"><svg><use href="#ic-plus"/></svg></button>'):'';
     var prof=(w.thPresOn&&w.thPresVar)?('<div class="thk-prof" data-role="prof">'+_sldBody(_thkPres(w),w.thPresShape||'pill')+'</div>'):'';
-    return '<div class="thk'+(prof?' thk-full':'')+' tone-idle">'
+    var ac=_thkAcBody(w);
+    return '<div class="thk'+(prof?' thk-full':'')+(ac?' thk-ac-on':'')+' tone-idle">'
       +'<div class="thk-top"><span class="thk-name">'+escL(w.label||'')+'</span>'+bad+cal+'</div>'
       +'<div class="thk-body">'
         +'<div class="thk-l">'
@@ -213,7 +387,7 @@
           +'<span class="thk-sc">'+esc(String(sc.min))+'</span></div>'
       +'</div>'
       +'<div class="thk-set">'+set+'<div class="thk-mid"><b class="thk-tval" data-role="target2">–</b>'+dev+'</div>'+set2+'</div>'
-      +prof
+      +prof+ac
       +'</div>';
   }
   // ---------------------------------------------------------------- Eigenschaften der Karte
@@ -268,8 +442,20 @@
       +'<div class="pgh">Schatten-Hinweis</div>'
       +fieldPick(w,'thArmVar','„Scharf"-Variable (optional)')
       +_thkHint('Ist die Domäne nicht scharf, erreichen Sollwerte das Gerät nicht.');
+
+    // ---- Klimatisierung: jedes Feld blendet sein Bedienelement ein ----
+    h += '<div class="pgh">Klimatisierung (leer = ausgeblendet)</div>'
+      + '<div class="hint" style="font-size:11px;margin:0 2px 6px">Die Auswahl kommt aus dem Profil der jeweiligen Variablen - das Widget muss die Geräte nicht kennen.</div>'
+      + row('Ein/Aus', '<input id="pThAcP" type="number" style="width:110px" value="' + (w.thAcPower || '') + '">')
+      + row('Betriebsart', '<input id="pThAcM" type="number" style="width:110px" value="' + (w.thAcMode || '') + '">')
+      + row('Lüfterstufe', '<input id="pThAcF" type="number" style="width:110px" value="' + (w.thAcFan || '') + '">')
+      + row('Schwenken', '<input id="pThAcS" type="number" style="width:110px" value="' + (w.thAcSwing || '') + '">')
+      + row('Leistungsstufe', '<input id="pThAcL" type="number" style="width:110px" value="' + (w.thAcLevel || '') + '">')
+      + row('Sonderfunktion', '<input id="pThAcR" type="number" style="width:110px" value="' + (w.thAcPreset || '') + '">')
+      + row('Ionisator', '<input id="pThAcI" type="number" style="width:110px" value="' + (w.thAcIon || '') + '">');
     return h;
   }
+
   function _thkWire(w){
     function txt(id,key,def){var e=$(id);if(e)e.oninput=function(){var v=this.value;w[key]=(v===''&&def!==undefined)?undefined:v;render();commit();};}
     function chk(id,key){var e=$(id);if(e)e.onchange=function(){w[key]=this.checked||undefined;render();renderProps();commit();};}
@@ -285,6 +471,11 @@
     txt('#pThUnit','thUnit',1);
     var ct=$('#pThCapTxt');if(ct)ct.oninput=function(){w.thCapTxt=this.value;render();commit();};   // leerer Text ist eine Aussage (Zeile weg), kein "nicht gesetzt"
     chk('#pThPresOn','thPresOn');txt('#pThPresLbl','thPresLbl',1);sel('#pThPresShape','thPresShape');
+    // Klimafelder: eine Schleife statt sieben gleichlautender Zeilen.
+    [['#pThAcP','thAcPower'],['#pThAcM','thAcMode'],['#pThAcF','thAcFan'],['#pThAcS','thAcSwing'],
+     ['#pThAcL','thAcLevel'],['#pThAcR','thAcPreset'],['#pThAcI','thAcIon']].forEach(function(o){
+      num(o[0],o[1]);
+    });
   }
 
   defWidget('thermostat',{
@@ -331,6 +522,24 @@
       if(!_thkOn(w))return false;                                  // Klassiker laeuft weiter ueber _wClick
       if(_thkBlock.id===w.id&&Date.now()-_thkBlock.t<400)return true;   // nachlaufender Klick nach dem Ziehen dieser Karte
       var cl=function(s){return e.target.closest?e.target.closest(s):null;};
+      // Klimabedienung: jedes Element traegt Ziel und Wert an sich selbst, damit
+      // hier keine Geraetelogik noetig ist.
+      var ac=cl('[data-acset]');
+      if(ac){
+        var zid=parseInt(ac.getAttribute('data-acset'))||0;
+        if(zid){ setVar(zid, ac.getAttribute('data-acval')); }
+        return true;
+      }
+      if(cl('[data-role=acpre]')&&w.thAcPreset){          // Sonderfunktion weiterschalten
+        var pl=_thkAcAssocs(w.thAcPreset), pv=_thkAcWert(w.thAcPreset), nx=pl.length?pl[0].v:0;
+        for(var pi=0;pi<pl.length;pi++){ if(String(pl[pi].v)===String(pv)){ nx=pl[(pi+1)%pl.length].v; break; } }
+        setVar(w.thAcPreset, nx);
+        return true;
+      }
+      if(cl('[data-role=acpower]')&&w.thAcPower){
+        setVar(w.thAcPower, _thkAcWert(w.thAcPower)?0:1);
+        return true;
+      }
       // 1) Kalender: regSlot/regView duerfen NICHT am Widget stehen - der Block in
       //    05-interaction.js laeuft vor dem Thermostat-Zweig und wuerde jeden Klick auf die
       //    Karte zum Seitensprung machen, +/- und Profile waeren tot. Darum eigene Felder.
