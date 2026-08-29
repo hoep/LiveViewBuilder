@@ -75,7 +75,7 @@
   // Jetzt wird der Platzbedarf gerechnet: Jeder Knoten bekommt Durchmesser plus Abstand,
   // die Flaeche waechst mit, wenn eine Seite mehr Knoten hat. Beruehrungen sind damit
   // ausgeschlossen, nicht nur unwahrscheinlich.
-  function _energyGeo(w){
+  function _energyGeo(w,valLines){
     var PAD=(w.efPad!=null&&w.efPad!==''?+w.efPad:18);     // Rand ringsum, einstellbar
     var GAP=(w.efGap!=null&&w.efGap!==''?+w.efGap:16);     // Mindestabstand zwischen Knoten
     var RN=_EF_RN,RH=_EF_RH;
@@ -90,9 +90,11 @@
     // nichts, meldete stur eine Zeile, und die ganze Mehrzeilen-Rechnung lief ins Leere.
     // Hoehe des Wertblocks UNTER den Kreisen. Netz und Batterie zeigen zwei Zeilen
     // (Bezug/Einspeisung bzw. Laden/Entladen), alle anderen eine.
-    function valH(list){var m=1;(list||[]).forEach(function(o){var n=_efValLines(_et(o.e.type));if(n>m)m=n;});return 13+m*_EF_VLH;}
+    function valH(list){var m=1;(list||[]).forEach(function(o){var n=(valLines||_efValLines)(_et(o.e.type));if(n>m)m=n;});return 13+m*_EF_VLH;}
     var els=w.elements||[],by={pv:[],grid:[],battery:[],consumer:[],other:[]};
-    els.forEach(function(e,i){(by[_et(e.type)]||by.other).push({e:e,i:i});});
+    // Der Netz-Modus benennt die Seite direkt (oben/links/rechts/unten), weil "PV" oder
+    // "Batterie" fuer einen Tunnel nichts aussagt. Ohne Angabe entscheidet wie bisher der Typ.
+    els.forEach(function(e,i){var b=e.pos?_nzPos(e.pos):_et(e.type);(by[b]||by.other).push({e:e,i:i});});
     var top=by.pv, bot=by.battery.concat(by.other), left=by.grid, right=by.consumer;
     // Eine Spalte aus vielen Verbrauchern macht das Bild sehr hoch: Jeder Knoten braucht
     // senkrecht Durchmesser + Abstand + Beschriftung + Wertblock, also rund 125 px. Bei
@@ -176,7 +178,7 @@
   function _efNode(x,y,r,col,icon,name,type,idx){
     var g='<g class="efnode" transform="translate('+x+','+y+')">';
     g+=_efLabel(name,r);
-    g+='<circle class="efring" r="'+r+'" style="stroke:'+col+'"/>';
+    g+='<circle class="efring" data-role="efring-'+idx+'" r="'+r+'" style="stroke:'+col+'"/>';
     // Batterie behaelt den Ladestand INNEN - er ist nie laenger als "100%" und passt dort
     // bequem; das Icon rueckt dafuer etwas nach oben.
     g+='<svg class="eficon" x="-11" y="'+(type==='battery'?-15:-11)+'" width="22" height="22" viewBox="0 0 24 24">'+_efIcon(icon)+'</svg>';
@@ -186,9 +188,27 @@
     return g+'</g>';
   }
   function energySVG(w){
-    var G=_energyGeo(w),pos=G.pos,els=w.elements||[];
+    // Netz-Modus: gleiche Buehne, aber jede Verbindung traegt ZWEI Bahnen. Leistung hat ein
+    // Vorzeichen und fliesst deshalb nur in eine Richtung; Netzverkehr laeuft gleichzeitig
+    // hin und zurueck. Beide Bahnen teilen Anfang und Ende, versetzt sind nur die
+    // Kontrollpunkte - sonst setzten sie neben dem Kreis an statt daran.
+    var netz=(_flowMode(w)==='netz');
+    var G=_energyGeo(w,netz?function(){return 2;}:null),pos=G.pos,els=w.elements||[];
+    var spread=(w.nzSpread!=null&&w.nzSpread!==''?+w.nzSpread:15);
     var s='<svg class="efsvg" viewBox="0 0 '+G.W+' '+G.H+'" preserveAspectRatio="xMidYMid meet">';
-    els.forEach(function(e,i){var p=pos[i];if(!p)return;var col=_efCol(e.color),d=_efPath(p.x,p.y,G.hx,G.hy);
+    els.forEach(function(e,i){var p=pos[i];if(!p)return;var col=_efCol(e.color);
+      if(netz){
+        _nzBahnen(p.x,p.y,G.hx,G.hy,spread).forEach(function(pd,k){
+          var rev=k?';animation-direction:reverse':'';
+          s+='<path class="efwire" d="'+pd+'" style="stroke:'+col+(k?';opacity:.14':'')+'"/>'
+            +'<path class="efflow" data-role="efflow-'+i+'-'+k+'" d="'+pd+'" style="stroke:'+col
+              +';stroke-width:'+(k?'2':'2.6')+';opacity:0'+rev+'"/>'
+            +'<circle class="efdot" data-role="efdot-'+i+'-'+k+'" r="'+(k?'3':'3.6')+'" style="fill:'+col
+              +";offset-path:path('"+pd+"');opacity:0"+rev+'"/>';
+        });
+        return;
+      }
+      var d=_efPath(p.x,p.y,G.hx,G.hy);
       s+='<path class="efwire" d="'+d+'" style="stroke:'+col+'"/>'
         +'<path class="efflow" data-role="efflow-'+i+'" d="'+d+'" style="stroke:'+col+';opacity:0"/>'
         +'<circle class="efdot" data-role="efdot-'+i+'" r="4" style="fill:'+col+';offset-path:path(\''+d+'\');opacity:0"/>';
@@ -245,6 +265,10 @@
   }
   function refreshEnergy(w){
     var el=$('.w[data-id="'+w.id+'"]',canvas);if(!el)return;var els=w.elements||[],homeIn=0;
+    // Netz-Modus: derselbe Durchlauf, nur bedeutet ein Element hier eine VERBINDUNG.
+    // Statt Leistung zaehlt ihr Zustand, statt einer Richtung laufen zwei Bahnen.
+    var netz=(_flowMode(w)==='netz'),nzAn=0,nzGes=0,
+        nzDur=(w.nzDur!=null&&w.nzDur!==''?+w.nzDur:2.6);
     // Tempo-Referenz: Summe dessen, was gerade INS Haus fliesst - also alle Lieferanten
     // zusammen (PV, Netzbezug, Batterie-Entladung). Damit laeuft der groesste Lieferant am
     // schnellsten und jeder andere anteilig langsamer; ein fester Schwellwert taugt dafuer
@@ -258,6 +282,23 @@
     els.forEach(function(e,i){
       var t=_et(e.type),p=_efWatts(e.vid),mag=isNaN(p)?0:Math.abs(p),dir=_efDir(t,p),active=mag>1;
       var v1=$('[data-role=efval-'+i+']',el),v2=$('[data-role=efval2-'+i+']',el);
+      if(netz){
+        var zu=_nzAn(e.sVid),tot=(zu===false);
+        nzGes++;if(!tot)nzAn++;
+        var ring=$('[data-role=efring-'+i+']',el);
+        if(ring)ring.style.stroke=tot?'var(--crit)':_efCol(e.color);
+        var wv=e.vid?_lastVals[e.vid]:null;
+        if(v1)v1.textContent=wv?String(wv.f!=null&&wv.f!==''?wv.f:wv.v)
+                               :(tot?'offline':(zu===true?'online':'\u2013'));
+        if(v2)v2.textContent=_nzStand(e.sVid||e.vid);
+        // Beide Bahnen laufen, solange die Verbindung steht - und stehen still, wenn nicht.
+        for(var k=0;k<2;k++){
+          var nf=$('[data-role=efflow-'+i+'-'+k+']',el),nd=$('[data-role=efdot-'+i+'-'+k+']',el);
+          var ndur=(nzDur+(k?0.55:0)+(i%4)*0.18).toFixed(2)+'s';
+          [nf,nd].forEach(function(n){if(!n)return;n.style.opacity=tot?'0':'';n.style.animationDuration=ndur;});
+        }
+        return;
+      }
       if(t==='grid'||t==='battery'){var into=Math.max(isNaN(p)?0:p,0),out=Math.max(isNaN(p)?0:-p,0),A=(t==='grid')?['→ ','← ']:['↑ ','↓ '];
         if(v1)v1.textContent=A[0]+_efFmtW(into);if(v2)v2.textContent=A[1]+_efFmtW(out);}
       else{if(v1)v1.textContent=_efFmtW(mag);if(v2)v2.textContent='';}
@@ -277,17 +318,83 @@
       _efSetAnim(dot,dur,rev,active);
       if(dir>0)homeIn+=mag;
     });
-    var hv=$('[data-role=efval-h]',el);if(hv){var hp=w.homeVid?_efWatts(w.homeVid):NaN;hv.textContent=_efFmtW(isNaN(hp)?homeIn:hp);}
+    var hv=$('[data-role=efval-h]',el);
+    if(hv&&netz){
+      var hd=w.homeVid?_lastVals[w.homeVid]:null;
+      hv.textContent=hd?String(hd.f!=null&&hd.f!==''?hd.f:hd.v):(nzAn+' / '+nzGes);
+      var hv2=$('[data-role=efval2-h]',el);if(hv2)hv2.textContent=w.homeSub||'';
+    }else if(hv){var hp=w.homeVid?_efWatts(w.homeVid):NaN;hv.textContent=_efFmtW(isNaN(hp)?homeIn:hp);}
   }
+  // ================= Netz-Modus: Verbindungen statt Leistung =================
+  // Der Energiefluss zeichnet je Leitung EINE Richtung, weil Leistung ein Vorzeichen hat:
+  // Strom fliesst zum Haus oder davon weg, nie beides zugleich. Netzverkehr tut genau das -
+  // Hin und Rueck laufen gleichzeitig und unabhaengig voneinander. Deshalb hier ZWEI Bahnen
+  // je Verbindung. Sie teilen sich Anfang und Ende (am Knoten und am Kern), laufen dazwischen
+  // aber auseinander; versetzt werden nur die KONTROLLPUNKTE, die Endpunkte bleiben - sonst
+  // setzten die Bahnen neben dem Kreis an statt daran.
+  var _NZ_POS={oben:'pv',links:'grid',rechts:'consumer',unten:'other'};
+  function _nzPos(p){return _NZ_POS[String(p||'rechts').toLowerCase()]||'consumer';}
+  // Die Positionsangabe wird auf die Baender des Energie-Layouts abgebildet - so gilt
+  // dieselbe Kollisionsrechnung, ohne sie ein zweites Mal zu schreiben.
+  function _nzGeoW(w){
+    return {elements:(w.elements||[]).map(function(e){return {name:e.name,x:e.x,y:e.y,type:_nzPos(e.pos)};}),
+            efPad:w.efPad,efGap:w.efGap,efMaxCol:w.efMaxCol};
+  }
+  function _nzBahnen(nx,ny,hx,hy,d){
+    var dx=hx-nx,dy=hy-ny;
+    if(Math.abs(dx)>=Math.abs(dy)){var mx=(nx+hx)/2;
+      return ['M'+nx+' '+ny+' C'+mx+' '+(ny-d)+' '+mx+' '+(hy-d)+' '+hx+' '+hy,
+              'M'+nx+' '+ny+' C'+mx+' '+(ny+d)+' '+mx+' '+(hy+d)+' '+hx+' '+hy];}
+    var my=(ny+hy)/2;
+    return ['M'+nx+' '+ny+' C'+(nx-d)+' '+my+' '+(hx-d)+' '+my+' '+hx+' '+hy,
+            'M'+nx+' '+ny+' C'+(nx+d)+' '+my+' '+(hx+d)+' '+my+' '+hx+' '+hy];
+  }
+  // Standzeit aus dem Aenderungszeitstempel, den der Poll je Variable mitliefert ('c').
+  // Bei einer Verbindung ist genau das die interessante Zahl: nicht WAS sie meldet,
+  // sondern wie lange sie es schon meldet.
+  function _nzStand(id){
+    var d=id&&_lastVals[id];if(!d||d.c==null)return '';
+    var s=Math.max(0,Math.floor(Date.now()/1000)-(+d.c||0));
+    if(s<3600)return Math.round(s/60)+' min';
+    if(s<172800)return Math.round(s/3600)+' h';
+    return Math.round(s/86400)+' d';
+  }
+  // Zustand tolerant lesen: die Alive-Variablen sind teils Boolean, teils Text
+  // ("online"/"offline" ueber ein Profil). null = unbekannt - dann wird nichts behauptet.
+  function _nzAn(id){
+    var d=id&&_lastVals[id];if(!d)return null;
+    var v=d.v;
+    if(v===true||v===1)return true;
+    if(v===false||v===0)return false;
+    var t=String(v==null?'':v).trim().toLowerCase();
+    if(t==='online'||t==='true'||t==='1'||t==='an'||t==='ok'||t==='verbunden')return true;
+    if(t==='offline'||t==='false'||t==='0'||t==='aus'||t==='getrennt')return false;
+    return null;
+  }
+  function _flowRefresh(w){var m=_flowMode(w);if(m==='energy'||m==='netz')refreshEnergy(w);}
+
   defWidget('flow',{
     label:'Fluss', cat:'Diagramme', paletteIcon:'wsankey', size:[560,168],
     defaults:function(w){w.mode='pipeline';w.flPos='#00cdab';w.flRef=20;w.endTank=1;w.tankLabel='Becken';w.startArrow=1;
       w.stages=[{icon:'valve',label:'Ventil',vid:0},{icon:'pump',label:'Pumpe',vid:0},{icon:'filter',label:'Filter',vid:0},{icon:'droplet',label:'pH',vid:0},{icon:'bolt',label:'Redox',vid:0},{icon:'gauge',label:'Durchfluss',vid:0}];},
-    render:function(w){var m=_flowMode(w);return m==='hub'?powerflowSVG(w):m==='energy'?energySVG(w):flowPipeline(w);},
+    render:function(w){var m=_flowMode(w);return m==='hub'?powerflowSVG(w):(m==='energy'||m==='netz')?energySVG(w):flowPipeline(w);},
     props:function(w){
       var m=_flowMode(w);
-      var h=row('Modus','<select id="pFlMode"><option value="pipeline"'+(m==='pipeline'?' selected':'')+'>Pipeline (Reihe)</option><option value="energy"'+(m==='energy'?' selected':'')+'>Energie (Power-Flow)</option><option value="hub"'+(m==='hub'?' selected':'')+'>Hub (Quellen→Zentrum→Senken)</option></select>');
+      var h=row('Modus','<select id="pFlMode"><option value="pipeline"'+(m==='pipeline'?' selected':'')+'>Pipeline (Reihe)</option><option value="energy"'+(m==='energy'?' selected':'')+'>Energie (Power-Flow)</option><option value="hub"'+(m==='hub'?' selected':'')+'>Hub (Quellen→Zentrum→Senken)</option><option value="netz"'+(m==='netz'?' selected':'')+'>Netz (Verbindungen)</option></select>');
       if(m==='hub')return h+listEditor(w,'src','Quellen: Name · ID',[{k:'label',ph:'Name'},{k:'vid',ph:'ID'}])+listEditor(w,'snk','Senken: Name · ID',[{k:'label',ph:'Name'},{k:'vid',ph:'ID'}]);
+      if(m==='netz')return h
+        +'<div class="pgh">Mitte</div>'
+        +row('Name / Icon','<input id="pEfHN" value="'+esc(w.homeName||'Haus')+'" style="width:88px"> <input id="pEfHI" value="'+esc(w.homeIcon||'smarthome')+'" placeholder="icon" style="width:88px">')
+        +row('Farbe / Wert-ID','<input type="color" id="pEfHC" value="'+(w.homeColor||'#00cdab')+'"> <input id="pEfHV" value="'+(w.homeVid||'')+'" placeholder="leer = x / y online" style="width:120px">')
+        +row('Zusatzzeile','<input id="pNzSub" value="'+esc(w.homeSub||'')+'" placeholder="z. B. 21 Switches">')
+        +'<div class="pgh">Bahnen</div>'
+        +'<div style="font-size:11px;color:var(--muted);margin:-2px 2px 5px">Anders als beim Strom tr&auml;gt jede Verbindung <b>zwei</b> Bahnen: Hin und Zur&uuml;ck laufen gleichzeitig. Der Abstand bestimmt, wie weit sie zwischen den Knoten auseinanderlaufen.</div>'
+        +row('Bahnabstand (px)','<input id="pNzSpread" type="number" min="0" max="40" value="'+(w.nzSpread!=null?w.nzSpread:15)+'">')
+        +row('Umlaufdauer (s)','<input id="pNzDur" type="number" step="0.1" min="0.2" value="'+(w.nzDur!=null?w.nzDur:2.6)+'">')
+        +row('Rand / Knotenabstand','<input id="pEfPad" type="number" min="0" style="width:64px" value="'+(w.efPad!=null?w.efPad:18)+'"> <input id="pEfGap" type="number" min="0" style="width:64px" value="'+(w.efGap!=null?w.efGap:16)+'">')
+        +'<div class="pgh">Verbindungen</div>'
+        +'<div style="font-size:11px;color:var(--muted);margin:-2px 2px 5px">Die <b>Position</b> bestimmt die Seite. Die <b>Zustands-Variable</b> f&auml;rbt den Ring und h&auml;lt die Bahnen an, wenn sie aus ist; sie liefert auch die <b>Standzeit</b> in der zweiten Zeile. Die <b>Wert-Variable</b> ist optional und ersetzt dann online/offline in der ersten Zeile.</div>'
+        +listEditor(w,'elements','Position &middot; Name &middot; Icon &middot; Farbe &middot; Zustands-ID &middot; Wert-ID',[{k:'pos',type:'select',def:'rechts',options:[['oben','oben'],['links','links'],['rechts','rechts'],['unten','unten']]},{k:'name',ph:'Name'},{k:'icon',type:'icon'},{k:'color',type:'skincolor'},{k:'sVid',ph:'Zustand'},{k:'vid',ph:'Wert'}]);
       if(m==='energy')return h
         +'<div class="pgh">Home-Knoten</div>'
         +row('Name / Icon','<input id="pEfHN" value="'+esc(w.homeName||'Home')+'" style="width:88px"> <input id="pEfHI" value="'+esc(w.homeIcon||'housepower')+'" placeholder="icon" style="width:88px">')
@@ -316,8 +423,8 @@
     wire:function(w){
       if($('#pEfDur'))$('#pEfDur').onchange=function(){var v=parseFloat(this.value);w.efDur100=(isNaN(v)||v<=0)?undefined:v;render();commit();};
       if($('#pEfAuto'))$('#pEfAuto').onchange=function(){w.efSpeedAuto=this.checked?undefined:false;render();renderProps();commit();};
-      if($('#pEfPad'))$('#pEfPad').onchange=function(){w.efPad=(this.value===''?undefined:Math.max(0,parseInt(this.value)||0));render();commit();};
-      if($('#pEfGap'))$('#pEfGap').onchange=function(){w.efGap=(this.value===''?undefined:Math.max(0,parseInt(this.value)||0));render();commit();};
+      if($('#pEfPad'))$('#pEfPad').onchange=function(){w.efPad=(this.value===''?undefined:Math.max(0,parseInt(this.value)||0));render();_flowRefresh(w);commit();};
+      if($('#pEfGap'))$('#pEfGap').onchange=function(){w.efGap=(this.value===''?undefined:Math.max(0,parseInt(this.value)||0));render();_flowRefresh(w);commit();};
       if($('#pEfMaxCol'))$('#pEfMaxCol').onchange=function(){w.efMaxCol=(this.value===''?undefined:Math.max(0,parseInt(this.value)||0));render();commit();};
       if($('#pFlMode'))$('#pFlMode').onchange=function(){w.mode=this.value;render();renderProps();commit();};
       function b(id,prop,num){var e=$('#'+id);if(!e)return;e.oninput=e.onchange=function(){var v=num?(this.value===''?undefined:parseFloat(this.value)):(this.value||undefined);w[prop]=v;render();applyFlowState(w);commit();};}
@@ -327,13 +434,17 @@
       if($('#pFlStart'))$('#pFlStart').onchange=function(){w.startArrow=this.checked||undefined;render();commit();};
       if($('#pFlTank'))$('#pFlTank').onchange=function(){w.endTank=this.checked||undefined;render();commit();};
       // energy: Home-Knoten-Felder
-      if($('#pEfHN'))$('#pEfHN').oninput=function(){w.homeName=this.value||undefined;render();refreshEnergy(w);commit();};
-      if($('#pEfHI'))$('#pEfHI').oninput=function(){w.homeIcon=this.value||undefined;render();refreshEnergy(w);commit();};
-      if($('#pEfHC'))$('#pEfHC').oninput=function(){w.homeColor=this.value;render();refreshEnergy(w);commit();};
-      if($('#pEfHV'))$('#pEfHV').oninput=function(){w.homeVid=parseInt(this.value)||undefined;render();refreshEnergy(w);commit();};
+      if($('#pEfHN'))$('#pEfHN').oninput=function(){w.homeName=this.value||undefined;render();_flowRefresh(w);commit();};
+      if($('#pEfHI'))$('#pEfHI').oninput=function(){w.homeIcon=this.value||undefined;render();_flowRefresh(w);commit();};
+      if($('#pEfHC'))$('#pEfHC').oninput=function(){w.homeColor=this.value;render();_flowRefresh(w);commit();};
+      if($('#pEfHV'))$('#pEfHV').oninput=function(){w.homeVid=parseInt(this.value)||undefined;render();_flowRefresh(w);commit();};
       if($('#pEfRef'))$('#pEfRef').oninput=function(){w.efRef=parseInt(this.value)||undefined;refreshEnergy(w);commit();};
+      // netz: Bahnen und Zusatzzeile
+      if($('#pNzSub'))$('#pNzSub').oninput=function(){w.homeSub=this.value||undefined;render();_flowRefresh(w);commit();};
+      if($('#pNzSpread'))$('#pNzSpread').onchange=function(){w.nzSpread=(this.value===''?undefined:Math.max(0,parseInt(this.value)||0));render();_flowRefresh(w);commit();};
+      if($('#pNzDur'))$('#pNzDur').onchange=function(){var v=parseFloat(this.value);w.nzDur=(isNaN(v)||v<=0)?undefined:v;_flowRefresh(w);commit();};
     },
-    mount:function(w){var m=_flowMode(w);if(m==='energy')refreshEnergy(w);else if(m!=='hub')applyFlowState(w);},
-    live:function(w,el,id,d,base,txt,on){var m=_flowMode(w);if(m==='energy')refreshEnergy(w);else if(w.varId===id)applyFlowState(w);return true;}
+    mount:function(w){var m=_flowMode(w);if(m==='energy'||m==='netz')refreshEnergy(w);else if(m!=='hub')applyFlowState(w);},
+    live:function(w,el,id,d,base,txt,on){var m=_flowMode(w);if(m==='energy'||m==='netz')refreshEnergy(w);else if(w.varId===id)applyFlowState(w);return true;}
   });
   WIDGETS.powerflow=WIDGETS.flow; // Alias: alte 'powerflow'-Instanzen weiter rendern (Migration setzt sie auf 'flow')
