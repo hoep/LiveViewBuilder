@@ -1,7 +1,7 @@
-  var TOKEN="__LV_TOKEN__";
-  var RUN=("__LV_RUN__"==="1")||/[?&]run=1/.test(location.search)||/\/hook\/run(\/|$|\?)/.test(location.pathname); // /hook/run/<site> oder ?run=1
+  var TOKEN=(window.LVCFG&&window.LVCFG.t)||"";      // aus der Huelle, nicht aus dem Buendel
+  var RUN=((window.LVCFG&&window.LVCFG.run)==="1")||/[?&]run=1/.test(location.search)||/\/hook\/run(\/|$|\?)/.test(location.pathname); // /hook/run/<site> oder ?run=1
   // Doku-/Demoseite: eigenstaendig unter /hook/doku, ohne gespeicherte Ansicht.
-  var DOKU=("__LV_DOKU__"==="1")||/[?&]doku=1/.test(location.search)||/\/hook\/doku(\/|$|\?)/.test(location.pathname);
+  var DOKU=((window.LVCFG&&window.LVCFG.doku)==="1")||/[?&]doku=1/.test(location.search)||/\/hook\/doku(\/|$|\?)/.test(location.pathname);
   var VIEWNAME=(location.search.match(/[?&]view=([^&]*)/)||[])[1];VIEWNAME=VIEWNAME?decodeURIComponent(VIEWNAME):'';
   var $=function(s,r){return (r||document).querySelector(s)},$$=function(s,r){return Array.prototype.slice.call((r||document).querySelectorAll(s))};
   // ===== Icon-Bibliothek (Line-Style, Heimautomation). id -> [Kategorie, SVG-Inhalt] =====

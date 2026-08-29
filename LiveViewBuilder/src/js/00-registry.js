@@ -35,7 +35,7 @@
       }catch(e){}
     }
     window.__diag=box;
-    function _isRun(){try{return ("__LV_RUN__"==="1")||/[?&]run=1/.test(location.search)||/\/hook\/run(\/|$|\?)/.test(location.pathname)||document.documentElement.classList.contains('run-boot')||(document.body&&document.body.classList.contains('run'));}catch(_){return false;}}
+    function _isRun(){try{return ((window.LVCFG&&window.LVCFG.run)==="1")||/[?&]run=1/.test(location.search)||/\/hook\/run(\/|$|\?)/.test(location.pathname)||document.documentElement.classList.contains('run-boot')||(document.body&&document.body.classList.contains('run'));}catch(_){return false;}}
     window.addEventListener('error',function(e){
       // opaque cross-origin "Script error." (ohne Datei/Zeile) tragen keine Info -> ignorieren; im Run/Kiosk gar keine Diagnose-Box
       if((!e.filename||!e.lineno)&&(!e.message||/script error/i.test(e.message)))return;
