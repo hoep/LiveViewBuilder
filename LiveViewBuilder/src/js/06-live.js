@@ -123,7 +123,11 @@
     add(w.ilhBadgeVid);add(w.ilhSubVid);add(w.ilfVid);   // Info-Liste: Kopf- und Fusszeile
     add(w.stufeVid);add(w.zeileVid);add(w.zeile2Vid);    // Zustandskachel: Stufe und die zwei Zeilen
     add(w.motionVid);                                    // Leuchtenzeile: Praesenzmelder - liegt zwar auch in w.items, das wird aber erst beim Aufbau gefuellt
-    add(w.thPresVar);add(w.thHeatVar);add(w.thArmVar); // Thermostat-Raumkarte: Heizprofil, Ventil-/Statusquelle, „scharf" - ohne sie wuerden diese IDs nie gepollt
+    add(w.thPresVar);add(w.thHeatVar);add(w.thArmVar);
+    // Thermostat-Klimateil: ohne diese Zeile blieben Betriebsart, Luefter und die
+    // Schaltzustaende dauerhaft leer - sie werden sonst nirgends gepollt.
+    add(w.thAcPower);add(w.thAcMode);add(w.thAcFan);add(w.thAcSwing);
+    add(w.thAcLevel);add(w.thAcPreset);add(w.thAcIon); // Thermostat-Raumkarte: Heizprofil, Ventil-/Statusquelle, „scharf" - ohne sie wuerden diese IDs nie gepollt
     // Fortschrittsbalken je Zeile - und die Schaltvariable: ohne sie im Kanal
     // wuesste "Wert leer = umschalten" nicht, was gerade an ist.
     if(w.items)w.items.forEach(function(o){if(o){add(o.progVid);add(o.actVid);add(o.act2Vid);add(o.pillVid);add(o.subVid);}});

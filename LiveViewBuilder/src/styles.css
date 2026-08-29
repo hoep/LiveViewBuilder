@@ -3887,3 +3887,42 @@
         background:rgba(127,146,150,.10);border:1px solid var(--line);color:var(--muted)}
 .stre{text-align:right;font-family:var(--fm);font-size:10px;color:var(--muted);line-height:1.35}
 .stgr{display:block;font-size:15px;color:var(--warm);font-weight:600}
+
+/* ---- Thermostat-Raumkarte: Klimabedienung -------------------------------
+   Sitzt unter dem Sollwert und erscheint nur, wenn Klimavariablen gebunden
+   sind. Eine reine Heizungskarte sieht damit aus wie zuvor. */
+.thk-ac{border-top:1px solid var(--line-soft);margin:9px -2px 0;padding-top:8px}
+.thk-ac.aus{opacity:.55}
+.thk-aclab{font-size:9.5px;color:var(--faint);letter-spacing:.09em;margin-bottom:5px}
+.thk-acseg{display:flex;gap:4px}
+.thk-acs{flex:1;min-width:0;padding:6px 2px;border-radius:8px;font-size:10px;line-height:1.15;
+         background:rgba(255,255,255,.03);border:1px solid transparent;color:var(--muted);
+         cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.thk-acs.an{background:rgba(0,205,171,.16);border-color:rgba(0,205,171,.45);color:var(--accent);font-weight:600}
+.thk-acs.an.kuehl{background:rgba(74,168,255,.18);border-color:rgba(74,168,255,.5);color:var(--info)}
+.thk-acs.an.heiz{background:rgba(242,178,60,.18);border-color:rgba(242,178,60,.5);color:var(--warm)}
+.thk-acrow{display:flex;gap:6px;margin-top:8px;align-items:center}
+.thk-acbtn{flex:none;min-width:34px;height:30px;padding:0 8px;border-radius:9px;
+           border:1px solid var(--line);background:rgba(255,255,255,.02);color:var(--muted);
+           font-size:12px;cursor:pointer;display:grid;place-items:center}
+.thk-acbtn.wide{min-width:44px;font-size:10.5px}
+.thk-acbtn.an{background:rgba(0,205,171,.16);border-color:rgba(0,205,171,.45);color:var(--accent)}
+.thk-acfan{flex:1;min-width:0;display:flex;gap:3px;align-items:center;height:30px;padding:0 8px;
+           border-radius:9px;border:1px solid var(--line);background:rgba(255,255,255,.02)}
+.thk-acfan i{font-style:normal;font-size:10px;color:var(--faint);margin-right:3px}
+.thk-acfan b{font-size:10.5px;color:var(--accent);font-weight:600;margin-left:5px;
+             overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.thk-acbal{width:4px;border-radius:2px;background:#26343a;cursor:pointer;flex:none}
+.thk-acbal.an{background:var(--accent)}
+/* Beim Kuehlen faerbt sich die Sollanzeige blau, beim Heizen warm - dieselbe
+   Sprache wie der Balken, damit die Richtung ohne Lesen erkennbar ist. */
+.thk.ac-kuehl .thk-tval{color:var(--info)}
+.thk.ac-heiz  .thk-tval{color:var(--warm)}
+.thk.ac-kuehl .thk-fill{background:var(--info)}
+.thk.ac-heiz  .thk-fill{background:var(--warm)}
+/* Betriebsart: Symbol oben, Text darunter - so passt auch "Ventilator" in eine
+   schmale Kachel, ohne abgeschnitten zu werden. */
+.thk-acs{display:flex;flex-direction:column;align-items:center;gap:2px;white-space:normal;line-height:1.05}
+.thk-acs svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.6}
+.thk-acs span{font-size:9px;display:block;max-width:100%;overflow:hidden}
+.thk-acbtn svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.6}
