@@ -486,6 +486,7 @@
       if (geo) ssAttrib(ctx, W, Hs, K, pal, 0, w);
       ssSunDisc(ctx, cam, K, sun, clrE, w, cloud);
       ssFlugzeuge(ctx, cam, w, day);       // Flugzeuge auf der Kuppel (zuschaltbar)
+      ssSatelliten(ctx, cam, w, day);      // Satelliten auf der Kuppel (zuschaltbar)
       // Fuer die Kopfzeile die GEMESSENE Klarheit (Strahlung gegen Klarhimmelwert), nicht clrE.
       // clrE ist durch die Bewoelkung gedeckelt und steuert Halo, Dunst und Schattenhaerte -
       // als Text neben dem W/m2-Wert war es irrefuehrend: 310 von 423 W/m2 sind 73 % klar,
@@ -1169,6 +1170,34 @@
       ctx.lineTo(-1.6 * s, 2.2 * s); ctx.lineTo(-9.5 * s, 5.2 * s); ctx.lineTo(-9.5 * s, 3.2 * s);
       ctx.lineTo(-1.6 * s, -3.5 * s);
       ctx.closePath();
+    }
+
+    /* Satelliten auf der Kuppel - nur die SICHTBAREN.
+     *
+     * Ein Satellit ist nur zu sehen, wenn er im Sonnenlicht steht, waehrend hier
+     * Dunkelheit herrscht. Genau das prueft satJetzt(); ohne diesen Filter waeren
+     * es zwanzig Punkte, von denen man keinen am Himmel findet. Tagsueber bleibt
+     * die Ebene deshalb von allein leer - das ist kein Fehler, das ist Physik.
+     */
+    function ssSatelliten(ctx, cam, w, day) {
+      if (!_covOn2(w, 'ssSats', false)) { return; }
+      if (typeof satJetzt !== 'function') { return; }
+      satJetzt(w.ssSatGroup || 'stations', ssGeo(w), function (L) {
+        L.forEach(function (s) {
+          if (!s.sichtbar || s.el < 6) { return; }
+          var q = ssSky3(cam, s.az, s.el, cam.skyR);
+          if (!q) { return; }
+          var sk = Math.max(0.6, Math.min(1.6, cam.skyR / 90));
+          ctx.save();
+          ctx.beginPath(); ctx.arc(q.x, q.y, 2.6 * sk, 0, 7);
+          ctx.fillStyle = '#ffffff'; ctx.shadowColor = '#dfe9ea'; ctx.shadowBlur = 12 * sk; ctx.fill();
+          ctx.shadowBlur = 0;
+          ctx.font = '600 ' + Math.max(8, 10 * sk) + 'px ui-monospace,monospace';
+          ctx.fillStyle = 'rgba(223,233,234,.85)';
+          ctx.fillText(s.name, q.x + 9 * sk, q.y + 3);
+          ctx.restore();
+        });
+      });
     }
 
     function ssMoonDisc(ctx, cam, K, sun, day, w, cloud) {
@@ -2424,6 +2453,8 @@
         // Die Bodenebene hier hat 55 m Radius, die Flugszene braucht 30 000.
         h += row('Flugzeuge', '<input type="checkbox" id="ssFlights"' + (_covOn2(w, 'ssFlights', false) ? ' checked' : '')
               + '> <span style="font-size:11px;color:var(--muted)">auf der Himmelskuppel, nachts als Positionslichter</span>');
+        h += row('Satelliten', '<input type="checkbox" id="ssSats"' + (_covOn2(w, 'ssSats', false) ? ' checked' : '')
+              + '> <span style="font-size:11px;color:var(--muted)">nur sichtbare Überflüge, also nur in der Dämmerung</span>');
         if (_covOn2(w, 'ssFlights', false)) {
           h += row('Umkreis (km)', '<input id="ssFlightR" type="number" min="5" max="200" style="width:80px" value="' + ssNum(w.ssFlightR, 30) + '">')
             + row('Rufzeichen', '<input type="checkbox" id="ssFlightLbl"' + (w.ssFlightLbl !== false ? ' checked' : '') + '>');
@@ -2473,7 +2504,7 @@
         });
         [['ssRay', 'ssRay'], ['ssInfo', 'ssInfo'], ['ssCompass', 'ssCompass'], ['ssPlot', 'ssPlot'],
          ['ssBuildings', 'ssBuildings'], ['ssOwnFromOsm', 'ssOwnFromOsm'], ['ssBldRoof', 'ssBldRoof'],
-         ['ssMoon', 'ssMoon'], ['ssFlights', 'ssFlights'], ['ssFlightLbl', 'ssFlightLbl'], ['ssStars', 'ssStars'], ['ssStrip', 'ssStrip'], ['ssEnChip', 'ssEnChip'], ['ssEnAnim', 'ssEnAnim'], ['ssWeather', 'ssWeather']].forEach(function (o) {
+         ['ssMoon', 'ssMoon'], ['ssFlights', 'ssFlights'], ['ssFlightLbl', 'ssFlightLbl'], ['ssSats', 'ssSats'], ['ssStars', 'ssStars'], ['ssStrip', 'ssStrip'], ['ssEnChip', 'ssEnChip'], ['ssEnAnim', 'ssEnAnim'], ['ssWeather', 'ssWeather']].forEach(function (o) {
           var e = $('#' + o[0]); if (e) e.onchange = function () { w[o[1]] = this.checked; up(); };
         });
         if ($('#ssFlightR')) $('#ssFlightR').onchange = function () { w.ssFlightR = parseInt(this.value) || 30; up(); };
