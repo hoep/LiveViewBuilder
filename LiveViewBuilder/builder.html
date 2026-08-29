@@ -3133,7 +3133,12 @@ background:rgba(127,146,150,.10);border:1px solid var(--line);color:var(--muted)
 .stre{text-align:right;font-family:var(--fm);font-size:10px;color:var(--muted);line-height:1.35}
 .stgr{display:block;font-size:15px;color:var(--warm);font-weight:600}
 .thk-ac{border-top:1px solid var(--line-soft);margin:9px -2px 0;padding-top:8px}
-.thk-ac.aus{opacity:.55}
+.thk-ac.aus .thk-acseg,
+.thk-ac.aus .thk-acfan,
+.thk-ac.aus .thk-aclab,
+.thk-ac.aus [data-role=acextra],
+.thk-ac.aus [data-role=acswing]{opacity:.5}
+.thk-ac.aus [data-role=acpower]{opacity:1;border-color:rgba(0,205,171,.45);color:var(--accent)}
 .thk-aclab{font-size:9.5px;color:var(--faint);letter-spacing:.09em;margin-bottom:5px}
 .thk-acseg{display:flex;gap:4px}
 .thk-acs{flex:1;min-width:0;padding:6px 2px;border-radius:8px;font-size:10px;line-height:1.15;
