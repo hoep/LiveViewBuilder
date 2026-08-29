@@ -458,11 +458,17 @@
     else if(w.type==='multiring'){setMultiring(w);}
     else if(w.type==='waterfall'||w.ctype==='waterfall'){setWaterfall(w);} // Live-Werte, KEINE Historie
     else if(w.ctype==='pie'||w.ctype==='donut'){renderChartData(w);}
-    // An den Umschalter der Kennzahlen-Matrix anmelden: wechselt dort die Ansicht,
-    // holt das Diagramm seine Zeile aus der anderen Tabelle.
-    if(w.chTblA&&w.chSession&&typeof mxOn==='function')
-      mxOn(w.chSession,function(){delete _hist[w.id];fetchHist(w);});
-    else{ fetchHist(w); } // immer frisch laden (auch ctype 'spark') (Query ~2ms); _hist-Cache ist wegen seiten-kollidierender IDs nicht verlaesslich
+    else{
+      // ACHTUNG: Dieser Zweig MUSS das Ende der else-Kette bleiben. Stand er als
+      // eigenes if daneben, lief er auch fuer Gauges, Sankey und Meteogramm -
+      // die holten dann Historie und renderChartData fiel auf setLine zurueck,
+      // sodass kurz eine Linie ueber der Gauge lag (29.08.2026).
+      // An den Umschalter der Kennzahlen-Matrix anmelden: wechselt dort die
+      // Ansicht, holt das Diagramm seine Zeile aus der anderen Tabelle.
+      if(w.chTblA&&w.chSession&&typeof mxOn==='function')
+        mxOn(w.chSession,function(){delete _hist[w.id];fetchHist(w);});
+      fetchHist(w); // immer frisch laden (auch ctype 'spark'); _hist-Cache ist wegen seiten-kollidierender IDs nicht verlaesslich
+    }
   }
   // Per-Zustand-Styling (Ein/Aus) fuer button/tile — IPSView ToggleButton/Value-Button
   function applyBtnState(w,el,on){
