@@ -1548,7 +1548,27 @@
         st.bearing = ((st.drag.b - dx * 0.4) % 360 + 360) % 360;
         e.preventDefault(); ssDraw(w, el);
       };
-      function up(e) { if (st.drag) { st.drag = null; try { box.releasePointerCapture(e.pointerId); } catch (_) {} ssSaveView(w); } }
+      /* Nach einem echten Zug den folgenden Klick verschlucken.
+       *
+       * Das Drehen laeuft ueber Zeiger-Ereignisse, ein hinterlegtes Seitenziel
+       * (navTo) ueber 'click'. Ohne diesen Riegel wuerde jedes Drehen der Kamera
+       * auch die verlinkte Seite oeffnen - man koennte die Szene nicht mehr
+       * bedienen, ohne sie zu verlassen. Vier Pixel Toleranz, damit ein
+       * zitteriger Klick weiterhin als Klick zaehlt. */
+      function up(e) {
+        if (st.drag) {
+          var gezogen = !st.drag.time
+            && (Math.abs((e.clientX || 0) - st.drag.x) > 4 || Math.abs((e.clientY || 0) - st.drag.y) > 4);
+          st.drag = null;
+          try { box.releasePointerCapture(e.pointerId); } catch (_) {}
+          ssSaveView(w);
+          if (gezogen) {
+            var schluck = function (ev) { ev.stopPropagation(); ev.preventDefault(); };
+            box.addEventListener('click', schluck, { capture: true, once: true });
+            setTimeout(function () { box.removeEventListener('click', schluck, true); }, 350);
+          }
+        }
+      }
       box.onpointerup = up; box.onpointercancel = up;
 
       // Mausrad zoomt den Umkreis. Nur wenn das Widget schon gedreht/bedient wurde oder
