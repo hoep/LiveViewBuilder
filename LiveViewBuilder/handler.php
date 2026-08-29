@@ -32,6 +32,7 @@ if ($api === 'asset') {
     // Beide tragen den Inhalts-Hash in der Adresse, deshalb duerfen sie lange gelten.
     $files = ['echarts' => $DIR . '/assets/echarts.min.js',
               'dokudata' => $DIR . '/src/js/12-doku-data.js',
+              'satjs' => $DIR . '/assets/satellite.min.js',
               'app' => $DIR . '/assets/app.js',
               'run' => $DIR . '/assets/run.js'];
     if (!isset($files[$name]) || !is_file($files[$name])) {
@@ -75,6 +76,46 @@ if ($api === 'asset') {
     }
     header('Content-Length: ' . strlen($blob));
     echo $blob;
+    return;
+}
+
+// ---- Bahnelemente fuer Satelliten (Celestrak) ----
+//
+// Anders als beim Flugverkehr holen wir hier KEINE Positionen, sondern
+// Bahnelemente - daraus rechnet der Browser die Position selbst (SGP4). Das hat
+// drei Vorteile: kein Abfragekontingent, eine fluessige Bewegung statt Spruengen,
+// und man kann in die Zukunft rechnen, was die Ueberflugvorhersage erst moeglich
+// macht. Die Elemente aendern sich taeglich, nicht sekuendlich - zwoelf Stunden
+// Zwischenspeicher genuegen und halten Celestrak von unnoetiger Last frei.
+if ($api === 'tle') {
+    header('Content-Type: text/plain; charset=utf-8');
+    $g = preg_replace('/[^a-z0-9-]/i', '', (string) ($_GET['group'] ?? 'stations'));
+    if ($g === '') { $g = 'stations'; }
+    $datei = $DATADIR . '/tle-' . $g . '.txt';
+    if (is_file($datei) && (time() - (int) @filemtime($datei)) < 43200) {
+        header('Cache-Control: private, max-age=3600');
+        readfile($datei);          // wenige Kilobyte - hier ist readfile unbedenklich
+        return;
+    }
+    $ch = curl_init();
+    curl_setopt_array($ch, [
+        CURLOPT_URL => 'https://celestrak.org/NORAD/elements/gp.php?GROUP=' . rawurlencode($g) . '&FORMAT=tle',
+        CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 25,
+        CURLOPT_HTTPHEADER => ['User-Agent: IP-Symcon LiveViewBuilder']]);
+    $a = curl_exec($ch);
+    $code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    if ($code === 200 && strlen((string) $a) > 100) {
+        @file_put_contents($datei, $a);
+        header('Cache-Control: private, max-age=3600');
+        echo $a;
+        return;
+    }
+    // Bei Stoerung den alten Stand weiterreichen - Bahnelemente altern langsam,
+    // ein Tag alte Daten sind allemal besser als eine leere Kachel.
+    if (is_file($datei)) { readfile($datei); return; }
+    http_response_code(502);
+    echo '# celestrak HTTP ' . $code;
     return;
 }
 

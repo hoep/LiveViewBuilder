@@ -321,6 +321,21 @@
             g.fillText(f.ruf || '—', x + 10, y + 3);
           }
         });
+        // Sichtbare Satelliten kommen in dieselbe Kuppel - dieselbe Frage,
+        // dieselbe Antwort: wohin muss ich schauen.
+        if (w.flSats && typeof satJetzt === 'function') {
+          satJetzt('stations', { lat: 48.0657, lon: 14.1241 }, function (L) {
+            L.forEach(function (s) {
+              if (!s.sichtbar) { return; }
+              var a2 = s.az * Math.PI / 180, r2 = rad * (90 - s.el) / 90;
+              var sx = cx + Math.sin(a2) * r2, sy = cy - Math.cos(a2) * r2;
+              g.beginPath(); g.arc(sx, sy, 4, 0, 7);
+              g.fillStyle = '#fff'; g.shadowColor = '#fff'; g.shadowBlur = 10; g.fill(); g.shadowBlur = 0;
+              g.font = '600 9.5px ' + (cssv('--fm') || 'monospace'); g.fillStyle = '#fff';
+              g.fillText(s.name, sx + 9, sy + 3);
+            });
+          });
+        }
       };
       flLade(flRadius(w), function () { zeichne(); });
       flBeobachte(w, zeichne); flTakt(w, zeichne); zeichne();
@@ -328,11 +343,13 @@
     },
     props: function (w) {
       return row('Umkreis (km)', '<input id="pFsR" type="number" min="5" max="200" value="' + (w.flRadius || 30) + '">')
-        + row('Rufzeichen zeigen', '<input type="checkbox" id="pFsL"' + (w.flLabels !== false ? ' checked' : '') + '>');
+        + row('Rufzeichen zeigen', '<input type="checkbox" id="pFsL"' + (w.flLabels !== false ? ' checked' : '') + '>')
+        + row('Satelliten', '<input type="checkbox" id="pFsS"' + (w.flSats ? ' checked' : '') + '> <span style="font-size:11px;color:var(--muted)">sichtbare Überflüge mit einzeichnen</span>');
     },
     wire: function (w) {
       if ($('#pFsR')) $('#pFsR').onchange = function () { w.flRadius = parseInt(this.value) || 30; render(); commit(); };
       if ($('#pFsL')) $('#pFsL').onchange = function () { w.flLabels = this.checked; render(); commit(); };
+      if ($('#pFsS')) $('#pFsS').onchange = function () { w.flSats = this.checked || undefined; render(); commit(); };
     }
   });
 
