@@ -41,6 +41,86 @@
       .catch(function () { (_flWarte[r] || []).forEach(function (f) { try { f(_flCache[r] || null); } catch (e) {} }); delete _flWarte[r]; });
   }
 
+  /* ICAO-Musterkennung in einen lesbaren Namen uebersetzen.
+   *
+   * adsbdb liefert die amtliche Kennung: "A20N", "B738", "B77W". Das ist korrekt,
+   * aber niemand liest daraus einen A320neo, eine 737-800 oder eine 777-300ER.
+   * Die Tabelle deckt den europaeischen Verkehr ab; alles andere faellt auf die
+   * Kennung zurueck, damit nie etwas Falsches behauptet wird.
+   */
+  var _FL_MUSTER = {
+    // Airbus
+    A19N:'A319neo', A20N:'A320neo', A21N:'A321neo',
+    A318:'A318', A319:'A319', A320:'A320', A321:'A321',
+    A332:'A330-200', A333:'A330-300', A338:'A330-800neo', A339:'A330-900neo',
+    A342:'A340-200', A343:'A340-300', A345:'A340-500', A346:'A340-600',
+    A359:'A350-900', A35K:'A350-1000', A388:'A380-800',
+    A124:'Antonov An-124', A225:'Antonov An-225',
+    // Boeing
+    B37M:'737 MAX 7', B38M:'737 MAX 8', B39M:'737 MAX 9', B3XM:'737 MAX 10',
+    B733:'737-300', B734:'737-400', B735:'737-500',
+    B736:'737-600', B737:'737-700', B738:'737-800', B739:'737-900',
+    B741:'747-100', B742:'747-200', B743:'747-300', B744:'747-400', B748:'747-8',
+    B752:'757-200', B753:'757-300',
+    B762:'767-200', B763:'767-300', B764:'767-400',
+    B772:'777-200', B77L:'777-200LR', B773:'777-300', B77W:'777-300ER', B778:'777-8', B779:'777-9',
+    B788:'787-8', B789:'787-9', B78X:'787-10',
+    // Embraer
+    E135:'ERJ 135', E145:'ERJ 145', E170:'E170', E175:'E175', E190:'E190', E195:'E195',
+    E290:'E190-E2', E295:'E195-E2', E545:'Legacy 450', E550:'Legacy 500', E55P:'Phenom 300',
+    // Bombardier / Airbus Canada
+    BCS1:'A220-100', BCS3:'A220-300',
+    CRJ2:'CRJ200', CRJ7:'CRJ700', CRJ9:'CRJ900', CRJX:'CRJ1000',
+    DH8A:'Dash 8-100', DH8C:'Dash 8-300', DH8D:'Dash 8 Q400',
+    GLEX:'Global Express', GL5T:'Global 5000', GLF4:'Gulfstream IV', GLF5:'Gulfstream V', GLF6:'Gulfstream G650',
+    CL30:'Challenger 300', CL35:'Challenger 350', CL60:'Challenger 600',
+    // ATR und Turboprop
+    AT43:'ATR 42-300', AT45:'ATR 42-500', AT72:'ATR 72', AT75:'ATR 72-500', AT76:'ATR 72-600',
+    SB20:'Saab 2000', SF34:'Saab 340', PC12:'Pilatus PC-12', PC24:'Pilatus PC-24',
+    TBM7:'TBM 700', TBM8:'TBM 850', TBM9:'TBM 900',
+    // Kleinflugzeuge und Geschaeftsreise
+    C172:'Cessna 172', C182:'Cessna 182', C206:'Cessna 206', C208:'Cessna Caravan',
+    C25A:'Citation CJ2', C25B:'Citation CJ3', C25C:'Citation CJ4', C510:'Citation Mustang',
+    C525:'CitationJet', C550:'Citation II', C560:'Citation V', C56X:'Citation Excel', C68A:'Citation Latitude',
+    P28A:'Piper Cherokee', P28R:'Piper Arrow', PA31:'Piper Navajo', PA34:'Piper Seneca', PA46:'Piper Malibu',
+    DA40:'Diamond DA40', DA42:'Diamond DA42', DA62:'Diamond DA62', DV20:'Diamond Katana',
+    SR20:'Cirrus SR20', SR22:'Cirrus SR22', BE20:'King Air 200', BE9L:'King Air 90', B350:'King Air 350',
+    LJ35:'Learjet 35', LJ45:'Learjet 45', LJ60:'Learjet 60', LJ75:'Learjet 75',
+    F2TH:'Falcon 2000', FA7X:'Falcon 7X', FA8X:'Falcon 8X', F900:'Falcon 900',
+    H25B:'Hawker 800', HDJT:'HondaJet',
+    // Hubschrauber
+    EC20:'Eurocopter EC120', EC25:'Eurocopter EC225', EC30:'Airbus H130', EC35:'Airbus H135',
+    EC45:'Airbus H145', EC55:'Airbus H155', AS50:'Ecureuil', AS55:'Twin Squirrel',
+    B06:'Bell 206', B407:'Bell 407', B412:'Bell 412', B429:'Bell 429',
+    R22:'Robinson R22', R44:'Robinson R44', R66:'Robinson R66',
+    // Fracht und Sonstiges
+    MD11:'MD-11', B461:'BAe 146-100', B462:'BAe 146-200', B463:'BAe 146-300',
+    SW4:'Metroliner', L410:'Let L-410', AN26:'Antonov An-26', AN12:'Antonov An-12',
+    C130:'C-130 Hercules', A400:'Airbus A400M', C17:'C-17 Globemaster'
+  };
+  function flMusterName(typ) {
+    if (!typ) { return ''; }
+    var t = String(typ).toUpperCase();
+    return _FL_MUSTER[t] || t;
+  }
+  /* Herstellernamen kuerzen. adsbdb liefert die Firmierung, nicht die Marke:
+     "Airbus Canada Limited Partnership", "The Boeing Company". In eine 86 px
+     breite Spalte passt das nicht, und gemeint ist ohnehin die Marke. */
+  function flHersteller(h) {
+    if (!h) { return ''; }
+    var t = String(h)
+      .replace(/^The\s+/i, '')
+      .replace(/\s*\b(Limited|Ltd|Partnership|Company|Corporation|Corp|Incorporated|Inc|GmbH|PLC|Industrie[sn]?|Aircraft|Aviation|Aerospace|Group|Werke)\b.*$/i, '')
+      .replace(/[\s,]*\bS\.?\s?A\.?(S\.?)?$/i, '')      // Embraer S.A., Dassault S.A.S
+      .replace(/[\s,]*\bN\.?\s?V\.?$/i, '')
+      .trim();
+    if (t.length <= 16) { return t; }
+    // Kuerzen, aber nicht sinnentstellend: bei einem sehr kurzen ersten Wort
+    // gehoert das zweite dazu, sonst wird aus "De Havilland Canada" ein "De".
+    var teile = t.split(/\s+/);
+    return (teile[0].length <= 3 && teile[1]) ? (teile[0] + ' ' + teile[1]) : teile[0];
+  }
+
   /* Bauart aus Tempo und Hoehe geschaetzt. OpenSky liefert die Kategorie praktisch
      nie - bei einer Stichprobe am 29.08.2026 stand sie bei 17 von 18 Maschinen auf
      "unbekannt", und der Metadaten-Endpunkt ist seit 2026 abgeschaltet (HTTP 410). */
@@ -170,8 +250,16 @@
   }
   function flCanvas(box) {
     var c = box.firstElementChild, dpr = Math.min(2.5, window.devicePixelRatio || 1);
+    /* clientWidth/-Height, NICHT getBoundingClientRect().
+     *
+     * Im mobilen Umbruch wird die Kachel per CSS-Transformation verkleinert.
+     * getBoundingClientRect() liefert dann das Mass NACH der Skalierung - die
+     * Leinwand bekam eine zu kleine Breite zugewiesen, schrumpfte dadurch
+     * weiter und sass als kleines Bild in der linken oberen Ecke ihrer Kachel.
+     * clientWidth ist das Layoutmass und von der Transformation unberuehrt. */
     var r = box.getBoundingClientRect();
-    var W = Math.max(60, Math.round(r.width)), H = Math.max(50, Math.round(r.height));
+    var W = Math.max(60, Math.round(box.clientWidth || r.width));
+    var H = Math.max(50, Math.round(box.clientHeight || r.height));
     if (c.width !== W * dpr || c.height !== H * dpr) {
       c.width = W * dpr; c.height = H * dpr; c.style.width = W + 'px'; c.style.height = H + 'px';
     }
@@ -474,9 +562,9 @@
             + '<div><div class="flruf" style="color:' + col + '">' + esc(f.ruf || '—') + '</div>'
             + (f.linie ? '<div class="fllin" title="' + esc(f.linie) + '">' + esc(f.linie) + '</div>' : '')
             + (f.typ
-                ? '<div class="flmus" title="' + esc((f.hersteller ? f.hersteller + ' ' : '') + (f.muster || f.typ)
-                    + (f.kennung ? ' · ' + f.kennung : '')) + '">' + esc(f.typ)
-                  + (f.hersteller ? ' <span style="opacity:.7">' + esc(f.hersteller) + '</span>' : '') + '</div>'
+                ? '<div class="flmus" title="' + esc(f.typ + (f.muster ? ' · ' + f.muster : '')
+                    + (f.hersteller ? ' · ' + f.hersteller : '') + (f.kennung ? ' · ' + f.kennung : '')) + '">'
+                  + esc((f.hersteller ? flHersteller(f.hersteller) + ' ' : '') + flMusterName(f.typ)) + '</div>'
                 : '<div class="flk">' + ({ jet: 'Jet', prop: 'Propeller', heli: 'Hubschr.' }[art]) + '</div>')
             + '</div>'
             + '<div>' + route + '<div class="flm"><b>' + (p.alt / 1000).toFixed(1) + '</b> km · <b>'
