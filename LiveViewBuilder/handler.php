@@ -757,6 +757,52 @@ if ($api === 'epg') {
 // ---- Bauzeitstempel allein: winzige Antwort, damit die Laufzeit merkt, dass es einen
 // neuen Stand gibt. Eigener Endpunkt, weil der Wertabruf bei stehendem WebSocket ganz
 // ausgesetzt wird (noSafetyPoll) - eine Pruefung, die daran haengt, liefe dann nie.
+// ---- Selbstpruefung fuer das Endgeraet ----
+// Serverseitig laesst sich alles messen; was auf einem iPhone hinter Proxy und VPN
+// wirklich ankommt, nicht. Diese Seite fuehrt im BROWSER dieselben Abrufe aus wie
+// die Anwendung und schreibt Zeiten und Fehler gross hin - lesbar ohne Werkzeuge.
+if ($api === 'selftest') {
+    header('Content-Type: text/html; charset=utf-8');
+    header('Cache-Control: no-store');
+    $tok = htmlspecialchars($TOKEN, ENT_QUOTES);
+    $bld = (int) @filemtime(__DIR__ . '/builder.html');
+    $bn  = is_file(__DIR__ . '/assets/run.js') ? 'run' : 'app';
+    $bh  = json_decode((string) @file_get_contents(__DIR__ . '/assets/bundles.json'), true);
+    $bv  = is_array($bh) ? (string) ($bh[$bn] ?? '') : '';
+    $stat = is_file('/usr/share/symcon/tile/lvb/' . $bn . '-' . $bv . '.js');
+    $burl = $stat ? ('/tile/lvb/' . $bn . '-' . $bv . '.js') : ('?api=asset&name=' . $bn . '&v=' . $bv);
+    echo '<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
+       . '<title>LVB Selbstpruefung</title><style>body{background:#0d1315;color:#e7eef0;font:15px/1.5 -apple-system,system-ui,sans-serif;margin:0;padding:14px}'
+       . 'h1{font-size:17px;margin:0 0 10px}div.z{display:flex;justify-content:space-between;gap:10px;padding:7px 9px;border:1px solid #25333a;border-radius:8px;margin-bottom:6px;background:#141c1f}'
+       . 'b{font-family:ui-monospace,monospace}.ok{color:#39d08a}.bad{color:#f2685a}.w{color:#f2b441}</style>'
+       . '<h1>LiveViewBuilder &middot; Selbstpr&uuml;fung</h1><div id=o></div>'
+       . '<script>var T="' . $tok . '",BLD=' . $bld . ',BURL="' . $burl . '";'
+       . 'var o=document.getElementById("o");'
+       . 'function z(n,t,k){o.insertAdjacentHTML("beforeend","<div class=z><span>"+n+"</span><b class="+(k||"")+">"+t+"</b></div>");}'
+       . 'function ms(a){return Math.round(performance.now()-a)+" ms";}'
+       . 'async function hol(n,u,opt){var a=performance.now();try{var r=await fetch(u,{cache:"no-store"});'
+       . 'var b=await r.text();z(n,r.status+" &middot; "+b.length+" B &middot; "+ms(a),r.ok?"ok":"bad");return b;}'
+       . 'catch(e){z(n,"FEHLER: "+e.message+" &middot; "+ms(a),"bad");return null;}}'
+       . 'z("Seite gebaut am",new Date(BLD*1000).toLocaleString());'
+       . 'z("Bildschirm",innerWidth+"x"+innerHeight+" &middot; dpr "+devicePixelRatio);'
+       . '(async function(){'
+       . 'var b=await hol("Bauversion (api=build)","?api=build&key="+T);'
+       . 'try{var j=JSON.parse(b);z("Server-Bauversion",new Date(j.build*1000).toLocaleString(),j.build===BLD?"ok":"w");}catch(e){}'
+       . 'await hol("Werte lesen (api=val)","?api=val&ids=1&key="+T);'
+       . 'await hol("Programmb&uuml;ndel",BURL);'
+       . 'await hol("echarts","?api=asset&name=echarts&key="+T);'
+       . 'await hol("Meldungen","?api=messages&key="+T);'
+       . 'var a=performance.now();'
+       . 'try{var wsu=(location.protocol==="https:"?"wss://"+location.host+"/wss":"ws://"+location.hostname+":8082/");'
+       . 'var ws=new WebSocket(wsu);var fertig=false;'
+       . 'ws.onopen=function(){fertig=true;z("WebSocket "+wsu,"offen &middot; "+ms(a),"ok");ws.close();};'
+       . 'ws.onerror=function(){if(!fertig)z("WebSocket "+wsu,"FEHLER &middot; "+ms(a),"bad");};'
+       . 'setTimeout(function(){if(!fertig)z("WebSocket "+wsu,"keine Antwort nach "+ms(a),"bad");},6000);'
+       . '}catch(e){z("WebSocket","FEHLER: "+e.message,"bad");}'
+       . '})();</script>';
+    return;
+}
+
 if ($api === 'build') {
     header('Content-Type: application/json; charset=utf-8');
     header('Cache-Control: no-store');
