@@ -182,6 +182,20 @@
   }
 
   var _stRO = {}, _stTick = {};
+  // Taktgeber MIT Selbstabschaltung - ausfuehrliche Begruendung in flightx-family.js
+  // (flTaktSicher). Kurz: der LiveViewBuilder hat keinen Abbau-Haken; ein Takt ohne
+  // eigene Pruefung laeuft nach einem Ansichtswechsel ewig weiter und rechnet
+  // Ueberfluege fuer eine Seite, die niemand mehr ansieht.
+  var _stDauer = {};
+  function stTaktSicher(w, name, ms, fn) {
+    var reg = _stDauer[w.id] || (_stDauer[w.id] = {});
+    if (reg[name]) { clearInterval(reg[name]); }
+    reg[name] = setInterval(function () {
+      var el = $('.w[data-id="' + w.id + '"]', canvas) || $('.w[data-id="' + w.id + '"]', $('#ovcanvas'));
+      if (!el) { clearInterval(reg[name]); delete reg[name]; return; }
+      fn();
+    }, ms);
+  }
   function stBox(w) {
     return $('.w[data-id="' + w.id + '"] [data-role=stbox]', canvas)
         || $('.w[data-id="' + w.id + '"] [data-role=stbox]', $('#ovcanvas'));
@@ -222,8 +236,7 @@
         }, w.stAll);
       };
       zeichne();
-      if (_stTick[w.id]) clearInterval(_stTick[w.id]);
-      _stTick[w.id] = setInterval(zeichne, 60000);
+      stTaktSicher(w, 'liste', 60000, zeichne);
     },
     props: function (w) {
       return row('Gruppe', '<select id="pStG"><option value="stations"' + ((w.stGroup || 'stations') === 'stations' ? ' selected' : '') + '>Raumstationen (ISS, Tiangong)</option>'
@@ -326,8 +339,7 @@
         if (_stRO[w.id]) { try { _stRO[w.id].disconnect(); } catch (e) {} }
         var ro = new ResizeObserver(zeichne); ro.observe(box); _stRO[w.id] = ro;
       }
-      if (_stTick[w.id]) clearInterval(_stTick[w.id]);
-      _stTick[w.id] = setInterval(zeichne, 2000);
+      stTaktSicher(w, 'kuppel', 2000, zeichne);
     },
     props: function (w) {
       return row('Gruppe', '<select id="pSkG"><option value="stations"' + ((w.stGroup || 'stations') === 'stations' ? ' selected' : '') + '>Raumstationen</option>'

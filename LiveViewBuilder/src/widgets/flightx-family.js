@@ -107,6 +107,34 @@
     g.shadowBlur = 0; g.restore();
   }
 
+  /**
+   * Taktgeber MIT Selbstabschaltung.
+   *
+   * Der LiveViewBuilder kennt keinen Abbau-Haken: Wechselt der Nutzer die Ansicht,
+   * verschwindet das Element aus dem Dokument, das Widget-Objekt bleibt bestehen. Ein
+   * setInterval ohne eigene Pruefung laeuft deshalb FUER IMMER weiter - auch auf Seiten,
+   * die niemand mehr ansieht.
+   *
+   * Genau das war der Abruftakt dieser Familie: `w._flPoll` wurde an drei Stellen gesetzt
+   * und nirgends beendet. Jeder Besuch der Flugseite hinterliess drei Takte, die alle
+   * 30 Sekunden ?api=flights abfragen - kumulativ, ueber alle Geraete. Am 30.08.2026 ist
+   * daran erst ein iPhone erstickt (Seite laedt vollstaendig, ist aber nicht bedienbar)
+   * und dann die Hook-Schicht des Servers: eine Antwort von 20 Byte brauchte 23 Sekunden,
+   * weil kein Thread mehr frei war.
+   *
+   * Deshalb prueft jeder Takt selbst, ob es sein Element noch gibt, und haengt sich sonst aus.
+   */
+  var _flDauer = {};
+  function flTaktSicher(w, name, ms, fn) {
+    var reg = _flDauer[w.id] || (_flDauer[w.id] = {});
+    if (reg[name]) { clearInterval(reg[name]); }
+    reg[name] = setInterval(function () {
+      var el = $('.w[data-id="' + w.id + '"]', canvas) || $('.w[data-id="' + w.id + '"]', $('#ovcanvas'));
+      if (!el) { clearInterval(reg[name]); delete reg[name]; return; }
+      fn();
+    }, ms);
+  }
+
   /** Gemeinsamer Zeichentakt einer Kachel - 5 Bilder je Sekunde. */
   function flTakt(w, zeichne) {
     if (_flTick[w.id]) { clearInterval(_flTick[w.id]); }
@@ -246,9 +274,7 @@
       };
       flLade(flRadius(w), function () { zeichne(); });
       flBeobachte(w, zeichne); flTakt(w, zeichne); zeichne();
-      if (!w._flPoll) {
-        w._flPoll = setInterval(function () { flLade(flRadius(w), null); }, 30000);
-      }
+      flTaktSicher(w, 'poll', 30000, function () { flLade(flRadius(w), null); });
     },
     props: function (w) {
       return row('Umkreis (km)', '<input id="pFlR" type="number" min="5" max="200" value="' + (w.flRadius || 30) + '">')
@@ -339,7 +365,7 @@
       };
       flLade(flRadius(w), function () { zeichne(); });
       flBeobachte(w, zeichne); flTakt(w, zeichne); zeichne();
-      if (!w._flPoll) { w._flPoll = setInterval(function () { flLade(flRadius(w), null); }, 30000); }
+      flTaktSicher(w, 'poll', 30000, function () { flLade(flRadius(w), null); });
     },
     props: function (w) {
       return row('Umkreis (km)', '<input id="pFsR" type="number" min="5" max="200" value="' + (w.flRadius || 30) + '">')
@@ -392,10 +418,9 @@
       };
       flLade(flRadius(w), function () { zeichne(); });
       flBeobachte(w, zeichne);
-      if (_flTick[w.id]) clearInterval(_flTick[w.id]);
-      _flTick[w.id] = setInterval(zeichne, 2000);      // Liste braucht keine 5 Bilder je Sekunde
+      flTaktSicher(w, 'liste', 2000, zeichne);   // Liste braucht keine 5 Bilder je Sekunde
       zeichne();
-      if (!w._flPoll) { w._flPoll = setInterval(function () { flLade(flRadius(w), null); }, 30000); }
+      flTaktSicher(w, 'poll', 30000, function () { flLade(flRadius(w), null); });
     },
     props: function (w) {
       return row('Umkreis (km)', '<input id="pFlLR" type="number" min="5" max="200" value="' + (w.flRadius || 30) + '">')
