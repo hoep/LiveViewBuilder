@@ -195,7 +195,13 @@
     var netz=(_flowMode(w)==='netz');
     var G=_energyGeo(w,netz?function(){return 2;}:null),pos=G.pos,els=w.elements||[];
     if(netz){var box=$('.w[data-id="'+w.id+'"]',canvas);
-      if(box)_nzFit(G,pos,box.clientWidth,box.clientHeight);}
+      if(box){
+      // Gezeichnet wird INNERHALB des Rands. Wer auf die volle Kachelhoehe
+      // einpasst, schiebt die aeusserste Reihe genau um diesen Rand hinaus -
+      // sichtbar am unteren Knoten, dessen Wertzeilen abgeschnitten blieben.
+      var PADf=(w.efPad!=null&&w.efPad!==''?+w.efPad:18);
+      _nzFit(G,pos,Math.max(40,box.clientWidth-2*PADf),Math.max(40,box.clientHeight-2*PADf),w);
+    }}
     var spread=(w.nzSpread!=null&&w.nzSpread!==''?+w.nzSpread:15);
     var s='<svg class="efsvg'+(netz?' efnetz':'')+'" viewBox="0 0 '+G.W+' '+G.H+'" preserveAspectRatio="xMidYMid meet">';
     els.forEach(function(e,i){var p=pos[i];if(!p)return;var col=_efCol(e.color);
@@ -285,18 +291,38 @@
       var t=_et(e.type),p=_efWatts(e.vid),mag=isNaN(p)?0:Math.abs(p),dir=_efDir(t,p),active=mag>1;
       var v1=$('[data-role=efval-'+i+']',el),v2=$('[data-role=efval2-'+i+']',el);
       if(netz){
-        var zu=_nzAn(e.sVid),tot=(zu===false);
+        var stufe=_nzStufe(e.sVid),tot=(stufe===0);
         nzGes++;if(!tot)nzAn++;
         var ring=$('[data-role=efring-'+i+']',el);
-        if(ring)ring.style.stroke=tot?'var(--crit)':_efCol(e.color);
-        var wv=e.vid?_lastVals[e.vid]:null;
-        if(v1)v1.textContent=wv?String(wv.f!=null&&wv.f!==''?wv.f:wv.v)
-                               :(tot?'offline':(zu===true?'online':'\u2013'));
-        if(v2)v2.textContent=_nzStand(e.sVid||e.vid);
-        // Beide Bahnen laufen, solange die Verbindung steht - und stehen still, wenn nicht.
+        if(ring)ring.style.stroke=tot?'var(--crit)':(stufe===1?'var(--warn)':_efCol(e.color));
+
+        // Zwei Richtungen, zwei Zeilen. vid = Empfang, vid2 = Senden.
+        var rx=_nzRate(e.vid),tx=_nzRate(e.vid2);
+        if(rx!=null||tx!=null){
+          if(v1)v1.textContent='\u2193 '+_nzFmt(rx);
+          if(v2)v2.textContent='\u2191 '+_nzFmt(tx);
+        }else{
+          var wv=e.vid?_lastVals[e.vid]:null;
+          if(v1)v1.textContent=wv?String(wv.f!=null&&wv.f!==''?wv.f:wv.v)
+                                 :(tot?'offline':(stufe!=null?'online':'\u2013'));
+          if(v2)v2.textContent=_nzStand(e.sVid||e.vid);
+        }
+
+        /* Bahntempo nach dem tatsaechlichen Verkehr.
+         *
+         * Bahn 0 zeigt den Empfang, Bahn 1 das Senden. Eine Rate von 0 heisst
+         * NICHT "Leitung tot" - ein ruhender Tunnel ist gesund. Deshalb laeuft
+         * die Bahn dann nur sehr langsam weiter statt zu verschwinden; sichtbar
+         * verschwindet sie erst, wenn der Handshake ausbleibt. */
         for(var k=0;k<2;k++){
           var nf=$('[data-role=efflow-'+i+'-'+k+']',el),nd=$('[data-role=efdot-'+i+'-'+k+']',el);
-          var ndur=(nzDur+(k?0.55:0)+(i%4)*0.18).toFixed(2)+'s';
+          var r=(k?tx:rx),ndur;
+          if(r==null){ndur=(nzDur+(k?0.55:0)+(i%4)*0.18).toFixed(2)+'s';}
+          else{
+            // 0 B/s -> 5,0 s, 1 MB/s -> 0,7 s, dazwischen logarithmisch
+            var f=Math.min(1,Math.log10(1+Math.max(0,r))/6);
+            ndur=(5.0-4.3*f).toFixed(2)+'s';
+          }
           [nf,nd].forEach(function(n){if(!n)return;n.style.opacity=tot?'0':'';n.style.animationDuration=ndur;});
         }
         return;
@@ -348,10 +374,14 @@
   // ihre Groesse - dadurch nutzt das Bild die ganze Flaeche und die Beschriftung bleibt
   // lesbar, statt auf einem schmalen Handy mitzuschrumpfen. Der Rand fuer Beschriftung und
   // Wertblock bleibt reserviert, gestreckt wird nur der Raum dazwischen.
-  function _nzFit(G,pos,bw,bh){
+  function _nzFit(G,pos,bw,bh,w){
     if(!(bw>0&&bh>0)||!G.W||!G.H)return;
     var ziel=bw/bh, ist=G.W/G.H;
-    if(Math.abs(ziel-ist)<0.02)return;
+    // KEIN vorzeitiger Ausstieg bei passendem Seitenverhaeltnis. Der Rand fuer
+    // Namen und Wertzeilen wird unten mitgerechnet - wer hier abbricht, laesst die
+    // Grundanordnung stehen, und die kennt diesen Rand nicht: der unterste Knoten
+    // stand dann mit seinen zwei Wertzeilen ueber der Kachelkante, egal wie hoch
+    // die Kachel war.
     var nW=G.W,nH=G.H;
     if(ziel>ist)nW=G.H*ziel; else nH=G.W/ziel;
     // Aus der TATSAECHLICHEN Ausdehnung der Knoten rechnen, nicht aus einem angenommenen
@@ -361,7 +391,17 @@
     pos.forEach(function(p){if(!p)return;n++;
       if(p.x<minx)minx=p.x;if(p.x>maxx)maxx=p.x;if(p.y<miny)miny=p.y;if(p.y>maxy)maxy=p.y;});
     if(!n)return;
-    var randX=_EF_RN+40, randY=_EF_RN+36;          // Kreis + mittige Beschriftung darueber
+    /* Der Rand muss das enthalten, was tatsaechlich gezeichnet wird - nicht eine
+     * runde Zahl. Ueber dem Kreis steht der Name (_efLabel setzt ihn auf -r-9,
+     * mehrzeilig weiter hinauf), darunter zwei Wertzeilen (r+13 und
+     * r+13+_EF_VLH). Mit einer pauschalen Reserve fiel im Netz-Modus regelmaessig
+     * die aeusserste Reihe heraus: dort sind BEIDE Wertzeilen belegt (Empfang und
+     * Senden), waehrend der Energiemodus meist nur eine braucht. */
+    var zeilen=1;
+    (w.elements||[]).forEach(function(e){var a2=_efLines(e&&e.name||'');if(a2.length>zeilen)zeilen=a2.length;});
+    var oben  = _EF_RN + 9 + zeilen*_EF_LH + 6;      // Name ueber dem Kreis, mit Oberlaenge
+    var unten = _EF_RN + 13 + _EF_VLH + 8;           // zwei Wertzeilen mit Unterlaenge
+    var randX = _EF_RN + 46, randY = Math.max(oben, unten);
     var halbX=Math.max(1,(maxx-minx)/2), halbY=Math.max(1,(maxy-miny)/2);
     var fx=Math.max(.5,Math.min(3,(nW/2-randX)/halbX)), fy=Math.max(.5,Math.min(3,(nH/2-randY)/halbY));
     var cx=(minx+maxx)/2, cy=(miny+maxy)/2, nx=nW/2, ny=nH/2;
@@ -403,6 +443,41 @@
     if(s<172800)return Math.round(s/3600)+' h';
     return Math.round(s/86400)+' d';
   }
+  /**
+   * Datenrate lesbar machen. Die Schnittstelle liefert BYTE je Sekunde, nicht Bit -
+   * eine Verwechslung waere ein Faktor acht.
+   */
+  function _nzRate(id){
+    var d=id&&_lastVals[id];if(!d)return null;
+    var b=parseFloat(d.v);if(isNaN(b))return null;
+    return b;
+  }
+  function _nzFmt(b){
+    if(b==null)return '\u2013';
+    if(b<1000)return Math.round(b)+' B/s';
+    if(b<1000000)return (b/1000).toFixed(b<10000?1:0)+' kB/s';
+    return (b/1000000).toFixed(b<10000000?1:0)+' MB/s';
+  }
+  /**
+   * Stufe der Verbindung: 2 verbunden, 1 traege, 0 getrennt, null unbekannt.
+   *
+   * Die Lebendigkeit haengt am Alter des letzten Handshakes, NICHT an der
+   * Datenrate: ein ruhender Tunnel ohne Verkehr ist kerngesund. Der Server
+   * uebersetzt das Alter bereits in die Stufe (Profil PV.Zustand).
+   */
+  function _nzStufe(id){
+    var d=id&&_lastVals[id];if(!d)return null;
+    var v=d.v;
+    if(v===2||v==='2')return 2;
+    if(v===1||v==='1'||v===true)return 2;      // altes Alive-Boolean: an = verbunden
+    if(v===0||v==='0'||v===false)return 0;
+    var t=String(v==null?'':v).trim().toLowerCase();
+    if(t==='verbunden'||t==='online'||t==='ok'||t==='an'||t==='true')return 2;
+    if(t==='tr\u00e4ge'||t==='traege'||t==='stale')return 1;
+    if(t==='getrennt'||t==='offline'||t==='aus'||t==='false')return 0;
+    return null;
+  }
+
   // Zustand tolerant lesen: die Alive-Variablen sind teils Boolean, teils Text
   // ("online"/"offline" ueber ein Profil). null = unbekannt - dann wird nichts behauptet.
   function _nzAn(id){
@@ -438,7 +513,7 @@
         +row('Rand / Knotenabstand','<input id="pEfPad" type="number" min="0" style="width:64px" value="'+(w.efPad!=null?w.efPad:18)+'"> <input id="pEfGap" type="number" min="0" style="width:64px" value="'+(w.efGap!=null?w.efGap:16)+'">')
         +'<div class="pgh">Verbindungen</div>'
         +'<div style="font-size:11px;color:var(--muted);margin:-2px 2px 5px">Die <b>Position</b> bestimmt die Seite. Die <b>Zustands-Variable</b> f&auml;rbt den Ring und h&auml;lt die Bahnen an, wenn sie aus ist; sie liefert auch die <b>Standzeit</b> in der zweiten Zeile. Die <b>Wert-Variable</b> ist optional und ersetzt dann online/offline in der ersten Zeile.</div>'
-        +listEditor(w,'elements','Position &middot; Name &middot; Icon &middot; Farbe &middot; Zustands-ID &middot; Wert-ID',[{k:'pos',type:'select',def:'rechts',options:[['oben','oben'],['links','links'],['rechts','rechts'],['unten','unten']]},{k:'name',ph:'Name'},{k:'icon',type:'icon'},{k:'color',type:'skincolor'},{k:'sVid',ph:'Zustand'},{k:'vid',ph:'Wert'}]);
+        +listEditor(w,'elements','Position &middot; Name &middot; Icon &middot; Farbe &middot; Zustand &middot; Empfang &middot; Senden',[{k:'pos',type:'select',def:'rechts',options:[['oben','oben'],['links','links'],['rechts','rechts'],['unten','unten']]},{k:'name',ph:'Name'},{k:'icon',type:'icon'},{k:'color',type:'skincolor'},{k:'sVid',ph:'Zustand'},{k:'vid',ph:'Empfang'},{k:'vid2',ph:'Senden'}]);
       if(m==='energy')return h
         +'<div class="pgh">Home-Knoten</div>'
         +row('Name / Icon','<input id="pEfHN" value="'+esc(w.homeName||'Home')+'" style="width:88px"> <input id="pEfHI" value="'+esc(w.homeIcon||'housepower')+'" placeholder="icon" style="width:88px">')
