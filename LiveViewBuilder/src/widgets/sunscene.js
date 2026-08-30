@@ -188,6 +188,39 @@
 
     function ssEl(w) { return $('.w[data-id="' + w.id + '"]', canvas) || $('.w[data-id="' + w.id + '"]', $('#ovcanvas')); }
     function ssSt(w) { return _ssState[w.id] || (_ssState[w.id] = { bearing: null, pitch: null, drag: null, raf: 0, spin: 0 }); }
+
+    /**
+     * Gedrosseltes Neuzeichnen.
+     *
+     * Die Szene zeichnet auf eine Leinwand, die auf einem Telefon DREIFACH aufgeloest ist:
+     * 518x368 werden zu 1554x1104 Bildpunkten, mit Gebaeuden, Sonne, Mond, Sternen und -
+     * seit dem 29.08.2026 - Flugzeugen und Satelliten. Der live()-Haken zeichnete bei JEDER
+     * Wertaenderung einer der rund achtzehn gebundenen Wetter- und Sonnenvariablen alles neu.
+     * Auf dem Schreibtisch faellt das nicht auf; auf einem iPhone lag der Hauptthread damit
+     * dauerhaft am Anschlag: Die Seite lud vollstaendig und war trotzdem nicht bedienbar -
+     * Kamera umschalten ging nicht, Werte wirkten eingefroren, alles fuehlte sich tot an.
+     * Nachgemessen am 30.08.2026: mit abgeschalteten Flug- und Satellitenebenen war dieselbe
+     * Seite sofort wieder normal bedienbar.
+     *
+     * Anstoesse werden deshalb gesammelt und hoechstens alle 700 ms in EIN Bild ueberfuehrt.
+     * Die Sonne wandert 0,25 Grad je Minute, Wetterwerte springen nicht - fuer das Auge ist
+     * das kein Unterschied, fuer das Geraet ist es der zwischen fluessig und unbedienbar.
+     */
+    function ssDrawBald(w, el) {
+      var st = ssSt(w);
+      if (st._malt) { st._nochmal = true; return; }   // waehrend des Zeichnens nur vormerken
+      if (st._warte) { return; }                       // es steht schon ein Bild an
+      var wart = Math.max(0, 700 - (Date.now() - (st._zuletzt || 0)));
+      st._warte = setTimeout(function () {
+        st._warte = 0;
+        var e = el && document.body.contains(el) ? el : ssEl(w);
+        if (!e) { return; }
+        st._malt = true; st._zuletzt = Date.now();
+        try { ssDraw(w, e); } catch (err) {}
+        st._malt = false;
+        if (st._nochmal) { st._nochmal = false; ssDrawBald(w, e); }
+      }, wart);
+    }
     /**
      * Gedrehte Ansicht je Geraet merken (nur wenn "Drehung merken" an ist).
      * Ohne Merker gilt beim Aufbau IMMER die eingestellte Blickrichtung - das ist der
@@ -2353,7 +2386,7 @@
           }, 20000);
         }
       },
-      live: function (w, el) { ssDraw(w, el); },
+      live: function (w, el) { ssDrawBald(w, el); },
       // Kein skin()-Haken hier: der laeuft ueber die Widget-Liste, und die kennt keine
       // Widgets in Containern, Panels oder Komponenten. Die Sonnenszene meldet sich
       // stattdessen oben in LV_SKIN_HOOKS an - so wird jede Kachel erreicht, egal wo sie
