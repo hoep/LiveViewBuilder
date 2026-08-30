@@ -47,8 +47,28 @@ if ($api === 'asset') {
     // "TypeError: Failed to fetch" ankommt: leere Oberflaeche ohne erkennbaren Grund.
     // In EINEM Stueck ausgegeben ist dieselbe Datei in Millisekunden draussen - die
     // 748-KB-Builderseite nimmt denselben Weg und braucht dafuer 6 ms.
-    $blob = (string) file_get_contents($files[$name]);
-    $etag = '"' . md5($blob) . '"';
+    // Vorgerechnetes vom Vortag: Bis heute wurde bei JEDEM Abruf die ganze Datei
+    // gelesen, ein md5 darueber gebildet und mit gzencode(...,6) komprimiert - bei
+    // 1,4 MB sind das je Anfrage zweistellige Millisekunden reiner Rechenzeit, und
+    // selbst eine blosse Rueckfrage (304) zahlte den vollen md5. Beides haengt nur
+    // am Dateiinhalt, also wird es einmal je Dateistand gerechnet und abgelegt.
+    $src   = $files[$name];
+    $stat  = @stat($src);
+    $sig   = (string) (($stat['mtime'] ?? 0) . '-' . ($stat['size'] ?? 0));
+    $cDir  = $DIR . '/assets/.cache';
+    if (!is_dir($cDir)) { @mkdir($cDir, 0755, true); }
+    $cBase = $cDir . '/' . preg_replace('/[^a-z0-9]/i', '', $name) . '-' . $sig;
+
+    $etag = (string) @file_get_contents($cBase . '.etag');
+    if ($etag === '') {
+        $etag = '"' . md5_file($src) . '"';
+        @file_put_contents($cBase . '.etag.tmp', $etag);
+        @rename($cBase . '.etag.tmp', $cBase . '.etag');
+        foreach ((array) glob($cDir . '/*') as $alt) {   // alte Staende wegraeumen
+            if (strpos($alt, $cBase) !== 0) { @unlink($alt); }
+        }
+    }
+    $blob = null;   // erst lesen, wenn wirklich ausgeliefert wird
     header('Content-Type: application/javascript; charset=utf-8');
     // Die Buendel sind ueber ihren Hash adressiert und aendern sich unter derselben
     // Adresse nie - deshalb 'immutable': der Browser fragt gar nicht erst nach.
@@ -65,8 +85,14 @@ if ($api === 'asset') {
     // bleibt der des UNKOMPRIMIERTEN Inhalts, damit 304 weiter passt.
     $ae = (string) ($_SERVER['HTTP_ACCEPT_ENCODING'] ?? '');
     if (function_exists('gzencode') && stripos($ae, 'gzip') !== false) {
-        $gz = gzencode($blob, 6);
-        if ($gz !== false && strlen($gz) < strlen($blob)) {
+        $gz = (string) @file_get_contents($cBase . '.gz');
+        if ($gz === '') {
+            $blob = (string) file_get_contents($src);
+            $gz   = (string) gzencode($blob, 6);
+            @file_put_contents($cBase . '.gz.tmp', $gz);
+            @rename($cBase . '.gz.tmp', $cBase . '.gz');
+        }
+        if ($gz !== '' && ($blob === null || strlen($gz) < strlen($blob))) {
             header('Content-Encoding: gzip');
             header('Vary: Accept-Encoding');
             header('Content-Length: ' . strlen($gz));
@@ -74,6 +100,7 @@ if ($api === 'asset') {
             return;
         }
     }
+    if ($blob === null) { $blob = (string) file_get_contents($src); }   // erst jetzt lesen
     header('Content-Length: ' . strlen($blob));
     echo $blob;
     return;
