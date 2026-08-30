@@ -8,6 +8,18 @@
 <script>/* Sitzungsdaten bleiben INLINE. Das grosse Buendel wird oeffentlich
    zwischengespeichert und darf deshalb den Schreib-Token nicht enthalten. */
 window.LVCFG={t:"__LV_TOKEN__",run:"__LV_RUN__",doku:"__LV_DOKU__",wsp:"__LV_WSPORT__",wsu:"__LV_WSURL__",bld:"__LV_BUILD__"};</script>
+<script>/* Javascript-Fehler an den Server melden - auf einem Telefon gibt es keine
+   Konsole, und ohne die Ausnahme ist ein Aufbaufehler nicht zu finden. Hoechstens
+   fuenf je Seitenaufruf, damit ein Dauerfehler nicht selbst zur Last wird. */
+(function(){var n=0;function melde(m,s,l,t){if(n++>4)return;try{
+ new Image().src='?api=jserr&key='+encodeURIComponent(window.LVCFG.t)
+   +'&m='+encodeURIComponent(String(m).slice(0,300))
+   +'&s='+encodeURIComponent(String(s||'').slice(0,160))+'&l='+(l||0)
+   +'&v='+encodeURIComponent((navigator.userAgent||'').slice(0,120))
+   +'&t='+encodeURIComponent(String(t||'').slice(0,600));}catch(e){}}
+window.addEventListener('error',function(e){melde(e.message,e.filename,e.lineno,e.error&&e.error.stack);});
+window.addEventListener('unhandledrejection',function(e){var r=e.reason;melde('unhandled: '+(r&&r.message||r),'',0,r&&r.stack);});
+})();</script>
 <script>if((window.LVCFG.run==="1")||/[?&]run=1/.test(location.search)||/\/hook\/run(\/|$|\?)/.test(location.pathname)){document.documentElement.classList.add('run-boot');setTimeout(function(){document.documentElement.classList.remove('run-boot');},4000);}</script>
 <title>Hausleitnerweg — View-Builder</title>
 <style>
