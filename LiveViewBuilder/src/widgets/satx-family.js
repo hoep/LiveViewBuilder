@@ -340,7 +340,11 @@
         var W = Math.max(80, Math.round(r.width)), H = Math.max(80, Math.round(r.height));
         if (c.width !== W * dpr) { c.width = W * dpr; c.height = H * dpr; c.style.width = W + 'px'; c.style.height = H + 'px'; }
         var g = c.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0);
-        var cx = W / 2, cy = H / 2, rad = Math.min(W, H) / 2 - Math.max(16, W * 0.08);
+        // Der Rand fuer die Himmelsrichtungen richtet sich nach der ENGEREN Seite.
+        // Aus der Breite gerechnet schrumpfte die Kuppel in einer breiten, flachen
+        // Kachel unnoetig: 518x353 ergab 36 px Rand, obwohl die Hoehe das Mass gibt.
+        var kurz = Math.min(W, H), rnd = Math.max(14, kurz * 0.085);
+        var cx = W / 2, cy = H / 2, rad = Math.max(30, kurz / 2 - rnd);
         g.fillStyle = cssv('--tile') || '#0c1416'; g.fillRect(0, 0, W, H);
         g.beginPath(); g.arc(cx, cy, rad, 0, 7); g.fillStyle = 'rgba(10,18,26,.8)'; g.fill();
         // Sternfeld - fest gesaet, damit es beim Neuzeichnen nicht flimmert

@@ -197,8 +197,20 @@
         var box = flBox(w); if (!box) return;
         var k = flCanvas(box), g = k.g, W = k.W, H = k.H;
         var R = flRadius(w), d = _flCache[R], nacht = flNacht(w);
-        var cx = W / 2, cy = H * 0.755, tilt = Math.max(0.15, Math.min(0.7, (parseFloat(w.flTilt) || 38) / 100));
-        var s = (W * 0.40) / R;
+        var tilt = Math.max(0.15, Math.min(0.7, (parseFloat(w.flTilt) || 38) / 100));
+        /* Massstab aus BEIDEN Maessen, nicht nur aus der Breite.
+         *
+         * Vorher galt s = W*0.40/R und cy = H*0.755. Bei einer breiten, flachen
+         * Kachel (919x433 nach dem Umbau am 30.08.2026) ergab das eine halbe
+         * Ellipsenhoehe von 140 px, wo unter der Mitte nur 106 px Platz waren -
+         * der Ring lief unten aus der Kachel. Jetzt begrenzen Breite UND Hoehe,
+         * und die Mitte wird aus der tatsaechlichen Ellipsenhoehe gesetzt statt
+         * aus einem festen Bruchteil. Oben bleibt, was uebrig ist: Kopfraum fuer
+         * die Maschinen und ihre Lotlinien. */
+        var sBreit = (W * 0.435) / R;
+        var sHoch  = (H * 0.30) / (R * tilt);
+        var s  = Math.max(0.5, Math.min(sBreit, sHoch));
+        var cx = W / 2, cy = H - R * s * tilt * 1.12 - 14;
         var grd = g.createLinearGradient(0, 0, 0, H);
         grd.addColorStop(0, nacht ? '#060c14' : '#09171f');
         grd.addColorStop(0.62, cssv('--tile') || '#0c1416');
@@ -319,7 +331,11 @@
         var box = flBox(w); if (!box) return;
         var k = flCanvas(box), g = k.g, W = k.W, H = k.H;
         var R = flRadius(w), d = _flCache[R], nacht = flNacht(w);
-        var cx = W / 2, cy = H / 2, rad = Math.min(W, H) / 2 - Math.max(18, W * 0.07);
+        // Der Rand fuer die Himmelsrichtungen richtet sich nach der ENGEREN Seite.
+        // Aus der Breite gerechnet schrumpfte die Kuppel in einer breiten, flachen
+        // Kachel unnoetig: 518x353 ergab 36 px Rand, obwohl die Hoehe das Mass gibt.
+        var kurz = Math.min(W, H), rnd = Math.max(14, kurz * 0.085);
+        var cx = W / 2, cy = H / 2, rad = Math.max(30, kurz / 2 - rnd);
         g.fillStyle = cssv('--tile') || '#0c1416'; g.fillRect(0, 0, W, H);
         g.beginPath(); g.arc(cx, cy, rad, 0, 7);
         g.fillStyle = nacht ? 'rgba(8,14,22,.8)' : 'rgba(16,28,32,.7)'; g.fill();
@@ -450,8 +466,19 @@
                + '<div class="flo">' + (f.vonort || '') + ' – ' + (f.nachort || '') + '</div>')
             : '<div class="flr" style="color:var(--faint)">keine Route hinterlegt</div>';
           h += '<div class="flz' + (el >= 45 ? ' zen' : '') + '">'
+            /* Fluglinie und Muster kommen vom Server (adsbdb): die Linie faellt bei der
+               Routenabfrage ohnehin mit ab, das Muster ueber die ICAO24-Adresse. Beides
+               kann fehlen - Privatmaschinen, Militaer, unbekannte Kennungen. Dann bleibt
+               es bei der aus Tempo und Hoehe GESCHAETZTEN Bauart, die vorher die einzige
+               Angabe war. */
             + '<div><div class="flruf" style="color:' + col + '">' + esc(f.ruf || '—') + '</div>'
-            + '<div class="flk">' + ({ jet: 'Jet', prop: 'Propeller', heli: 'Hubschr.' }[art]) + '</div></div>'
+            + (f.linie ? '<div class="fllin" title="' + esc(f.linie) + '">' + esc(f.linie) + '</div>' : '')
+            + (f.typ
+                ? '<div class="flmus" title="' + esc((f.hersteller ? f.hersteller + ' ' : '') + (f.muster || f.typ)
+                    + (f.kennung ? ' · ' + f.kennung : '')) + '">' + esc(f.typ)
+                  + (f.hersteller ? ' <span style="opacity:.7">' + esc(f.hersteller) + '</span>' : '') + '</div>'
+                : '<div class="flk">' + ({ jet: 'Jet', prop: 'Propeller', heli: 'Hubschr.' }[art]) + '</div>')
+            + '</div>'
             + '<div>' + route + '<div class="flm"><b>' + (p.alt / 1000).toFixed(1) + '</b> km · <b>'
             + f.tempo + '</b> km/h ' + steig
             + ' <span class="flpill">' + HIMMEL[Math.round(az / 22.5) % 16] + ' ' + Math.round(el) + '°</span>'
