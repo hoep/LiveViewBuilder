@@ -20,6 +20,40 @@ window.LVCFG={t:"__LV_TOKEN__",run:"__LV_RUN__",doku:"__LV_DOKU__",wsp:"__LV_WSP
 window.addEventListener('error',function(e){melde(e.message,e.filename,e.lineno,e.error&&e.error.stack);});
 window.addEventListener('unhandledrejection',function(e){var r=e.reason;melde('unhandled: '+(r&&r.message||r),'',0,r&&r.stack);});
 })();</script>
+<script>/* Zustandsmelder, nur mit &diag=1. Meldet fortlaufend, was die Seite IST.
+   Wichtig: sichtbar/unsichtbar entscheidet #overlay.open, NICHT die Anzeigeart von
+   #ovcanvas - das war beim ersten Anlauf falsch gemessen. Zusaetzlich laeuft eine
+   Nummer und die Zeit seit dem Laden mit, damit eine Luecke in der Reihe auffaellt:
+   hoeren die Meldungen auf, steht der Zeitgeber selbst. */
+(function(){if(!/[?&]diag=1/.test(location.search))return;var n=0,t0=Date.now();
+function melde(grund){n++;if(n>240)return;try{
+ var c=document.getElementById('canvas');
+ var r=c?c.getBoundingClientRect():{width:0,height:0,top:0};
+ var ov=document.getElementById('overlay'),hl=document.getElementById('hoverlay');
+ var oc=document.getElementById('ovcanvas');
+ var mid=document.elementFromPoint(innerWidth/2,innerHeight/2);
+ var mid2=document.elementFromPoint(innerWidth/2,80);
+ function be(e){return e?(e.tagName+(e.id?'#'+e.id:'')+(typeof e.className==='string'&&e.className?'.'+e.className.split(' ')[0]:'')):'-';}
+ var t=['#'+n,'nach='+Math.round((Date.now()-t0)/1000)+'s','grund='+(grund||'takt'),
+  'kacheln='+document.querySelectorAll('.w').length,
+  'flaeche='+Math.round(r.width)+'x'+Math.round(r.height),
+  'body="'+document.body.className+'"',
+  'overlay='+(ov?(ov.className+'/'+getComputedStyle(ov).display+'/'+(oc?oc.querySelectorAll('.w').length:0)):'-'),
+  'hoverlay='+(hl?(hl.className+'/'+getComputedStyle(hl).display):'-'),
+  'mitte='+be(mid),'oben='+be(mid2),
+  'sichtbar='+(document.hidden?'nein':'ja')].join(' ');
+ new Image().src='?api=jserr&key='+encodeURIComponent(window.LVCFG.t)
+   +'&m=DIAG&s=diag&l=0&v=&t='+encodeURIComponent(t);
+}catch(e){}}
+setInterval(function(){melde('takt');},5000);setTimeout(function(){melde('start');},1200);
+document.addEventListener('visibilitychange',function(){melde('sichtbarkeit');});
+window.addEventListener('pointerdown',function(e){melde('down:'+(e.target?e.target.tagName:'-'));},true);
+window.addEventListener('pointerup',function(e){melde('up:'+(e.target?e.target.tagName:'-')+' def='+(e.defaultPrevented?'ja':'nein'));},true);
+/* Der entscheidende Punkt: Kommt aus der Beruehrung ueberhaupt ein 'click'?
+   Auf iOS entsteht keiner, wenn jemand im Zeigerereignis preventDefault() ruft -
+   dann sieht man 'down' und 'up', aber nie 'klick'. */
+window.addEventListener('click',function(e){melde('klick:'+(e.target?e.target.tagName:'-')+' def='+(e.defaultPrevented?'ja':'nein'));},true);
+})();</script>
 <script>if((window.LVCFG.run==="1")||/[?&]run=1/.test(location.search)||/\/hook\/run(\/|$|\?)/.test(location.pathname)){document.documentElement.classList.add('run-boot');setTimeout(function(){document.documentElement.classList.remove('run-boot');},4000);}</script>
 <title>Hausleitnerweg — View-Builder</title>
 <style>

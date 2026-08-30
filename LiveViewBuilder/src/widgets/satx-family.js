@@ -117,19 +117,51 @@
     });
   }
 
-  /** Sichtbare Ueberfluege der naechsten 48 Stunden. Rechnung dauert Bruchteile
-      einer Sekunde und wird eine halbe Stunde lang wiederverwendet. */
+  /**
+   * Sichtbare Ueberfluege der naechsten 48 Stunden.
+   *
+   * Hier stand frueher "Rechnung dauert Bruchteile einer Sekunde". Das gilt fuer einen
+   * Schreibtischrechner. 48 Stunden in 20-Sekunden-Schritten sind 8640 Durchlaeufe JE
+   * SATELLIT, jeder mit Bahnfortschreibung, Sternzeit und Blickwinkel - und das lief in
+   * EINEM Stueck, synchron. Auf einem iPhone stand der Hauptthread dabei sekundenlang:
+   * Beruehrungen wurden nicht mehr verarbeitet, Zeitgeber kamen nicht dran, die Seite
+   * wirkte tot. Nachgewiesen am 30.08.2026 mit einem Zustandsmelder, dessen
+   * 5-Sekunden-Takt genau dann verstummte, wenn die Flugseite offen war.
+   *
+   * Dazu fragen ZWEI Kacheln (Liste und Kuppel) dieselbe Rechnung ab und starteten sie
+   * doppelt - einen Einzelflug-Riegel gab es nicht.
+   *
+   * Jetzt: eine Rechnung je Schluessel, in Scheiben von hoechstens zwoelf Millisekunden.
+   * Dazwischen kommt der Browser wieder zum Zug. Das Ergebnis ist dasselbe, es entsteht
+   * nur nicht mehr am Stueck.
+   */
+  var _satLauf = {};                       // laufende Rechnungen: Schluessel -> Rueckrufe
   function satUeberfluege(gruppe, o, minEl, cb, alle) {
     var k = gruppe + '|' + o.lat.toFixed(3) + '|' + minEl + '|' + (alle ? 'a' : 'g');
     var c = _satPass[k];
     if (c && (Date.now() - c.t) < 1800000) { cb(c.v); return; }
+    if (_satLauf[k]) { if (cb) _satLauf[k].push(cb); return; }
+    _satLauf[k] = cb ? [cb] : [];
+    var melde = function (v) {
+      var rufe = _satLauf[k] || []; delete _satLauf[k];
+      rufe.forEach(function (f) { try { f(v); } catch (e) {} });
+    };
     satTLE(gruppe, function (sats) {
-      var lib = _satLib; if (!lib || !sats.length) { cb([]); return; }
+      var lib = _satLib; if (!lib || !sats.length) { melde([]); return; }
       var beob = satBeob(o), start = Date.now(), ende = start + 48 * 3600000, aus = [];
-      sats.forEach(function (S) {
-        if (!alle && !S.gross) { return; }
-        var lauf = null;
-        for (var t = start; t < ende; t += 20000) {
+      var liste = sats.filter(function (S) { return alle || S.gross; });
+      var si = 0, t = start, lauf = null;
+      (function scheibe() {
+        var frist = Date.now() + 12;
+        while (si < liste.length) {
+          var S = liste[si];
+            // ACHTUNG for, nicht while: im Rumpf stehen zwei `continue`. In einer
+          // while-Schleife mit Zaehler am Ende springen die daran vorbei - das ergab
+          // eine Endlosschleife und der Hauptthread stand fuer immer. Der Zaehler
+          // gehoert deshalb in den Schleifenkopf, und die Zeitpruefung an den Anfang
+          // des Rumpfes, damit sie ebenfalls von jedem Durchlauf erreicht wird.
+          for (; t < ende; t += 20000) {
+            if (Date.now() > frist) { setTimeout(scheibe, 0); return; }
           var d = new Date(t), pv;
           try { pv = lib.propagate(S.rec, d); } catch (e) { continue; }
           if (!pv || !pv.position) { continue; }
@@ -148,9 +180,14 @@
             if (lauf.bis - lauf.von >= 60000) { aus.push(lauf); }
             lauf = null;
           }
+          }
+          if (lauf && lauf.bis - lauf.von >= 60000) { aus.push(lauf); }
+          lauf = null; si++; t = start;
         }
-        if (lauf && lauf.bis - lauf.von >= 60000) { aus.push(lauf); }
-      });
+        fertig();
+      })();
+
+      function fertig() {
       aus.sort(function (a, b) { return a.von - b.von; });
       /* Ueberlappende Ueberfluege zusammenfassen.
        *
@@ -177,7 +214,8 @@
         t.maxEl = Math.max(t.maxEl, p.maxEl);
       });
       _satPass[k] = { t: Date.now(), v: vereint };
-      cb(vereint);
+      melde(vereint);
+      }
     });
   }
 
