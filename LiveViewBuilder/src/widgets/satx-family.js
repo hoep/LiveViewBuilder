@@ -154,7 +154,25 @@
       var lib = _satLib; if (!lib || !sats.length) { melde([]); return; }
       var beob = satBeob(o), start = Date.now(), ende = start + 48 * 3600000, aus = [];
       var liste = sats.filter(function (S) { return alle || S.gross; });
-      var si = 0, t = start, lauf = null;
+
+      /* Dunkle Fenster EINMAL vorab bestimmen, nicht je Satellit.
+       *
+       * Sichtbar ist ein Ueberflug nur, wenn die Sonne unter -6 Grad steht - das
+       * prueft die Schleife unten ohnehin, aber erst NACH der Bahnrechnung. Die
+       * Sonnenbahn haengt jedoch nicht vom Satelliten ab. Also die Nachtfenster
+       * einmal ausrechnen und tagsueber gar nicht erst propagieren: bei 86
+       * Satelliten sind rund zwei Drittel der 48 Stunden hell, und genau die
+       * Rechnungen wurden bisher angestellt und weggeworfen. */
+      var dunkel = [], offen = null;
+      for (var ts = start; ts <= ende; ts += 300000) {
+        if (LVSUN.pos(o.lat, o.lon, ts / 1000).elev < -6) {
+          if (offen === null) { offen = ts - 300000; }         // eine Stufe Luft nach vorn
+        } else if (offen !== null) { dunkel.push([offen, ts]); offen = null; }
+      }
+      if (offen !== null) { dunkel.push([offen, ende]); }
+      if (!dunkel.length) { melde([]); return; }               // Polartag: nichts zu sehen
+
+      var si = 0, t = start, di = 0, lauf = null;
       (function scheibe() {
         var frist = Date.now() + 12;
         while (si < liste.length) {
@@ -166,6 +184,16 @@
           // des Rumpfes, damit sie ebenfalls von jedem Durchlauf erreicht wird.
           for (; t < ende; t += 20000) {
             if (Date.now() > frist) { setTimeout(scheibe, 0); return; }
+            // Ans naechste dunkle Fenster vorspulen. di laeuft mit t monoton mit,
+            // die Suche kostet deshalb nichts.
+            while (di < dunkel.length && t >= dunkel[di][1]) { di++; }
+            if (di >= dunkel.length) { break; }
+            if (t < dunkel[di][0]) {
+              // Ein Ueberflug kann keine Helligkeitsluecke ueberspannen: was offen
+              // ist, endet hier.
+              if (lauf) { if (lauf.bis - lauf.von >= 60000) { aus.push(lauf); } lauf = null; }
+              t = dunkel[di][0];
+            }
           var d = new Date(t), pv;
           try { pv = lib.propagate(S.rec, d); } catch (e) { continue; }
           if (!pv || !pv.position) { continue; }
@@ -186,7 +214,7 @@
           }
           }
           if (lauf && lauf.bis - lauf.von >= 60000) { aus.push(lauf); }
-          lauf = null; si++; t = start;
+          lauf = null; si++; t = start; di = 0;   // naechster Satellit faengt vorn an
         }
         fertig();
       })();
