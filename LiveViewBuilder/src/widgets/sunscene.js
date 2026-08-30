@@ -209,7 +209,15 @@
     function ssDrawBald(w, el) {
       var st = ssSt(w);
       if (st._malt) { st._nochmal = true; return; }   // waehrend des Zeichnens nur vormerken
+      // Nach einem Ansichtswechsel kommt die Kachel mit einem NEUEN Element zurueck. Stuende
+      // dann noch ein Bild fuer das alte an, wuerde der Riegel unten jedes Neuzeichnen
+      // verschlucken - die Szene bliebe leer, bis jemand hart neu laedt. Also: anderes
+      // Element, anstehendes Bild verwerfen und sofort neu planen.
+      if (st._warte && el && st._ziel && st._ziel !== el) {
+        clearTimeout(st._warte); st._warte = 0; st._zuletzt = 0;
+      }
       if (st._warte) { return; }                       // es steht schon ein Bild an
+      st._ziel = el || null;
       var wart = Math.max(0, 700 - (Date.now() - (st._zuletzt || 0)));
       st._warte = setTimeout(function () {
         st._warte = 0;
