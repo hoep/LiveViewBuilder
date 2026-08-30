@@ -400,7 +400,9 @@
       // Satellitenpositionen in EIGENEM, langsamem Takt rechnen - nie beim Zeichnen.
       if (w.flSats && typeof satJetzt === 'function') {
         var holeSats = function () {
-          satJetzt('stations', { lat: 48.0657, lon: 14.1241 }, function (L) { _flSatPos[w.id] = L || []; });
+          // Nur nachts sichtbar - das steckt schon in s.sichtbar (Sonne unter -6 Grad,
+          // ueber 10 Grad Hoehe, von der Sonne angestrahlt) und wird beim Malen geprueft.
+          satJetzt(w.flSatGroup || 'visual', { lat: 48.0657, lon: 14.1241 }, function (L) { _flSatPos[w.id] = L || []; });
         };
         holeSats();
         flTaktSicher(w, 'sats', 15000, holeSats);
@@ -409,12 +411,15 @@
     props: function (w) {
       return row('Umkreis (km)', '<input id="pFsR" type="number" min="5" max="200" value="' + (w.flRadius || 30) + '">')
         + row('Rufzeichen zeigen', '<input type="checkbox" id="pFsL"' + (w.flLabels !== false ? ' checked' : '') + '>')
-        + row('Satelliten', '<input type="checkbox" id="pFsS"' + (w.flSats ? ' checked' : '') + '> <span style="font-size:11px;color:var(--muted)">sichtbare Überflüge mit einzeichnen</span>');
+        + row('Satelliten', '<input type="checkbox" id="pFsS"' + (w.flSats ? ' checked' : '') + '> <span style="font-size:11px;color:var(--muted)">sichtbare Überflüge mit einzeichnen</span>')
+        + row('Gruppe', '<select id="pFsG"><option value="visual"' + ((w.flSatGroup || 'visual') === 'visual' ? ' selected' : '') + '>helle Satelliten</option>'
+            + '<option value="stations"' + (w.flSatGroup === 'stations' ? ' selected' : '') + '>nur Raumstationen</option></select>');
     },
     wire: function (w) {
       if ($('#pFsR')) $('#pFsR').onchange = function () { w.flRadius = parseInt(this.value) || 30; render(); commit(); };
       if ($('#pFsL')) $('#pFsL').onchange = function () { w.flLabels = this.checked; render(); commit(); };
       if ($('#pFsS')) $('#pFsS').onchange = function () { w.flSats = this.checked || undefined; render(); commit(); };
+      if ($('#pFsG')) $('#pFsG').onchange = function () { w.flSatGroup = this.value === 'stations' ? 'stations' : undefined; render(); commit(); };
     }
   });
 
