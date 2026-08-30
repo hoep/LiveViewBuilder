@@ -1220,10 +1220,33 @@
      * es zwanzig Punkte, von denen man keinen am Himmel findet. Tagsueber bleibt
      * die Ebene deshalb von allein leer - das ist kein Fehler, das ist Physik.
      */
+    var _ssSatPos = {};        // widgetId -> zuletzt gerechnete Satellitenpositionen
+
+    /**
+     * Satellitenpositionen im eigenen, langsamen Takt rechnen.
+     *
+     * Der Aufruf stand frueher mitten in ssSatelliten(), also im Zeichenweg, der
+     * bei jeder Wertaenderung durchlaufen wird - dieselbe Falle wie in der
+     * Flug-Himmelskuppel. Satelliten wandern sichtbar, aber nicht in
+     * Millisekunden; alle 15 s reicht vollauf.
+     */
+    function ssSatTakt(w) {
+      if (!_covOn2(w, 'ssSats', false) || typeof satJetzt !== 'function') { return; }
+      var st = ssSt(w);
+      if (st.satT) { return; }
+      var hole = function () {
+        var e = ssEl(w);
+        if (!e || !document.body.contains(e)) { clearInterval(st.satT); st.satT = 0; return; }
+        satJetzt(w.ssSatGroup || 'stations', ssGeo(w), function (L) { _ssSatPos[w.id] = L || []; });
+      };
+      hole();
+      st.satT = setInterval(hole, 15000);
+    }
+
+    // Malt nur, was ssSatTakt zuletzt gerechnet hat.
     function ssSatelliten(ctx, cam, w, day) {
       if (!_covOn2(w, 'ssSats', false)) { return; }
-      if (typeof satJetzt !== 'function') { return; }
-      satJetzt(w.ssSatGroup || 'stations', ssGeo(w), function (L) {
+      (function (L) {
         L.forEach(function (s) {
           if (!s.sichtbar || s.el < 6) { return; }
           var q = ssSky3(cam, s.az, s.el, cam.skyR);
@@ -1238,7 +1261,7 @@
           ctx.fillText(s.name, q.x + 9 * sk, q.y + 3);
           ctx.restore();
         });
-      });
+      })(_ssSatPos[w.id] || []);
     }
 
     function ssMoonDisc(ctx, cam, K, sun, day, w, cloud) {
@@ -2360,6 +2383,7 @@
         return '<div class="ssc" data-role="ssbox"><canvas></canvas></div>';
       },
       mount: function (w) {
+        ssSatTakt(w);
         var el = ssEl(w); if (!el) return;
         ssSt(w).w = w;                            // fuer den Skinwechsel erreichbar machen
         ssRestore(w);                             // gemerkte Ansicht (nur bei "Drehung merken")
