@@ -402,7 +402,10 @@
         var holeSats = function () {
           // Nur nachts sichtbar - das steckt schon in s.sichtbar (Sonne unter -6 Grad,
           // ueber 10 Grad Hoehe, von der Sonne angestrahlt) und wird beim Malen geprueft.
-          satJetzt(w.flSatGroup || 'visual', { lat: 48.0657, lon: 14.1241 }, function (L) { _flSatPos[w.id] = L || []; });
+          satJetzt(w.flSatGroup || 'visual', { lat: 48.0657, lon: 14.1241 }, function (L) {
+            _flSatPos[w.id] = L || [];
+            zeichne();          // sonst liegt das Ergebnis bis zum naechsten Bild brach
+          });
         };
         holeSats();
         flTaktSicher(w, 'sats', 15000, holeSats);

@@ -1237,7 +1237,15 @@
       var hole = function () {
         var e = ssEl(w);
         if (!e || !document.body.contains(e)) { clearInterval(st.satT); st.satT = 0; return; }
-        satJetzt(w.ssSatGroup || 'stations', ssGeo(w), function (L) { _ssSatPos[w.id] = L || []; });
+        satJetzt(w.ssSatGroup || 'stations', ssGeo(w), function (L) {
+          _ssSatPos[w.id] = L || [];
+          // Neu zeichnen lassen. Die Rechnung ist asynchron (Bibliothek nachladen,
+          // Bahnelemente holen) und war damit regelmaessig SPAETER fertig als das
+          // letzte Bild - die Positionen lagen dann richtig im Speicher und wurden
+          // nie gemalt. Die Kachel zeichnet nur bei Wertaenderung oder Bedienung
+          // neu, und beides gibt es hier nicht.
+          ssDrawBald(w, ssEl(w));
+        }, false, ssNow(w));
       };
       hole();
       st.satT = setInterval(hole, 15000);
