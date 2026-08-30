@@ -761,6 +761,26 @@ if ($api === 'epg') {
 // Serverseitig laesst sich alles messen; was auf einem iPhone hinter Proxy und VPN
 // wirklich ankommt, nicht. Diese Seite fuehrt im BROWSER dieselben Abrufe aus wie
 // die Anwendung und schreibt Zeiten und Fehler gross hin - lesbar ohne Werkzeuge.
+// ---- Javascript-Fehler vom Endgeraet einsammeln ----
+// Auf einem iPhone gibt es keine Konsole. Am 30.08.2026 lief die Seite dort ins
+// Leere - Uhr tickte weiter, Kacheln fehlten, nichts reagierte -, waehrend
+// serverseitig jede Messung sauber war. Ohne die Ausnahme des Geraets ist das
+// nicht zu finden. Rein additiv, nur Anhaengen, gedeckelt.
+if ($api === 'jserr') {
+    header('Content-Type: application/json; charset=utf-8');
+    header('Cache-Control: no-store');
+    $f = $DATADIR . '/jserr.log';
+    if (is_file($f) && filesize($f) > 262144) { @unlink($f); }   // Deckel: 256 KB
+    $z = date('Y-m-d H:i:s') . "\t"
+       . substr((string) ($_GET['m'] ?? ''), 0, 300) . "\t"
+       . substr((string) ($_GET['s'] ?? ''), 0, 160) . ':' . (int) ($_GET['l'] ?? 0) . "\t"
+       . substr((string) ($_GET['v'] ?? ''), 0, 120) . "\t"
+       . str_replace(["\r", "\n"], ' | ', substr((string) ($_GET['t'] ?? ''), 0, 600)) . "\n";
+    @file_put_contents($f, $z, FILE_APPEND);
+    echo '{"ok":true}';
+    return;
+}
+
 if ($api === 'selftest') {
     header('Content-Type: text/html; charset=utf-8');
     header('Cache-Control: no-store');
