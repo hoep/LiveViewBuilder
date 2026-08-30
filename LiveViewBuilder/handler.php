@@ -117,15 +117,21 @@ if ($api === 'asset') {
 /** Bahnelemente nachladen. Kurze Grenzen: der Aufruf haengt sonst im Anfrage-Thread. */
 function LVB_TleHolen(string $g, string $datei): void
 {
-    $ch = curl_init();
-    curl_setopt_array($ch, [
-        CURLOPT_URL => 'https://celestrak.org/NORAD/elements/gp.php?GROUP=' . rawurlencode($g) . '&FORMAT=tle',
-        CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 6, CURLOPT_CONNECTTIMEOUT => 3,
-        CURLOPT_HTTPHEADER => ['User-Agent: IP-Symcon LiveViewBuilder']]);
-    $a = curl_exec($ch);
-    $code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
-    if ($code === 200 && strlen((string) $a) > 100) { @file_put_contents($datei, $a); }
+    // Abgekoppelt, weil die Anfrage sonst darauf wartet.
+    //
+    // celestrak.org ist unzuverlaessig: bei zehn Messungen am 30.08.2026 kamen
+    // dreimal 200, sechsmal 503 und einmal gar keine Verbindung - und ein Erfolg
+    // brauchte 6,6 bis 11,7 Sekunden. Eine kurze Zeitgrenze wuerde also gerade
+    // die geglueckten Abrufe abschneiden. Hier darf es lange dauern, denn es
+    // haengt niemand daran; ein Fehlschlag laesst den alten Stand einfach stehen.
+    $url = 'https://celestrak.org/NORAD/elements/gp.php?GROUP=' . rawurlencode($g) . '&FORMAT=tle';
+    $tmp = $datei . '.neu';
+    $cmd = 'curl -fsS --max-time 25 -A ' . escapeshellarg('IP-Symcon LiveViewBuilder')
+         . ' -o ' . escapeshellarg($tmp) . ' ' . escapeshellarg($url)
+         . ' && [ "$(wc -c < ' . escapeshellarg($tmp) . ')" -gt 100 ]'
+         . ' && mv -f ' . escapeshellarg($tmp) . ' ' . escapeshellarg($datei)
+         . '; rm -f ' . escapeshellarg($tmp);
+    @exec('nohup sh -c ' . escapeshellarg($cmd) . ' > /dev/null 2>&1 &');
 }
 
 if ($api === 'tle') {
@@ -149,17 +155,27 @@ if ($api === 'tle') {
     // Server ist es nicht.
     if ($alter < PHP_INT_MAX) {
         header('Cache-Control: private, max-age=3600');
-        readfile($datei);
-        // Nachladen nur, wenn wirklich veraltet UND die letzte Stoerung lange her ist.
-        // Der Versuch kostet dann hoechstens sechs Sekunden, und zwar hoechstens
-        // einmal je Stunde statt bei jedem Abruf.
+        echo (string) @file_get_contents($datei);   // nicht readfile: das ist im Hook zaeh
+        // Nachladen laeuft NEBEN der Anfrage, nicht in ihr. Symcon puffert die
+        // Hook-Ausgabe bis zum Skriptende - ein Abruf an dieser Stelle wuerde den
+        // Client also weiter warten lassen, obwohl die Antwort laengst feststeht.
         $marke = $datei . '.next';
         if ($alter >= 43200 && time() >= (int) @file_get_contents($marke)) {
-            @file_put_contents($marke, (string) (time() + 3600));
+            @file_put_contents($marke, (string) (time() + 900));
             LVB_TleHolen($g, $datei);
         }
         return;
     }
+    // Noch gar nichts da: ebenfalls nur anstossen und leer antworten. Die Kachel
+    // bleibt eine Minute ohne Satelliten - das ist allemal besser, als die
+    // Anfrage in eine Zeitgrenze laufen zu lassen.
+    $marke = $datei . '.next';
+    if (time() >= (int) @file_get_contents($marke)) {
+        @file_put_contents($marke, (string) (time() + 900));
+        LVB_TleHolen($g, $datei);
+    }
+    return;
+    /* frueherer Weg: Abruf im Anfrage-Thread - siehe LVB_TleHolen */
     $ch = curl_init();
     curl_setopt_array($ch, [
         CURLOPT_URL => 'https://celestrak.org/NORAD/elements/gp.php?GROUP=' . rawurlencode($g) . '&FORMAT=tle',
