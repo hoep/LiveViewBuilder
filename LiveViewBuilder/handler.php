@@ -123,7 +123,7 @@ function LVB_TleHolen(string $g, string $datei): void
     // den Browser mitwarten lassen, obwohl die Antwort laengst feststeht. Was
     // geholt wird und woher, steht in scripts/tle-holen.sh: erst Celestrak, bei
     // Ausfall Space-Track. Ein Fehlschlag laesst den alten Stand einfach stehen.
-    $skript = '/var/lib/symcon/scripts/tle-holen.sh';
+    $skript = __DIR__ . '/tle-holen.sh';   // liegt beim Modul, damit es versioniert ist
     if (!is_executable($skript)) { return; }
     @exec('nohup ' . escapeshellarg($skript) . ' ' . escapeshellarg($g) . ' '
         . escapeshellarg($datei) . ' > /dev/null 2>&1 &');
