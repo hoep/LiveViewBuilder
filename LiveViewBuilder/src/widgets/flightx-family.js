@@ -89,7 +89,7 @@
     F2TH:'Falcon 2000', FA7X:'Falcon 7X', FA8X:'Falcon 8X', F900:'Falcon 900',
     H25B:'Hawker 800', HDJT:'HondaJet',
     // Hubschrauber
-    EC20:'Eurocopter EC120', EC25:'Eurocopter EC225', EC30:'Airbus H130', EC35:'Airbus H135',
+    EC20:'Airbus H120', EC25:'Airbus H225', EC30:'Airbus H130', EC35:'Airbus H135',
     EC45:'Airbus H145', EC55:'Airbus H155', AS50:'Ecureuil', AS55:'Twin Squirrel',
     B06:'Bell 206', B407:'Bell 407', B412:'Bell 412', B429:'Bell 429',
     R22:'Robinson R22', R44:'Robinson R44', R66:'Robinson R66',
@@ -119,6 +119,27 @@
     // gehoert das zweite dazu, sonst wird aus "De Havilland Canada" ein "De".
     var teile = t.split(/\s+/);
     return (teile[0].length <= 3 && teile[1]) ? (teile[0] + ' ' + teile[1]) : teile[0];
+  }
+
+  /* Hersteller und Muster zu einer Zeile fuegen - ohne Doppelung.
+   *
+   * Viele Musternamen tragen die Marke schon in sich: "Airbus H135",
+   * "Cessna 172", "Robinson R44". Wer davor stumpf den Hersteller setzt,
+   * schreibt "Airbus Airbus H135" - genau so ist es am 30.08.2026 bei einem
+   * Rettungshubschrauber (EC35, Halter Airbus Helicopters) aufgefallen.
+   * Steckt die Marke bereits im Namen, bleibt sie weg.
+   */
+  function flTypText(f) {
+    var mus = flMusterName(f.typ);
+    var her = flHersteller(f.hersteller);
+    if (!her) { return mus; }
+    var m = mus.toLowerCase();
+    if (m.indexOf(her.toLowerCase()) >= 0) { return mus; }
+    // Auch das erste Wort pruefen: die Firmierung heisst "Cirrus Design", der
+    // Modellname "Cirrus SR22" - ohne diesen Blick stuende dort zweimal Cirrus.
+    var erst = her.split(/\s+/)[0].toLowerCase();
+    if (erst.length >= 4 && m.indexOf(erst) >= 0) { return mus; }
+    return her + ' ' + mus;
   }
 
   /* Bauart aus Tempo und Hoehe geschaetzt. OpenSky liefert die Kategorie praktisch
@@ -564,7 +585,7 @@
             + (f.typ
                 ? '<div class="flmus" title="' + esc(f.typ + (f.muster ? ' · ' + f.muster : '')
                     + (f.hersteller ? ' · ' + f.hersteller : '') + (f.kennung ? ' · ' + f.kennung : '')) + '">'
-                  + esc((f.hersteller ? flHersteller(f.hersteller) + ' ' : '') + flMusterName(f.typ)) + '</div>'
+                  + esc(flTypText(f)) + '</div>'
                 : '<div class="flk">' + ({ jet: 'Jet', prop: 'Propeller', heli: 'Hubschr.' }[art]) + '</div>')
             + '</div>'
             + '<div>' + route + '<div class="flm"><b>' + (p.alt / 1000).toFixed(1) + '</b> km · <b>'
