@@ -124,6 +124,25 @@
    *
    * Deshalb prueft jeder Takt selbst, ob es sein Element noch gibt, und haengt sich sonst aus.
    */
+  /* Zeitmessung, nur mit &diag=1: schreibt die Dauer einzelner Schritte in dasselbe
+     Protokoll wie der Zustandsmelder. Damit laesst sich sagen, WELCHER Teil den
+     Hauptthread besetzt, statt es zu vermuten. */
+  var _flDiag = /[?&]diag=1/.test(location.search);
+  function flMess(name, fn) {
+    if (!_flDiag) { return fn(); }
+    var t0 = (performance && performance.now) ? performance.now() : Date.now();
+    var r = fn();
+    var ms = Math.round(((performance && performance.now) ? performance.now() : Date.now()) - t0);
+    if (ms >= 3) {
+      try {
+        new Image().src = '?api=jserr&key=' + encodeURIComponent((window.LVCFG || {}).t || '')
+          + '&m=ZEIT&s=flug&l=0&v=&t=' + encodeURIComponent(name + ' = ' + ms + ' ms');
+      } catch (e) {}
+    }
+    return r;
+  }
+
+  var _flSatPos = {};   // KachelID -> zuletzt gerechnete Satellitenpositionen
   var _flDauer = {};
   function flTaktSicher(w, name, ms, fn) {
     var reg = _flDauer[w.id] || (_flDauer[w.id] = {});
@@ -349,8 +368,20 @@
         });
         // Sichtbare Satelliten kommen in dieselbe Kuppel - dieselbe Frage,
         // dieselbe Antwort: wohin muss ich schauen.
-        if (w.flSats && typeof satJetzt === 'function') {
-          satJetzt('stations', { lat: 48.0657, lon: 14.1241 }, function (L) {
+        // Satelliten NUR MALEN, nicht rechnen.
+        //
+        // Hier stand `satJetzt(...)` mitten in der Zeichenfunktion - also in einem Weg,
+        // der fuenfmal je Sekunde durchlaufen wird, und jeder Durchlauf hat Bahnen
+        // fortgeschrieben. Gemessen am 30.08.2026: dieselbe Seite braucht mit dieser
+        // Ebene 25,7 Sekunden reine Rechenzeit, ohne sie 0,4 - Faktor 62. Auf einem
+        // Telefon steht der Hauptthread so lange, dass die ganze Anwendung tot wirkt,
+        // auch noch nach dem Verlassen der Seite.
+        //
+        // Gerechnet wird jetzt in einem eigenen, langsamen Takt (siehe mount), gemalt
+        // wird nur das zuletzt Gerechnete. Satelliten bewegen sich sichtbar, aber
+        // nicht in 200 Millisekunden.
+        if (w.flSats) {
+          (function (L) {
             L.forEach(function (s) {
               if (!s.sichtbar) { return; }
               var a2 = s.az * Math.PI / 180, r2 = rad * (90 - s.el) / 90;
@@ -360,12 +391,20 @@
               g.font = '600 9.5px ' + (cssv('--fm') || 'monospace'); g.fillStyle = '#fff';
               g.fillText(s.name, sx + 9, sy + 3);
             });
-          });
+          })(_flSatPos[w.id] || []);
         }
       };
       flLade(flRadius(w), function () { zeichne(); });
       flBeobachte(w, zeichne); flTakt(w, zeichne); zeichne();
       flTaktSicher(w, 'poll', 30000, function () { flLade(flRadius(w), null); });
+      // Satellitenpositionen in EIGENEM, langsamem Takt rechnen - nie beim Zeichnen.
+      if (w.flSats && typeof satJetzt === 'function') {
+        var holeSats = function () {
+          satJetzt('stations', { lat: 48.0657, lon: 14.1241 }, function (L) { _flSatPos[w.id] = L || []; });
+        };
+        holeSats();
+        flTaktSicher(w, 'sats', 15000, holeSats);
+      }
     },
     props: function (w) {
       return row('Umkreis (km)', '<input id="pFsR" type="number" min="5" max="200" value="' + (w.flRadius || 30) + '">')

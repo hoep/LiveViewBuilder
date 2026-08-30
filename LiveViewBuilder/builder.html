@@ -53,6 +53,14 @@ window.addEventListener('pointerup',function(e){melde('up:'+(e.target?e.target.t
    Auf iOS entsteht keiner, wenn jemand im Zeigerereignis preventDefault() ruft -
    dann sieht man 'down' und 'up', aber nie 'klick'. */
 window.addEventListener('click',function(e){melde('klick:'+(e.target?e.target.tagName:'-')+' def='+(e.defaultPrevented?'ja':'nein'));},true);
+/* Und jetzt der entscheidende Punkt: Erreicht der Klick die Zeichenflaeche, an der
+   die Anwendung ihren Zuhoerer haengen hat? Der Zuhoerer oben sieht das Ereignis in
+   der Einfangphase - also IMMER, auch wenn es unterwegs gestoppt wird. Dieser hier
+   haengt an #canvas in der Blasenphase, genau wie der echte. Fehlt er, hat jemand
+   dazwischen stopPropagation gerufen. */
+setTimeout(function(){var c=document.getElementById('canvas');if(!c)return;
+  c.addEventListener('click',function(e){melde('flaeche-erreicht:'+(e.target?e.target.tagName:'-'));},false);
+},1500);
 })();</script>
 <script>if((window.LVCFG.run==="1")||/[?&]run=1/.test(location.search)||/\/hook\/run(\/|$|\?)/.test(location.pathname)){document.documentElement.classList.add('run-boot');setTimeout(function(){document.documentElement.classList.remove('run-boot');},4000);}</script>
 <title>Hausleitnerweg — View-Builder</title>

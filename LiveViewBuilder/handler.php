@@ -114,20 +114,56 @@ if ($api === 'asset') {
 // und man kann in die Zukunft rechnen, was die Ueberflugvorhersage erst moeglich
 // macht. Die Elemente aendern sich taeglich, nicht sekuendlich - zwoelf Stunden
 // Zwischenspeicher genuegen und halten Celestrak von unnoetiger Last frei.
+/** Bahnelemente nachladen. Kurze Grenzen: der Aufruf haengt sonst im Anfrage-Thread. */
+function LVB_TleHolen(string $g, string $datei): void
+{
+    $ch = curl_init();
+    curl_setopt_array($ch, [
+        CURLOPT_URL => 'https://celestrak.org/NORAD/elements/gp.php?GROUP=' . rawurlencode($g) . '&FORMAT=tle',
+        CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 6, CURLOPT_CONNECTTIMEOUT => 3,
+        CURLOPT_HTTPHEADER => ['User-Agent: IP-Symcon LiveViewBuilder']]);
+    $a = curl_exec($ch);
+    $code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    if ($code === 200 && strlen((string) $a) > 100) { @file_put_contents($datei, $a); }
+}
+
 if ($api === 'tle') {
     header('Content-Type: text/plain; charset=utf-8');
     $g = preg_replace('/[^a-z0-9-]/i', '', (string) ($_GET['group'] ?? 'stations'));
     if ($g === '') { $g = 'stations'; }
     $datei = $DATADIR . '/tle-' . $g . '.txt';
-    if (is_file($datei) && (time() - (int) @filemtime($datei)) < 43200) {
+    $alter = is_file($datei) ? (time() - (int) @filemtime($datei)) : PHP_INT_MAX;
+
+    // Vorhandene Bahnelemente IMMER sofort ausliefern - auch veraltete.
+    //
+    // Vorher galt: aelter als zwoelf Stunden -> neu holen, und der Abruf lief im
+    // Anfrage-Thread. Am 30.08.2026 war celestrak.org von dieser Anlage aus nicht
+    // erreichbar (die Verbindung kommt nicht zustande, connect = 0,000 s), also lief
+    // JEDER Aufruf in die 25-Sekunden-Grenze und gab danach denselben alten Stand
+    // zurueck, den er auch sofort haette liefern koennen. Drei Kacheln, mehrere
+    // Geraete, jede Seitenladung - damit war die Hook-Schicht dauerhaft belegt: eine
+    // Antwort von 20 Byte brauchte 23 Sekunden, und die gesamte Visualisierung fiel
+    // aus, weil alles ueber HTTP laeuft. Bahnelemente altern langsam; ein Tag alte
+    // Daten sind fuer eine Ueberflugvorhersage voellig ausreichend, ein blockierter
+    // Server ist es nicht.
+    if ($alter < PHP_INT_MAX) {
         header('Cache-Control: private, max-age=3600');
-        readfile($datei);          // wenige Kilobyte - hier ist readfile unbedenklich
+        readfile($datei);
+        // Nachladen nur, wenn wirklich veraltet UND die letzte Stoerung lange her ist.
+        // Der Versuch kostet dann hoechstens sechs Sekunden, und zwar hoechstens
+        // einmal je Stunde statt bei jedem Abruf.
+        $marke = $datei . '.next';
+        if ($alter >= 43200 && time() >= (int) @file_get_contents($marke)) {
+            @file_put_contents($marke, (string) (time() + 3600));
+            LVB_TleHolen($g, $datei);
+        }
         return;
     }
     $ch = curl_init();
     curl_setopt_array($ch, [
         CURLOPT_URL => 'https://celestrak.org/NORAD/elements/gp.php?GROUP=' . rawurlencode($g) . '&FORMAT=tle',
-        CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 25,
+        CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 6, CURLOPT_CONNECTTIMEOUT => 3,
         CURLOPT_HTTPHEADER => ['User-Agent: IP-Symcon LiveViewBuilder']]);
     $a = curl_exec($ch);
     $code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
