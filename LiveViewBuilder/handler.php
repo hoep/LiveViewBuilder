@@ -344,6 +344,12 @@ if ($api === 'flights') {
             $rj = json_decode((string) $ra, true);
             $fr = $rj['response']['flightroute'] ?? [];
             $e = ['t' => time(), 'von' => null];
+            // Die Fluglinie steht in DERSELBEN Antwort - sie kostet keinen
+            // zusaetzlichen Abruf und war bisher einfach weggeworfen worden.
+            if ($rcode === 200 && !empty($fr['airline']['name'])) {
+                $e['linie']      = mb_substr((string) $fr['airline']['name'], 0, 24);
+                $e['linie_icao'] = (string) ($fr['airline']['icao'] ?? '');
+            }
             if ($rcode === 200 && !empty($fr['origin']['iata_code'])) {
                 $e['von']     = (string) $fr['origin']['iata_code'];
                 $e['vonort']  = mb_substr((string) ($fr['origin']['municipality'] ?? ''), 0, 18);
@@ -356,8 +362,57 @@ if ($api === 'flights') {
             $f['von'] = $e['von']; $f['nach'] = $e['nach'] ?? '';
             $f['vonort'] = $e['vonort'] ?? ''; $f['nachort'] = $e['nachort'] ?? '';
         }
+        if (is_array($e) && !empty($e['linie'])) {
+            $f['linie'] = $e['linie']; $f['linieIcao'] = $e['linie_icao'] ?? '';
+        }
     }
     unset($f);
+
+    /* Muster der Maschine: eigener Zwischenspeicher ueber die ICAO24-Adresse.
+     *
+     * Anders als die Route ist das Muster einer Maschine dauerhaft - eine D-AIBD
+     * bleibt ein A319. Der Eintrag verfaellt deshalb nie; nur eine Fehlanzeige
+     * wird nach 30 Tagen erneut versucht. Wie bei den Routen hoechstens vier
+     * Nachschlaege je Durchlauf, damit ein voller Himmel nicht die Fremdschnitt-
+     * stelle ueberrennt. */
+    $mDat = $DATADIR . '/flights-muster.json';
+    $mC = @json_decode((string) @file_get_contents($mDat), true);
+    if (!is_array($mC)) { $mC = []; }
+    $mNeu = 0;
+    foreach ($flug as &$f) {
+        $hex = strtolower(trim($f['icao']));
+        if ($hex === '') { continue; }
+        $m = $mC[$hex] ?? null;
+        $fehlt = !is_array($m) || (empty($m['typ']) && (time() - (int) ($m['t'] ?? 0)) > 2592000);
+        if ($fehlt && $mNeu < 4) {
+            $mNeu++;
+            $ch = curl_init();
+            curl_setopt_array($ch, [CURLOPT_URL => 'https://api.adsbdb.com/v0/aircraft/' . rawurlencode($hex),
+                CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 8, CURLOPT_CONNECTTIMEOUT => 4,
+                CURLOPT_HTTPHEADER => ['User-Agent: IP-Symcon LiveViewBuilder']]);
+            $ma = curl_exec($ch); $mcode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE); curl_close($ch);
+            $mj = json_decode((string) $ma, true);
+            $ac = $mj['response']['aircraft'] ?? null;
+            $m = ['t' => time(), 'typ' => null];
+            if ($mcode === 200 && is_array($ac)) {
+                $m['typ']       = (string) ($ac['icao_type'] ?? '');
+                $m['muster']    = mb_substr((string) ($ac['type'] ?? ''), 0, 22);
+                $m['hersteller']= mb_substr((string) ($ac['manufacturer'] ?? ''), 0, 18);
+                $m['kennung']   = (string) ($ac['registration'] ?? '');
+                $m['halter']    = mb_substr((string) ($ac['registered_owner'] ?? ''), 0, 24);
+            }
+            $mC[$hex] = $m;
+        }
+        if (is_array($m) && !empty($m['typ'])) {
+            $f['typ']        = $m['typ'];
+            $f['muster']     = $m['muster'] ?? '';
+            $f['hersteller'] = $m['hersteller'] ?? '';
+            $f['kennung']    = $m['kennung'] ?? '';
+            $f['halter']     = $m['halter'] ?? '';
+        }
+    }
+    unset($f);
+    if ($mNeu > 0) { @file_put_contents($mDat, json_encode($mC)); }
     if ($neu > 0) {
         if (count($rC) > 4000) { $rC = array_slice($rC, -3000, null, true); }
         @file_put_contents($rDat, json_encode($rC));
