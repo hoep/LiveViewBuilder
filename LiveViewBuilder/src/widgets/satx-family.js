@@ -95,14 +95,18 @@
   function satBeob(o) { return { latitude: o.lat * Math.PI / 180, longitude: o.lon * Math.PI / 180, height: 0.4 }; }
 
   /** Aktuelle Stellungen ueber dem Horizont. */
-  function satJetzt(gruppe, o, cb, alle) {
-    var k = gruppe + '|' + o.lat.toFixed(3) + '|' + (alle ? 'a' : 'g');
+  function satJetzt(gruppe, o, cb, alle, ms) {
+    // ms: Zeitpunkt der Darstellung. Die Sonnenszene hat einen Zeitregler - ohne
+    // diesen Durchgriff stand dort die Sonne nachts, die Satelliten aber weiter
+    // auf der echten Uhrzeit. Ohne Angabe gilt jetzt.
+    var jetzt = ms || Date.now();
+    var k = gruppe + '|' + o.lat.toFixed(3) + '|' + (alle ? 'a' : 'g') + '|' + (ms ? Math.round(ms / 60000) : 'n');
     var c = _satNow[k];
     if (c && (Date.now() - c.t) < 900) { cb(c.v); return; }        // knapp unter einem Bild
     satTLE(gruppe, function (sats) {
       var lib = _satLib; if (!lib || !sats.length) { cb([]); return; }
-      var d = new Date(), gm = lib.gstime(d), sonne = satSonneEci(d.getTime()), beob = satBeob(o);
-      var dunkel = LVSUN.pos(o.lat, o.lon, d.getTime() / 1000).elev < -6;
+      var d = new Date(jetzt), gm = lib.gstime(d), sonne = satSonneEci(jetzt), beob = satBeob(o);
+      var dunkel = LVSUN.pos(o.lat, o.lon, jetzt / 1000).elev < -6;
       var aus = [];
       sats.forEach(function (S) {
         if (!alle && !S.gross) { return; }
