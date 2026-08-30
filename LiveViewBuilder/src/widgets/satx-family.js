@@ -47,14 +47,18 @@
             // fuehrt sie einzeln - ohne Zusammenfassung stuende jeder Ueberflug doppelt.
             var kurz = n.replace(/\s*\(.*\)\s*/, '').trim();
             if (gesehen[kurz]) { continue; }
-            /* Mit blossem Auge sichtbar sind praktisch nur die grossen Stationen.
-               Die Gruppe "stations" enthaelt daneben Kleinsatelliten, die von der
-               ISS ausgesetzt wurden (DUPLEX, KNACKSAT-2, GXIBA-1 ...) und
-               Raketenschrott (FREGAT DEB). Die Sichtbarkeitsrechnung prueft
-               Geometrie und Beleuchtung, aber NICHT die Helligkeit - ein
-               Zehn-Zentimeter-Wuerfel waere danach "sichtbar" und ist es nie.
-               Deshalb die Einordnung; die Kachel zeigt in der Vorgabe nur Grosses. */
-            var gross = /^(ISS|CSS|TIANGONG|TIANHE|HUBBLE|HST)/i.test(kurz);
+            /* Die Sichtbarkeitsrechnung prueft Geometrie und Beleuchtung, aber NICHT
+               die Helligkeit - ein Zehn-Zentimeter-Wuerfel waere danach "sichtbar"
+               und ist es nie. In "stations" steckt genau solches Beiwerk: von der
+               ISS ausgesetzte Kleinsatelliten (DUPLEX, KNACKSAT-2, GXIBA-1),
+               Raketenschrott (FREGAT DEB) und angedockte Module (POISK, SZ-21),
+               die ohnehin auf ihrer Station saessen. Dort bleibt die Auswahl eng.
+
+               "visual" ist dagegen Celestraks eigene Liste der mit blossem Auge
+               sichtbaren Objekte - die Auswahl ist dort bereits getroffen. Der
+               Namensfilter hat sie von 86 auf 3 zusammengestrichen und die Gruppe
+               damit sinnlos gemacht. */
+            var gross = g === 'visual' || /^(ISS|CSS|TIANGONG|TIANHE|HUBBLE|HST)/i.test(kurz);
             try { aus.push({ name: kurz, gross: gross, rec: lib.twoline2satrec(z[i + 1], z[i + 2]) }); gesehen[kurz] = 1; }
             catch (e) {}
           }
