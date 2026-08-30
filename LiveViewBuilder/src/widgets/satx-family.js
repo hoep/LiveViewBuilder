@@ -336,8 +336,12 @@
       var zeichne = function () {
         var box = stBox(w); if (!box) return;
         var c = box.firstElementChild, dpr = Math.min(2.5, window.devicePixelRatio || 1);
+        // Layoutmass, nicht Bildschirmmass: im mobilen Umbruch ist die Kachel
+        // per Transformation skaliert, getBoundingClientRect() liefert dann das
+        // verkleinerte Mass und die Kuppel schrumpft mit jedem Neuzeichnen weiter.
         var r = box.getBoundingClientRect();
-        var W = Math.max(80, Math.round(r.width)), H = Math.max(80, Math.round(r.height));
+        var W = Math.max(80, Math.round(box.clientWidth || r.width));
+        var H = Math.max(80, Math.round(box.clientHeight || r.height));
         if (c.width !== W * dpr) { c.width = W * dpr; c.height = H * dpr; c.style.width = W + 'px'; c.style.height = H + 'px'; }
         var g = c.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0);
         // Der Rand fuer die Himmelsrichtungen richtet sich nach der ENGEREN Seite.
