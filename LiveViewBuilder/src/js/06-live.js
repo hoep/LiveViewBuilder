@@ -332,7 +332,10 @@
   //      Schleife ausloesen.
   //   3. Nur wenn 20 s lang niemand getippt hat.
   //   4. Abschaltbar ueber bcfg().noAutoReload.
-  var _bauStand=0,_bauTat=false,_bauSeit=Date.now(),_bauTipp=0;
+  // Vergleichsmass ist der Stand, mit dem DIESE Seite ausgeliefert wurde (LVCFG.bld) -
+  // nicht der erste zur Laufzeit abgefragte. Sonst kann ein veraltet gestarteter Client
+  // seine eigene Veraltung nie bemerken.
+  var _bauStand=(window.LVCFG&&parseInt(window.LVCFG.bld))||0,_bauTat=false,_bauSeit=Date.now(),_bauTipp=0;
   ['pointerdown','keydown','wheel','touchstart'].forEach(function(ev){
     document.addEventListener(ev,function(){_bauTipp=Date.now();},{passive:true});
   });

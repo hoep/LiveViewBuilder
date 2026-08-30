@@ -3072,6 +3072,12 @@ if ($html === false) {
     return;
 }
 $html = str_replace('__LV_TOKEN__', $TOKEN, $html);
+// Der Shell traegt seinen EIGENEN Bauzeitstempel. Ohne ihn nahm der Client den ersten
+// zur Laufzeit abgefragten Wert als Vergleichsmass - ein Geraet, das bereits mit einem
+// alten Buendel gestartet war, merkte sich damit den AKTUELLEN Serverstand als seinen
+// eigenen und fand nie wieder eine Abweichung. Es konnte sich nicht mehr auffrischen.
+// Dieselbe Quelle wie ?api=build, sonst vergleicht man zwei verschiedene Dinge.
+$html = str_replace('__LV_BUILD__', (string) (int) @filemtime(__DIR__ . '/builder.html'), $html);
 $html = str_replace('__LV_WSPORT__', (string) ($WSPORT ?? ''), $html);     // WebSocket-Push optional (Property)
 $html = str_replace('__LV_WSURL__', (string) ($WSURL ?? ''), $html);       // volle wss-Adresse (Reverse Proxy) - schlaegt den Port
 $html = str_replace('__LV_RUN__', ($LV_MODE === 'run' ? '1' : ''), $html); // /hook/run/<site> -> Laufzeit
