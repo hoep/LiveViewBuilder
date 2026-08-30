@@ -1613,7 +1613,15 @@
         if (!st.drag.axis) {
           if (Math.abs(dx) < 4 && Math.abs(dy) < 4) return;
           st.drag.axis = Math.abs(dx) >= Math.abs(dy) ? 'h' : 'v';   // Richtung des ersten Impulses entscheidet
-          if (st.drag.axis === 'v') { st.drag = null; return; }       // senkrecht -> Seite scrollen lassen
+          if (st.drag.axis === 'v') {                                 // senkrecht -> Seite scrollen lassen
+            // Erfassung ZWINGEND freigeben. Ohne das blieb sie nach jedem senkrechten
+            // Wisch ueber der Kachel haengen, und ab da gingen ALLE Beruehrungen der
+            // Seite an dieses eine Element: leerer Schirm, nichts reagiert, die Uhr
+            // tickt weiter, Drehen half nicht - nur ein harter Neuladen. Auf einem
+            // Telefon trifft die Wischgeste diese grosse Kachel fast zwangslaeufig.
+            try { box.releasePointerCapture(e.pointerId); } catch (_) {}
+            st.drag = null; return;
+          }
         }
         st.bearing = ((st.drag.b - dx * 0.4) % 360 + 360) % 360;
         e.preventDefault(); ssDraw(w, el);
@@ -1626,6 +1634,9 @@
        * bedienen, ohne sie zu verlassen. Vier Pixel Toleranz, damit ein
        * zitteriger Klick weiterhin als Klick zaehlt. */
       function up(e) {
+        // Zuerst und bedingungslos freigeben: der Zug kann vorher schon verworfen
+        // worden sein (senkrechter Wisch), die Erfassung liegt dann trotzdem an.
+        try { box.releasePointerCapture(e.pointerId); } catch (_) {}
         if (st.drag) {
           var gezogen = !st.drag.time
             && (Math.abs((e.clientX || 0) - st.drag.x) > 4 || Math.abs((e.clientY || 0) - st.drag.y) > 4);
