@@ -3090,6 +3090,27 @@ $bn = ($LV_MODE === 'run' && is_file($DIR . '/assets/run.js')) ? 'run' : 'app';
 $bh = json_decode((string) @file_get_contents($DIR . '/assets/bundles.json'), true);
 $bv = is_array($bh) ? (string) ($bh[$bn] ?? '') : '';
 if ($bv === '') { $bv = (string) @filemtime($DIR . '/assets/' . $bn . '.js'); }
+// Adresse der grossen Dateien: STATISCH, wenn sie unter /tile liegen, sonst ueber
+// das Hook. Das Hook kappt bei 1 MiB und liefert dann 62 Byte Fehlertext mit
+// HTTP 200 aus - der Browser meldet nichts, die Seite bleibt ohne Programmcode
+// stehen. Statisch geht an diesem Deckel vorbei. Der Rueckfall ist wichtig, weil
+// /usr/share/symcon das Programmverzeichnis ist und eine Symcon-Aktualisierung
+// den Ordner leeren kann: dann laeuft es wie bisher weiter statt gar nicht.
+$statDir = '/usr/share/symcon/tile/lvb';
+$bundleUrl = '?api=asset&name=' . $bn . '&v=' . $bv;
+if (is_file($statDir . '/' . $bn . '-' . $bv . '.js')) {
+    $bundleUrl = '/tile/lvb/' . $bn . '-' . $bv . '.js';
+}
+$echartsUrl = '?api=asset&name=echarts';
+$ecDatei = $DIR . '/assets/echarts.min.js';
+if (is_file($ecDatei)) {
+    $ecHash = substr(md5_file($ecDatei), 0, 12);
+    if (is_file($statDir . '/echarts-' . $ecHash . '.js')) {
+        $echartsUrl = '/tile/lvb/echarts-' . $ecHash . '.js';
+    }
+}
+$html = str_replace('__LV_BUNDLE_URL__', $bundleUrl, $html);
+$html = str_replace('__LV_ECHARTS_URL__', $echartsUrl, $html);
 $html = str_replace('__LV_BUNDLE__', $bn, $html);
 $html = str_replace('__LV_BUNDLEV__', $bv, $html);
 header('Content-Type: text/html; charset=utf-8');

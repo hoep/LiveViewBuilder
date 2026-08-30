@@ -138,6 +138,41 @@ $hv = substr(md5($voll), 0, 12);
 $hl = substr(md5($lauf), 0, 12);
 file_put_contents(__DIR__ . "/assets/bundles.json", json_encode(['app' => $hv, 'run' => $hl]));
 
+// Grosse Dateien zusaetzlich STATISCH ablegen. Grund: das Symcon-Hook kappt seine
+// Ausgabe bei 1 MiB und schickt statt des Programmcodes 62 Byte Fehlertext - mit
+// HTTP 200 und Content-Type javascript, also ohne dass der Browser etwas merkt.
+// Das Laeufer-Buendel liegt bei 1,37 MB und kam bisher NUR durch, weil es
+// komprimiert wurde; jede Stelle in der Kette ohne gzip legte die Visualisierung
+// lautlos still. Unter /tile liefert Symcon direkt von der Platte, am Hook und
+// damit am Deckel vorbei. Der Hash steckt im Dateinamen, alte Staende werden
+// aufgeraeumt.
+// ACHTUNG: /usr/share/symcon ist das PROGRAMMverzeichnis - eine Symcon-
+// Aktualisierung kann den Ordner leeren. Der Handler prueft deshalb bei jedem
+// Ausliefern, ob die Datei da ist, und faellt sonst auf den Hook-Weg zurueck.
+$statisch = '/usr/share/symcon/tile/lvb';
+if (!is_dir($statisch)) { @mkdir($statisch, 0755, true); }
+if (is_dir($statisch) && is_writable($statisch)) {
+    $ablegen = ['app-' . $hv . '.js' => $voll, 'run-' . $hl . '.js' => $lauf];
+    $ec = __DIR__ . '/assets/echarts.min.js';
+    if (is_file($ec)) {
+        $ecInhalt = (string) file_get_contents($ec);
+        $ablegen['echarts-' . substr(md5($ecInhalt), 0, 12) . '.js'] = $ecInhalt;
+    }
+    foreach ($ablegen as $name => $inhalt) {
+        $ziel = $statisch . '/' . $name;
+        if (!is_file($ziel) || filesize($ziel) !== strlen($inhalt)) {
+            file_put_contents($ziel . '.tmp', $inhalt);   // erst daneben, dann umbenennen -
+            @rename($ziel . '.tmp', $ziel);               // sonst laedt jemand eine halbe Datei
+        }
+    }
+    foreach ((array) glob($statisch . '/*.js') as $alt) {   // aufraeumen
+        if (!isset($ablegen[basename($alt)])) { @unlink($alt); }
+    }
+    echo "statisch: " . implode(', ', array_keys($ablegen)) . "\n";
+} else {
+    fwrite(STDERR, "WARN: $statisch nicht beschreibbar - Auslieferung laeuft weiter ueber das Hook\n");
+}
+
 $css = file_get_contents("$d/styles.css");
 $css = preg_replace('#/\*.*?\*/#s', '', $css);
 $css = preg_replace('#\s*\n\s*#', "\n", $css);
