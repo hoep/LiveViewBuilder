@@ -117,21 +117,16 @@ if ($api === 'asset') {
 /** Bahnelemente nachladen. Kurze Grenzen: der Aufruf haengt sonst im Anfrage-Thread. */
 function LVB_TleHolen(string $g, string $datei): void
 {
-    // Abgekoppelt, weil die Anfrage sonst darauf wartet.
+    // Abgekoppelt anstossen, nie in der Anfrage warten.
     //
-    // celestrak.org ist unzuverlaessig: bei zehn Messungen am 30.08.2026 kamen
-    // dreimal 200, sechsmal 503 und einmal gar keine Verbindung - und ein Erfolg
-    // brauchte 6,6 bis 11,7 Sekunden. Eine kurze Zeitgrenze wuerde also gerade
-    // die geglueckten Abrufe abschneiden. Hier darf es lange dauern, denn es
-    // haengt niemand daran; ein Fehlschlag laesst den alten Stand einfach stehen.
-    $url = 'https://celestrak.org/NORAD/elements/gp.php?GROUP=' . rawurlencode($g) . '&FORMAT=tle';
-    $tmp = $datei . '.neu';
-    $cmd = 'curl -fsS --max-time 25 -A ' . escapeshellarg('IP-Symcon LiveViewBuilder')
-         . ' -o ' . escapeshellarg($tmp) . ' ' . escapeshellarg($url)
-         . ' && [ "$(wc -c < ' . escapeshellarg($tmp) . ')" -gt 100 ]'
-         . ' && mv -f ' . escapeshellarg($tmp) . ' ' . escapeshellarg($datei)
-         . '; rm -f ' . escapeshellarg($tmp);
-    @exec('nohup sh -c ' . escapeshellarg($cmd) . ' > /dev/null 2>&1 &');
+    // Symcon puffert die Hook-Ausgabe bis zum Skriptende - ein Abruf hier wuerde
+    // den Browser mitwarten lassen, obwohl die Antwort laengst feststeht. Was
+    // geholt wird und woher, steht in scripts/tle-holen.sh: erst Celestrak, bei
+    // Ausfall Space-Track. Ein Fehlschlag laesst den alten Stand einfach stehen.
+    $skript = '/var/lib/symcon/scripts/tle-holen.sh';
+    if (!is_executable($skript)) { return; }
+    @exec('nohup ' . escapeshellarg($skript) . ' ' . escapeshellarg($g) . ' '
+        . escapeshellarg($datei) . ' > /dev/null 2>&1 &');
 }
 
 if ($api === 'tle') {
