@@ -1146,7 +1146,14 @@
       _ssFlug.laeuft = true;
       fetch('?api=flights&r=' + r, { cache: 'no-store' })
         .then(function (x) { return x.json(); })
-        .then(function (j) { _ssFlug = { stand: j.stand || 0, flug: j.flug || [], geholt: Date.now(), laeuft: false }; })
+        .then(function (j) {
+          _ssFlug = { stand: j.stand || 0, flug: j.flug || [], geholt: Date.now(), laeuft: false };
+          // Neu zeichnen lassen - derselbe Fall wie bei den Satelliten: der Abruf
+          // ist asynchron und regelmaessig SPAETER fertig als das letzte Bild. Die
+          // Maschinen lagen dann im Speicher und wurden nie gemalt, weil die Kachel
+          // nur bei Wertaenderung oder Bedienung neu zeichnet.
+          ssDrawBald(w, ssEl(w));
+        })
         .catch(function () { _ssFlug.laeuft = false; _ssFlug.geholt = Date.now(); });
     }
     function ssFlugzeuge(ctx, cam, w, day) {
@@ -1194,9 +1201,25 @@
           ctx.restore();
         }
         if (w.ssFlightLbl !== false && f.ruf) {
-          ctx.font = '600 ' + Math.max(8, 11 * sk) + 'px ui-monospace,monospace';
+          var fs = Math.max(8, 11 * sk);
+          ctx.font = '600 ' + fs + 'px ui-monospace,monospace';
           ctx.fillStyle = nacht ? 'rgba(190,210,220,.75)' : col;
           ctx.fillText(f.ruf, q.x + 11 * sk, q.y + 3);
+
+          /* Kleines Schild mit der Route unter dem Rufzeichen.
+           *
+           * Start und Ziel liegen ohnehin in derselben Antwort wie die Position
+           * (der Server schlaegt sie bei adsbdb nach). Sie fehlen bei Privat- und
+           * Militaermaschinen - dann bleibt das Schild einfach weg, statt eine
+           * leere Huelse zu zeichnen.
+           *
+           * Bewusst nur die drei Buchstaben je Flughafen: die Ortsnamen ("Palma
+           * De Mallorca - Warsaw") sind auf einer Kuppel mit fuenf Maschinen
+           * laenger als der Abstand zwischen ihnen. */
+          // Dieselbe Fassung wie auf der Flugkuppel - siehe flRoutenschild().
+          if (w.ssFlightRoute !== false) {
+            flRoutenschild(ctx, f, q.x + 11 * sk, q.y + 3 + fs * 1.05, fs, nacht);
+          }
         }
         ctx.restore();
       });

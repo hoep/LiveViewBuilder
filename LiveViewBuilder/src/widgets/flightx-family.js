@@ -16,6 +16,84 @@
   //  mit 5 Bildern je Sekunde - genug fuer die langsame Bewegung, wenig genug, um
   //  ein Tablet nicht zu beschaeftigen.
 
+  /* ===================== Gemeinsame Auswahl =====================
+   *
+   * Eine Maschine oder ein Satellit laesst sich in JEDER Kachel anwaehlen - in
+   * der Liste, auf der Buehne, in beiden Kuppeln - und ist danach ueberall
+   * hervorgehoben. Das ist der eigentliche Zweck: man liest einen Eintrag in der
+   * Liste und sieht sofort, WO am Himmel er steht, oder umgekehrt.
+   *
+   * Der Schluessel ist bei Flugzeugen die ICAO24-Adresse (bleibt ueber die
+   * ganze Fahrt gleich, anders als das Rufzeichen bei Positionsfluegen), bei
+   * Satelliten der Name.
+   *
+   * Alle Kacheln liegen im selben Buendel, deshalb genuegt eine Variable und
+   * eine Liste der Zeichenfunktionen. Ein zweiter Klick auf dasselbe Objekt
+   * hebt die Auswahl wieder auf.
+   */
+  var _flSel   = null;   // {art:'flug'|'sat', id:'...'}
+  var _flMaler = {};     // KachelID -> Zeichenfunktion
+  var _flPunkte = {};    // KachelID -> [{x,y,r,art,id}] fuer die Trefferpruefung
+
+  function flMalerAn(w, zeichne) { _flMaler[w.id] = zeichne; }
+
+  function flGewaehlt(art, id) {
+    return !!_flSel && _flSel.art === art && _flSel.id === String(id);
+  }
+  function flAuswahl(art, id) {
+    var neu = (art && id) ? { art: art, id: String(id) } : null;
+    if (neu && flGewaehlt(neu.art, neu.id)) { neu = null; }   // nochmal = abwaehlen
+    _flSel = neu;
+    Object.keys(_flMaler).forEach(function (k) {
+      // BEIDE Wurzeln pruefen. Im Laufbetrieb haengen die Kacheln unter #ovcanvas,
+      // nicht unter canvas - wer nur dort sucht, traegt beim ersten Klick saemtliche
+      // Zeichenfunktionen aus, und die Auswahl bleibt wirkungslos.
+      var el = $('.w[data-id="' + k + '"]', canvas) || $('.w[data-id="' + k + '"]', $('#ovcanvas'));
+      if (!el || !document.body.contains(el)) { delete _flMaler[k]; return; }
+      try { _flMaler[k](); } catch (e) {}
+    });
+  }
+
+  /** Waehrend des Zeichnens die Trefferflaechen merken. */
+  function flPunktAn(w, x, y, r, art, id) {
+    (_flPunkte[w.id] = _flPunkte[w.id] || []).push({ x: x, y: y, r: r, art: art, id: String(id) });
+  }
+  function flPunkteLeeren(w) { _flPunkte[w.id] = []; }
+
+  /**
+   * Klick auf eine Leinwand: das naechstgelegene Objekt waehlen.
+   *
+   * Grosszuegiger Fangradius, mindestens 14 px - ein Flugzeugsymbol ist auf der
+   * Kuppel keine 8 px gross, und mit dem Finger trifft man das nicht.
+   */
+  function flKlickAn(w) {
+    var box = flBox(w); if (!box || box.__flKlick) { return; }
+    box.__flKlick = true;
+    box.style.cursor = 'pointer';
+    box.addEventListener('click', function (ev) {
+      var r = box.getBoundingClientRect();
+      var mx = ev.clientX - r.left, my = ev.clientY - r.top;
+      var beste = null, bd = 1e9;
+      (_flPunkte[w.id] || []).forEach(function (p) {
+        var d = Math.hypot(p.x - mx, p.y - my);
+        var fang = Math.max(14, p.r + 8);
+        if (d < fang && d < bd) { bd = d; beste = p; }
+      });
+      flAuswahl(beste && beste.art, beste && beste.id);
+    });
+  }
+
+  /** Ring um das gewaehlte Objekt. */
+  function flMarke(g, x, y, r) {
+    g.save();
+    g.beginPath(); g.arc(x, y, r, 0, 7);
+    g.strokeStyle = cssv('--accent') || '#00cdab';
+    g.lineWidth = 2; g.setLineDash([3, 3]);
+    g.shadowColor = cssv('--accent') || '#00cdab'; g.shadowBlur = 8;
+    g.stroke();
+    g.restore();
+  }
+
   var _flCache = {};          // radius -> {stand, flug, geholt}
   var _flWarte = {};          // radius -> [callbacks]
   var _flRO = {};             // widgetId -> ResizeObserver
@@ -119,6 +197,42 @@
     // gehoert das zweite dazu, sonst wird aus "De Havilland Canada" ein "De".
     var teile = t.split(/\s+/);
     return (teile[0].length <= 3 && teile[1]) ? (teile[0] + ' ' + teile[1]) : teile[0];
+  }
+
+  /**
+   * Kleines Schild mit der Route unter dem Rufzeichen.
+   *
+   * Start und Ziel liegen ohnehin in derselben Antwort wie die Position (der
+   * Server schlaegt sie bei adsbdb nach). Sie fehlen bei Privat- und
+   * Militaermaschinen - dann bleibt das Schild weg, statt eine leere Huelse zu
+   * zeichnen. Bewusst nur die drei Buchstaben je Flughafen: die Ortsnamen
+   * ("Palma De Mallorca - Warsaw") sind breiter als der Abstand zwischen zwei
+   * Maschinen auf der Kuppel.
+   *
+   * Die abgedunkelte Traegerflaeche ist noetig, damit die Schrift ueber
+   * Nachbarhaeusern, Hoehenringen und Energiebahnen lesbar bleibt.
+   *
+   * Wird von der Flugkuppel UND der Sonnenszene benutzt - beide liegen im
+   * selben Buendel, deshalb genuegt eine Fassung.
+   */
+  function flRoutenschild(g, f, x, y, groesse, nacht) {
+    if (!f || !f.von || !f.nach) { return; }
+    var txt = String(f.von) + ' \u2192 ' + String(f.nach);
+    var rs  = Math.max(7, groesse * 0.78);
+    g.font = '600 ' + rs + 'px ' + (cssv('--fm') || 'ui-monospace,monospace');
+    var br  = g.measureText(txt).width;
+    var pad = Math.max(2, rs * 0.35), h = rs + pad * 2, r0 = Math.min(4, h / 2);
+    g.beginPath();
+    g.moveTo(x - pad + r0, y - rs);
+    g.arcTo(x + br + pad, y - rs, x + br + pad, y - rs + h, r0);
+    g.arcTo(x + br + pad, y + pad, x - pad, y + pad, r0);
+    g.arcTo(x - pad, y + pad, x - pad, y - rs, r0);
+    g.arcTo(x - pad, y - rs, x + br + pad, y - rs, r0);
+    g.closePath();
+    g.fillStyle = nacht ? 'rgba(8,16,22,.62)' : 'rgba(6,20,24,.52)';
+    g.fill();
+    g.fillStyle = nacht ? 'rgba(170,195,205,.85)' : 'rgba(210,232,236,.92)';
+    g.fillText(txt, x, y);
   }
 
   /* Hersteller und Muster zu einer Zeile fuegen - ohne Doppelung.
@@ -305,6 +419,7 @@
       var zeichne = function () {
         var box = flBox(w); if (!box) return;
         var k = flCanvas(box), g = k.g, W = k.W, H = k.H;
+        flPunkteLeeren(w);   // Trefferflaechen bei jedem Bild neu sammeln
         var R = flRadius(w), d = _flCache[R], nacht = flNacht(w);
         var tilt = Math.max(0.15, Math.min(0.7, (parseFloat(w.flTilt) || 38) / 100));
         /* Massstab aus BEIDEN Maessen, nicht nur aus der Breite.
@@ -414,6 +529,7 @@
       };
       flLade(flRadius(w), function () { zeichne(); });
       flBeobachte(w, zeichne); flTakt(w, zeichne); zeichne();
+      flMalerAn(w, zeichne); flKlickAn(w);   // Auswahl: neu zeichnen lassen und Klicks annehmen
       flTaktSicher(w, 'poll', 30000, function () { flLade(flRadius(w), null); });
     },
     props: function (w) {
@@ -439,6 +555,7 @@
       var zeichne = function () {
         var box = flBox(w); if (!box) return;
         var k = flCanvas(box), g = k.g, W = k.W, H = k.H;
+        flPunkteLeeren(w);   // Trefferflaechen bei jedem Bild neu sammeln
         var R = flRadius(w), d = _flCache[R], nacht = flNacht(w);
         // Der Rand fuer die Himmelsrichtungen richtet sich nach der ENGEREN Seite.
         // Aus der Breite gerechnet schrumpfte die Kuppel in einer breiten, flachen
@@ -477,6 +594,8 @@
             g.strokeStyle = cssv('--accent'); g.globalAlpha = 0.4; g.lineWidth = 1; g.stroke(); g.globalAlpha = 1;
           }
           var sk = Math.max(0.4, Math.min(0.75, rad / 150));
+          flPunktAn(w, x, y, 10, 'flug', f.icao || f.ruf);
+          if (flGewaehlt('flug', f.icao || f.ruf)) { flMarke(g, x, y, 13); }
           if (nacht) {
             g.save(); g.translate(x, y); g.rotate((f.kurs || 0) * Math.PI / 180);
             flFlieger(g, flBauart(f), sk * 0.9); g.fillStyle = 'rgba(150,180,190,.30)'; g.fill(); g.restore();
@@ -489,6 +608,7 @@
           if (w.flLabels !== false) {
             g.font = '600 9.5px ' + (cssv('--fm') || 'monospace'); g.fillStyle = col;
             g.fillText(f.ruf || '—', x + 10, y + 3);
+            if (w.flRoute !== false) { flRoutenschild(g, f, x + 10, y + 12, 9.5, nacht); }
           }
         });
         // Sichtbare Satelliten kommen in dieselbe Kuppel - dieselbe Frage,
@@ -511,6 +631,8 @@
               if (!s.sichtbar) { return; }
               var a2 = s.az * Math.PI / 180, r2 = rad * (90 - s.el) / 90;
               var sx = cx + Math.sin(a2) * r2, sy = cy - Math.cos(a2) * r2;
+              flPunktAn(w, sx, sy, 8, 'sat', s.name);
+              if (flGewaehlt('sat', s.name)) { flMarke(g, sx, sy, 11); }
               g.beginPath(); g.arc(sx, sy, 4, 0, 7);
               g.fillStyle = '#fff'; g.shadowColor = '#fff'; g.shadowBlur = 10; g.fill(); g.shadowBlur = 0;
               g.font = '600 9.5px ' + (cssv('--fm') || 'monospace'); g.fillStyle = '#fff';
@@ -521,6 +643,7 @@
       };
       flLade(flRadius(w), function () { zeichne(); });
       flBeobachte(w, zeichne); flTakt(w, zeichne); zeichne();
+      flMalerAn(w, zeichne); flKlickAn(w);   // Auswahl: neu zeichnen lassen und Klicks annehmen
       flTaktSicher(w, 'poll', 30000, function () { flLade(flRadius(w), null); });
       // Satellitenpositionen in EIGENEM, langsamem Takt rechnen - nie beim Zeichnen.
       if (w.flSats && typeof satJetzt === 'function') {
@@ -574,7 +697,10 @@
             ? ('<div class="flr">' + f.von + '<span class="flp">→</span>' + f.nach + '</div>'
                + '<div class="flo">' + (f.vonort || '') + ' – ' + (f.nachort || '') + '</div>')
             : '<div class="flr" style="color:var(--faint)">keine Route hinterlegt</div>';
-          h += '<div class="flz' + (el >= 45 ? ' zen' : '') + '">'
+          var kennung = f.icao || f.ruf || '';
+          h += '<div class="flz' + (el >= 45 ? ' zen' : '')
+             + (flGewaehlt('flug', kennung) ? ' flsel' : '') + '"'
+             + ' data-art="flug" data-id="' + esc(kennung) + '">'
             /* Fluglinie und Muster kommen vom Server (adsbdb): die Linie faellt bei der
                Routenabfrage ohnehin mit ab, das Muster ueber die ICAO24-Adresse. Beides
                kann fehlen - Privatmaschinen, Militaer, unbekannte Kennungen. Dann bleibt
@@ -597,12 +723,30 @@
             + Math.round(f.cpa_min) + ' min</div></div>';
         });
         if (!d.flug.length) h = '<div class="hint" style="padding:10px;color:var(--faint);font-size:11px">nichts im Umkreis</div>';
+        // Ausgewaehlte Zeile in den sichtbaren Bereich holen: wird der Flug in der
+        // Kuppel angetippt, steht seine Zeile womoeglich ausserhalb - ohne das
+        // Nachziehen bliebe die Verbindung zwischen beiden Kacheln unsichtbar.
+
         box.innerHTML = h;
+        var sel = $('.flz.flsel', box);
+        if (sel && sel.scrollIntoView) { try { sel.scrollIntoView({ block: 'nearest' }); } catch (e) {} }
       };
       flLade(flRadius(w), function () { zeichne(); });
       flBeobachte(w, zeichne);
       flTaktSicher(w, 'liste', 2000, zeichne);   // Liste braucht keine 5 Bilder je Sekunde
       zeichne();
+      flMalerAn(w, zeichne);
+      // Ein Zuhoerer am Kasten, nicht je Zeile: die Zeilen werden bei jedem Bild
+      // neu gebaut, einzelne Zuhoerer waeren nach zwei Sekunden verwaist.
+      var kasten = flBox(w);
+      if (kasten && !kasten.__flKlick) {
+        kasten.__flKlick = true;
+        kasten.addEventListener('click', function (ev) {
+          var z = ev.target && ev.target.closest ? ev.target.closest('.flz[data-id]') : null;
+          if (!z) { return; }
+          flAuswahl(z.getAttribute('data-art'), z.getAttribute('data-id'));
+        });
+      }
       flTaktSicher(w, 'poll', 30000, function () { flLade(flRadius(w), null); });
     },
     props: function (w) {

@@ -298,7 +298,9 @@
           var n = Math.max(1, Math.min(12, parseInt(w.stRows) || 4)), h = '';
           p.slice(0, n).forEach(function (q, i) {
             var dauer = Math.round((q.bis - q.von) / 60000);
-            h += '<div class="stz' + (i === 0 ? ' erst' : '') + '">'
+            h += '<div class="stz' + (i === 0 ? ' erst' : '')
+               + (flGewaehlt('sat', q.name) ? ' flsel' : '') + '"'
+               + ' data-art="sat" data-id="' + esc(q.name) + '">'
               + '<div><div class="stnam">' + esc(q.name) + '</div><div class="stwann">' + stTag(q.von) + '</div></div>'
               + '<div><div class="stzeit">' + stUhr(q.von) + ' – ' + stUhr(q.bis) + '</div>'
               + '<div class="stmeta">auf im <b>' + stHimmel(q.azVon) + '</b>, ab im <b>' + stHimmel(q.azBis) + '</b>'
@@ -307,10 +309,25 @@
               + stHimmel(q.azMax) + '</div></div>';
           });
           b2.innerHTML = h;
+          // Gewaehlte Zeile heranholen - wird der Satellit in der Kuppel angetippt,
+          // steht sein Ueberflug womoeglich weiter unten in der Liste.
+          var sel = $('.stz.flsel', b2);
+          if (sel && sel.scrollIntoView) { try { sel.scrollIntoView({ block: 'nearest' }); } catch (e) {} }
         }, w.stAll);
       };
       zeichne();
       stTaktSicher(w, 'liste', 60000, zeichne);
+      flMalerAn(w, zeichne);
+      // Ein Zuhoerer am Kasten, nicht je Zeile: die Zeilen werden neu gebaut.
+      var kasten = stBox(w);
+      if (kasten && !kasten.__flKlick) {
+        kasten.__flKlick = true;
+        kasten.addEventListener('click', function (ev) {
+          var z = ev.target && ev.target.closest ? ev.target.closest('.stz[data-id]') : null;
+          if (!z) { return; }
+          flAuswahl(z.getAttribute('data-art'), z.getAttribute('data-id'));
+        });
+      }
     },
     props: function (w) {
       return row('Gruppe', '<select id="pStG"><option value="stations"' + ((w.stGroup || 'stations') === 'stations' ? ' selected' : '') + '>Raumstationen (ISS, Tiangong)</option>'
@@ -349,6 +366,7 @@
         // Kachel unnoetig: 518x353 ergab 36 px Rand, obwohl die Hoehe das Mass gibt.
         var kurz = Math.min(W, H), rnd = Math.max(14, kurz * 0.085);
         var cx = W / 2, cy = H / 2, rad = Math.max(30, kurz / 2 - rnd);
+        flPunkteLeeren(w);   // Trefferflaechen bei jedem Bild neu sammeln
         g.fillStyle = cssv('--tile') || '#0c1416'; g.fillRect(0, 0, W, H);
         g.beginPath(); g.arc(cx, cy, rad, 0, 7); g.fillStyle = 'rgba(10,18,26,.8)'; g.fill();
         // Sternfeld - fest gesaet, damit es beim Neuzeichnen nicht flimmert
@@ -405,6 +423,8 @@
         satJetzt(w.stGroup || 'stations', satOrt(w), function (L) {
           L.forEach(function (s) {
             var q = pkt(s.az, s.el), col = s.sichtbar ? '#ffffff' : (cssv('--faint') || '#4d5f63');
+            flPunktAn(w, q[0], q[1], 8, 'sat', s.name);
+            if (flGewaehlt('sat', s.name)) { flMarke(g, q[0], q[1], 11); }
             g.beginPath(); g.arc(q[0], q[1], s.sichtbar ? 4 : 2.4, 0, 7);
             g.fillStyle = col; if (s.sichtbar) { g.shadowColor = '#fff'; g.shadowBlur = 10; }
             g.fill(); g.shadowBlur = 0;
@@ -417,6 +437,21 @@
       };
       zeichne();
       var box = stBox(w);
+      // Auswahl: neu zeichnen lassen und Klicks annehmen. flKlickAn arbeitet ueber
+      // flBox(); die Satellitenkacheln nutzen stBox, deshalb hier von Hand.
+      flMalerAn(w, zeichne);
+      if (box && !box.__flKlick) {
+        box.__flKlick = true; box.style.cursor = 'pointer';
+        box.addEventListener('click', function (ev) {
+          var r = box.getBoundingClientRect();
+          var mx = ev.clientX - r.left, my = ev.clientY - r.top, beste = null, bd = 1e9;
+          (_flPunkte[w.id] || []).forEach(function (pt) {
+            var dd = Math.hypot(pt.x - mx, pt.y - my), fang = Math.max(14, pt.r + 8);
+            if (dd < fang && dd < bd) { bd = dd; beste = pt; }
+          });
+          flAuswahl(beste && beste.art, beste && beste.id);
+        });
+      }
       if (box && typeof ResizeObserver !== 'undefined') {
         if (_stRO[w.id]) { try { _stRO[w.id].disconnect(); } catch (e) {} }
         var ro = new ResizeObserver(zeichne); ro.observe(box); _stRO[w.id] = ro;
