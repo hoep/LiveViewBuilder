@@ -277,6 +277,31 @@
   function stHimmel(a) {
     return ['N', 'NNO', 'NO', 'ONO', 'O', 'OSO', 'SO', 'SSO', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'][Math.round(a / 22.5) % 16];
   }
+  /* Grosse Stationen duerfen nie aus der Auswahl fallen.
+   *
+   * Celestraks Gruppe "visual" enthaelt 86 Objekte, davon sind die meisten
+   * Raketenoberstufen und alte Satelliten - gerade noch mit blossem Auge
+   * erkennbar. Die ISS ist mit Groessenklasse -3 eine voellig andere Liga.
+   * Am 31.08.2026 gab es in 48 Stunden 244 sichtbare Ueberfluege; die ISS lag
+   * chronologisch an Position 76 und war damit aus einer Liste mit vier Zeilen
+   * verschwunden. Das ist genau die Angabe, die man von so einer Kachel will.
+   *
+   * Deshalb: chronologische Reihenfolge bleibt, aber der naechste Ueberflug
+   * einer grossen Station bekommt einen Platz - notfalls auf Kosten des
+   * letzten.
+   */
+  var ST_GROSS = /^(ISS|CSS|TIANGONG|TIANHE|HUBBLE|HST)/i;
+  function stMitStation(alle, n) {
+    var aus = alle.slice(0, n);
+    var stat = null;
+    for (var i = 0; i < alle.length; i++) { if (ST_GROSS.test(alle[i].name)) { stat = alle[i]; break; } }
+    if (stat && aus.indexOf(stat) < 0 && aus.length) {
+      aus[aus.length - 1] = stat;
+      aus.sort(function (a, b) { return a.von - b.von; });
+    }
+    return aus;
+  }
+
   function stUhr(ms) { return new Date(ms).toLocaleTimeString('de-DE').slice(0, 5); }
   function stTag(ms) { return new Date(ms).toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit' }); }
 
@@ -296,7 +321,7 @@
             return;
           }
           var n = Math.max(1, Math.min(12, parseInt(w.stRows) || 4)), h = '';
-          p.slice(0, n).forEach(function (q, i) {
+          stMitStation(p, n).forEach(function (q, i) {
             var dauer = Math.round((q.bis - q.von) / 60000);
             h += '<div class="stz' + (i === 0 ? ' erst' : '')
                + (flGewaehlt('sat', q.name) ? ' flsel' : '') + '"'
@@ -392,8 +417,23 @@
           return [cx + Math.sin(k) * rr, cy - Math.cos(k) * rr];
         };
         satUeberfluege(w.stGroup || 'stations', satOrt(w), parseFloat(w.stMinEl) || 10, function (P) {
-          P.slice(0, 4).forEach(function (p, i) {
-            var erst = (i === 0), col = erst ? (cssv('--accent') || '#00cdab') : (cssv('--info') || '#4aa8ff');
+          stMitStation(P, 4).forEach(function (p, i) {
+            /* Hell gezeichnet wird die GEWAEHLTE Bahn - und nur solange nichts
+             * gewaehlt ist, die naechste.
+             *
+             * Das war die eigentliche Luecke: die Ueberflugliste zeigt die
+             * Ueberfluege des kommenden Abends, die Kuppel dagegen die
+             * Satelliten, die JETZT ueber dem Horizont stehen. Am 31.08.2026 um
+             * 12:30 hatten beide Mengen keinen einzigen Namen gemeinsam - ein
+             * gewaehlter Ueberflug konnte also gar nichts markieren. Die
+             * Verbindung zwischen Liste und Kuppel ist die BAHN, nicht der
+             * aktuelle Punkt. */
+            var gew  = flGewaehlt('sat', p.name);
+            var erst = gew || (!_flSel && i === 0);
+            var col  = erst ? (cssv('--accent') || '#00cdab') : (cssv('--info') || '#4aa8ff');
+            // Bahn anklickbar: am Hoechststand und an beiden Enden, das trifft man
+            var hp = [p.bahn[0], p.bahn[Math.floor(p.bahn.length / 2)], p.bahn[p.bahn.length - 1]];
+            hp.forEach(function (b) { if (b) { var qq = pkt(b[0], b[1]); flPunktAn(w, qq[0], qq[1], 9, 'sat', p.name); } });
             g.beginPath();
             p.bahn.forEach(function (b, j) { var q = pkt(b[0], b[1]); if (j) { g.lineTo(q[0], q[1]); } else { g.moveTo(q[0], q[1]); } });
             g.strokeStyle = col; g.globalAlpha = erst ? 0.95 : 0.3; g.lineWidth = erst ? 2.4 : 1.4;
