@@ -478,6 +478,10 @@
           var p = flStellung(f, vs); if (!drin(p.de, p.dn)) return;
           var col = flFarbe(p.alt);
           var gp = proj(p.de, p.dn, 0), ap = proj(p.de, p.dn, p.alt);
+          // Auswahl: Trefferflaeche an der MASCHINE (ap), nicht am Bodenpunkt -
+          // getippt wird auf das Flugzeug, nicht auf seinen Lotfusspunkt.
+          flPunktAn(w, ap[0], ap[1], 11, 'flug', f.icao || f.ruf);
+          if (flGewaehlt('flug', f.icao || f.ruf)) { flMarke(g, ap[0], ap[1], 14); }
           if (spur > 0) {
             g.beginPath(); var auf = false;
             for (var dt = 0; dt >= -spur; dt -= 15) {
@@ -518,7 +522,9 @@
           if (schilder[i].y - schilder[i - 1].y < 24) schilder[i].y = schilder[i - 1].y + 24;
         }
         schilder.forEach(function (t) {
-          g.font = '600 10.5px ' + (cssv('--fm') || 'monospace'); g.fillStyle = t.col;
+          var gew = flGewaehlt('flug', t.f.icao || t.f.ruf);
+          g.font = '600 10.5px ' + (cssv('--fm') || 'monospace');
+          g.fillStyle = gew ? (cssv('--accent') || '#00cdab') : t.col;
           g.fillText(t.f.ruf || '—', t.x, t.y - 3);
           g.font = '9.5px ' + (cssv('--fm') || 'monospace'); g.fillStyle = cssv('--muted') || '#8ba0a4';
           g.fillText((t.alt / 1000).toFixed(1) + ' km · ' + Math.round(t.el) + '°'
