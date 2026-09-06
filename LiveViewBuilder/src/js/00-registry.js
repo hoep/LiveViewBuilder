@@ -19,7 +19,11 @@
     if(stufe>=3)return 'Dichter Nebel';
     if(stufe>=2)return 'Nebel';
     var h=new Date().getHours();
-    return (h<11)?'Morgendunst':((h>=16)?'Abenddunst':'Diesig');
+    // Wortlaut und Grenzen absichtlich Zeichen fuer Zeichen wie serverseitig in
+    // WeatherStation (module.php $tageszeit, WeatherEngine::wetterlage) - sonst sagt die
+    // Kachel etwas anderes als die Wetterlage-Variable daneben. Grenze 10 Uhr, und der
+    // Tagesfall heisst "Dunst", nicht "Diesig".
+    return (h<10)?'Morgendunst':((h>=16)?'Abenddunst':'Dunst');
   }
   (function(){
     function box(msg){
