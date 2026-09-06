@@ -215,6 +215,27 @@
    * Wird von der Flugkuppel UND der Sonnenszene benutzt - beide liegen im
    * selben Buendel, deshalb genuegt eine Fassung.
    */
+  /**
+   * Was auf der Karte steht: die Kennung in IATA-Schreibweise.
+   *
+   * OpenSky liefert das ICAO-Rufzeichen ("DLH762"), adsbdb dieselbe Kennung mit
+   * dem Fluglinienkuerzel der IATA ("LH762"). Kuerzer und vertrauter - aber NUR
+   * dann eine Flugnummer, wenn der Rest eine reine Zahl ist. "OS18PU" ist keine:
+   * Fluglinien vergeben alphanumerische Betriebsrufzeichen, damit sich am Funk
+   * keine aehnlich klingenden Nummern kreuzen. Zwei Drittel sehen so aus.
+   * flIstNummer() sagt, welcher Fall vorliegt - die Beschriftung soll nicht
+   * behaupten, eine Flugnummer zu zeigen, wo keine ist.
+   */
+  function flNummer(f) { return (f && (f.nr || f.ruf)) || '\u2014'; }
+  function flIstNummer(f) { return !!(f && f.nr && f.nrNum); }
+  function flKennungTitel(f) {
+    if (!f) { return ''; }
+    if (flIstNummer(f)) { return 'Flugnummer ' + f.nr + ' \u00b7 Rufzeichen ' + (f.ruf || '\u2014'); }
+    if (f.nr) { return 'Betriebsrufzeichen ' + f.nr + ' \u00b7 ICAO ' + (f.ruf || '\u2014')
+      + ' \u2014 zu diesem Rufzeichen ist keine Flugnummer abrufbar'; }
+    return 'Kennung ' + (f.ruf || '\u2014');
+  }
+
   function flRoutenschild(g, f, x, y, groesse, nacht) {
     if (!f || !f.von || !f.nach) { return; }
     var txt = String(f.von) + ' \u2192 ' + String(f.nach);
@@ -525,7 +546,7 @@
           var gew = flGewaehlt('flug', t.f.icao || t.f.ruf);
           g.font = '600 10.5px ' + (cssv('--fm') || 'monospace');
           g.fillStyle = gew ? (cssv('--accent') || '#00cdab') : t.col;
-          g.fillText(t.f.ruf || '—', t.x, t.y - 3);
+          g.fillText(flNummer(t.f), t.x, t.y - 3);
           g.font = '9.5px ' + (cssv('--fm') || 'monospace'); g.fillStyle = cssv('--muted') || '#8ba0a4';
           g.fillText((t.alt / 1000).toFixed(1) + ' km · ' + Math.round(t.el) + '°'
                      + (t.f.von ? (' · ' + t.f.von + '→' + t.f.nach) : ''), t.x, t.y + 8);
@@ -613,7 +634,7 @@
           }
           if (w.flLabels !== false) {
             g.font = '600 9.5px ' + (cssv('--fm') || 'monospace'); g.fillStyle = col;
-            g.fillText(f.ruf || '—', x + 10, y + 3);
+            g.fillText(flNummer(f), x + 10, y + 3);
             if (w.flRoute !== false) { flRoutenschild(g, f, x + 10, y + 12, 9.5, nacht); }
           }
         });
@@ -702,7 +723,9 @@
           var route = (w.flRoute !== false && f.von)
             ? ('<div class="flr">' + f.von + '<span class="flp">→</span>' + f.nach + '</div>'
                + '<div class="flo">' + (f.vonort || '') + ' – ' + (f.nachort || '') + '</div>')
-            : '<div class="flr" style="color:var(--faint)">keine Route hinterlegt</div>';
+            : ('<div class="flr" style="color:var(--faint)">'
+               + (f.routeOk === false ? 'Strecke passt nicht zu Position und Kurs' : 'keine Route hinterlegt')
+               + '</div>');
           var kennung = f.icao || f.ruf || '';
           h += '<div class="flz' + (el >= 45 ? ' zen' : '')
              + (flGewaehlt('flug', kennung) ? ' flsel' : '') + '"'
@@ -712,7 +735,12 @@
                kann fehlen - Privatmaschinen, Militaer, unbekannte Kennungen. Dann bleibt
                es bei der aus Tempo und Hoehe GESCHAETZTEN Bauart, die vorher die einzige
                Angabe war. */
-            + '<div><div class="flruf" style="color:' + col + '">' + esc(f.ruf || '—') + '</div>'
+            + '<div><div class="flruf" style="color:' + col + '" title="' + esc(flKennungTitel(f)) + '">'
+            + esc(flNummer(f)) + '</div>'
+            + ((f.nr && f.ruf && f.nr !== f.ruf)
+                ? '<div class="flk" title="' + esc(flKennungTitel(f)) + '">'
+                  + (flIstNummer(f) ? esc(f.ruf) : esc(f.ruf) + ' \u00b7 Betriebsrufzeichen') + '</div>'
+                : '')
             + (f.linie ? '<div class="fllin" title="' + esc(f.linie) + '">' + esc(f.linie) + '</div>' : '')
             + (f.typ
                 ? '<div class="flmus" title="' + esc(f.typ + (f.muster ? ' · ' + f.muster : '')
@@ -720,8 +748,13 @@
                   + esc(flTypText(f)) + '</div>'
                 : '<div class="flk">' + ({ jet: 'Jet', prop: 'Propeller', heli: 'Hubschr.' }[art]) + '</div>')
             + '</div>'
+            // Steigrate als ZAHL, nicht nur als Pfeil: "steigt" und "steigt mit
+            // 12 m/s" sind zwei verschiedene Auskuenfte. Unter 0,5 m/s bleibt es
+            // beim Pfeil - dort ist die Zahl nur Rauschen.
             + '<div>' + route + '<div class="flm"><b>' + (p.alt / 1000).toFixed(1) + '</b> km · <b>'
             + f.tempo + '</b> km/h ' + steig
+            + (Math.abs(f.steig) >= 0.5
+                ? ' <span class="flvs">' + (f.steig > 0 ? '+' : '') + Math.round(f.steig) + ' m/s</span>' : '')
             + ' <span class="flpill">' + HIMMEL[Math.round(az / 22.5) % 16] + ' ' + Math.round(el) + '°</span>'
             + (el >= 45 ? '<span class="flzen">fast senkrecht</span>' : '') + '</div></div>'
             + '<div class="flre"><span class="flg">' + dist.toFixed(1) + '</span>km jetzt<br>'

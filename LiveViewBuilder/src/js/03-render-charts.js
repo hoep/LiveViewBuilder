@@ -1448,7 +1448,31 @@
     var _syF=String(sd.sym||''),_syOn=(_syF&&_syF!=='none'),_syOff=(_syF==='none'),
         _syC=(sd.symC?(_skinToCss(sd.symC)||sd.symC):''),
         _syS=(sd.symS!=null&&sd.symS!==''&&parseFloat(sd.symS)>=0)?parseFloat(sd.symS):null;
-    if(R.kind==='bar')return {type:'bar',name:nm,yAxisIndex:ax,stack:(dashed?(stacked?'cmp':undefined):st),itemStyle:{color:col,borderRadius:(stacked?0:br)},data:data,label:(dashed?{show:false}:lbl)};
+    if(R.kind==='bar'){
+      // Ruhende Balken daempfen. Ein Tag ohne Fahrt und ein Tag mit 12 km sind beide
+      // Stummel und sehen in derselben Farbe gleich aus - obwohl der eine "gar nicht"
+      // heisst und der andere "kaum". Unter der Schwelle wird der Balken grau; damit
+      // trennt die FARBE, was die Hoehe nicht mehr trennen kann.
+      var _schw=(w.chRuheAb!=null&&w.chRuheAb!=='')?parseFloat(w.chRuheAb):null;
+      var _ruhCol=cssv('--line');
+      var _is=(_schw!=null&&!isNaN(_schw)&&!dashed)
+        ? {color:function(p){var v=(p.value&&p.value.length!=null)?p.value[p.value.length-1]:p.value;
+             return (v!=null&&Math.abs(+v)<=_schw)?_ruhCol:col;},borderRadius:(stacked?0:br)}
+        : {color:col,borderRadius:(stacked?0:br)};
+      var _so={type:'bar',name:nm,yAxisIndex:ax,stack:(dashed?(stacked?'cmp':undefined):st),
+               itemStyle:_is,data:data,label:(dashed?{show:false}:lbl)};
+      // Schnittlinie: eine gestrichelte Waagrechte auf dem Mittelwert. Sie beantwortet
+      // die Frage, die eine Balkenreihe sonst offen laesst - war dieser Tag ueber oder
+      // unter dem Ueblichen.
+      if(w.chAvgLine&&!dashed){
+        _so.markLine={silent:true,symbol:'none',precision:0,
+          lineStyle:{type:'dashed',width:1.4,color:_skinToCss(w.chAvgColor)||cssv('--accent-2')},
+          label:{show:true,position:'insideEndTop',fontSize:_ecF(w,'label',9),
+                 color:cssv('--muted'),formatter:function(p){return _chNum(w,p.value,false);}},
+          data:[{type:'average'}]};
+      }
+      return _so;
+    }
     if(R.kind==='scatter')return {type:'scatter',name:nm,yAxisIndex:ax,symbol:(_syF||'circle'),symbolSize:(_syS!=null?_syS:(w.symSize||7)),itemStyle:{color:_syC||col},data:data,label:(dashed?{show:false}:lbl)};
     var smooth=(R.smooth!=null?R.smooth:(w.smooth!==false&&!R.step));
     // Wertbeschriftung an einer Linie haengt in echarts am Datenpunkt-Symbol: ist

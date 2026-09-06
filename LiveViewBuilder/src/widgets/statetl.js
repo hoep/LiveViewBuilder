@@ -10,10 +10,28 @@
   // data aufsteigend [[ms,val]...]; span/Fraktionen über [from,fullTo]; Fuellung nur bis dataTo (Rest = "offen").
   function _stlSegs(data,from,fullTo,dataTo,liveVal){
     var span=(fullTo-from)||1,pts=data||[],segs=[],k,init=liveVal;
-    for(k=0;k<pts.length&&pts[k][0]/1000<=from;k++)init=pts[k][1];
-    var curVal=init,curT=from;
+    // Welcher Wert galt VOR dem ersten Messpunkt im Fenster?
+    //
+    // Liegt ein Punkt am oder vor Fensterbeginn, gilt dessen Wert - der Normalfall.
+    // Gibt es keinen, war bisher der LIVE-Wert die Annahme, und das ist falsch:
+    // eine Variable, die erst seit heute Nachmittag archiviert wird und gerade
+    // auf "Regen" steht, faerbte damit den ganzen Vorlauf rot, obwohl dort nichts
+    // gemessen wurde. Naechstliegende Evidenz ist der ERSTE Messpunkt. Ohne jeden
+    // Punkt bleibt es beim Live-Wert - dann ist die Variable seit Langem
+    // unveraendert, und genau dann ist er richtig.
+    // Gibt es einen Punkt am/vor Fensterbeginn, gilt dessen Wert. Gibt es keinen,
+    // wurde in der Vorlaufzeit schlicht NICHTS gemessen - dann bleibt sie leer.
+    // Der Live-Wert (frueher) faerbte sie mit dem heutigen Zustand, der erste
+    // Messpunkt faerbt sie mit einem Zustand, der dort nie galt: eine Variable,
+    // deren Aufzeichnung mitten im Fenster mit "Regen" beginnt, war davor nicht
+    // im Regen - sie war unbekannt. Eine Luecke gehoert leer.
+    var hatVor=false;
+    for(k=0;k<pts.length&&pts[k][0]/1000<=from;k++){init=pts[k][1];hatVor=true;}
+    var luecke=(!hatVor&&pts.length>0);
+    var curVal=init,curT=from,erst=true;
     for(;k<pts.length;k++){var t=pts[k][0]/1000;if(t>dataTo)t=dataTo;
-      if(t>curT)segs.push({fa:(curT-from)/span,fb:(t-from)/span,val:curVal});
+      if(t>curT&&!(erst&&luecke))segs.push({fa:(curT-from)/span,fb:(t-from)/span,val:curVal});
+      erst=false;
       curVal=pts[k][1];curT=t;if(curT>=dataTo)break;}
     if(curT<dataTo)segs.push({fa:(curT-from)/span,fb:(dataTo-from)/span,val:curVal});
     return segs;
@@ -39,10 +57,35 @@
     // Die Achse gehoert UNTER die Spuren. Sie lag bisher im normalen Fluss, waehrend
     // die Spuren absolut liegen - dadurch stand die Uhrzeit oben IM ersten Balken.
     // Die Spuren sparen unten 16 px aus (.stl-lanes), genau dort sitzt sie jetzt.
-    return '<div class="stl-axis" style="position:absolute;left:0;right:0;bottom:0;display:block;height:clamp(10px,9cqh,16px);font-size:clamp(7px,2.8cqmin,11px);color:var(--faint)">'+out.join('')+'</div>';
+    // Die Achse muss dort beginnen, wo die BALKEN beginnen - sonst zeigt sie auf
+    // die Beschriftungsspalte statt auf die Zeit. --stl-lw ist die Breite dieser
+    // Spalte und wird von _stlDraw gesetzt.
+    return '<div class="stl-axis" style="position:absolute;left:var(--stl-lw,0px);right:0;bottom:0;display:block;height:clamp(10px,9cqh,16px);font-size:clamp(7px,2.8cqmin,11px);color:var(--faint)">'+out.join('')+'</div>';
+  }
+  // --- Vorschau-Spur ------------------------------------------------------
+  //
+  // Das Archiv kennt nur Vergangenheit. Fuer die kommende Nacht steht der Plan
+  // dagegen als JSON in einer Variablen: {from,to,segs:[{a,b,v,t}]}. Traegt ein
+  // Signal planVid, kommt seine Spur von dort und NICHT aus dem Archiv - Fenster
+  // und Achse richten sich dann nach dem Plan.
+  function _stlPlan(o){
+    var lv=o&&o.planVid&&_lastVals[o.planVid];if(!lv)return null;
+    var j=lv.v;
+    if(typeof j==='string'){try{j=JSON.parse(j);}catch(e){return null;}}
+    return (j&&j.segs&&j.segs.length)?j:null;
   }
   var _STL_HATCH='repeating-linear-gradient(45deg,var(--line-soft) 0 5px,transparent 5px 10px)';
   function _stlFetch(w){
+    var plan=(w.items||[]).filter(function(o){return o&&o.planVid;});
+    if(plan.length){
+      var pf=null,pt=null;
+      plan.forEach(function(o){var j=_stlPlan(o);if(!j)return;
+        if(pf===null||j.from<pf)pf=j.from; if(pt===null||j.to>pt)pt=j.to;});
+      if(pf!==null){
+        w._stlFrom=pf;w._stlTo=pt;w._stlNow=pt;w._stlPeriod='';w._stlStart=null;w._stlData={};
+        _stlDraw(w);return;
+      }
+    }
     var items=(w.items||[]).filter(function(o){return o&&o.vid;});if(!items.length){_stlDraw(w);return;}
     var rng=_winRange(w),from=rng.from,to=rng.to,now=rng.now,dataTo=Math.min(to,now),fetchFrom=from-(to-from),done=0,acc={};
     w._stlFrom=from;w._stlTo=to;w._stlNow=now;w._stlPeriod=rng.period;w._stlStart=rng.start;w._stlOffCur=rng.off;
@@ -55,19 +98,32 @@
   function _stlDraw(w){
     var el=$('.w[data-id="'+w.id+'"]',canvas)||((_popup&&$('#ovcanvas'))?$('.w[data-id="'+w.id+'"]',$('#ovcanvas')):null);if(!el)return;
     var box=$('[data-role=stl]',el);if(!box)return;
-    var items=(w.items||[]).filter(function(o){return o&&o.vid;});
+    var items=(w.items||[]).filter(function(o){return o&&(o.vid||o.planVid);});
     var from=w._stlFrom||0,to=w._stlTo||1,now=w._stlNow||to,period=w._stlPeriod,span=(to-from)||1,data=w._stlData||{},vert=(w.orient==='v');
     if(!items.length){box.innerHTML='<div style="color:var(--faint);font-size:11px;padding:8px">Signale hinzufügen (Zustands-Variablen)</div>';return;}
     var dataTo=Math.min(now,to),futFa=(dataTo-from)/span; // Beginn der "offenen" (noch nicht abgelaufenen) Zeit
     var showLabels=!w.hideLabels;
     var lanes=items.map(function(o){
-      var lv=_lastVals[o.vid],liveVal=lv?lv.v:null;
-      var segs=_stlSegs(data[o.vid],from,to,dataTo,liveVal);
+      var lv=o.vid?_lastVals[o.vid]:null,liveVal=lv?lv.v:null;
+      var pj=_stlPlan(o),segs;
+      if(pj){
+        segs=pj.segs.map(function(s){
+          return {fa:(s.a-from)/span,fb:(s.b-from)/span,val:s.v,txt:s.t};});
+        if(liveVal===null&&pj.segs.length)liveVal=pj.segs[0].v;
+      }else{
+        segs=_stlSegs(data[o.vid],from,to,dataTo,liveVal);
+      }
       var fills=segs.map(function(s){var col=_stlColor(w,s.val);if(!col)return '';
+        var slab=(s.txt!=null&&s.txt!=='')?s.txt:_slogLabel(w,s.val),breit=(s.fb-s.fa);
         if(vert)return '<i style="position:absolute;left:0;right:0;bottom:'+(s.fa*100).toFixed(2)+'%;height:'+((s.fb-s.fa)*100).toFixed(2)+'%;background:'+col+'"></i>';
-        return '<i style="position:absolute;top:0;bottom:0;left:'+(s.fa*100).toFixed(2)+'%;width:'+((s.fb-s.fa)*100).toFixed(2)+'%;background:'+col+'"></i>';
+        // Ein Farbklecks ohne Wort ist eine Legendenaufgabe. Ist der Abschnitt
+        // breit genug, traegt er seine Bezeichnung selbst - dann liest sich das
+        // Band wie ein Ablauf und nicht wie ein Balkendiagramm.
+        var txt=(!vert && breit>=0.09 && slab)
+          ? '<b class="stl-seg">'+esc(slab)+'</b>' : '';
+        return '<i style="position:absolute;top:0;bottom:0;left:'+(s.fa*100).toFixed(2)+'%;width:'+((s.fb-s.fa)*100).toFixed(2)+'%;background:'+col+'">'+txt+'</i>';
       }).join('');
-      if(period&&futFa<1){ // noch nicht abgelaufene Zeit der laufenden Einheit -> "offen"
+      if(period&&futFa<1&&!pj){ // noch nicht abgelaufene Zeit der laufenden Einheit -> "offen"
         fills+= vert
           ? '<i style="position:absolute;left:0;right:0;bottom:'+(futFa*100).toFixed(2)+'%;top:0;background:'+_STL_HATCH+';opacity:.5"></i>'
           : '<i style="position:absolute;top:0;bottom:0;left:'+(futFa*100).toFixed(2)+'%;right:0;background:'+_STL_HATCH+';opacity:.5"></i>';
@@ -78,6 +134,12 @@
       return vert?('<div class="stl-lane v">'+trk+lbl+'</div>'):('<div class="stl-lane">'+lbl+trk+'</div>');
     }).join('');
     var axis=w.hideAxis?'':_stlAxisHTML(from,to,period);
+    // Eine gemeinsame Zeitachse verlangt, dass alle Spuren an derselben Stelle
+    // beginnen. Die Beschriftung lag als flex:0 0 auto im Fluss und war je nach
+    // Textlaenge verschieden breit - die Balken fingen versetzt an und die
+    // Achse darunter passte zu keinem von ihnen.
+    var lw = (!showLabels || vert) ? '0px' : 'clamp(74px,16cqw,168px)';
+    box.style.setProperty('--stl-lw', lw);
     box.innerHTML='<div class="stl-lanes'+(vert?' v':'')+'">'+lanes+'</div>'+axis;
     if(w.showLog){var lb=$('[data-role=slog]',el);if(lb){
       var first=items[0],dd=((data[first.vid])||[]).slice().reverse(),mx=(w.logCount>0?w.logCount:20),o2=[];
@@ -133,7 +195,7 @@
       +'<div class="pgh">Zustände &amp; Signale</div>'
       +listEditor(w,'states','Zustände: Wert · Farbe · Name (leer = transparent)',[{k:'v',ph:'Wert'},{k:'color',type:'skincolor'},{k:'label',ph:'Name'}])
       +'<button class="btn" id="pStlFill" style="margin:-2px 0 8px;padding:4px 8px;font-size:11px">Zustände aus Profil füllen</button>'
-      +listEditor(w,'items','Signale (Zustands-Variablen)',[{k:'vid',type:'var',ph:'Variable'},{k:'label',ph:'Name'}]);},
+      +listEditor(w,'items','Signale (Zustands-Variablen)',[{k:'vid',type:'var',ph:'Variable'},{k:'label',ph:'Name'},{k:'planVid',type:'var',ph:'Vorschau (JSON)'}]);},
     wire:function(w){
       winWire(w,function(){_stlFetch(w);commit();});
       if($('#pStlO'))$('#pStlO').onchange=function(){w.orient=this.value;_stlDraw(w);commit();};

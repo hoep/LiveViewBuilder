@@ -209,8 +209,25 @@
             && satBeschienen(pv.position, satSonneEci(t));
           if (sicht) {
             var az = (la.azimuth * 180 / Math.PI + 360) % 360;
-            if (!lauf) { lauf = { name: S.name, von: t, bis: t, maxEl: el, azVon: az, azMax: az, azBis: az, bahn: [] }; }
-            else { lauf.bis = t; lauf.azBis = az; if (el > lauf.maxEl) { lauf.maxEl = el; lauf.azMax = az; } }
+            // Bahndaten NUR im Hoechststand festhalten: dort ist der Satellit am
+            // naechsten und die Angabe am aussagekraeftigsten. Berechnet wird nur
+            // bei sichtbaren Punkten - die Propagation lief ohnehin schon.
+            var vv = pv.velocity;
+            var mess = {
+              hoehe: Math.round(lib.eciToGeodetic(pv.position, gm).height),
+              entf:  Math.round(la.rangeSat),
+              tempo: vv ? Math.round(Math.sqrt(vv.x * vv.x + vv.y * vv.y + vv.z * vv.z) * 3600) : 0
+            };
+            if (!lauf) {
+              lauf = { name: S.name, von: t, bis: t, maxEl: el, azVon: az, azMax: az, azBis: az, bahn: [],
+                       hoehe: mess.hoehe, entf: mess.entf, tempo: mess.tempo };
+            } else {
+              lauf.bis = t; lauf.azBis = az;
+              if (el > lauf.maxEl) {
+                lauf.maxEl = el; lauf.azMax = az;
+                lauf.hoehe = mess.hoehe; lauf.entf = mess.entf; lauf.tempo = mess.tempo;
+              }
+            }
             lauf.bahn.push([az, el]);
           } else if (lauf) {
             if (lauf.bis - lauf.von >= 60000) { aus.push(lauf); }
@@ -243,11 +260,21 @@
               && Math.abs(v.maxEl - p.maxEl) < 8) { t = v; break; }
         }
         if (!t) { vereint.push(p); return; }
-        if (rang(p.name) > rang(t.name)) {                 // bekannteren Namen uebernehmen
-          t.name = p.name; t.bahn = p.bahn; t.azVon = p.azVon; t.azMax = p.azMax; t.azBis = p.azBis;
+        // Name UND Messwerte gehoeren zusammen.
+        //
+        // Frueher wanderte nur der bekanntere Name samt Bodenspur herueber, der
+        // Hoechststand wurde ueber beide gemaxt - die Zeile trug also den Namen
+        // des einen und die Bahn des anderen. Unsichtbar, solange nur Uhrzeit und
+        // Himmelsrichtung dastanden; mit Bahnhoehe und Tempo faellt es sofort auf:
+        // "CSS · 809 km hoch" - die chinesische Station fliegt auf 400 km.
+        // Eine Zeile beschreibt EIN Objekt: alle Geometrie kommt von dem, dessen
+        // Name sie traegt. Vereinigt wird nur das Zeitfenster.
+        if (rang(p.name) > rang(t.name)) {
+          t.name = p.name; t.bahn = p.bahn;
+          t.azVon = p.azVon; t.azMax = p.azMax; t.azBis = p.azBis;
+          t.maxEl = p.maxEl; t.hoehe = p.hoehe; t.entf = p.entf; t.tempo = p.tempo;
         }
         t.von = Math.min(t.von, p.von); t.bis = Math.max(t.bis, p.bis);
-        t.maxEl = Math.max(t.maxEl, p.maxEl);
       });
       _satPass[k] = { t: Date.now(), v: vereint };
       melde(vereint);
@@ -306,6 +333,11 @@
   function stTag(ms) { return new Date(ms).toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit' }); }
 
   // ------------------------------------------------------------- Ueberflugliste
+  /** Tausenderpunkt: "27.600 km/h" statt "27600 km/h". */
+  function stTsd(n) {
+    return String(Math.round(n || 0)).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  }
+
   defWidget('satpasses', {
     label: 'Satelliten · Überflüge', cat: 'Wetter & Zeit', paletteIcon: 'sat', size: [400, 260],
     defaults: function (w) { w.stGroup = 'stations'; w.stRows = 4; w.stMinEl = 10; },
@@ -329,7 +361,14 @@
               + '<div><div class="stnam">' + esc(q.name) + '</div><div class="stwann">' + stTag(q.von) + '</div></div>'
               + '<div><div class="stzeit">' + stUhr(q.von) + ' – ' + stUhr(q.bis) + '</div>'
               + '<div class="stmeta">auf im <b>' + stHimmel(q.azVon) + '</b>, ab im <b>' + stHimmel(q.azBis) + '</b>'
-              + ' <span class="stpill">' + dauer + ' min sichtbar</span></div></div>'
+              + ' <span class="stpill">' + dauer + ' min sichtbar</span></div>'
+              // Bahnhoehe, Bahngeschwindigkeit und Entfernung - alle drei im
+              // Hoechststand, also im guenstigsten Moment des Ueberflugs.
+              + (q.hoehe != null
+                  ? '<div class="stmeta stbahn"><b>' + q.hoehe + '</b> km hoch · <b>'
+                    + stTsd(q.tempo) + '</b> km/h · <b>' + stTsd(q.entf) + '</b> km entfernt</div>'
+                  : '')
+              + '</div>'
               + '<div class="stre"><span class="stgr">' + Math.round(q.maxEl) + '°</span>Höchststand<br>im '
               + stHimmel(q.azMax) + '</div></div>';
           });
