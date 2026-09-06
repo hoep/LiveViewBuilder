@@ -96,6 +96,23 @@
 
   // Wendet Ausblenden (w.roomHidden) + Reihenfolge (w.roomOrder) auf eine Raumliste an.
   // rooms: [{idx,...}]. Nicht in order gelistete bleiben in Ursprungsreihenfolge hinten.
+  /**
+   * ACHTUNG, `.idx` MUSS EINE STABILE KENNUNG SEIN, KEIN LISTENPLATZ.
+   *
+   * Der Name liest sich wie "Index", der Wert darf aber keiner sein: gespeichert werden
+   * roomOrder/roomHidden/roomLabels unter genau diesem Schluessel, und die ueberleben jede
+   * Aenderung der Quellliste. Wo `.idx` der Platz in einem Feld war, zeigte die gespeicherte
+   * Reihenfolge nach dem naechsten Umbau der Liste auf andere Geraete - die Audio-Raumleiste
+   * ist genau daran zerfallen (05.09.2026: die Kachel "Gaestezimmer" trug den Zustand der
+   * Kueche, siehe afRoomKey in audiox-family.js).
+   *
+   * Geprueft am 05.09.2026: heatplan setzt `.idx` auf die HomeSuite-Instanz-ID (e.iid) bzw.
+   * im Altpfad auf die Raumnummer aus $Zimmer - beides stabil. Die Beschattung speichert
+   * Instanz-IDs (29174, 44234, ...), Geschosse ihre Kuerzel (GA/EG/OG).
+   *
+   * Fuer neue Listen lieber hsOrderHideBy(w, lvl, list, keyOf) nehmen: dort steht der
+   * Schluessel ausdruecklich im Aufruf und laesst sich nicht versehentlich zum Platz machen.
+   */
   function hsOrderHide(w, rooms) {
     if (!rooms || !rooms.length) return rooms || [];
     var hidden = {}; ((w && w.roomHidden) || []).forEach(function (i) { hidden[String(i)] = 1; });
