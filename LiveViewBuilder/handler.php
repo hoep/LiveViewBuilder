@@ -205,6 +205,68 @@ if ($api === 'tle') {
 // langlebigen Zwischenspeicher - ein Rufzeichen behaelt seine Strecke wochenlang.
 // Auch die Fehlanzeige wird gemerkt, sonst fragen wir fuer jede Privatmaschine bei
 // jedem Durchlauf erneut.
+/**
+ * Liegt die Maschine ueberhaupt auf der gemeldeten Strecke?
+ *
+ * Querabstand zum Grosskreis Start->Ziel und Position ENTLANG der Strecke. Die
+ * Toleranz waechst mit der Streckenlaenge (Umwege, Warteschleifen, Ausweichen),
+ * bleibt aber gedeckelt - 400 km sind grosszuegig fuer alles, was hier vorbeikommt.
+ *
+ * Rueckgabe: true = passt, false = passt nicht, null = nicht pruefbar (keine
+ * Flughafenkoordinaten im Zwischenspeicher).
+ */
+function lv_route_passt($e, $lat, $lon, $kurs = null, $tempo = 0)
+{
+    if (!isset($e['vlat'], $e['vlon'], $e['nlat'], $e['nlon'])) { return null; }
+    $R = 6371.0;
+    $rad = fn($x) => $x * M_PI / 180.0;
+    $la1 = $rad($e['vlat']); $lo1 = $rad($e['vlon']);
+    $la2 = $rad($e['nlat']); $lo2 = $rad($e['nlon']);
+    $la3 = $rad($lat);       $lo3 = $rad($lon);
+
+    $gc = function ($a1, $o1, $a2, $o2) {
+        $dl = $o2 - $o1;
+        return 2 * asin(min(1.0, sqrt(pow(sin(($a2 - $a1) / 2), 2)
+            + cos($a1) * cos($a2) * pow(sin($dl / 2), 2))));
+    };
+    $brg = function ($a1, $o1, $a2, $o2) {
+        $dl = $o2 - $o1;
+        return atan2(sin($dl) * cos($a2),
+            cos($a1) * sin($a2) - sin($a1) * cos($a2) * cos($dl));
+    };
+    $d12 = $gc($la1, $lo1, $la2, $lo2) * $R;
+    if ($d12 < 50) { return null; }                 // zu kurz, um etwas auszusagen
+    $d13 = $gc($la1, $lo1, $la3, $lo3);
+    $dxt = abs(asin(sin($d13) * sin($brg($la1, $lo1, $la3, $lo3) - $brg($la1, $lo1, $la2, $lo2))) * $R);
+    $dat = acos(max(-1.0, min(1.0, cos($d13) / cos($dxt / $R)))) * $R;
+
+    // Der Grosskreis ist bei LANGSTRECKEN kein guter Massstab: seit der Sperrung
+    // des russischen Luftraums laufen Fernost-Fluege hunderte Kilometer suedlich
+    // davon - Frankfurt->Seoul lag 433 km daneben und waere faelschlich verworfen
+    // worden. Die Quertoleranz waechst deshalb bis 1200 km mit, die Toleranz
+    // ENTLANG der Strecke bleibt eng: ueber das Ziel hinaus ist kein Umweg mehr.
+    $tolQuer = max(150.0, min(1200.0, 0.15 * $d12));
+    $tolLang = max(150.0, min(600.0, 0.10 * $d12));
+    if (!(($dxt <= $tolQuer) && ($dat >= -$tolLang) && ($dat <= $d12 + $tolLang))) { return false; }
+
+    /* Und FLIEGT die Maschine auch dorthin?
+     *
+     * Der Korridor allein sagt nichts ueber die Richtung: der Grosskreis
+     * Frankfurt->Athen laeuft ueber Oberoesterreich, und wer ihn von Athen nach
+     * Frankfurt zurueckfliegt, liegt genauso darauf. Am 01.09.2026 stand
+     * deshalb ueber uns ein "FRA -> ATH", das erkennbar nach Nordwesten flog.
+     * Also den Kurs gegen die Peilung zum Ziel halten. Die Schwelle ist mit 120
+     * Grad bewusst grob - Warteschleifen, Vektoren und Umwege sollen nicht
+     * dazwischenfunken, die Gegenrichtung schon.
+     */
+    if ($kurs !== null && $tempo >= 100) {
+        $peil = fmod(rad2deg($brg($la3, $lo3, $la2, $lo2)) + 360.0, 360.0);
+        $ab   = abs(fmod(abs($peil - $kurs) + 180.0, 360.0) - 180.0);
+        if ($ab > 120.0) { return false; }
+    }
+    return true;
+}
+
 if ($api === 'flights') {
     header('Content-Type: application/json; charset=utf-8');
 
@@ -323,7 +385,16 @@ if ($api === 'flights') {
     }
     usort($flug, fn($a, $b) => $a['dist'] <=> $b['dist']);
 
-    /* Routen: eigener Zwischenspeicher, 30 Tage gueltig, Fehlanzeige 7 Tage. */
+    /* Routen: eigener Zwischenspeicher, 30 Tage gueltig, Fehlanzeige 7 Tage.
+     *
+     * Die Strecke wird gegen die BEOBACHTETE POSITION geprueft. adsbdb kennt zu
+     * einem Rufzeichen den Flugplan, nicht den Flug: Rufzeichen werden taeglich
+     * neu vergeben, Plaene aendern sich, und manche Eintraege sind schlicht alt.
+     * Ungeprueft stand am 01.09.2026 ueber Kremsmuenster ein "Ankara -> Izmir"
+     * und ein "Frankfurt -> Goeteborg" - beide Grosskreise laufen 600 bis 1500 km
+     * an uns vorbei. Eine Strecke, auf der die Maschine nicht liegt, ist keine
+     * Strecke, sondern Rauschen; sie wird verworfen.
+     */
     $rDat = $DATADIR . '/flights-routen.json';
     $rC = @json_decode((string) @file_get_contents($rDat), true);
     if (!is_array($rC)) { $rC = []; }
@@ -333,7 +404,16 @@ if ($api === 'flights') {
         $f['von'] = $f['nach'] = null;
         if ($ruf === '') { continue; }
         $e = $rC[$ruf] ?? null;
-        $frisch = is_array($e) && (time() - (int) ($e['t'] ?? 0)) < (empty($e['von']) ? 604800 : 2592000);
+        // Ein Eintrag MIT Strecke, aber OHNE Flughafenkoordinaten stammt aus der
+        // Zeit vor der Pruefung - er wird bevorzugt erneuert.
+        //
+        // ABER nur einmal: liefert adsbdb zu einem Flughafen keine Koordinaten
+        // (kommt bei kleinen Plaetzen vor), traegt der Eintrag 'nogeo'. Ohne diese
+        // Bremse haette er bei JEDEM Durchlauf einen der vier Nachschlaege
+        // verbraucht - dauerhaft, ohne je fertig zu werden.
+        $ohneGeo = is_array($e) && !empty($e['von']) && !isset($e['vlat']) && empty($e['nogeo']);
+        $frisch = is_array($e) && !$ohneGeo
+            && (time() - (int) ($e['t'] ?? 0)) < (empty($e['von']) ? 604800 : 2592000);
         if (!$frisch && $neu < 4) {              // hoechstens vier Nachschlaege je Durchlauf
             $neu++;
             $ch = curl_init();
@@ -350,17 +430,54 @@ if ($api === 'flights') {
                 $e['linie']      = mb_substr((string) $fr['airline']['name'], 0, 24);
                 $e['linie_icao'] = (string) ($fr['airline']['icao'] ?? '');
             }
+            // Kennung in IATA-Schreibweise: "LH762" statt "DLH762". Kuerzer, und
+            // das Fluglinienkuerzel ist das, das auf dem Ticket steht.
+            //
+            // ACHTUNG - das ist NICHT immer eine Flugnummer. adsbdb uebersetzt nur
+            // das Fluglinienkuerzel (AUA->OS, DLH->LH) und laesst den Rest stehen.
+            // Ist der Rest eine reine Zahl, ist es die Flugnummer (LH762). Ist er
+            // alphanumerisch, ist es ein BETRIEBSRUFZEICHEN (OS18PU) - Fluglinien
+            // vergeben die absichtlich, damit sich am Funk keine zwei aehnlich
+            // klingenden Nummern in die Quere kommen. Gemessen am 01.09.2026:
+            // nur 185 von 541 Kennungen (34 %) sind echte Flugnummern.
+            if ($rcode === 200 && !empty($fr['callsign_iata'])) {
+                $e['nr'] = (string) $fr['callsign_iata'];
+                $e['nrNum'] = (int) (bool) preg_match('/^[A-Z0-9]{2}\d+$/', $e['nr']);
+            }
             if ($rcode === 200 && !empty($fr['origin']['iata_code'])) {
                 $e['von']     = (string) $fr['origin']['iata_code'];
                 $e['vonort']  = mb_substr((string) ($fr['origin']['municipality'] ?? ''), 0, 18);
                 $e['nach']    = (string) ($fr['destination']['iata_code'] ?? '');
                 $e['nachort'] = mb_substr((string) ($fr['destination']['municipality'] ?? ''), 0, 18);
+                // Koordinaten der beiden Flughaefen - ohne sie laesst sich die
+                // Strecke nicht gegen die Position pruefen.
+                foreach ([['origin', 'v'], ['destination', 'n']] as $pp) {
+                    $la = $fr[$pp[0]]['latitude']  ?? null;
+                    $lo = $fr[$pp[0]]['longitude'] ?? null;
+                    if (is_numeric($la) && is_numeric($lo)) {
+                        $e[$pp[1] . 'lat'] = round((float) $la, 4);
+                        $e[$pp[1] . 'lon'] = round((float) $lo, 4);
+                    }
+                }
+                if (!isset($e['vlat'])) { $e['nogeo'] = 1; }   // gibt es dort nicht, nicht wieder fragen
             }
             $rC[$ruf] = $e;
         }
+        if (is_array($e) && !empty($e['nr'])) {
+            $f['nr'] = $e['nr'];
+            // Ohne gespeichertes Kennzeichen aus dem Muster ableiten - der
+            // Zwischenspeicher ist aelter als diese Unterscheidung.
+            $f['nrNum'] = isset($e['nrNum'])
+                ? (bool) $e['nrNum']
+                : (bool) preg_match('/^[A-Z0-9]{2}\d+$/', $e['nr']);
+        }
         if (is_array($e) && !empty($e['von'])) {
-            $f['von'] = $e['von']; $f['nach'] = $e['nach'] ?? '';
-            $f['vonort'] = $e['vonort'] ?? ''; $f['nachort'] = $e['nachort'] ?? '';
+            $ok = lv_route_passt($e, $f['lat'], $f['lon'], $f['kurs'], $f['tempo']);
+            $f['routeOk'] = $ok;              // true / false / null (nicht pruefbar)
+            if ($ok !== false) {
+                $f['von'] = $e['von']; $f['nach'] = $e['nach'] ?? '';
+                $f['vonort'] = $e['vonort'] ?? ''; $f['nachort'] = $e['nachort'] ?? '';
+            }
         }
         if (is_array($e) && !empty($e['linie'])) {
             $f['linie'] = $e['linie']; $f['linieIcao'] = $e['linie_icao'] ?? '';
@@ -1547,6 +1664,131 @@ if ($api === 'week') {
 // ---- Rollos/Beschattung (shading-Widget): IPSShadowing-Geräte lesen (frei) ----
 //      Proxy auf das Backend-Skript "LVB_ShadingAPI" (Ident unter #23491). Schreiben laeuft
 //      ueber ?api=setvar (RequestAction auf die IPSShadowing-Steuervariablen).
+// ---- Schimmelwaechter aller Raeume:  ?api=mold ---------------------------
+//
+// Ein Aufruf fuer das ganze Haus. Die Kachel koennte die Werte auch einzeln
+// ueber die Live-Werte ziehen - das waeren bei 24 Raeumen mal fuenf Groessen
+// 120 Bindungen im Editor, die von Hand gepflegt werden muessten. Der Baum
+// weiss selbst, welche Raeume einen Waechter haben.
+if ($api === 'mold') {
+    header('Content-Type: application/json; charset=utf-8');
+    $inc = IPS_GetKernelDir() . 'scripts/schimmelwaechter.inc.php';
+    if (!is_readable($inc)) { echo json_encode(['error' => 'inc', 'raeume' => []]); return; }
+    require_once $inc;
+
+    $aus = sw_aussen();
+    $out = [];
+    foreach (sw_statusliste() as $sid) {
+        $rk    = IPS_GetObject($sid)['ParentID'];
+        $raumO = IPS_GetObject($rk)['ParentID'];
+        $gesch = IPS_GetObject($raumO)['ParentID'];
+        $g = function ($ident) use ($sid) {
+            $v = @IPS_GetObjectIDByIdent($ident, $sid);
+            return $v === false ? null : @GetValue($v);
+        };
+        $tId  = @IPS_GetVariableIDByName('Temperatur',       $rk);
+        $rhId = @IPS_GetVariableIDByName('Luftfeuchtigkeit', $rk);
+        $ti   = $tId  === false ? null : (float) GetValue($tId);
+        $rh   = $rhId === false ? null : (float) GetValue($rhId);
+
+        $x = $gewinn = $rfNach = null;
+        if ($ti !== null && $rh !== null) {
+            $x = sw_x($ti, $rh);
+            if ($aus) { $gewinn = $x - $aus['x']; $rfNach = sw_phi_aus_x($ti, $aus['x']); }
+        }
+        $out[] = [
+            'id'       => $sid,
+            'raum'     => IPS_GetName($raumO),
+            'geschoss' => IPS_GetName($gesch),
+            'stufe'    => (int) @GetValue($sid),
+            // Lueftungsurteil des Klimaoptimierers, sofern schon vorhanden
+            'lz'       => $g('ko_zustand'),
+            'lt'       => $g('ko_text'),
+            'art'      => null,   // wird unten nachgetragen
+            'gewinn'   => null,
+            'verbund'  => null,
+            'phi'      => $g('sw_phi'),
+            'wand'     => $g('sw_wand'),
+            'dosis'    => $g('sw_dosis'),
+            'spitze'   => $g('sw_spitze'),
+            'hinweis'  => $g('sw_hinweis'),
+            't'        => $ti,
+            'tvid'     => $tId === false ? null : $tId,
+            'rh'       => $rh,
+            'x'        => $x === null ? null : round($x, 2),
+            'gewinn'   => $gewinn === null ? null : round($gewinn, 2),
+            'rfNach'   => $rfNach === null ? null : round($rfNach, 1),
+        ];
+    }
+    // Lueftungsart und erwarteter Gewinn je Raum. Steht nicht im Baum, sondern
+    // ergibt sich aus dem Fensterregister - deshalb hier und nicht als Variable.
+    $koInc = IPS_GetKernelDir() . 'scripts/klimaoptimierer.inc.php';
+    if (is_readable($koInc)) {
+        require_once $koInc;
+        foreach ($out as &$_r) {
+            $vb = ko_verbund($_r['raum']);
+            $art = $vb !== null ? ko_verbund_art($vb)['art'] : ko_lueftungsart($_r['raum']);
+            $k = ko_gewinn($art);
+            $_r['art'] = $art;
+            $_r['gewinn'] = $k[1] > 0 ? $k : null;
+            $_r['verbund'] = $vb !== null ? $vb['name'] : null;
+        }
+        unset($_r);
+    }
+
+    // Aussenlage und Sperren einmal fuer die ganze Seite - die Kachel soll dafuer
+    // nicht 24-mal dieselbe Frage stellen.
+    $lage = null;
+    $ko = IPS_GetKernelDir() . 'scripts/klimaoptimierer.inc.php';
+    if (is_readable($ko)) {
+        require_once $ko;
+        $l = ko_lage();
+        if ($l) {
+            $lage = ['t' => round($l['t'], 1), 'rh' => round($l['rh']), 'x' => round($l['x'], 2),
+                     'tp' => round($l['tp'], 1), 'wind' => $l['wind'], 'winddir' => $l['winddir'],
+                     'nacht' => $l['nacht'], 'regenIn' => ko_regen_in()];
+        }
+        $kat = @IPS_GetObjectIDByIdent('Klimaoptimierer', @IPS_GetObjectIDByName('Steuerung', 0));
+        if ($kat !== false) {
+            $vk = @IPS_GetObjectIDByIdent('KO_Lage', $kat);
+            $vn = @IPS_GetObjectIDByIdent('KO_Anzahl', $kat);
+            foreach ([['KO_NachtMin','nachtMin'],['KO_NachtUm','nachtUm']] as $_p) {
+                $_v = @IPS_GetObjectIDByIdent($_p[0], $kat);
+                $lage[$_p[1]] = $_v === false ? null : GetValue($_v);
+            }
+            $vs2 = @IPS_GetObjectIDByIdent('KO_StartUm', $kat);
+            $lage['startUm'] = $vs2 === false ? null : (string) GetValue($vs2);
+            $lage['kurz']   = $vk === false ? null : (string) GetValue($vk);
+            $lage['anzahl'] = $vn === false ? null : (int) GetValue($vn);
+        }
+    }
+    // Plan und Aussenprognose nur auf Anforderung - sie kosten die Auswertung der
+    // Stundenvorhersage und werden nur von der Nachtseite gebraucht.
+    $plan = null; $prog = null;
+    if (!empty($_GET['plan']) && function_exists('ko_plan')) {
+        $plan = ko_plan();
+        $j = @json_decode((string) @GetValue(15215), true);
+        if (isset($j['hourly']['time'])) {
+            $prog = [];
+            foreach ($j['hourly']['time'] as $i => $iso) {
+                $ts = strtotime($iso);
+                if ($ts < time() - 3600 || $ts > time() + 16 * 3600) { continue; }
+                $prog[] = [$ts, (float) $j['hourly']['temperature_2m'][$i]];
+            }
+        }
+    }
+    echo json_encode([
+        'stand'  => time(),
+        'aussen' => $aus ? ['t' => round($aus['t'], 1), 'rh' => round($aus['rh']),
+                            'x' => round($aus['x'], 2), 'tp' => round($aus['tp'], 1)] : null,
+        'lage'   => $lage,
+        'plan'   => $plan,
+        'prognose' => $prog,
+        'raeume' => $out,
+    ]);
+    return;
+}
+
 if ($api === 'shading') {
     header('Content-Type: application/json; charset=utf-8');
     // Rollo-Kalibrierung adressiert das Rollo ueber seine POSITIONS-Variable (posVid aus op=list),
@@ -1721,6 +1963,69 @@ if ($api === 'shading') {
     $sid = (int) (@IPS_GetObjectIDByIdent('LVB_ShadingAPI', 23491) ?: 0);
     if ($sid <= 0 || !IPS_ScriptExists($sid)) { echo json_encode(['ok' => false, 'err' => 'backend']); return; }
     echo IPS_RunScriptWaitEx($sid, ['op' => (string) ($_GET['op'] ?? 'list'), 'device' => (string) ($_GET['device'] ?? ''), 'profile' => (string) ($_GET['profile'] ?? '')]);
+    return;
+}
+
+// ---- Kartenausschnitt als EIGENE Seite (fuer das WebView-Widget) ----
+//
+// Warum nicht der Einbettungsrahmen von OpenStreetMap: der kommt von einem fremden
+// Ursprung. Sein Hinweisblock ("Report a problem | (c) OpenStreetMap contributors ...
+// Website and API terms") steht schwarz auf weiss unter der Karte, bricht auf schmalen
+// Kacheln zweizeilig um und belegte auf der Auto-Seite ein Drittel der Kachel - und
+// gestalten laesst er sich nicht, kein CSS und kein Skript reicht ueber die Ursprungs-
+// grenze. Die Maeherkarte hat das Problem nicht, weil sie unsere eigene Seite ist.
+//
+// Also dasselbe hier: eine kleine Leaflet-Seite von gleichem Ursprung, in der die
+// Namensnennung dort steht, wo sie hingehoert - klein und gedaempft in der Ecke, nicht
+// als Block unter der Karte. Sie BLEIBT vorhanden; Esri- und OSM-Kacheln verlangen sie.
+//
+// lat/lon  Mittelpunkt          zoom   Leaflet-Stufe (Vorgabe 15)
+// layer    street|sat           ctl    1 = Zoomknoepfe und Ziehen erlauben (Vorgabe aus)
+if ($api === 'map') {
+    header('Content-Type: text/html; charset=utf-8');
+    // Locale-fest: mit deutscher Locale schriebe sprintf Kommas in die Koordinaten und
+    // Leaflet bekaeme "48,06" - dieselbe Falle wie beim alten Adressbau.
+    $num   = fn($x) => str_replace(',', '.', sprintf('%.6f', (float) $x));
+    $lat   = $num($_GET['lat'] ?? 0);
+    $lon   = $num($_GET['lon'] ?? 0);
+    $zoom  = max(1, min(22, (int) ($_GET['zoom'] ?? 15)));
+    $sat   = ((string) ($_GET['layer'] ?? 'street') === 'sat');
+    $ctl   = ((string) ($_GET['ctl'] ?? '0') === '1');
+    $ctlJs = $ctl ? 'true' : 'false';
+    $url   = $sat
+        ? 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
+        : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+    $att   = $sat ? 'Luftbild &copy; Esri, Maxar, Earthstar Geographics'
+                  : '&copy; OpenStreetMap-Mitwirkende';
+    $mx    = $sat ? 24 : 19;
+    echo <<<HTML
+<!doctype html><html lang="de"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<style>
+html,body{width:100%;height:100%;margin:0;padding:0;background:#0d1315}
+#map{width:100%;height:100%}
+/* Namensnennung wie auf der Maeherkarte: klein, gedaempft, rechts unten, ohne den
+   weissen Kasten, den Leaflet von Haus aus darum zieht. */
+.leaflet-control-attribution{background:rgba(13,19,21,.58)!important;color:#7e9198!important;
+  font-size:9px;line-height:1.25;padding:1px 5px;border-radius:4px 0 0 0;box-shadow:none}
+.leaflet-control-attribution a{color:#8ba0a6!important;text-decoration:none}
+</style></head><body><div id="map"></div><script>
+var ctl = {$ctlJs};
+var map = L.map('map', {center:[{$lat},{$lon}], zoom:{$zoom}, zoomControl:ctl,
+  dragging:ctl, scrollWheelZoom:ctl, doubleClickZoom:ctl, touchZoom:ctl,
+  boxZoom:false, keyboard:ctl, attributionControl:true});
+map.attributionControl.setPrefix(false);
+L.tileLayer('{$url}', {maxZoom:{$mx}, attribution:'{$att}'}).addTo(map);
+// Die Kachel kann ihre Groesse aendern (Umbruch, Popup) - dann muss Leaflet neu messen,
+// sonst bleiben graue Flaechen stehen, wo noch keine Kacheln geladen wurden.
+if (window.ResizeObserver) { new ResizeObserver(function(){ map.invalidateSize(); })
+  .observe(document.getElementById('map')); }
+</script></body></html>
+HTML;
     return;
 }
 
@@ -1901,6 +2206,17 @@ if ($api === 'audio') {
         @IPS_GetInstanceListByModuleID($HSAU) ?: [],
         @IPS_GetInstanceListByModuleID($HSAUX) ?: []
     ));
+    // NACH NAMEN SORTIEREN. IPS_GetInstanceListByModuleID gibt keine zugesicherte
+    // Reihenfolge, und hier haengen ausserdem ZWEI Modullisten hintereinander (Sonos und
+    // gebrueckte Zonen) - wechselt eine Zone die Gattung, springt sie quer durch die Liste.
+    // Genau daran ist die Raumleiste zerfallen: gespeicherte Reihenfolge und Beschriftungen
+    // zeigten ploetzlich auf andere Zonen (Gaestezimmer 8 -> 1, Kueche 10 -> 8, nachgemessen).
+    // Die Sortierung allein reicht nicht - die Leiste schluesselt seither ueber die
+    // Instanz-ID -, aber sie macht die Grundreihenfolge wenigstens vorhersagbar.
+    usort($list, function ($x, $y) {
+        $c = strnatcasecmp((string) @IPS_GetName($x), (string) @IPS_GetName($y));
+        return $c !== 0 ? $c : ($x <=> $y);      // gleiche Namen: stabil ueber die ID
+    });
 
     $coverUrl = function ($s) {
         $s = (string) $s;
@@ -2835,6 +3151,71 @@ if ($api === 'aggregated') {
     echo json_encode(['id' => $id, 'level' => $level, 'counter' => (@AC_GetAggregationType($ac, $id) == 1), 'rows' => $out]);
     return;
 }
+/**
+ * Ein ANGESCHNITTENES Zeitfenster exakt messen.
+ *
+ * Wozu: Die Verlaufsbalken der Metrik-Liste zeigen den laufenden Bucket mit - "September
+ * bis jetzt". Danebengestellt gehoert dann auch nur "September bis zum selben Tag im
+ * Vorjahr", nicht der volle Vormonat. Die Aggregation kann das nicht liefern: sie gibt
+ * IMMER ganze Buckets zurueck, auch wenn das Fenster mitten hinein endet (nachgemessen -
+ * eine Abfrage bis zum 05.09. liefert den September mit seinem vollen Monatswert).
+ *
+ * Zaehler werden deshalb exakt aus zwei Zaehlerstaenden gebildet, Standardvariablen als
+ * zeitgewichtetes Mittel des Fensters. Punktwerte der Vergangenheit aendern sich nie
+ * mehr, deshalb dieselbe dauerhafte Ablage wie im Vergleich (cache-valat.json) - sonst
+ * kostete jede Zeile zwei Archivsuchen zu je rund 275 ms.
+ */
+if ($api === 'partial') {
+    header('Content-Type: application/json; charset=utf-8');
+    $id   = (int) ($_GET['id'] ?? 0);
+    $von  = (int) ($_GET['from'] ?? 0);
+    $bis  = (int) ($_GET['to'] ?? 0);
+    $kind = (string) ($_GET['kind'] ?? 'standard');
+    if (!@IPS_VariableExists($id) || $von <= 0 || $bis <= $von) { echo json_encode(['v' => null]); return; }
+    $acs = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}');
+    $ac  = $acs[0] ?? 0;
+    if (!$ac) { echo json_encode(['v' => null]); return; }
+    $now = time();
+    if ($bis > $now) { $bis = $now; }
+    if ($kind !== 'counter') {
+        $spanne = $bis - $von;
+        $lvl = ($spanne > 40 * 86400) ? 1 : (($spanne > 2 * 86400) ? 0 : 5);
+        $st = lvbPeriodStat($ac, $id, $lvl, $von, $bis);
+        echo json_encode(['v' => $st['avg']]);
+        return;
+    }
+    $CFILE = rtrim((string) ($DATADIR ?? sys_get_temp_dir()), '/') . '/cache-valat.json';
+    $GRACE = 600;
+    $cache = @json_decode((string) @file_get_contents($CFILE), true);
+    if (!is_array($cache)) { $cache = []; }
+    $cdirty = false;
+    $valAt = function ($t) use ($ac, $id, $now, &$cache, &$cdirty, $GRACE) {
+        if ($t > $now) { $t = $now; }
+        $merkbar = ($t < $now - $GRACE);
+        if ($merkbar) { $t = $t - ($t % 60); }
+        $ck = $id . ':' . $t;
+        if ($merkbar && array_key_exists($ck, $cache)) {
+            return ($cache[$ck] === null) ? null : (float) $cache[$ck];
+        }
+        $r = @AC_GetLoggedValues($ac, $id, 0, $t, 1);
+        $out = null;
+        if (is_array($r) && count($r)) {
+            $out = (float) $r[0]['Value'];
+        } else {
+            $a = @AC_GetAggregatedValues($ac, $id, 1, $t - 3 * 86400, $t, 1);
+            if (is_array($a) && count($a)) { $out = (float) $a[0]['Avg']; }
+        }
+        if ($merkbar) { $cache[$ck] = $out; $cdirty = true; }
+        return $out;
+    };
+    $a0 = $valAt($von); $a1 = $valAt($bis);
+    if ($cdirty) {
+        if (count($cache) > 800) { $cache = array_slice($cache, -400, null, true); }
+        @file_put_contents($CFILE, json_encode($cache), LOCK_EX);
+    }
+    echo json_encode(['v' => ($a0 !== null && $a1 !== null) ? ($a1 - $a0) : null]);
+    return;
+}
 if ($api === 'cmp') {
     header('Content-Type: application/json; charset=utf-8');
     // Formel-Bindung "=Ausdruck": je Komponente Ist- und Vorperioden-Wert nativ bestimmen
@@ -2879,24 +3260,75 @@ if ($api === 'cmp') {
             $s = 0.0; $k = 0; foreach ($rows as $r) { if (isset($r['Avg'])) { $s += (float) $r['Avg']; $k++; } }
             return $k ? ($s / $k) : null;
         };
-        $curV = []; $pastV = []; $allC = true;
-        foreach ($fids as $vid) {
-            if (@AC_GetAggregationType($acC, $vid) == 1) { // Zaehler: Verbrauch/Ertrag der Periode
-                $vn = @GetValue($vid); $vn = is_numeric($vn) ? (float) $vn : $valAtF($vid, $now);
-                $vps = $valAtF($vid, $pStart); $curV[$vid] = ($vn !== null && $vps !== null) ? ($vn - $vps) : null;
-                $vp1 = $valAtF($vid, $prevSame); $vp0 = $valAtF($vid, $prevStart); $pastV[$vid] = ($vp1 !== null && $vp0 !== null) ? ($vp1 - $vp0) : null;
-            } else { // Standardvariable: Periodenmittel
-                $allC = false;
-                $curV[$vid]  = $meanAvgF($vid, $pStart, $now);
-                $pastV[$vid] = $meanAvgF($vid, $prevStart, $prevSame);
+        // Reicht das Archiv EINER beteiligten Variablen nicht bis zum Anfang der
+        // Vorperiode, war bisher der ganze Ausdruck ohne Vergleichswert - "PV gesamt"
+        // blieb leer, obwohl beide Zaehler seit Februar 2025 lueckenlos aufzeichnen.
+        // Wie im Einzelpfad wird das Fenster beidseitig verkuerzt, hier aber auf den
+        // SPAETESTEN Beginn aller Beteiligten: nur so vergleicht der Ausdruck fuer
+        // jede Komponente denselben Zeitraum. Ein Ausdruck aus zwei verschieden weit
+        // zurueckreichenden Zaehlern haette sonst eine Summe aus ungleichen Fenstern
+        // gebildet - eine Zahl, die niemand deuten kann.
+        $abF = null;
+        if (in_array($stage, ['year', 'month', 'week'], true)) {
+            $raster  = ($stage === 'week') ? 0 : 1;
+            $schritt = ($stage === 'week') ? 3600 : 86400;
+            foreach ($fids as $vid) {
+                if (@AC_GetAggregationType($acC, $vid) != 1) { continue; }
+                if ($valAtF($vid, $prevStart) !== null) { continue; }      // reicht weit genug
+                $rows = @AC_GetAggregatedValues($acC, $vid, $raster, $prevStart, $prevSame, 0);
+                if (!is_array($rows) || !count($rows)) { continue; }
+                $t0 = (int) ($rows[count($rows) - 1]['TimeStamp'] ?? 0);   // absteigend: aeltester zuletzt
+                if ($t0 <= 0) { continue; }
+                $t0 += $schritt;
+                if ($t0 > $prevStart && $t0 < $prevSame) { $abF = max((int) $abF, $t0); }
             }
         }
+        // Verkuerztes Fenster fuer den Vergleich - die volle Periode bleibt daneben
+        // bestehen, denn sie traegt die angezeigte Zahl.
+        $pStartTeil = null; $prevStartTeil = $prevStart; $prevSameTeil = $prevSame;
+        if ($abF !== null) {
+            switch ($stage) {
+                case 'week':  $pStartTeil = (int) strtotime('+1 week', $abF);  break;
+                case 'month': $pStartTeil = (int) strtotime('+1 month', $abF); break;
+                default:      $pStartTeil = (int) strtotime('+1 year', $abF);  break;
+            }
+            $prevStartTeil = $abF;
+            $prevSameTeil  = $prevStartTeil + ($now - $pStartTeil);
+        }
+        // Ein Durchlauf je Fenster: 'voll' liefert die Zahl, 'teil' den Vergleich.
+        $satz = function ($aStart, $bStart, $bEnde) use ($fids, $acC, $now, $valAtF, $meanAvgF) {
+            $cur = []; $past = []; $allC = true;
+            foreach ($fids as $vid) {
+                if (@AC_GetAggregationType($acC, $vid) == 1) {
+                    $vn = @GetValue($vid); $vn = is_numeric($vn) ? (float) $vn : $valAtF($vid, $now);
+                    $vps = $valAtF($vid, $aStart);
+                    $cur[$vid] = ($vn !== null && $vps !== null) ? ($vn - $vps) : null;
+                    $vp1 = $valAtF($vid, $bEnde); $vp0 = $valAtF($vid, $bStart);
+                    $past[$vid] = ($vp1 !== null && $vp0 !== null) ? ($vp1 - $vp0) : null;
+                } else {
+                    $allC = false;
+                    $cur[$vid]  = $meanAvgF($vid, $aStart, $now);
+                    $past[$vid] = $meanAvgF($vid, $bStart, $bEnde);
+                }
+            }
+            return [$cur, $past, $allC];
+        };
         $mk = function ($src) use ($fids) { $o = []; foreach ($fids as $vid) { if (!isset($src[$vid]) || $src[$vid] === null) return null; $o[$vid] = $src[$vid]; } return $o; };
-        $cv = $mk($curV); $pv = $mk($pastV);
+        [$curV, $pastV, $allC] = $satz($pStart, $prevStart, $prevSame);
+        $cv = $mk($curV);
+        $curAb = null; $pv = $mk($pastV);
+        if ($abF !== null) {
+            [$curT, $pastT, ] = $satz($pStartTeil, $prevStartTeil, $prevSameTeil);
+            $cvT = $mk($curT); $pvT = $mk($pastT);
+            $curAb = ($cvT !== null) ? LVB_FormulaEval($rawIdC, $cvT) : null;
+            $pv    = $pvT;
+        }
         echo json_encode([
-            'type' => $allC ? 1 : 0,
-            'cur'  => ($cv !== null) ? LVB_FormulaEval($rawIdC, $cv) : null,
-            'past' => ($pv !== null) ? LVB_FormulaEval($rawIdC, $pv) : null,
+            'type'  => $allC ? 1 : 0,
+            'cur'   => ($cv !== null) ? LVB_FormulaEval($rawIdC, $cv) : null,
+            'curAb' => $curAb,
+            'past'  => ($pv !== null) ? LVB_FormulaEval($rawIdC, $pv) : null,
+            'ab'    => $abF,
         ]);
         return;
     }
@@ -2979,17 +3411,74 @@ if ($api === 'cmp') {
         @file_put_contents($CFILE, json_encode($cache), LOCK_EX);
     };
 
+    /**
+     * Beginnt das Archiv MITTEN in der Vorperiode, gibt es an deren Anfang keinen
+     * Zaehlerstand - und damit bisher ueberhaupt keinen Vergleich. Beispiel: die
+     * PV-Zaehler werden erst seit dem 20.02.2025 aufgezeichnet, also lieferte der
+     * Jahresvergleich dauerhaft einen Strich, obwohl seit Februar 2025 lueckenlos
+     * Daten vorliegen.
+     *
+     * Statt nichts zu zeigen, wird das Fenster auf BEIDEN Seiten auf den gemeinsamen
+     * Teil verkuerzt: es beginnt am ersten archivierten Tag der Vorperiode und im
+     * laufenden Zeitraum am selben Kalendertag eine Periode spaeter. Damit stehen
+     * wieder GLEICH LANGE Zeitraeume gegenueber - nur eben kuerzere. Das Ergebnis
+     * traegt 'ab' mit dem Beginn, damit die Anzeige sagen kann, worauf sie sich
+     * bezieht; eine stillschweigend verkuerzte Aussage waere schlimmer als keine.
+     *
+     * Nur fuer Zeitraeume ab einer Woche. Bei Tag, Stunde und Minute bedeutet eine
+     * Luecke am Periodenanfang etwas anderes als "Aufzeichnung begann hier".
+     */
+    $ersterTagImFenster = function (int $von, int $bis) use ($ac, $id, $stage): ?int {
+        if (!in_array($stage, ['year', 'month', 'week'], true)) { return null; }
+        $raster = ($stage === 'week') ? 0 : 1;                 // Woche: Stunden, sonst Tage
+        $schritt = ($stage === 'week') ? 3600 : 86400;
+        $rows = @AC_GetAggregatedValues($ac, $id, $raster, $von, $bis, 0);
+        if (!is_array($rows) || !count($rows)) { return null; }
+        // Das Archiv liefert absteigend - der aelteste Eintrag steht am Ende.
+        $t0 = (int) ($rows[count($rows) - 1]['TimeStamp'] ?? 0);
+        if ($t0 <= 0) { return null; }
+        // Einen Schritt weiter: im ERSTEN Bucket faengt die Aufzeichnung irgendwann
+        // mittendrin an, ein Zaehlerstand an dessen Beginn existiert also noch nicht.
+        $t0 += $schritt;
+        return ($t0 > $von && $t0 < $bis) ? $t0 : null;
+    };
+    /** Dieselbe Kalenderverschiebung wie oben, nur vorwaerts. */
+    $einePeriodeSpaeter = function (int $t) use ($stage): int {
+        switch ($stage) {
+            case 'minute': return $t + 60;
+            case 'hour':   return $t + 3600;
+            case 'week':   return (int) strtotime('+1 week', $t);
+            case 'month':  return (int) strtotime('+1 month', $t);
+            case 'year':   return (int) strtotime('+1 year', $t);
+            default:       return (int) strtotime('+1 day', $t);
+        }
+    };
+
     if ($kind === 'counter') {
         // Der AKTUELLE Wert steht direkt an der Variable - dafuer braucht es keine
         // Archivsuche. Der Standardpfad unten macht das laengst so; hier fehlte es.
         $cn  = @GetValue($id);
         $vn  = is_numeric($cn) ? (float) $cn : $valAt($now);
-        $vps = $valAt($pStart);
-        $cur  = ($vn !== null && $vps !== null) ? ($vn - $vps) : null;      // Verbrauch in der aktuellen Periode
+        $vps = $valAt($pStart);                                            // Stand am Periodenanfang (1.1.)
         $vp1 = $valAt($prevSame); $vp0 = $valAt($prevStart);
-        $past = ($vp1 !== null && $vp0 !== null) ? ($vp1 - $vp0) : null;    // Verbrauch Vorperiode (gleiches Fenster)
+        $ab  = null; $vpsTeil = null;
+        if ($vp0 === null && $vp1 !== null) {
+            $t0 = $ersterTagImFenster($prevStart, $prevSame);
+            if ($t0 !== null) {
+                $n0 = $valAt($t0);
+                $n1 = $valAt($einePeriodeSpaeter($t0));
+                if ($n0 !== null && $n1 !== null) { $vp0 = $n0; $vpsTeil = $n1; $ab = $t0; }
+            }
+        }
+        // ZWEI Groessen, und das ist der Punkt: die ZAHL misst die ganze laufende
+        // Periode (1.1. bis jetzt), der VERGLEICH nimmt das gemeinsame Fenster. Beides
+        // in einen Wert zu pressen ginge nur falsch aus - entweder waere die Zahl zu
+        // klein oder die Prozentangabe verglicht ein volles mit einem halben Jahr.
+        $cur   = ($vn !== null && $vps !== null)     ? ($vn - $vps)     : null;
+        $curAb = ($vn !== null && $vpsTeil !== null) ? ($vn - $vpsTeil) : null;
+        $past  = ($vp1 !== null && $vp0 !== null)    ? ($vp1 - $vp0)    : null;
         $cflush();
-        echo json_encode(['type' => 1, 'cur' => $cur, 'past' => $past]);
+        echo json_encode(['type' => 1, 'cur' => $cur, 'curAb' => $curAb, 'past' => $past, 'ab' => $ab]);
         return;
     }
     if (($_GET['mode'] ?? '') === 'avg') { // Periodenmittel (zeitgew. Mittel je Periode) via native Aggregation
@@ -3034,6 +3523,10 @@ if ($api === 'media') {
         $mime = 'image/gif';
     } elseif (substr($raw, 0, 4) === 'RIFF' && substr($raw, 8, 4) === 'WEBP') {
         $mime = 'image/webp';
+    } elseif (stripos(substr($raw, 0, 400), '<svg') !== false) {
+        // getimagesizefromstring kennt SVG nicht - ohne diesen Zweig ging ein
+        // Vektorbild als image/jpeg hinaus und der Browser zeigte nichts.
+        $mime = 'image/svg+xml';
     }
     // Der Symcon-WebHook kappt die Antwort bei 1 MB ("Output-Buffer exceeds Limit"). Grosse
     // Kamerabilder (z. B. Pool 2688x1512, 1,28 MB) kamen dadurch gar nicht an. Solche Bilder
