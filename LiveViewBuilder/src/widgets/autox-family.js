@@ -9,7 +9,16 @@
   //                  Sonnenauf/-untergang, Regel-Markern und Band-Schaltpunkten
   //  Schatten-sicher: Aenderungen schreiben die Konfig; der Hub-Timer wertet aus.
   (function(){
-    var A={cfg:null,scenes:[],lights:[],zones:[],motionSensors:[],awaySensors:[],sel:-1,subs:[]};
+    var A={cfg:null,scenes:[],lights:[],zones:[],motionSensors:[],awaySensors:[],sel:-1,subs:[],stations:null,dirty:false,sources:{}};
+    // Senderliste fuer die Weck-Auswahl. Einmal je Sitzung; dieselbe Quelle, aus der
+    // sich auch die Radioliste der Musikseite speist.
+    function aStations(cb){
+      if(A.stations){cb&&cb();return;}
+      if(typeof DOKU!=='undefined'&&DOKU){A.stations=[{key:'oe3',title:'Hitradio Ö3'},{key:'fm4',title:'FM4'}];cb&&cb();return;}
+      fetch('?api=audio&op=radiostations',{cache:'no-store'}).then(function(r){return r.json();})
+        .then(function(j){A.stations=(j&&j.stations)||[];cb&&cb();})
+        .catch(function(){A.stations=[];cb&&cb();});
+    }
     function sensorSel(id,list,attr){
       id=parseInt(id)||0;
       var opts='<option value="0">— Sensor wählen —</option>'+(list||[]).map(function(s){
@@ -30,7 +39,11 @@
       var p={
         schedule:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
         circadian:'<path d="M4 12a8 8 0 0116 0"/><path d="M12 4V2M8 20h8"/>',
-        wake:'<path d="M12 3a6 6 0 00-6 6c0 3 2 4 2 7h8c0-3 2-4 2-7a6 6 0 00-6-6z"/><path d="M9 21h6"/>',
+        // Wecker, nicht Gluehbirne: die Regelart kam aus der Lichtsteuerung und hat
+        // deren Lampensymbol geerbt. Seit sie rein Audio ist (kein Szenenschalten),
+        // war das Bild schlicht falsch - besonders auf der Musikseite.
+        wake:'<circle cx="12" cy="13" r="7"/><path d="M12 10v3l2 2"/>'
+             +'<path d="M5 4L2.5 6.2M19 4l2.5 2.2"/><path d="M8.5 20.5L7 22M15.5 20.5L17 22"/>',
         motion:'<path d="M3 12h4l2-7 4 14 2-7h4"/>',
         presence:'<path d="M3 21v-2a4 4 0 014-4h4M14 7a3 3 0 11-6 0 3 3 0 016 0z"/><path d="M16 11l2 2 4-4"/>',
         sun:'<circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M5 5l1.5 1.5M17.5 17.5L19 19M19 5l-1.5 1.5M6.5 17.5L5 19M3 12H1M23 12h-2"/>'
@@ -51,12 +64,16 @@
         fetch('?api=light&op=getall',{cache:'no-store'}).then(function(r){return r.json();}).catch(function(){return {};}),
         fetch('?api=audio&op=list',{cache:'no-store'}).then(function(r){return r.json();}).catch(function(){return {};}),
         fetch('?api=light&op=sensors&kind=motion',{cache:'no-store'}).then(function(r){return r.json();}).catch(function(){return {};}),
-        fetch('?api=light&op=sensors&kind=away',{cache:'no-store'}).then(function(r){return r.json();}).catch(function(){return {};})
+        fetch('?api=light&op=sensors&kind=away',{cache:'no-store'}).then(function(r){return r.json();}).catch(function(){return {};}),
+        // Senderliste gehoert dazu: die Regelliste zeigt den Sender im Klartext und
+        // wird VOR dem Editor gezeichnet - nachtraeglich geladen kaeme sie zu spaet.
+        fetch('?api=audio&op=radiostations',{cache:'no-store'}).then(function(r){return r.json();}).catch(function(){return {};})
       ]).then(function(res){
         A.cfg=(res[0]&&res[0].ok)?res[0]:{enabled:false,rules:[],sun:{sunrise:360,sunset:1200}};
         if(!A.cfg.sun)A.cfg.sun={sunrise:360,sunset:1200};
         A.scenes=(res[1]&&res[1].scenes)||[]; A.lights=(res[2]&&res[2].lights)||[]; A.zones=(res[3]&&res[3].rooms)||[];
         A.motionSensors=(res[4]&&res[4].sensors)||[]; A.awaySensors=(res[5]&&res[5].sensors)||[];
+        A.stations=(res[6]&&res[6].stations)||A.stations||[];
         if(A.sel<0 && A.cfg.rules.length)A.sel=0;
         _loading=false; var cbs=_pending; _pending=[];
         cb&&cb(); cbs.forEach(function(f){try{f();}catch(e){}});
@@ -66,7 +83,7 @@
       {type:'schedule',name:'Abend',enabled:true,trigger:{kind:'sun',event:'sunset',offsetMin:-15,days:[]},sceneId:'abend'},
       {type:'schedule',name:'Alles aus',enabled:true,trigger:{kind:'time',time:'22:30',days:[]},sceneId:'aus'},
       {type:'circadian',name:'Circadian OG',enabled:true,devices:[1,2],minK:2200,maxK:5500,minLevel:15,maxLevel:100,level:true},
-      {type:'wake',name:'Wecken',enabled:true,time:'06:30',days:[1,2,3,4,5],sceneId:'morgen',rampMin:20,audioZone:9,audioSource:'oe3'},
+      {type:'wake',name:'Wecken',enabled:true,time:'06:30',days:[1,2,3,4,5],rampMin:20,volume:25,audioZone:9,audioSource:{kind:'station',id:'oe3'}},
       {type:'motion',name:'Bewegung Gang',enabled:false,sensor:0,lux:0,luxMax:50,devices:[],holdSec:120},
       {type:'presence',name:'Anwesenheit',enabled:false,awayVar:0,from:'18:00',to:'23:30',devices:[],every:20}
     ]};}
@@ -74,9 +91,14 @@
       if(typeof DOKU!=='undefined'&&DOKU){cb&&cb();aEmit();return;}
       fetch('?api=light&op=autoset&key='+encodeURIComponent(TOKEN),{method:'POST',cache:'no-store',
         headers:{'Content-Type':'text/plain'},body:JSON.stringify({enabled:!!A.cfg.enabled,rules:A.cfg.rules})})
-        .then(function(r){return r.json();}).then(function(){cb&&cb();aEmit();}).catch(function(){cb&&cb();});
+        .then(function(r){return r.json();}).then(function(){A.dirty=false;cb&&cb();aEmit();}).catch(function(){cb&&cb();});
     }
     function aEmit(){A.subs.forEach(function(s){try{s();}catch(e){}});}
+    // Der 45-Sekunden-Takt holt die Regeln neu und ERSETZT A.cfg. Wer gerade
+    // Wochentage anklickt oder die Uhrzeit stellt und nicht sofort speichert,
+    // verliert die Eingabe genau dann - sichtbar als "nur ein Tag uebernommen".
+    // Solange etwas offen ist, wird deshalb nicht nachgeladen.
+    function aTouch(){A.dirty=true;}
     function aSub(fn){A.subs.push(fn);}
 
     function sceneName(id){var s=A.scenes.find(function(x){return x.id===id;});return s?s.name:(id||'—');}
@@ -99,7 +121,21 @@
         return txt;
       }
       if(r.type==='circadian')return (r.devices?r.devices.length:0)+' Lampen · '+r.minK+'–'+r.maxK+' K';
-      if(r.type==='wake')return (r.time||'—')+' · '+daysTxt(r.days)+' → '+sceneName(r.sceneId)+(r.audioZone?' + ♪':'');
+      if(r.type==='wake'){
+        var q=wakeQuelle(r), zn=(A.zones||[]).filter(function(z){return z.id==r.audioZone;})[0];
+        var art={station:'Radio',playlist:'Playlist',favorite:'Favorit'}[q.kind]||q.kind;
+        // Sender mit Klarnamen, sofern die Liste schon da ist - 'oe3' sagt weniger
+        // als 'Hitradio Oe3'.
+        var qn=q.id;
+        if(q.kind==='station'&&A.stations){
+          var tr=A.stations.filter(function(x){return x.key===q.id;})[0];
+          if(tr)qn=tr.title||q.id;
+        }
+        return (r.time||'—')+' · '+daysTxt(r.days)+' → '+(zn?zn.name:'(keine Zone)')
+          +(q.id?(' · '+art+' '+qn):'')
+          +(r.rampMin?(' · '+r.rampMin+' min Rampe'):'')
+          +(+r.offAfterMin>0?(' · '+(+r.offAfterMin)+' min lang'):'');
+      }
       if(r.type==='motion')return '< '+(r.luxMax||0)+' lux · '+Math.round((r.holdSec||0)/60)+' min';
       if(r.type==='presence')return (r.from||'')+'–'+(r.to||'');
       return '';
@@ -108,7 +144,7 @@
       var b={type:kind,enabled:true,name:TYPES[kind].label};
       if(kind==='schedule')return Object.assign(b,{trigger:{kind:'time',time:'20:00',event:'sunset',offsetMin:0,days:[]},sceneId:(A.scenes[0]||{}).id||''});
       if(kind==='circadian')return Object.assign(b,{devices:[],minK:2200,maxK:5500,minLevel:15,maxLevel:100,level:true});
-      if(kind==='wake')return Object.assign(b,{time:'06:30',days:[1,2,3,4,5],sceneId:(A.scenes[0]||{}).id||'',rampMin:20,audioZone:0,audioSource:''});
+      if(kind==='wake')return Object.assign(b,{time:'06:30',days:[1,2,3,4,5],rampMin:20,volume:25,audioZone:0,audioSource:{kind:'station',id:''}});
       if(kind==='motion')return Object.assign(b,{sensor:0,lux:0,luxMax:50,devices:[],holdSec:120,level:-1});
       if(kind==='presence')return Object.assign(b,{awayVar:0,from:'18:00',to:'23:30',devices:[],every:20});
       return b;
@@ -121,18 +157,28 @@
     // =============================== autolist ===============================
     // Gesamt-Automatik: kombiniert Regel-Store (A.cfg.enabled) + Hub-Variable (automationEnabled).
     function masterOn(){if(!A.cfg)return false;var on=!!A.cfg.enabled;if(A.cfg.automationEnabled!=null)on=on&&!!A.cfg.automationEnabled;return on;}
-    function listRender(){
+    // Beschraenkung auf EINE Regelart (w.axOnly). Leer = alle, wie bisher.
+    // Wichtig: der Index in data-axsel bleibt der Index in A.cfg.rules - die
+    // Auswahl wird sitzungsweit geteilt, eine Umnummerierung der gefilterten
+    // Liste wuerde die falsche Regel oeffnen.
+    function listRender(w){
       if(!A.cfg)return '<div class="ax"><div class="ax-msg">lädt …</div></div>';
-      var rows=(A.cfg.rules||[]).map(function(r,i){
+      var nur=(w&&w.axOnly&&TYPES[w.axOnly])?w.axOnly:'';
+      var sichtbar=(A.cfg.rules||[]).map(function(r,i){return {r:r,i:i};})
+        .filter(function(x){return !nur||x.r.type===nur;});
+      var rows=sichtbar.map(function(x){
+        var r=x.r,i=x.i;
         return '<div class="ax-row'+(i===A.sel?' on':'')+(r.enabled===false?' off':'')+'" data-axsel="'+i+'">'
           +'<span class="ax-ic">'+aIcon(r.type)+'</span>'
           +'<div class="ax-tx"><div class="ax-nm">'+escL(r.name||TYPES[r.type].label)+'</div><div class="ax-sub">'+esc(aSummary(r))+'</div></div>'
           +tog(r.enabled!==false,' data-axen="'+i+'"')+'</div>';
       }).join('');
-      var add='<div class="ax-add">'+Object.keys(TYPES).map(function(k){return '<button data-axadd="'+k+'"><span class="ax-ic">'+aIcon(k)+'</span>'+esc(TYPES[k].label)+'</button>';}).join('')+'</div>';
+      var arten=nur?[nur]:Object.keys(TYPES);
+      var add='<div class="ax-add">'+arten.map(function(k){return '<button data-axadd="'+k+'"><span class="ax-ic">'+aIcon(k)+'</span>'+esc(TYPES[k].label)+'</button>';}).join('')+'</div>';
+      var leer=nur?('Noch keine '+TYPES[nur].plural):'Noch keine Regeln';
       return '<div class="ax">'
-        +'<div class="ax-head"><span class="ax-h-t">Automatik</span>'+tog(masterOn(),' data-axmaster="1"')+'</div>'
-        +'<div class="ax-list">'+(rows||'<div class="ax-msg">Noch keine Regeln</div>')+'</div>'
+        +'<div class="ax-head"><span class="ax-h-t">'+esc(nur?TYPES[nur].plural:'Automatik')+'</span>'+tog(masterOn(),' data-axmaster="1"')+'</div>'
+        +'<div class="ax-list">'+(rows||'<div class="ax-msg">'+esc(leer)+'</div>')+'</div>'
         +'<div class="ax-addwrap"><div class="ax-addlbl">＋ Regel</div>'+add+'</div></div>';
     }
     function listWire(h,w){
@@ -193,11 +239,38 @@
         h+=fld('Helligkeitsbereich','<div class="ax-r">'+stepper('axMinLvl',(r.minLevel!=null?r.minLevel:0),'%')+'<span class="ax-mut">bis</span>'+stepper('axMaxLvl',(r.maxLevel!=null?r.maxLevel:100),'%')+'</div>');
       }
       else if(r.type==='wake'){
+        // Wecken ist REIN AUDIO - kein Licht. Wer Licht dazu will, legt eine
+        // eigene Zeitplan-Regel auf dieselbe Uhrzeit; so bleibt jede Regel bei
+        // einem Zweck. Quelle als {kind,id}: Radio, Playlist oder Favorit.
+        var q=wakeQuelle(r);
         h+=fld('Weckzeit','<div class="ax-r"><input class="ax-time" type="time" id="axTime" value="'+esc(r.time||'06:30')+'">'+stepper('axRamp',(r.rampMin||0),'min Rampe')+'</div>');
         h+=fld('Wochentage','<div class="ax-days">'+daychips(r.days,'data-axday')+'</div>');
-        h+=fld('Licht-Szene',sceneSel(r.sceneId,'id="axScene"'));
-        h+=fld('Musik-Zone (optional)','<select class="ax-sel" id="axZone"><option value="0">— keine —</option>'+A.zones.map(function(z){return '<option value="'+z.id+'"'+(z.id==r.audioZone?' selected':'')+'>'+escL(z.name)+'</option>';}).join('')+'</select>'
-          +' <input class="ax-in" id="axSrc" placeholder="Sender/Quelle" value="'+esc(r.audioSource||'')+'" style="width:clamp(90px,26cqi,150px)">');
+        h+=fld('Musik-Zone','<select class="ax-sel" id="axZone"><option value="0">— keine —</option>'+A.zones.map(function(z){return '<option value="'+z.id+'"'+(z.id==r.audioZone?' selected':'')+'>'+escL(z.name)+'</option>';}).join('')+'</select>');
+        // Radio kommt als Auswahlliste (die Sender sind bekannt). Playlist und
+        // Favorit bleiben ein Zahlenfeld: dafuer liefert derzeit KEINE Schnittstelle
+        // Namen - weder die Variablenprofile der Zone noch die Anbieter-Playlists.
+        var srcFeld;
+        if(q.kind==='station'){
+          var st=A.stations||[];
+          srcFeld=st.length
+            ? '<select class="ax-sel" id="axSrc"><option value="">— Sender wählen —</option>'
+              +st.map(function(x){return '<option value="'+esc(x.key)+'"'+(x.key===q.id?' selected':'')+'>'+escL(x.title||x.key)+'</option>';}).join('')
+              +'</select>'
+            : '<span class="ax-mut">Senderliste lädt …</span>';
+        } else {
+          srcFeld='<input class="ax-in" id="axSrc" type="number" min="0" placeholder="Index" value="'+esc(q.id)+'" style="width:clamp(70px,18cqi,110px)">';
+        }
+        h+=fld('Quelle','<div class="ax-r"><select class="ax-sel" id="axKind">'
+          +[['station','Radio'],['playlist','Playlist'],['favorite','Favorit']].map(function(o){
+              return '<option value="'+o[0]+'"'+(q.kind===o[0]?' selected':'')+'>'+o[1]+'</option>';}).join('')
+          +'</select> '+srcFeld+'</div>');
+        // Lautstaerke und Auto-Aus teilen sich eine Zeile: im Musik-Rahmen sind nur
+        // 767 px hoch, und der Wochenbalken darunter braucht seine sieben Bahnen.
+        // 'axOff2', nicht 'axOff' - der Name gehoert schon dem Sonnen-Versatz der
+        // Zeitplan-Regeln, und beide Regelarten teilen sich dieselbe Stepper-Tabelle.
+        h+=fld('Lautstärke / Aus','<div class="ax-r">'+stepper('axVol',(r.volume!=null?r.volume:25),'%')
+          +'<span class="ax-mut">danach aus nach</span>'
+          +stepper('axOff2',(r.offAfterMin||0),(r.offAfterMin?'min':'min (0 = nie)'))+'</div>');
       }
       else if(r.type==='motion'){
         h+=fld('Bewegungsmelder',sensorSel(r.sensor||0,A.motionSensors,'id="axSensor"'));
@@ -216,13 +289,20 @@
       return h;
     }
     function fld(l,b){return '<div class="ax-fld"><label>'+esc(l)+'</label>'+b+'</div>';}
+    // Weck-Quelle lesen: neues Format {kind,id}; eine blosse Zeichenkette ist ein
+    // Radiosender aus der Zeit, als der Wecker nur Radio konnte.
+    function wakeQuelle(r){
+      var q=r&&r.audioSource;
+      if(q&&typeof q==='object')return {kind:(q.kind||'station'),id:String(q.id||'')};
+      return {kind:'station',id:String(q||'')};
+    }
     function stepper(id,val,unit){return '<span class="ax-stp"><button data-axdec="'+id+'">−</button><span class="ax-val" id="'+id+'">'+val+' '+esc(unit||'')+'</span><button data-axinc="'+id+'">+</button></span>';}
     function lvlTxt(v){return (v==null||v<0)?'voll':(v+' %');}   // -1 = volle Helligkeit
     function devChips(sel,attr){sel=sel||[];return '<div class="ax-chips">'+A.lights.map(function(l){var on=sel.indexOf(l.id)>=0;return '<button class="ax-chip'+(on?' on':'')+'" '+attr+'="'+l.id+'">'+escL(l.name)+'</button>';}).join('')+'</div>';}
 
     function editWire(h,w){
       var r=A.cfg.rules[A.sel]; if(!r)return;
-      var nm=h.querySelector('#axName'); if(nm)nm.onchange=function(){r.name=this.value;};
+      var nm=h.querySelector('#axName'); if(nm)nm.onchange=function(){r.name=this.value;aTouch();};
       var en=h.querySelector('#axEnEd'); if(en)en.onclick=function(){r.enabled=!(r.enabled!==false);aSave();};
       h.querySelectorAll('[data-axtk]').forEach(function(e){e.onclick=function(){r.trigger=r.trigger||{};r.trigger.kind=e.getAttribute('data-axtk');paintOnly(w);};});
       var ev=h.querySelector('#axEv'); if(ev)ev.onchange=function(){r.trigger.event=this.value;};
@@ -244,28 +324,55 @@
       };});
       var ee=h.querySelector('#axEndEv');   if(ee)ee.onchange=function(){r.endTrigger.event=this.value;};
       var et2=h.querySelector('#axEndTime');if(et2)et2.onchange=function(){r.endTrigger.time=this.value;};
-      var tm=h.querySelector('#axTime'); if(tm)tm.onchange=function(){if(r.type==='schedule'){r.trigger.time=this.value;}else{r.time=this.value;}};
+      var tm=h.querySelector('#axTime');
+      function zeitUebernehmen(){ if(!tm||!tm.value)return;
+        if(r.type==='schedule'){r.trigger=r.trigger||{};r.trigger.time=tm.value;}else{r.time=tm.value;} }
+      if(tm){tm.oninput=function(){zeitUebernehmen();aTouch();}; tm.onchange=function(){zeitUebernehmen();aTouch();};}
       var sc=h.querySelector('#axScene'); if(sc)sc.onchange=function(){r.sceneId=this.value;};
-      var zn=h.querySelector('#axZone'); if(zn)zn.onchange=function(){r.audioZone=parseInt(this.value)||0;};
-      var sr=h.querySelector('#axSrc'); if(sr)sr.onchange=function(){r.audioSource=this.value;};
+      var zn=h.querySelector('#axZone'); if(zn)zn.onchange=function(){r.audioZone=parseInt(this.value)||0;aTouch();};
+      var kd=h.querySelector('#axKind');
+      var sr=h.querySelector('#axSrc');
+      function quelleSetzen(){var q=wakeQuelle(r);
+        r.audioSource={kind:(kd?kd.value:q.kind), id:(sr?sr.value:q.id)};aTouch();}
+      if(kd)kd.onchange=function(){
+        // Art gewechselt: die id passt nicht mehr (Schluessel vs. Index) - leeren
+        // und das Feld neu zeichnen, damit die richtige Eingabeart erscheint.
+        r.audioSource={kind:kd.value,id:''};
+        paintOnly(w);
+      };
+      if(sr)sr.onchange=quelleSetzen;
       var lvl=h.querySelector('#axLvl'); if(lvl)lvl.onclick=function(){r.level=!(r.level!==false);paintOnly(w);};
       ['axSensor:sensor','axLux:lux','axAway:awayVar'].forEach(function(p){var a=p.split(':');var e=h.querySelector('#'+a[0]);if(e)e.onchange=function(){r[a[1]]=parseInt(this.value)||0;};});
       var fr=h.querySelector('#axFrom'); if(fr)fr.onchange=function(){r.from=this.value;};
       var to=h.querySelector('#axTo'); if(to)to.onchange=function(){r.to=this.value;};
-      h.querySelectorAll('[data-axday]').forEach(function(e){e.onclick=function(){var d=(r.type==='schedule')?(r.trigger.days=r.trigger.days||[]):(r.days=r.days||[]);var i=+e.getAttribute('data-axday');var p=d.indexOf(i);if(p>=0)d.splice(p,1);else d.push(i);paintOnly(w);};});
+      h.querySelectorAll('[data-axday]').forEach(function(e){e.onclick=function(){var d=(r.type==='schedule')?(r.trigger.days=r.trigger.days||[]):(r.days=r.days||[]);var i=+e.getAttribute('data-axday');var p=d.indexOf(i);if(p>=0)d.splice(p,1);else d.push(i);aTouch();paintOnly(w);};});
       h.querySelectorAll('[data-axdev]').forEach(function(e){e.onclick=function(){r.devices=r.devices||[];var i=+e.getAttribute('data-axdev');var p=r.devices.indexOf(i);if(p>=0)r.devices.splice(p,1);else r.devices.push(i);paintOnly(w);};});
       // Stepper
-      var steps={axOff:['trigger.offsetMin',5,'min'],axEndOff:['endTrigger.offsetMin',5,'min'],axMinK:['minK',100,'K'],axMaxK:['maxK',100,'K'],axMinLvl:['minLevel',5,'%'],axMaxLvl:['maxLevel',5,'%'],axRamp:['rampMin',5,'min Rampe'],axLuxMax:['luxMax',10,'lux max'],axHold:['holdSecMin',1,'min'],axLevel:['level',5,'%'],axEvery:['every',5,'min']};
+      var steps={axOff:['trigger.offsetMin',5,'min'],axEndOff:['endTrigger.offsetMin',5,'min'],axMinK:['minK',100,'K'],axMaxK:['maxK',100,'K'],axMinLvl:['minLevel',5,'%'],axMaxLvl:['maxLevel',5,'%'],axRamp:['rampMin',5,'min Rampe'],axVol:['volume',5,'%'],axOff2:['offAfterMin',5,'min'],axLuxMax:['luxMax',10,'lux max'],axHold:['holdSecMin',1,'min'],axLevel:['level',5,'%'],axEvery:['every',5,'min']};
       function stepGet(key){if(key==='holdSecMin')return Math.round((r.holdSec||0)/60);if(key==='minLevel')return (r.minLevel!=null?r.minLevel:0);if(key==='maxLevel')return (r.maxLevel!=null?r.maxLevel:100);if(key.indexOf('.')>0){var pp=key.split('.');return (r[pp[0]]||{})[pp[1]]||0;}return r[key]||0;}
       function stepSet(key,v){if(key==='holdSecMin'){r.holdSec=Math.max(5,v)*60;return;}if(key==='minLevel'||key==='maxLevel'){r[key]=Math.max(0,Math.min(100,v));return;}if(key.indexOf('.')>0){var pp=key.split('.');r[pp[0]]=r[pp[0]]||{};r[pp[0]][pp[1]]=v;return;}r[key]=v;}
       function stepTxt(id,s){if(id==='axHold')return Math.round((r.holdSec||0)/60)+' '+s[2];if(id==='axLevel')return lvlTxt(r.level);return stepGet(s[0])+' '+s[2];}
-      h.querySelectorAll('[data-axinc]').forEach(function(e){e.onclick=function(){var id=e.getAttribute('data-axinc');var s=steps[id];if(id==='axLevel'){var cur=(r.level==null?-1:r.level);r.level=(cur<0)?-1:(cur>=100?-1:Math.min(100,cur+5));}else{stepSet(s[0],stepGet(s[0])+s[1]);}var el=h.querySelector('#'+id);if(el)el.textContent=stepTxt(id,s);};});
-      h.querySelectorAll('[data-axdec]').forEach(function(e){e.onclick=function(){var id=e.getAttribute('data-axdec');var s=steps[id];if(id==='axLevel'){var cur=(r.level==null?-1:r.level);r.level=(cur<0)?100:Math.max(0,cur-5);}else{stepSet(s[0],stepGet(s[0])-s[1]);}var el=h.querySelector('#'+id);if(el)el.textContent=stepTxt(id,s);};});
-      var sv=h.querySelector('#axSave'); if(sv)sv.onclick=function(){if(nm)r.name=nm.value;aSave(function(){});};
+      h.querySelectorAll('[data-axinc]').forEach(function(e){e.onclick=function(){var id=e.getAttribute('data-axinc');var s=steps[id];if(id==='axLevel'){var cur=(r.level==null?-1:r.level);r.level=(cur<0)?-1:(cur>=100?-1:Math.min(100,cur+5));}else{stepSet(s[0],stepGet(s[0])+s[1]);}aTouch();var el=h.querySelector('#'+id);if(el)el.textContent=stepTxt(id,s);};});
+      h.querySelectorAll('[data-axdec]').forEach(function(e){e.onclick=function(){var id=e.getAttribute('data-axdec');var s=steps[id];if(id==='axLevel'){var cur=(r.level==null?-1:r.level);r.level=(cur<0)?100:Math.max(0,cur-5);}else{stepSet(s[0],stepGet(s[0])-s[1]);}aTouch();var el=h.querySelector('#'+id);if(el)el.textContent=stepTxt(id,s);};});
+      var sv=h.querySelector('#axSave'); if(sv)sv.onclick=function(){
+        // Alle freien Eingabefelder unmittelbar vor dem Speichern noch einmal
+        // ablesen - ein Tippen auf "Speichern" nimmt dem Feld den Fokus, und auf
+        // change allein ist dabei kein Verlass.
+        if(nm)r.name=nm.value;
+        zeitUebernehmen();
+        if(kd||sr)quelleSetzen();   // nur wenn die Weck-Felder ueberhaupt da sind
+        aSave(function(){});};
       var dl=h.querySelector('#axDel'); if(dl)dl.onclick=function(){if(window.confirm('Regel löschen?')){A.cfg.rules.splice(A.sel,1);A.sel=-1;aSave();}};
       var ts=h.querySelector('#axTest'); if(ts)ts.onclick=function(){aSave(function(){fetch('?api=light&op=autotick&key='+encodeURIComponent(TOKEN),{method:'POST',cache:'no-store'});});};
     }
     function paintOnly(w){var hh=host(w);if(hh){hh.innerHTML=editRender();editWire(hh,w);}}
+    // Der Editor braucht die Senderliste nur fuer Weckregeln - dann aber, bevor er
+    // zeichnet, sonst steht dort "laedt ..." bis zum naechsten Anlass.
+    function editVorbereiten(w,fertig){
+      var r=A.cfg&&A.cfg.rules[A.sel];
+      if(r&&r.type==='wake'&&!A.stations){aStations(fertig);return;}
+      fertig();
+    }
 
     // =============================== autocard ===============================
     function cardRender(w){
@@ -303,6 +410,9 @@
 
     function tlRender(w){
       if(!A.cfg)return '<div class="ax"><div class="ax-msg">lädt …</div></div>';
+      // Beschraenkung wie bei autolist: auf einer Weckerseite haben Bewegungs- und
+      // Beleuchtungsregeln nichts zu suchen.
+      var nurT=(w&&w.axOnly&&TYPES[w.axOnly])?w.axOnly:'';
       var sun=A.cfg.sun||{sunrise:360,sunset:1200};
       var woche = !!(w && w.tlSpan==='woche');
       function pc(min){return Math.max(0,Math.min(100,min/1440*100));}
@@ -330,12 +440,23 @@
         var pkt=[];
         var spannen=[];                                    // Regeln mit Endzeitpunkt: von-bis
         (A.cfg.rules||[]).forEach(function(r,i){
+          if(nurT&&r.type!==nurT)return;                   // Beschraenkung auf eine Regelart
           if(!tlLaeuft(r,wd))return;                       // Regel schaltet an dem Tag gar nicht
           var p=tlPos(r); if(p.min<0)return;
           pkt.push({r:r,min:p.min,sun:p.sun,tm:p.tm,idx:i,band:false,
                     lbl:r.name||TYPES[r.type].label,an:r.enabled!==false});
           // Endzeitpunkt: derselbe Name, aber die Gegenrichtung - und dazwischen ein Balken,
           // damit man die Dauer sieht statt zweier zusammenhangloser Punkte.
+          // Wecker mit "automatisch aus": die Spieldauer als Strecke, sonst steht da
+          // nur ein Punkt und die eigentliche Frage - wie lange laeuft das? - bleibt offen.
+          if(r.type==='wake'&&(+r.offAfterMin>0)){
+            var bis=(p.min+(+r.offAfterMin))%1440;
+            spannen.push({von:p.min,bis:bis,idx:i,an:r.enabled!==false,
+                          // 52 % ist die Zeile, in der die Uhrzeit der Marke steht -
+                          // dort wuerde der Riegel quer durch die Beschriftung laufen.
+                          oben:'72%',
+                          lbl:(r.name||'Wecker')+' · '+(+r.offAfterMin)+' min'});
+          }
           if(r.type==='schedule'&&r.endTrigger){
             var pe=tlPos({type:'schedule',trigger:r.endTrigger});
             if(pe.min>=0){
@@ -387,11 +508,12 @@
           var teile = (sp.bis>=sp.von) ? [[sp.von,sp.bis]] : [[sp.von,1440],[0,sp.bis]];
           teile.forEach(function(t){
             var a=pc(t[0]), b=pc(t[1]);
-            spans+='<div class="ax-span dauer'+off+'" style="left:'+a+'%;width:'+Math.max(1,b-a)+'%;top:52%"'
+            spans+='<div class="ax-span dauer'+off+'" style="left:'+a+'%;width:'+Math.max(1,b-a)+'%;top:'+(sp.oben||'52%')+'"'
               +' data-axopen="'+sp.idx+'" title="'+esc(sp.lbl)+'">'+(woche?'':escL(sp.lbl))+'</div>';
           });
         });
         (A.cfg.rules||[]).forEach(function(r,i){
+          if(nurT&&r.type!==nurT)return;                   // Beschraenkung auf eine Regelart
           if(!tlLaeuft(r,wd))return;
           var off=(r.enabled===false)?' off':'';
           // Spannen relativ zur Timeline-Hoehe, damit sie jeder Hoehenaenderung folgen.
@@ -429,7 +551,9 @@
       return '<div class="ax ax-tlwrap"><div class="ax-tl-scroll">'
         +bahn(new Date().getDay(),'<div class="ax-tl-hours">'+hours+'</div>')
         +'</div>'
-        +'<div class="ax-circ"><div class="ax-circ-l">Circadian über den Tag</div><div class="ax-ramp" style="height:clamp(8px,3cqmin,14px)"></div></div></div>';
+        +((nurT||!(A.cfg.rules||[]).some(function(r){return r.type==='circadian';}))?''
+          :'<div class="ax-circ"><div class="ax-circ-l">Circadian über den Tag</div><div class="ax-ramp" style="height:clamp(8px,3cqmin,14px)"></div></div>')
+        +'</div>';
     }
     function tlWire(h,w){h.querySelectorAll('[data-axopen]').forEach(function(e){e.onclick=function(){A.sel=+e.getAttribute('data-axopen');aEmit();};});}
 
@@ -442,19 +566,40 @@
         defaults:function(w){if(name==='autocard')w.kind=w.kind||'schedule';},
         render:function(w){return rnd(w);},
         mount:function(w){var el=elOf(w);if(!el)return;
-          function paint(){var hh=host(w);if(hh){hh.innerHTML=rnd(w);wire(hh,w);}}
+          function auswahlPruefen(){
+            if(name!=='autolist'||!w.axOnly||!A.cfg)return false;
+            var rs=A.cfg.rules||[];
+            var akt=rs[A.sel];
+            if(akt&&akt.type===w.axOnly)return false;
+            for(var i=0;i<rs.length;i++){ if(rs[i].type===w.axOnly){A.sel=i;return true;} }
+            A.sel=-1; return true;
+          }
+          function paint(){var geaendert=auswahlPruefen();
+            function zeichnen(){var hh=host(w);if(hh){hh.innerHTML=rnd(w);wire(hh,w);}if(geaendert)aEmit();}
+            if(name==='autoedit'&&A.cfg){editVorbereiten(w,zeichnen);}else{zeichnen();}}
           aSub(paint);                 // fuer Aenderungen an anderen Widgets (Auswahl/Speichern)
           if(A.cfg){paint();}else{aLoad(paint);}   // jedes Widget zeichnet sich selbst nach dem Laden
-          LVB.panel.startPoll('autox:'+w.id,45000,function(){aLoad(paint);});
+          LVB.panel.startPoll('autox:'+w.id,45000,function(){if(A.dirty)return;aLoad(paint);});
         },
         props:function(w){
           if(name==='autotimeline'){
             // Tag = eine Achse fuer heute; Woche = sieben Bahnen, Mo bis So.
-            return '<div class="pgh">Zeitraum</div>'
+            return '<div class="pgh">Umfang</div>'
+              +row('Regelart','<select id="axOnly"><option value="">alle Regeln</option>'
+                +Object.keys(TYPES).map(function(k){return '<option value="'+k+'"'+(w.axOnly===k?' selected':'')+'>nur '+esc(TYPES[k].plural)+'</option>';}).join('')
+                +'</select>')
+              +'<div class="pgh">Zeitraum</div>'
               +row('Umfang','<select id="axSpan">'
                 +'<option value="tag"'+(w.tlSpan!=='woche'?' selected':'')+'>Tag (heute)</option>'
                 +'<option value="woche"'+(w.tlSpan==='woche'?' selected':'')+'>Ganze Woche (Mo–So)</option></select>')
               +'<div style="font-size:11px;color:var(--muted);padding:4px 2px">Zeigt Regeln UND die aus Bändern abgeleiteten Schaltpunkte — jeweils nur an den Wochentagen, an denen sie wirklich schalten.</div>';
+          }
+          if(name==='autolist'){
+            return '<div class="pgh">Umfang</div>'
+              +row('Regelart','<select id="axOnly"><option value="">alle Regeln</option>'
+                +Object.keys(TYPES).map(function(k){return '<option value="'+k+'"'+(w.axOnly===k?' selected':'')+'>nur '+esc(TYPES[k].plural)+'</option>';}).join('')
+                +'</select>')
+              +'<div style="font-size:11px;color:var(--muted);line-height:1.4;padding:4px 2px">Blendet die Liste auf eine Art ein - z. B. nur Wecker auf der Musikseite. Die Auswahl ist seitenweit geteilt: der Detail-Editor daneben zeigt weiterhin die angeklickte Regel.</div>';
           }
           if(name!=='autocard')return '<div style="font-size:11px;color:var(--muted);padding:4px 2px">Teil der Automatik-Familie. Auf einer Seite mit autolist+autoedit kombinieren.</div>';
           var h='<div class="pgh">Kategorie</div>';
@@ -463,11 +608,12 @@
         },
         wire:function(w){
           if($('#axKind'))$('#axKind').onchange=function(){w.kind=this.value;commit();var hh=host(w);if(hh){hh.innerHTML=rnd(w);}};
+          if($('#axOnly'))$('#axOnly').onchange=function(){w.axOnly=this.value||undefined;commit();var hh=host(w);if(hh){hh.innerHTML=rnd(w);wire(hh,w);}};
           if($('#axSpan'))$('#axSpan').onchange=function(){w.tlSpan=this.value;commit();var hh=host(w);if(hh){hh.innerHTML=rnd(w);wire(hh,w);}};
         }
       });
     }
-    mk('autolist',null,[300,520],listRender,listWire);
+    mk('autolist',null,[300,520],function(w){return listRender(w);},listWire);
     mk('autoedit',null,[440,520],editRender,editWire);
     mk('autocard','schedule',[340,240],cardRender,cardWire);
     mk('autotimeline',null,[900,320],tlRender,tlWire);
