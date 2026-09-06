@@ -7,7 +7,7 @@
   //  Daten über ?api=mower (op=timers frei lesen, op=settimers token-geschützt → Modul-Gate,
   //  Schatten wenn nicht scharf). Bereichsfarben = Skin-Tokens (zyklisch). Ist-Zeit-Linie am Ist-Tag.
 
-  var _mpState = {};                 // w.id -> Editor-Zustand
+  var _mpState = {};                 // w.id + '#' + w.mowerId -> Editor-Zustand (Schluessel siehe mpSt)
   var _mpMowers = null;              // Mäher-Liste (?api=mower&op=list) für Props + Name
   var MP_DAYS  = ['Mo','Di','Mi','Do','Fr','Sa','So'];
   var MP_DAYL  = ['Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag','Sonntag'];
@@ -16,7 +16,14 @@
 
   function mpM2H(min){min=Math.max(0,Math.min(1440,Math.round(min)));var h=Math.floor(min/60),mi=min%60;return (h<10?'0':'')+h+':'+(mi<10?'0':'')+mi;}
   function mpDur(min){var h=Math.floor(min/60),mi=min%60;return h>0?(h+' h'+(mi?' '+(mi<10?'0':'')+mi:' 00')):(mi+' min');}
-  function mpSt(w){return _mpState[w.id]||(_mpState[w.id]={loaded:false,timers:[],areas:[],sel:0,dirty:false,err:'',name:''});}
+  // Der Schluessel traegt den MAEHER mit. Grund: die Seiten "Maeher Lefty" und "Maeher Righty"
+  // sind baugleich und vergeben beide die Widget-ID "w3". Mit reinem w.id fand der zweite
+  // Maeher den Zustand des ersten vor - inklusive loaded:true, worauf mount() den Abruf ueber-
+  // sprang und den Plan des zuerst geoeffneten Maehers stehen liess (in beide Richtungen).
+  // chart und bot loesen dieselbe Kollision, indem sie bei jedem Mount neu laden; der Maehplan
+  // haelt aber ungespeicherte Bearbeitungen, deshalb hier ein Cache PRO Maeher statt Neuladen.
+  function mpKey(w){return String(w.id)+'#'+String(w.mowerId==null?'':w.mowerId);}
+  function mpSt(w){var k=mpKey(w);return _mpState[k]||(_mpState[k]={loaded:false,timers:[],areas:[],sel:0,dirty:false,err:'',name:''});}
   function mpTodayIdx(){try{return (new Date().getDay()+6)%7;}catch(e){return 0;}}
   function mpNowMin(){try{var d=new Date();return d.getHours()*60+d.getMinutes();}catch(e){return -1;}}
   function mpDaysArr(t){var a=[];for(var i=0;i<7;i++){if(t.days&&t.days[MP_DKEY[i]])a.push(i);}return a;}
