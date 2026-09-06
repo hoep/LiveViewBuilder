@@ -94,7 +94,16 @@
       +'.lbbar.on .lbnm{color:var(--text)}'
       +'.lbval{font:500 12px var(--fm);color:var(--muted);flex:0 0 auto}'
       +'.lbbar.on .lbval{font-weight:700;color:var(--licht)}'
-      +'.lbtrk{position:relative;height:6px;border-radius:99px;background:var(--track)}'
+      // touch-action:none ist auf einem Touchscreen die halbe Miete: ohne sie deutet der
+      // Browser das Ziehen als Blaettern, uebernimmt die Geste und bricht den Zeigerstrom
+      // mit pointercancel ab - die Helligkeit liess sich mit dem Finger schlicht nicht
+      // stellen. Die uebrigen Schieber im Frontend (.rlg-rail, .afbar-k, .thk-grip) haben
+      // es laengst; hier fehlte es.
+      +'.lbtrk{position:relative;height:6px;border-radius:99px;background:var(--track);touch-action:none}'
+      // 6 px hohe Bahn trifft man mit der Maus, nicht mit dem Finger. Das ::before
+      // vergroessert NUR die Trefferflaeche (8 px nach oben und unten), nicht das Bild:
+      // es liegt in der Malreihenfolge vor .lbfill und .lbgrip und bleibt unsichtbar.
+      +'.lbtrk::before{content:"";position:absolute;left:0;right:0;top:-8px;bottom:-8px}'
       +'.lbtrk.lbsw{background:repeating-linear-gradient(90deg,var(--track) 0 3px,transparent 3px 6px)}'
       +'.lbfill{position:absolute;top:0;bottom:0;left:0;border-radius:99px;background:var(--licht);transition:width .2s ease-out}'
       +'.lbbar.drag .lbfill{transition:none}'
@@ -112,7 +121,7 @@
     function lxLoad(cb){
       if(typeof DOKU!=='undefined'&&DOKU){_lxData=lxDemo();cb&&cb();return;}
       fetch('?api=light&op=getall',{cache:'no-store'}).then(function(r){return r.json();})
-        .then(function(j){_lxData=(j&&j.lights)||[];_lxErr='';cb&&cb();})
+        .then(function(j){_lxData=(j&&j.lights)||[];lbLernen(_lxData);_lxErr='';cb&&cb();})
         .catch(function(){_lxErr='net';cb&&cb();});
     }
     function lxDemo(){return [
@@ -382,7 +391,25 @@
     // onChange waehrend der Bewegung hoechstens alle 120 ms (Buslast), beim Loslassen
     // einmal endgueltig. Unter 3 % bedeutet aus. Der zuletzt gestellte Wert wird je
     // Leuchte gemerkt, damit Tippen aus dem Aus-Zustand dorthin zurueckkehrt.
-    var _lbLast={};
+    // ZULETZT GESEHENE HELLIGKEIT je Leuchte.
+    //
+    // Frueher wurde sie NUR beim Ziehen gefuellt und lebte nur bis zum naechsten
+    // Seitenaufbau. Nach jedem Neuladen stand da nichts, und `_lbLast[id]||100` liess das
+    // Antippen auf 100 % springen statt auf den letzten Wert - genau der gemeldete Fehler.
+    // Jetzt lernt sie aus den LIVE-DATEN (jede Leuchte, die an ist und einen Pegel meldet)
+    // und ueberlebt im localStorage. Schluessel ist die Instanz-ID der Leuchte, also
+    // geraeteweit eindeutig - kein Widget- oder Seitenbezug noetig.
+    var _lbLast={}, LB_KEY='lvlblast';
+    try{ var _lbO=localStorage.getItem(LB_KEY); if(_lbO){ var _lbJ=JSON.parse(_lbO); if(_lbJ&&typeof _lbJ==='object')_lbLast=_lbJ; } }catch(e){}
+    function lbLastSet(id,v){
+      v=Math.round(v); if(!(v>0)||v>100)return;
+      if(_lbLast[id]===v)return;
+      _lbLast[id]=v;
+      try{ localStorage.setItem(LB_KEY,JSON.stringify(_lbLast)); }catch(e){}
+    }
+    function lbLernen(list){
+      (list||[]).forEach(function(l){ if(l&&l.on&&+l.level>0) lbLastSet(l.id,+l.level); });
+    }
     // Nach dem Schalten muss das Widget mit SEINEM EIGENEN Zeichner neu gezeichnet werden.
     // lbWire bedient drei Widgets: die Licht-Uebersicht (lightgrid), die einzelne Leuchte
     // (lightbar) und die Raumkarte (lightroomcard). Fest lxSchedule() aufzurufen war ein
@@ -428,7 +455,7 @@
         function ende(ev){
           if(!zieht)return; zieht=false; if(bar)bar.classList.remove('drag');
           var v=roh<3?0:roh;
-          if(v>0)_lbLast[id]=v;
+          if(v>0)lbLastSet(id,v);
           if(v===0){ if(l.on)lxToggle(l); } else { lxDim(l,v); }
           lbRepaint(w); if(ev)ev.stopPropagation();
         }
@@ -443,7 +470,13 @@
           var l=(_lxData||[]).find(function(x){return x.id===id;});
           if(!l)return;
           if(l.on){ lxToggle(l); }
-          else if(lbDimBar(l)){ var z=Math.max(10,_lbLast[id]||100); lxDim(l,z); }
+          else if(lbDimBar(l) && _lbLast[id]>0){
+            lxDim(l,Math.max(3,Math.min(100,_lbLast[id])));
+          }
+          // Ist kein Wert bekannt, wird NICHT 100 % behauptet: dann schlicht einschalten und
+          // der Leuchte ihren eigenen letzten Pegel lassen. Hue und Zigbee stellen ihn beim
+          // Einschalten selbst wieder her - ein vorschnelles Brightness=100 hat genau das
+          // ueberschrieben.
           else { lxToggle(l); }
           lbRepaint(w);
         });
