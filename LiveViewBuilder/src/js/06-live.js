@@ -1,8 +1,15 @@
   // C1: nutzt das Widget diese Variablen-ID als Daten-Bindung? (spiegelt pollVals, ohne visVar)
   function widgetDataId(w,id){
-    if(w.varId===id||w.varId2===id||w.varId3===id||w.dVid===id||w.varIdB===id||w.dVidB===id||w.stufeVid===id||w.cvActId===id||w.cvAzB===id||w.cvAzE===id||w.cvElv===id||w.cvBlockVid===id||w.cmpVid===id||w.ackVid===id||w.condVar===id||w.vTemp===id||w.vCond===id||w.vHum===id||w.vWind===id||w.vGust===id||w.vRain===id||w.ssAz===id||w.ssEl===id||w.ssRad===id||w.ssRainV===id||w.ssSnowV===id||w.ssPtypeV===id||w.ssFogV===id||w.ssFogStateV===id||w.ssWindV===id||w.ssRainSensV===id||w.ssTempV===id||w.ssDewV===id||w.ssHumV===id||w.ssWetV===id||w.ssCloudV===id||w.vStorm===id||w.vStormDist===id||w.vStormAge===id||w.vStormRate===id||w.vRainRate===id||w.vRainDay===id||w.vFog===id||w.vFogFsi===id||w.ssStormV===id||w.ssStormDistV===id||w.wxFogState===id||w.ssWxJson===id||w.thPresVar===id||w.thHeatVar===id||w.thArmVar===id)return true;
-    var A=['items','links','rows','src','snk','fc','elements','stages','steps','series'],i,j,o;
-    for(i=0;i<A.length;i++){var a=w[A[i]];if(a)for(j=0;j<a.length;j++){o=a[j];if(o&&(o.vid===id||o.subvid===id||o.hi===id||o.lo===id||o.pq===id||o.cond===id||o.speedVid===id||o.socVid===id||o.sVid===id||o.vid2===id))return true;}}
+    if(w.type==='valuecard'){
+      if(w.vcSubVid===id)return true;
+      if(w.vcNoteVid===id||w.vcCapVid===id||w.vcBadgeVid===id||w.vcBadgeStVid===id||w.rngCurVid===id||w.vcTitleVid===id||w.vcAccVid===id)return true;
+      if(Array.isArray(w.vcStats)){for(var _s=0;_s<w.vcStats.length;_s++){if(w.vcStats[_s]&&w.vcStats[_s].vid===id)return true;}}
+    }
+    if(w.varId===id||w.varId2===id||w.varId3===id||w.dVid===id||w.varIdB===id||w.dVidB===id||w.stufeVid===id||w.cvActId===id||w.cvAzB===id||w.cvAzE===id||w.cvElv===id||w.cvBlockVid===id||w.cmpVid===id||w.ackVid===id||w.condVar===id||w.vTemp===id||w.vCond===id||w.vHum===id||w.vWind===id||w.vGust===id||w.vRain===id||w.ssAz===id||w.ssEl===id||w.ssRad===id||w.ssRainV===id||w.ssSnowV===id||w.ssPtypeV===id||w.ssFogV===id||w.ssFogStateV===id||w.ssWindV===id||w.ssRainSensV===id||w.ssTempV===id||w.ssDewV===id||w.ssHumV===id||w.ssWetV===id||w.ssCloudV===id||w.vStorm===id||w.vStormDist===id||w.vStormAge===id||w.vStormRate===id||w.vRainRate===id||w.vRainDay===id||w.vFog===id||w.vFogFsi===id||w.ssStormV===id||w.ssStormDistV===id||w.wxFogState===id||w.ssWxJson===id||w.thPresVar===id||w.thHeatVar===id||w.thArmVar===id||w.thPowerVar===id||w.urlVid===id||w.stoerVid===id)return true;
+    // 'rings' gehoert dazu: das Ring-Gauge bindet seine Variablen dort, und ohne
+    // den Eintrag wurden sie nie gepollt - die Ringe blieben leere Spuren.
+    var A=['items','links','rows','src','snk','fc','elements','stages','steps','series','rings'],i,j,o;
+    for(i=0;i<A.length;i++){var a=w[A[i]];if(a)for(j=0;j<a.length;j++){o=a[j];if(o&&(o.vid===id||o.subvid===id||o.hi===id||o.lo===id||o.pq===id||o.cond===id||o.speedVid===id||o.socVid===id||o.sVid===id||o.vid2===id||o.dayVid===id||o.labelVid===id||o.pctVid===id||o.cmpVid===id||o.planVid===id))return true;}}
     // Alarm-Karte: nur im Text (title/sub/notify) referenzierte Formel-IDs treiben live() ebenfalls
     if(w.type==='alarm'){var _at=[w.title,w.sub,w.notify];for(i=0;i<_at.length;i++){var _as=_at[i];if(_fIsFormula(_as)&&_fIds(_as).indexOf(id)>=0)return true;}}
     // Alarm-Panel: eine Kind-Karten-Variable aendert sich -> Panel-live() (Leer-Zustand/Quittung nachziehen)
@@ -116,21 +123,31 @@
     if(w.fc)w.fc.forEach(function(r){add(r.hi);add(r.lo);add(r.pq);add(r.cond);});
     ['links','src','snk','items','rows','steps','series','barMarks','phases'].forEach(function(k){if(w[k])w[k].forEach(function(o){if(o)add(o.vid);});});
     if(w.stages)w.stages.forEach(function(o){if(o){add(o.vid);add(o.subvid);add(o.sv);}}); // Pipeline-Stationen (Wert + Zusatzwert + Status-Var fuer bedingten Fluss)
-    if(w.elements)w.elements.forEach(function(o){if(o){add(o.vid);add(o.vid2);add(o.speedVid);add(o.socVid);add(o.sVid);}});  // vid2: Gegenrichtung im Netz-Modus
+    if(w.elements)w.elements.forEach(function(o){if(o){add(o.vid);add(o.vid2);add(o.speedVid);add(o.socVid);add(o.sVid);add(o.dayVid);}});  // vid2: Gegenrichtung im Netz-Modus
     if(w.tankVid)add(w.tankVid);
     add(w.sollVid);add(w.tbWarnVid);add(w.mgThrVid);add(w.kToneVid);add(w.kSubVid);add(w.ttlRightVid);                                  // Saeule: Soll-Marke und Warnschwelle aus Variablen
     if(w.phases)w.phases.forEach(function(o){if(o)add(o.hintVid);});   // Ablaufkette: Unterzeile je Schritt
     add(w.ilhBadgeVid);add(w.ilhSubVid);add(w.ilfVid);   // Info-Liste: Kopf- und Fusszeile
-    add(w.stufeVid);add(w.zeileVid);add(w.zeile2Vid);    // Zustandskachel: Stufe und die zwei Zeilen
+    add(w.stufeVid);add(w.zeileVid);add(w.zeile2Vid);add(w.stoerVid);  // Zustandskachel: Stufe, die zwei Zeilen und die Vorrang-/Stoerungsvariable
     add(w.motionVid);                                    // Leuchtenzeile: Praesenzmelder - liegt zwar auch in w.items, das wird aber erst beim Aufbau gefuellt
-    add(w.thPresVar);add(w.thHeatVar);add(w.thArmVar);
+    add(w.thPresVar);add(w.thHeatVar);add(w.thArmVar);add(w.thPowerVar);
+    add(w.urlVid);   // WebView: Adresse aus einer Variablen (Karte folgt dem Fahrzeug)
     // Thermostat-Klimateil: ohne diese Zeile blieben Betriebsart, Luefter und die
     // Schaltzustaende dauerhaft leer - sie werden sonst nirgends gepollt.
     add(w.thAcPower);add(w.thAcMode);add(w.thAcFan);add(w.thAcSwing);
     add(w.thAcLevel);add(w.thAcPreset);add(w.thAcIon); // Thermostat-Raumkarte: Heizprofil, Ventil-/Statusquelle, „scharf" - ohne sie wuerden diese IDs nie gepollt
     // Fortschrittsbalken je Zeile - und die Schaltvariable: ohne sie im Kanal
     // wuesste "Wert leer = umschalten" nicht, was gerade an ist.
-    if(w.items)w.items.forEach(function(o){if(o){add(o.progVid);add(o.actVid);add(o.act2Vid);add(o.pillVid);add(o.subVid);}});
+    if(w.items)w.items.forEach(function(o){if(o){add(o.progVid);add(o.actVid);add(o.act2Vid);add(o.pillVid);add(o.subVid);add(o.labelVid);add(o.planVid);add(o.pctVid);add(o.dayVid);add(o.cmpVid);
+      // Metrik-Liste, Zusatzzeile: die IDs stehen als Text im Feld 'info' und muessen
+      // hier mit - sonst blieben die Zellen dauerhaft auf dem Platzhalter stehen.
+      if(o.info&&typeof mlInfoIds==='function')mlInfoIds(o).forEach(add);}});
+    if(w.rings)w.rings.forEach(function(o){if(o&&o.vid)add(o.vid);});
+    // Wertkarte: die Kennzahlen der Fusszeile sind eigene Bindungen. Ohne sie
+    // hier pollt die Laufzeit sie nicht und die Zeile bleibt auf "–" stehen.
+    if(w.type==='valuecard'&&Array.isArray(w.vcStats))w.vcStats.forEach(function(x){if(x&&x.vid)add(x.vid);});
+    if(w.type==='valuecard'&&w.vcSubVid)add(w.vcSubVid);
+    if(w.type==='valuecard'){if(w.vcNoteVid)add(w.vcNoteVid);if(w.vcCapVid)add(w.vcCapVid);if(w.vcBadgeVid)add(w.vcBadgeVid);if(w.vcBadgeStVid)add(w.vcBadgeStVid);if(w.rngCurVid)add(w.rngCurVid);if(w.vcTitleVid)add(w.vcTitleVid);if(w.vcAccVid)add(w.vcAccVid);}
     if((w.type==='container'||w.type==='alarmpanel')&&w.kids)w.kids.forEach(function(k){if(k)_collectIds(k,add);}); // Container/Alarm-Panel: IDs der Kinder mitsammeln (Poll)
     if(w.type==='alarm')[w.title,w.sub,w.notify].forEach(function(s){if(_fIsFormula(s))add(s);}); // Alarm-Karte: Formel-IDs aus dem Text (add=_emit -> Token + Komponenten)
   }
