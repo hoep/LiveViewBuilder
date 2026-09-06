@@ -1204,7 +1204,7 @@
           var fs = Math.max(8, 11 * sk);
           ctx.font = '600 ' + fs + 'px ui-monospace,monospace';
           ctx.fillStyle = nacht ? 'rgba(190,210,220,.75)' : col;
-          ctx.fillText(f.ruf, q.x + 11 * sk, q.y + 3);
+          ctx.fillText((f.nr || f.ruf), q.x + 11 * sk, q.y + 3);
 
           /* Kleines Schild mit der Route unter dem Rufzeichen.
            *
@@ -1596,7 +1596,7 @@
         return lvNebelText(wx.fogState);
       }
       if (wx && wx.fog > 0.05) {
-        return wx.fog > 0.5 ? 'Dichter Nebel' : (wx.fog > 0.22 ? 'Nebel' : 'Diesig');
+        return wx.fog > 0.5 ? 'Dichter Nebel' : (wx.fog > 0.22 ? 'Nebel' : 'Dunst');
       }
       return '';
     }
