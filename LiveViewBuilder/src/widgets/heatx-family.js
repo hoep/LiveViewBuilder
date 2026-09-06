@@ -38,6 +38,11 @@
         if(dom==='shading'){ sess.ist=(st.ActualPosition==null?null:+st.ActualPosition); sess.sollDev=(st.Position==null?null:+st.Position); sess.hum=null;
           sess.active=(st.Plan!=null&&st.Season!=null)?((+st.Plan)*2+(+st.Season)):-1; }
         else if(dom==='irrigation'){ sess.ist=(st.Running===true||st.Running===1||st.Running==='1')?1:0; sess.sollDev=(st.Duration==null?null:+st.Duration); sess.hum=null; sess.active=0; }
+        else if(dom==='climate'){ sess.ist=(st.Indoor==null?null:+st.Indoor); sess.sollDev=(st.Target==null?null:+st.Target);
+          sess.hum=(st.Humidity==null?null:+st.Humidity);
+          // Die Variante steht in SchedVariant. 'Presence' ist bei Klima etwas
+          // anderes: das meldet der Hersteller (tado: zuhause/abwesend).
+          sess.active=(st.SchedVariant==null?-1:+st.SchedVariant); }
         else { sess.ist=(st.ActualTemp==null?null:+st.ActualTemp); sess.sollDev=(st.Setpoint==null?null:+st.Setpoint); sess.hum=(st.Humidity==null?null:+st.Humidity); sess.active=(st.Presence==null?-1:+st.Presence); }
         if(sess.variant>=vs.length)sess.variant=0;
         sess.err='';cb&&cb();
@@ -46,7 +51,8 @@
   }
   function hfSaveHS(w){var sess=hfSess(w);var idx=sess.roomIdx,variant=hpVarName(sess),week=hpWeek(sess),calls=[];
     for(var d=0;d<7;d++){var day=week[d]||{end:['24:00'],val:[_hpVC.def],anch:[null]};
-      var slots=day.end.map(function(e,i){var s={end:hpH2M(e),val:Number(day.val[i])};var a=(day.anch||[])[i];if(a){s.anchor=a.anchor;s.offset=a.offset||0;}return s;});
+      var slots=day.end.map(function(e,i){var s={end:hpH2M(e),val:Number(day.val[i])};var a=(day.anch||[])[i];if(a){s.anchor=a.anchor;s.offset=a.offset||0;}
+        var m=(day.mode||[])[i];if(m)s.mode=m;return s;});
       calls.push(hpHSManage(idx,{op:'updateProfile',args:{variant:variant,day:d,slots:slots}}));}
     Promise.all(calls).then(function(rs){var ok=rs.every(function(j){return j&&j.ok;});sess.dirty=!ok;toast(ok?'Gespeichert':'Speichern fehlgeschlagen');hfLoadRoomHS(w,idx,function(){hfEmit(w);});}).catch(function(){toast('Speichern: Verbindungsfehler');hfEmit(w);});
   }
@@ -88,7 +94,7 @@
    */
   function hfEnsure(w,el,owner){var sess=hfSess(w);var def=WIDGETS[w.type];
     if(w.domain)sess.domain=w.domain;                   // heating (Default) | shading
-    if(w.hsMode||w.domain==='shading'||w.domain==='irrigation')sess.hsMode=true; // shading/irrigation nur HomeSuite
+    if(w.hsMode||w.domain==='shading'||w.domain==='irrigation'||w.domain==='climate')sess.hsMode=true; // shading/irrigation/climate nur HomeSuite
     if(sess.loaded){
       // Selektor kommt nach einer Kachel: Startraum nachtraeglich durchsetzen.
       if(owner&&sess.seeded!=='owner'){
@@ -164,8 +170,8 @@
         var first=(_hpRooms||[]).filter(function(r){return (r.group||'')===g;})[0];
         if(first){s.slot=1;hfLoadRoom(w,first.idx,function(){hfEmit(w);});}else{hfEmit(w);}};});},
     props:function(w){var h=hfSessRow(w);
-      h+=row('Domäne','<select id="hfDom"><option value="heating"'+((w.domain||'heating')==='heating'?' selected':'')+'>Heizung</option><option value="shading"'+(w.domain==='shading'?' selected':'')+'>Beschattung</option><option value="irrigation"'+(w.domain==='irrigation'?' selected':'')+'>Bewässerung</option></select>');
-      h+=row('Quelle','<label style="display:inline-flex;align-items:center;gap:6px;font-size:12px"><input type="checkbox" id="hfHs"'+(w.hsMode?' checked':'')+((w.domain==='shading'||w.domain==='irrigation')?' disabled':'')+'> HomeSuite-Zonen</label>');
+      h+=row('Domäne','<select id="hfDom"><option value="heating"'+((w.domain||'heating')==='heating'?' selected':'')+'>Heizung</option><option value="shading"'+(w.domain==='shading'?' selected':'')+'>Beschattung</option><option value="irrigation"'+(w.domain==='irrigation'?' selected':'')+'>Bewässerung</option><option value="climate"'+(w.domain==='climate'?' selected':'')+'>Klima</option></select>');
+      h+=row('Quelle','<label style="display:inline-flex;align-items:center;gap:6px;font-size:12px"><input type="checkbox" id="hfHs"'+(w.hsMode?' checked':'')+((w.domain==='shading'||w.domain==='irrigation'||w.domain==='climate')?' disabled':'')+'> HomeSuite-Zonen</label>');
       if(!w.hsMode) h+=row('Steuerung (Root-ID)','<input id="hfRoot" type="number" value="'+(w.rootId||'')+'" placeholder="53700" style="width:110px">');
       h+='<div class="pgh">'+(w.hsMode?'Zonen (HeatingZone)':'Räume &amp; Etage')+'</div>';
       // Ebenen-Auswahl (Geschosse / Raeume / beide) gehoert IMMER in den Editor. Sie stand
@@ -207,8 +213,8 @@
     wire:function(w){hfSessWire(w);
       if($('#hfStart'))$('#hfStart').onchange=function(){w.startRoom=parseInt(this.value)||undefined;commit();
         var s=hfSess(w);var want=hfStartRoom(w,hfSynth(w,s));if(want&&want!=s.roomIdx){s.seeded='owner';hfLoadRoom(w,want,function(){hfEmit(w);});}};
-      if($('#hfDom'))$('#hfDom').onchange=function(){w.domain=this.value;if(w.domain==='shading'||w.domain==='irrigation')w.hsMode=true;w.rooms=[];_hpRooms=null;_hpRoomsRoot=null;var s=hfSess(w);s.domain=w.domain;s.hsMode=!!w.hsMode;s.loaded=false;s.loading=false;s.roomIdx=0;s.variant=0;s.variants=null;commit();renderProps();var el=$('.w[data-id="'+w.id+'"]',canvas);if(el)hfEnsure(w,el);hfEmit(w);};
-      if($('#hfHs'))$('#hfHs').onchange=function(){w.hsMode=this.checked||undefined;w.rooms=[];_hpRooms=null;_hpRoomsRoot=null;var s=hfSess(w);s.hsMode=!!w.hsMode;s.loaded=false;s.loading=false;s.roomIdx=0;commit();renderProps();var el=$('.w[data-id="'+w.id+'"]',canvas);if(el)hfEnsure(w,el);hfEmit(w);};
+      if($('#hfDom'))$('#hfDom').onchange=function(){w.domain=this.value;if(w.domain==='shading'||w.domain==='irrigation'||w.domain==='climate')w.hsMode=true;w.rooms=[];hpRoomsForget();var s=hfSess(w);s.domain=w.domain;s.hsMode=!!w.hsMode;s.loaded=false;s.loading=false;s.roomIdx=0;s.variant=0;s.variants=null;commit();renderProps();var el=$('.w[data-id="'+w.id+'"]',canvas);if(el)hfEnsure(w,el);hfEmit(w);};
+      if($('#hfHs'))$('#hfHs').onchange=function(){w.hsMode=this.checked||undefined;w.rooms=[];hpRoomsForget();var s=hfSess(w);s.hsMode=!!w.hsMode;s.loaded=false;s.loading=false;s.roomIdx=0;commit();renderProps();var el=$('.w[data-id="'+w.id+'"]',canvas);if(el)hfEnsure(w,el);hfEmit(w);};
       if($('#hfFloor'))$('#hfFloor').onchange=function(){w.floor=this.value||undefined;var s=hfSess(w);s.loaded=false;s.loading=false;s.roomIdx=0;commit();renderProps();var el=$('.w[data-id="'+w.id+'"]',canvas);if(el)hfEnsure(w,el);hfEmit(w);};
       var _rr=function(){var s=hfSess(w);s.floorSel=null;render();hfEmit(w);};
       hsLevelModeWire(w,_rr);
@@ -216,7 +222,7 @@
       if(hsLevels(w)!=='floors'){var _ar=(_hpRooms||[]).filter(function(r){return !w.floor||(r.group||'')===w.floor;}).map(function(r){return {key:r.idx,name:hsStripDomain(r.name||hpRoomName(r.idx))};});hsLevelWire(w,'r',_ar,_rr);}
       if($('#hfRoot'))$('#hfRoot').onchange=function(){w.rootId=parseInt(this.value)||undefined;var s=hfSess(w);s.root=w.rootId||0;s.loaded=false;s.loading=false;commit();var el=$('.w[data-id="'+w.id+'"]',canvas);if(el)hfEnsure(w,el);};
       // Haus/Wohnung-Filter (Stil/Reihenfolge/Anzeige liegen jetzt in den Ebenen-Bloecken).
-      hsHouseWire(w,function(){w.rooms=[];_hpRooms=null;_hpRoomsRoot=null;var s=hfSess(w);s.loaded=false;s.loading=false;s.roomIdx=0;commit();renderProps();var el=$('.w[data-id="'+w.id+'"]',canvas);if(el)hfEnsure(w,el);hfEmit(w);});
+      hsHouseWire(w,function(){w.rooms=[];hpRoomsForget();var s=hfSess(w);s.loaded=false;s.loading=false;s.roomIdx=0;commit();renderProps();var el=$('.w[data-id="'+w.id+'"]',canvas);if(el)hfEnsure(w,el);hfEmit(w);});
       hfColorScaleWire(w);}
   });
 
@@ -287,6 +293,7 @@
       // Sonnen-Anker der Slot-Grenze (nur Beschattung)
       $$('[data-hpetype]',el).forEach(function(b){b.onclick=function(){hpSetEndType(s,b.getAttribute('data-hpetype'));em();};});
       var asel=$('[data-hpanchor]',el);if(asel)asel.onchange=function(){hpSetAnchor(s,asel.value);em();};
+      var msel=$('[data-hpmode]',el);if(msel)msel.onchange=function(){hpSetMode(s,msel.value);em();};
       $$('[data-hpoff]',el).forEach(function(b){b.onclick=function(){hpOffStep(s,+b.getAttribute('data-hpoff'));em();};});
       var cp=$('[data-hpcopy]',el);if(cp)cp.onclick=function(){var t=[];$$('[data-hptday]:checked',el).forEach(function(c){t.push(+c.getAttribute('data-hptday'));});if(!t.length){toast('Keine Zieltage gewählt');return;}hpCopyDay(w,s,t);em();};
       var tk=$('[data-hptake]',el);if(tk)tk.onclick=function(){var rm=$('[data-hpfromroom]',el),pr=$('[data-hpfrompres]',el);if(!rm||!pr)return;if(s.dirty&&!confirm('Ungespeicherte Änderungen verwerfen?'))return;hfTakeOver(w,+rm.value,+pr.value,em);};
@@ -312,6 +319,7 @@
       var db=$('[data-hpdel]',el);if(db)db.onclick=function(){hpDelSlot(w,s);em();};
       $$('[data-hpetype]',el).forEach(function(b){b.onclick=function(){hpSetEndType(s,b.getAttribute('data-hpetype'));em();};});
       var an=$('[data-hpanchor]',el);if(an)an.onchange=function(){hpSetAnchor(s,an.value);em();};
+      var mo=$('[data-hpmode]',el);if(mo)mo.onchange=function(){hpSetMode(s,mo.value);em();};
       $$('[data-hpoff]',el).forEach(function(b){b.onclick=function(){hpOffStep(s,+b.getAttribute('data-hpoff'));em();};});},
     props:function(w){return hfProps(w);}, wire:function(w){hfWire(w);}
   });

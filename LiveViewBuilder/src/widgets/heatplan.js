@@ -9,7 +9,13 @@
   //  Im Doku-Modus nur eingebettete Demodaten (nie Netz, nie speichern).
 
   var _hpRooms = null;                       // Raumliste (via ?api=heat&op=list)
-  var _hpRoomsRoot = null;                   // Root-ID, für die _hpRooms geladen wurde
+  var _hpRoomsRoot = null;                   // Schluessel, für den _hpRooms geladen wurde
+  // Raumlisten JE SCHLUESSEL. _hpRooms allein reichte nicht: Heizung und Klima
+  // leben nach einem Reiterwechsel im selben Dokument, und die zuletzt geladene
+  // Domaene haette der anderen ihre Raeume untergeschoben.
+  var _hpRoomsBy = {}, _hpGroupsBy = {};
+  function hpKeyOf(w){ return ((w&&w.rootId)||0)+':'+((w&&w.houseId)||0)+':'+((w&&w.domain)||'heating'); }
+  function hpRoomsForget(){ _hpRoomsBy={}; _hpGroupsBy={}; _hpRooms=null; _hpGroupOrder=null; _hpRoomsRoot=null; }
   var _hpGroupOrder = null;                  // Gruppen-Reihenfolge (Geschosse aus der Topologie, hsMode)
   var _hpHouses = [];                         // Haus/Wohnung-Ebene aus der Topologie [{iid,name}]
   function hpRootParam(w){return (w&&w.rootId)?('&root='+encodeURIComponent(w.rootId)):'';}
@@ -47,6 +53,15 @@
     shading:{dom:'shading',min:0,max:100,step:5,dec:0,unit:'%',def:0,label:'Position',anchors:true,
       color:function(v){return hpPosColor(v);}, bucket:function(v){return v<=10?'offen':v<=50?'halb':v<=90?'meist zu':'zu';},
       steps:[[-10,'−10'],[-5,'−5'],[5,'+5'],[10,'+10']], scaleLo:0,scaleHi:100,scaleLbl:'0 % offen … 100 % zu', profTitle:'Plan'},
+    // Klima: Wert = ZIELTEMPERATUR wie bei der Heizung. Die Betriebsart steht
+    // NEBEN dem Wert (day.mode[], siehe hpMode) und faerbt nur die Anzeige - so
+    // rechnen Kurve, Skala und Mittelwert unveraendert weiter.
+    climate:{dom:'climate',min:16,max:30,step:0.5,dec:1,unit:'°C',def:22,label:'Ziel',
+      loLbl:'kühl',hiLbl:'warm',
+      anchors:false, modes:true,
+      color:function(v){return hpTempColor(v);}, bucket:function(v){return hpBucket(v);},
+      steps:[[-1,'−1'],[-0.5,'−0,5'],[0.5,'+0,5'],[1,'+1']], scaleLo:18,scaleHi:28,
+      scaleLbl:'Zieltemperatur 18–28 °C', profTitle:'Präsenz-Profil'},
     irrigation:{dom:'irrigation',min:0,max:100,step:100,dec:0,unit:'',def:0,label:'Bewässerung',anchors:true,
       color:function(v){return v>0?'var(--info)':'var(--surface-2)';}, bucket:function(v){return v>0?'An':'Aus';},
       valText:function(v){return v>0?'An':'Aus';}, // An/Aus statt 0/100 in Pillen/Kurve/Editor
@@ -66,18 +81,42 @@
     ['dawnCivil','Bürgerl. Dämmerung Beginn'],['duskCivil','Bürgerl. Dämmerung Ende'],
     ['dawnNautical','Nautische Dämm. Beginn'],['duskNautical','Nautische Dämm. Ende'],
     ['dawnAstro','Astron. Dämm. Beginn'],['duskAstro','Astron. Dämm. Ende']];
+  // Betriebsarten je Slot (nur Domaenen mit _hpVC.modes). '' = keine Angabe =
+  // Grundbetriebsart der Zone; das ist der Normalfall und braucht kein Zeichen.
+  var HP_MODES=[['','(Grundeinstellung)',''],['off','Aus','⏻'],['auto','Auto','A'],
+    ['cool','Kühlen','❄'],['heat','Heizen','☀'],['dry','Trocknen','☂'],['fan','Ventilator','≋']];
+  function hpModeGlyph(m){for(var i=0;i<HP_MODES.length;i++)if(HP_MODES[i][0]===(m||''))return HP_MODES[i][2];return '';}
+  function hpModeLabel(m){for(var i=0;i<HP_MODES.length;i++)if(HP_MODES[i][0]===(m||''))return HP_MODES[i][1];return m;}
+  // Betriebsart-Liste eines Tages (parallel zu end[]/val[]), analog hpAnch.
+  function hpMode(day){return (day&&day.mode)||[];}
+  function hpEnsureMode(day){ if(!day.mode)day.mode=day.end.map(function(){return '';}); return day.mode; }
+  // Slot-Beschriftung: bei Klima traegt sie die Betriebsart mit. 'off' zeigt gar
+  // keine Temperatur - ein ausgeschaltetes Geraet hat kein Ziel.
+  function hpSlotText(v,m){
+    if(!_hpVC.modes)return hpValText(v);
+    if(m==='off')return 'Aus';
+    if(m==='dry'||m==='fan')return hpModeGlyph(m)+' '+hpModeLabel(m);
+    var g=hpModeGlyph(m);
+    return (g?g+' ':'')+hpValText(v);
+  }
   function hpAnchLabel(k){for(var i=0;i<HP_ANCHORS.length;i++)if(HP_ANCHORS[i][0]===k)return HP_ANCHORS[i][1];return k;}
 
 
   // ---- konfigurierte Räume (aus w.rooms) bzw. Fallback: alle ----
   function hpCfgRooms(w){
     var cfg=(w.rooms&&w.rooms.length)?w.rooms:null;
+    var quelle=_hpRoomsBy[hpKeyOf(w)]||_hpRooms||[];
     var all=cfg ? cfg.filter(function(r){return r&&r.idx!=null;})
-                : (_hpRooms||[]).map(function(r){return {idx:r.idx,group:r.group||''};});
+                : quelle.map(function(r){return {idx:r.idx,group:r.group||''};});
     if(w&&w.floor){ all=all.filter(function(r){return (r.group||'')===w.floor;}); }  // Geschoss-Filter (Seite pro Geschoss)
     return hsOrderHide(w, all); // je Widget: Reihenfolge + einzelne Räume aus-/einblenden
   }
-  function hpRoomName(idx){var r=(_hpRooms||[]).filter(function(x){return x.idx==idx;})[0];return r?r.name:('#'+idx);}
+  // Namen ueber ALLE geladenen Schluessel suchen: die Instanz-ID ist eindeutig,
+  // egal aus welcher Domaene die Liste stammt.
+  function hpRoomName(idx){
+    var r=(_hpRooms||[]).filter(function(x){return x.idx==idx;})[0];
+    if(!r){ for(var k in _hpRoomsBy){ r=(_hpRoomsBy[k]||[]).filter(function(x){return x.idx==idx;})[0]; if(r)break; } }
+    return r?r.name:('#'+idx);}
 
   // ---------- Demodaten (nur Doku) ----------
   function hpDemo(){
@@ -208,23 +247,30 @@
   }
 
   function hpPills(st){
-    var day=hpDayObj(st),end=day.end||[],val=day.val||[],anch=hpAnch(day),start=0;
-    return end.map(function(e,i){var v=+val[i],col=_hpVC.color(v),sel=(i+1==st.slot),s=hpM2H(start),en=e;start=hpH2M(e);
+    var day=hpDayObj(st),end=day.end||[],val=day.val||[],anch=hpAnch(day),mode=hpMode(day),start=0;
+    return end.map(function(e,i){var v=+val[i],m=mode[i]||'',col=(m==='off')?'var(--surface-2)':_hpVC.color(v),
+      sel=(i+1==st.slot),s=hpM2H(start),en=e;start=hpH2M(e);
       return '<button class="hp-pill'+(sel?' on':'')+'" data-hpslot="'+(i+1)+'" style="--pc:'+col+'">'
-        +'<b>'+hpValText(v)+'</b><span>'+(anch[i]?'☀ ':'')+s+'–'+en+'</span></button>';}).join('');
+        +'<b>'+esc(hpSlotText(v,m))+'</b><span>'+(anch[i]?'☀ ':'')+s+'–'+en+'</span></button>';}).join('');
   }
 
   function hpWeekView(w,st){
     var wk=hpWeek(st);
     var h='<div class="hp-weektitle">Woche · '+esc(hpVarName(st))+' <span class="hp-hint">Tag anklicken zum Bearbeiten</span></div><div class="hp-week">';
     for(var i=0;i<7;i++){ var d=wk[i]||{end:['24:00'],val:[_hpVC.def]},start=0;
-      var segs=(d.end||[]).map(function(e,k){var v=+d.val[k],en=hpH2M(e),seg='<i style="left:'+(start/1440*100)+'%;width:'+((en-start)/1440*100)+'%;background:'+_hpVC.color(v)+'"></i>';start=en;return seg;}).join('');
+      var dmode=hpMode(d);
+      var segs=(d.end||[]).map(function(e,k){var v=+d.val[k],en=hpH2M(e),
+        col=(dmode[k]==='off')?'var(--surface-2)':_hpVC.color(v),
+        seg='<i title="'+esc(hpSlotText(v,dmode[k]||''))+'" style="left:'+(start/1440*100)+'%;width:'+((en-start)/1440*100)+'%;background:'+col+'"></i>';start=en;return seg;}).join('');
       h+='<div class="hp-wrow'+(i==st.day?' on':'')+'" data-hpwday="'+i+'"><span class="hp-wlab">'+HP_DAYS[i]+'</span>'
         +'<div class="hp-wbar">'+segs+'</div><span class="hp-wavg">Ø '+hpVal(hpDayAvg(d))+esc(_hpVC.unit)+'</span></div>';
     }
     h+='</div>';
     // Farbskala-Legende (heating: kühl..warm | shading: offen..zu)
-    var loL=_hpVC.dom==='heating'?'kühl':'offen', hiL=_hpVC.dom==='heating'?'warm':'zu', N=8;
+    // Legendentexte gehoeren zur Wert-Domaene. Vorher stand hier „alles ausser
+    // Heizung heisst offen/zu" - fuer Klima war das schlicht falsch.
+    var loL=_hpVC.loLbl||(_hpVC.dom==='heating'?'kühl':'offen'),
+        hiL=_hpVC.hiLbl||(_hpVC.dom==='heating'?'warm':'zu'), N=8;
     h+='<div class="hp-scale"><span>'+loL+'</span>';
     for(var k=0;k<=N;k++){ var tv=_hpVC.scaleLo+(_hpVC.scaleHi-_hpVC.scaleLo)*k/N; h+='<i style="background:'+_hpVC.color(tv)+'" title="'+hpVal(tv)+esc(_hpVC.unit)+'"></i>'; }
     h+='<span>'+hiL+'</span><span class="hp-hint">'+esc(_hpVC.scaleLbl)+'</span></div>';
@@ -232,14 +278,22 @@
   }
 
   function hpSlotEditor(st,day){
-    var i=st.slot-1,end=day.end||[],val=day.val||[],anch=hpAnch(day),n=end.length;
-    var v=+val[i], start=(i==0?'00:00':end[i-1]), ende=end[i], a=anch[i]||null;
+    var i=st.slot-1,end=day.end||[],val=day.val||[],anch=hpAnch(day),mode=hpMode(day),n=end.length;
+    var v=+val[i], start=(i==0?'00:00':end[i-1]), ende=end[i], a=anch[i]||null, md=mode[i]||'';
     var lastEnd=(i==n-1); // letzter Slot: Ende fix 24:00
     var firstStart=(i==0); // erster Slot: Start fix 00:00
     var h='<div class="hp-box hp-slotedit"><div class="hp-boxh">Slot '+st.slot+' · '+start+'–'+ende+' <span class="hp-bkt" style="color:'+_hpVC.color(v)+'">'+esc(_hpVC.bucket(v))+'</span></div>';
-    // Wert (VC-parametrisiert: Solltemperatur/Position)
-    h+='<div class="hp-field"><label>'+esc(_hpVC.label)+'</label><div class="hp-val">'+hpValText(v)+'</div>'
-      +'<div class="hp-steps">'+_hpVC.steps.map(function(s){return '<button data-hptemp="'+s[0]+'">'+esc(s[1])+'</button>';}).join('')+'</div></div>';
+    // Betriebsart (nur Klima). Steht VOR dem Wert: sie entscheidet, ob der Wert
+    // ueberhaupt eine Rolle spielt (bei Aus/Trocknen/Ventilator nicht).
+    if(_hpVC.modes){
+      h+='<div class="hp-field"><label>Modus</label><select class="hp-asel" data-hpmode>'
+        +HP_MODES.map(function(x){return '<option value="'+x[0]+'"'+(x[0]===md?' selected':'')+'>'+esc((x[2]?x[2]+' ':'')+x[1])+'</option>';}).join('')
+        +'</select></div>';
+    }
+    // Wert (VC-parametrisiert: Solltemperatur/Position/Zieltemperatur)
+    var wertEgal=(_hpVC.modes && (md==='off'||md==='dry'||md==='fan'));
+    h+='<div class="hp-field"><label>'+esc(_hpVC.label)+'</label><div class="hp-val">'+(wertEgal?'–':hpValText(v))+'</div>'
+      +'<div class="hp-steps'+(wertEgal?' dis':'')+'">'+_hpVC.steps.map(function(s){return '<button data-hptemp="'+s[0]+'"'+(wertEgal?' disabled':'')+'>'+esc(s[1])+'</button>';}).join('')+'</div></div>';
     // Start (= Ende des Vorgänger-Slots)
     h+='<div class="hp-field"><label>Start</label><div class="hp-val">'+start+'</div>'
       +'<div class="hp-steps'+(firstStart?' dis':'')+'"><button data-hpstart="-60"'+(firstStart?' disabled':'')+'>−1h</button><button data-hpstart="-10"'+(firstStart?' disabled':'')+'>−10m</button><button data-hpstart="10"'+(firstStart?' disabled':'')+'>+10m</button><button data-hpstart="60"'+(firstStart?' disabled':'')+'>+1h</button></div></div>';
@@ -309,6 +363,7 @@
   function hpResolveAnchEnd(st,i){var day=hpDayObj(st),a=day.anch&&day.anch[i]; if(!a)return; var m=(st.sun&&st.sun[a.anchor]!=null)?(st.sun[a.anchor]+(a.offset||0)):hpH2M(day.end[i]); day.end[i]=hpM2H(Math.max(0,Math.min(1439,m)));}
   function hpSetEndType(st,type){var day=hpDayObj(st),i=st.slot-1,n=day.end.length; if(i>=n-1)return; hpEnsureAnch(day);
     if(type==='sun'){ if(!day.anch[i]){ day.anch[i]={anchor:'sunset',offset:0}; hpResolveAnchEnd(st,i); } } else { day.anch[i]=null; } hpMarkDirty(st); }
+  function hpSetMode(st,m){var day=hpDayObj(st),i=st.slot-1; hpEnsureMode(day); day.mode[i]=m||''; hpMarkDirty(st); }
   function hpSetAnchor(st,anchor){var day=hpDayObj(st),i=st.slot-1; if(!day.anch||!day.anch[i])return; day.anch[i].anchor=anchor; hpResolveAnchEnd(st,i); hpMarkDirty(st); }
   function hpOffStep(st,delta){var day=hpDayObj(st),i=st.slot-1; if(!day.anch||!day.anch[i])return; day.anch[i].offset=(day.anch[i].offset||0)+delta; hpResolveAnchEnd(st,i); hpMarkDirty(st); }
 
@@ -327,15 +382,15 @@
   function hpAddSlot(w,st){var day=hpDayObj(st),n=day.end.length;if(n>=24)return;
     // neuen Slot vor 24:00 einfügen: bei 1h vor Ende, Default-Wert der Domäne
     var prevEnd=(n>=2?hpH2M(day.end[n-2]):0), newB=Math.min(1430,Math.max(prevEnd+10,1440-60));
-    day.end.splice(n-1,0,hpM2H(newB)); day.val.splice(n-1,0,_hpVC.def); if(day.anch)day.anch.splice(n-1,0,null); day.end[day.end.length-1]='24:00';
+    day.end.splice(n-1,0,hpM2H(newB)); day.val.splice(n-1,0,_hpVC.def); if(day.anch)day.anch.splice(n-1,0,null); if(day.mode)day.mode.splice(n-1,0,''); day.end[day.end.length-1]='24:00';
     st.slot=n; hpMarkDirty(st);
   }
   function hpDelSlot(w,st){var day=hpDayObj(st),n=day.end.length,i=st.slot-1;if(n<=1)return;
-    day.end.splice(i,1); day.val.splice(i,1); if(day.anch)day.anch.splice(i,1); day.end[day.end.length-1]='24:00';
+    day.end.splice(i,1); day.val.splice(i,1); if(day.anch)day.anch.splice(i,1); if(day.mode)day.mode.splice(i,1); day.end[day.end.length-1]='24:00';
     if(st.slot>day.end.length)st.slot=day.end.length; hpMarkDirty(st);
   }
   function hpCopyDay(w,st,targets){var wk=hpWeek(st),src=wk[st.day];if(!src)return;
-    targets.forEach(function(t){wk[t]={end:src.end.slice(),val:src.val.slice(),anch:(src.anch||[]).map(function(a){return a?{anchor:a.anchor,offset:a.offset}:null;})};}); hpMarkDirty(st);
+    targets.forEach(function(t){wk[t]={end:src.end.slice(),val:src.val.slice(),anch:(src.anch||[]).map(function(a){return a?{anchor:a.anchor,offset:a.offset}:null;}),mode:(src.mode||[]).slice()};}); hpMarkDirty(st);
   }
   // ganze Woche einer Variante aus einem (evtl. anderen) Raum in das aktuelle Profil übernehmen
   function hpApplyWeek(st,srcProf,srcPres){var src=srcProf&&srcProf[hpVars(st)[srcPres]];if(!src)return false;
@@ -353,16 +408,20 @@
       {method:'POST',cache:'no-store',headers:{'Content-Type':'text/plain'},body:JSON.stringify(body)})
       .then(function(r){return r.json();});
   }
-  function hpEmptyWeek(){ var wk=[]; for(var d=0;d<7;d++)wk.push({end:['24:00'],val:[_hpVC.def],anch:[null]}); return wk; }
+  function hpEmptyWeek(){ var wk=[]; for(var d=0;d<7;d++)wk.push({end:['24:00'],val:[_hpVC.def],anch:[null],mode:['']}); return wk; }
   function hsWeekToProf(week){ // 7×[{end:Min,val,anchor?,offset?}] -> 7×{end:[HH:MM],val:[],anch:[]}
-    var out=[]; for(var d=0;d<7;d++){ var day=week[d]||[],end=[],val=[],anch=[];
-      day.forEach(function(s){ end.push(hpM2H(s.end)); val.push(Number(s.val)); anch.push(s.anchor?{anchor:s.anchor,offset:(s.offset||0)}:null); });
-      if(!end.length){ end=['24:00']; val=[_hpVC.def]; anch=[null]; } out.push({end:end,val:val,anch:anch}); }
+    var out=[]; for(var d=0;d<7;d++){ var day=week[d]||[],end=[],val=[],anch=[],mode=[];
+      day.forEach(function(s){ end.push(hpM2H(s.end)); val.push(Number(s.val)); anch.push(s.anchor?{anchor:s.anchor,offset:(s.offset||0)}:null); mode.push(s.mode||''); });
+      if(!end.length){ end=['24:00']; val=[_hpVC.def]; anch=[null]; mode=['']; } out.push({end:end,val:val,anch:anch,mode:mode}); }
     return out;
   }
   function hpLoadRooms(w,cb){
-    var root=((w&&w.rootId)||0)+':'+((w&&w.houseId)||0); // Haus/Wohnung-Filter in den Cache-Key
-    if(_hpRooms&&_hpRoomsRoot===root){cb&&cb();return;}
+    // Haus/Wohnung-Filter UND Domaene in den Cache-Schluessel. Ohne die Domaene
+    // bekam die zweite geoeffnete Domaene die Raeume der ersten - dieselbe Falle
+    // wie bei den Widget-IDs: ein Schluessel, der nicht alles enthaelt, was den
+    // Inhalt bestimmt.
+    var root=hpKeyOf(w);
+    if(_hpRoomsBy[root]){_hpRooms=_hpRoomsBy[root];_hpGroupOrder=_hpGroupsBy[root]||null;_hpRoomsRoot=root;cb&&cb();return;}
     if(typeof DOKU!=='undefined'&&DOKU){_hpRooms=hpDemoRooms();_hpRoomsRoot=root;cb&&cb();return;}
     if(hpHS(w)){ var dom=(w&&w.domain)||'heating'; fetch('?api=mod&op=topology',{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
       var rooms=[], order=[], seen={};
@@ -383,13 +442,17 @@
         if(area.kind!=='Bereich')return; var g=area.abbr||area.name||''; grp(g);
         (area.children||[]).forEach(function(rm){ if(rm.kind==='Raum')pushRoom(rm,g); });
       });
-        // Raeume direkt unter dem Haus (ohne Bereich)
-        (haus.children||[]).forEach(function(rm){ if(rm.kind==='Raum')pushRoom(rm,''); });
+        // Raeume direkt unter dem Haus (ohne Bereich): der HAUSNAME ist die
+        // Gruppe. Vorher landeten sie unter „Sonstige" - bei Bennogasse,
+        // BellaDuna und BellaVista also alle Raeume in einem Sammeltopf.
+        var hg=haus.name||''; if(hg)grp(hg);
+        (haus.children||[]).forEach(function(rm){ if(rm.kind==='Raum')pushRoom(rm,hg); });
       });
       (j&&j.unassigned||[]).forEach(function(e){ if((e.domain||'')===dom) rooms.push({idx:e.iid,name:e.name||('#'+e.iid),ent:e.name||'',room:'',type:'',group:''}); });
-      _hpRooms=rooms; _hpGroupOrder=order; _hpRoomsRoot=root; cb&&cb();
+      _hpRooms=rooms; _hpGroupOrder=order; _hpRoomsRoot=root;
+      _hpRoomsBy[root]=rooms; _hpGroupsBy[root]=order; cb&&cb();
     }).catch(function(){_hpRooms=[];_hpGroupOrder=null;_hpRoomsRoot=root;cb&&cb();}); return; }
     fetch('?api=heat&op=list'+hpRootParam(w),{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
-      _hpRooms=(j&&j.rooms)||[]; _hpRoomsRoot=root; cb&&cb();
+      _hpRooms=(j&&j.rooms)||[]; _hpRoomsRoot=root; _hpRoomsBy[root]=_hpRooms; cb&&cb();
     }).catch(function(){_hpRooms=[];_hpRoomsRoot=root;cb&&cb();});
   }
