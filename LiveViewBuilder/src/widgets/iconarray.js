@@ -111,6 +111,10 @@
           +'<span class="ilhi">'+iconSVG(w.iahIcon||'grid')+zahl+'</span>'
           +'<span class="ilht"><b>'+esc(w.iahTitle||'')+'</b>'
             +(sub?('<span'+(w.iahSubCol?(' style="color:'+_iaFarbe(w.iahSubCol,'')+'"'):'')+'>'+sub+'</span>'):'')+'</span>'
+          // Schimmel-Abzeichen: der Hinweis, dass hinter dem Langdruck noch etwas
+          // liegt. Steht in moldmap.js, damit beide Kacheln dieselbe Zaehlung
+          // benutzen und nicht zwei Abfragen derselben Liste laufen.
+          +(typeof _mmAbzeichen==='function'?_mmAbzeichen(w.moldChip):'')
           +(w.iahTo?'<span class="ilchev">'+iconSVG('arrowright')+'</span>':'')+'</div>';
       }
       var fuss='';
@@ -143,6 +147,12 @@
         }
         return true;
       }
+      // Das Abzeichen fuehrt dorthin, wohin auch der Langdruck fuehrt - wer es
+      // sieht, soll nicht erst raten muessen, wie man hinkommt.
+      if(e.target.closest('[data-mmchip]')){
+        var ziel=w.moldChipTo||w.longPopup;
+        if(ziel){openPopup(ziel);return true;}
+      }
       if(e.target.closest('[data-iahead]')&&w.iahTo){openPopup(w.iahTo);return true;}
       return false;
     },
@@ -163,6 +173,11 @@
               +'<input id="pIahBadgeMin" type="number" value="'+(w.iahBadgeMin!=null?w.iahBadgeMin:1)+'" style="width:52px" title="erst ab dieser Zahl"> '
               +'<span style="font-size:11px;color:var(--muted)">zählt alles, was nicht Normalzustand ist</span>')
           +row('Öffnet','<select id="pIahTo">'+viewOpts(w.iahTo,'popup','— nichts —')+'</select>')
+          +row('Schimmel-Abzeichen','<select id="pIaMold">'
+              +'<option value=""'+(!w.moldChip||w.moldChip==='aus'?' selected':'')+'>— aus —</option>'
+              +'<option value="befund"'+(w.moldChip==='befund'?' selected':'')+'>nur bei Befund</option>'
+              +'<option value="immer"'+(w.moldChip==='immer'?' selected':'')+'>immer</option></select> '
+              +'<span style="font-size:11px;color:var(--muted)">zählt erhöhte Schimmelwächter; Tipp darauf öffnet den Lang-Druck-Ziel</span>')
          ):'')
         +'<div class="pgh">Legende</div>'
         +row('Legende','<input type="checkbox" id="pIaLeg"'+(w.iaLeg?' checked':'')+'> '
@@ -181,7 +196,7 @@
       if($('#pIaLegAll'))$('#pIaLegAll').onchange=function(){w.iaLegAll=this.checked?undefined:false;render();commit();};
       if($('#pIahBadge'))$('#pIahBadge').onchange=function(){w.iahBadge=this.checked?undefined:false;render();commit();};
       if($('#pIahIcon'))$('#pIahIcon').onclick=function(){_iconPick={wid:w.id,field:'iahIcon'};showTab('icons');toast('Icon der Kopfzeile wählen');};
-      [['pIahColor','iahColor'],['pIahSubCol','iahSubCol'],['pIahBadgeCol','iahBadgeCol'],['pIahTo','iahTo']].forEach(function(p){
+      [['pIahColor','iahColor'],['pIahSubCol','iahSubCol'],['pIahBadgeCol','iahBadgeCol'],['pIahTo','iahTo'],['pIaMold','moldChip']].forEach(function(p){
         var e=$('#'+p[0]);if(e)e.onchange=function(){w[p[1]]=this.value||undefined;render();commit();};});
       [['pIahTitle','iahTitle'],['pIahSub','iahSub']].forEach(function(p){
         var e=$('#'+p[0]);if(e)e.oninput=function(){w[p[1]]=this.value||undefined;render();commit();};});
