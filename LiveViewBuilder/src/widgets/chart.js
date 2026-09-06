@@ -150,7 +150,11 @@
         if(V.axPlus&&(V.bar||V.line))h+=row('Stapeln','<input type="checkbox" id="pStack"'+(w.stack?' checked':'')+'>');
         if(V.axPlus)h+=row('Zoom/Scroll','<input type="checkbox" id="pZoom"'+(w.zoom?' checked':'')+'>')+row('Marken-Textfarbe',skinSel(w.annFg||'','id="pAnnFg"')+' <span style="font-size:11px;color:var(--muted)">leer = wei&szlig;</span>')+listEditor(w,'anns','Marken: Art · Reihe · Text · Stil · Farbe · Einheit · Schwelle',[{k:'kind',type:'select',def:'max',options:[['max','Maximum'],['min','Minimum'],['last','Aktuell'],['first','Erster'],['avg','Mittel'],['value','Schwelle']]},{k:'ser',ph:'Reihe'},{k:'text',ph:'Text {v}'},{k:'style',type:'select',def:'pin',options:[['pin','Marke'],['line','Linie'],['both','beides']]},{k:'color',type:'skincolor'},{k:'unit',ph:'Einh.'},{k:'val',ph:'Wert'}])+row('Perioden-Navigation','<input type="checkbox" id="pPnav"'+(w.pnav?' checked':'')+'>');
       }
-      if(V.cmp)h+='<div class="pgh">Vergleich (Zeitversatz)</div>'+row('Aktiv','<input type="checkbox" id="pCmpOn"'+(w.cmpOn?' checked':'')+'>')+(w.cmpOn?(row('Versatz',offSel('pCmpOff',w.cmpOff))+(V.bar?row('Vorperiode als Strich','<input type="checkbox" id="pCmpMark"'+(w.cmpMark?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">Marke statt Balken</span>'):'')+((V.bar&&w.cmpMark)?row('Strichfarbe',skinSel(w.cmpMarkColor||'','id="pCmpMarkColor"')+' <span style="font-size:11px;color:var(--muted)">leer = grau</span>'):row('Schatten %','<input id="pCmpShade" type="number" min="0" max="90" value="'+(w.cmpShade!=null?w.cmpShade:55)+'">'))):'');
+            if(V.bar)h+='<div class="pgh">Balken</div>'
+        +row('Ruhende ab','<input id="pChRuhe" type="number" step="any" style="width:88px" value="'+(w.chRuheAb!=null?w.chRuheAb:'')+'" placeholder="aus"> <span style="font-size:11px;color:var(--muted)">Balken bis zu diesem Wert grau — trennt „gar nicht“ von „kaum“</span>')
+        +row('Schnittlinie','<input type="checkbox" id="pChAvg"'+(w.chAvgLine?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">gestrichelte Waagrechte auf dem Mittelwert</span>')
+        +(w.chAvgLine?row('Farbe der Linie',skinSel(w.chAvgColor||'','id="pChAvgC"')+' <span style="font-size:11px;color:var(--muted)">leer = Akzent</span>'):'');
+if(V.cmp)h+='<div class="pgh">Vergleich (Zeitversatz)</div>'+row('Aktiv','<input type="checkbox" id="pCmpOn"'+(w.cmpOn?' checked':'')+'>')+(w.cmpOn?(row('Versatz',offSel('pCmpOff',w.cmpOff))+(V.bar?row('Vorperiode als Strich','<input type="checkbox" id="pCmpMark"'+(w.cmpMark?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">Marke statt Balken</span>'):'')+((V.bar&&w.cmpMark)?row('Strichfarbe',skinSel(w.cmpMarkColor||'','id="pCmpMarkColor"')+' <span style="font-size:11px;color:var(--muted)">leer = grau</span>'):row('Schatten %','<input id="pCmpShade" type="number" min="0" max="90" value="'+(w.cmpShade!=null?w.cmpShade:55)+'">'))):'');
       // Farbsegmentierung: nur fuer Zeitreihen sinnvoll (dort, wo es auch Achsen-Extras gibt).
       if(V.axPlus){
         h+='<div class="pgh">Farbsegmentierung (Kurve nach Wert einfärben)</div>'
@@ -169,6 +173,9 @@
       return h;
     },
     wire:function(w){
+      if($('#pChRuhe'))$('#pChRuhe').onchange=function(){w.chRuheAb=(this.value===''?undefined:parseFloat(this.value));render();commit();};
+      if($('#pChAvg'))$('#pChAvg').onchange=function(){w.chAvgLine=this.checked||undefined;render();renderProps();commit();};
+      if($('#pChAvgC'))$('#pChAvgC').onchange=function(){w.chAvgColor=this.value||undefined;render();commit();};
       function reChart(){if(_ec[w.id])renderChartData(w);commit();}
       if($('#pCType'))$('#pCType').onchange=function(){
         var alt=w.ctype||'area',neu=this.value;

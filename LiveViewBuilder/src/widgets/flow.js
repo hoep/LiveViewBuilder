@@ -3,6 +3,26 @@
   //  mode 'pipeline' : Stationen in Reihe (Icon-Knoten: Wert oben / Label unten) + animierte Konnektoren
   //  varId = Fluss-Variable  -> Tempo/Farbe/an-aus der Konnektoren (Schwelle/Referenz).
   //  Knoten-/Becken-Werte via data-vid (automatisches Live-Update, kein eigener Code).
+
+  /**
+   * Die Kachel dieses Widgets finden - auch dann, wenn sie NICHT auf der Seite,
+   * sondern in einem Popup oder einer Hover-Ansicht steckt.
+   *
+   * Das war der Grund, warum die Detail-Energiefluesse leer blieben: alle
+   * Auffrisch-Funktionen suchten stur in `canvas`. Als Popup geoeffnet lag die
+   * Kachel aber in `#ovcanvas`, die Suche lief ins Leere, und jeder Knoten blieb
+   * auf "-" stehen - dauerhaft, weil ohne Element auch nichts nachgezogen wird.
+   * Das Overlay hat Vorrang: liegt dieselbe Widget-Kennung auf beiden Ebenen,
+   * meint der Nutzer die obere.
+   */
+  function _flEl(w) {
+    var sel = '.w[data-id="' + w.id + '"]', e;
+    var ov = document.getElementById('ovcanvas');
+    if (ov) { e = $(sel, ov); if (e) { return e; } }
+    var hv = document.getElementById('hovcanvas');
+    if (hv) { e = $(sel, hv); if (e) { return e; } }
+    return $(sel, canvas);
+  }
   function _flowMode(w){return w.mode||((w.src||w.snk)?'hub':'pipeline');}
   function flowPipeState(w){
     var lv=w.varId&&_lastVals[w.varId], n=lv?parseFloat(String(lv.v).replace(',','.')):NaN;
@@ -11,13 +31,13 @@
     return {flowing:flowing, dur:(1.9-mag*1.4).toFixed(2), rev:(n<0)};
   }
   function applyFlowState(w){
-    var el=$('.w[data-id="'+w.id+'"]',canvas);if(!el)return;var pipe=$('[data-role=pipe]',el);if(!pipe)return;
+    var el=_flEl(w);if(!el)return;var pipe=$('[data-role=pipe]',el);if(!pipe)return;
     var st=flowPipeState(w);
     pipe.classList.toggle('noflow',!st.flowing);
     pipe.classList.toggle('rev',st.rev);
     pipe.style.setProperty('--fldur',(st.flowing?st.dur:'1.1')+'s');
   }
-  function flowNode(s){
+  function flowNode(s,idx){
     var val=s.vid?('<span class="flnvtop" data-vid="'+s.vid+'">–</span>')
                  :(s.val?('<span class="flnvtop">'+esc(s.val)+'</span>'):'<span class="flnvtop">&nbsp;</span>');
     var sub=(s.subvid||s.sub)?('<span class="flnsub"'+(s.subvid?' data-vid="'+s.subvid+'"':'')+'>'+esc(s.sub||'')+'</span>'):'';
@@ -26,22 +46,27 @@
     var actOff=s.svColorOff?(_cssColorOrEmpty(s.svColorOff)||''):''; // Farbe bei Status AUS
     var st=(gen?('--ico:'+gen+';'):'')+(act?('--icoon:'+act+';'):'')+(actOff?('--icooff:'+actOff+';'):'');
     var box='<span class="flbox"'+(s.sv?(' data-viddot="'+s.sv+'"'):'')+(st?(' style="'+st+'"'):'')+'>'+iconSVG(s.icon||'gauge')+'</span>';
-    return '<span class="flnode">'+val+box+'<span class="flnlab">'+esc(s.label||'')+sub+'</span></span>';
+    return '<span class="flnode'+(_flZiel(s)?' efklick':'')+'"'+(idx!=null?(' data-efi="'+idx+'"'):'')+'>'+val+box+'<span class="flnlab">'+esc(s.label||'')+sub+'</span></span>';
   }
   // Konnektor; mit Status-Var der QUELL-Stufe (s.sv) gated -> data-viddot toggelt .on, CSS haelt den Fluss sonst an
   function flowConn(s){var g=(s&&s.sv)?(' data-viddot="'+s.sv+'"'):'';return '<span class="flconn"><i'+g+'></i></span>';}
   function flowPipeline(w){
     var stages=w.stages||[], parts=[];
     if(w.startArrow)parts.push('<span class="flstart">'+(w.startLabel?'<span class="flslab">'+esc(w.startLabel)+'</span>':'')+'<svg class="flarr" viewBox="0 0 24 24"><path d="M3 12h14M13 6l6 6-6 6"/></svg></span>');
-    stages.forEach(function(s,i){if(i>0)parts.push(flowConn(stages[i-1]));parts.push(flowNode(s));});
+    stages.forEach(function(s,i){if(i>0)parts.push(flowConn(stages[i-1]));parts.push(flowNode(s,i));});
     if(w.endTank){parts.push(flowConn(stages[stages.length-1]));
       parts.push('<span class="fltank"><span class="fltlab">'+esc(w.tankLabel||'Becken')+'</span><span class="fltval"'+(w.tankVid?' data-vid="'+w.tankVid+'"':'')+'>'+(w.tankVal?esc(w.tankVal):'–')+'</span>'
         +'<span class="flwave"><svg viewBox="0 0 120 20" preserveAspectRatio="none"><path d="M0 11 Q15 3 30 11 T60 11 T90 11 T120 11 T150 11 T180 11 T210 11 T240 11"/><path d="M0 15 Q15 8 30 15 T60 15 T90 15 T120 15 T150 15 T180 15 T210 15 T240 15"/></svg></span></span>');}
     var onC=_cssColorOrEmpty(w.flPos)||'var(--accent)',offC=_cssColorOrEmpty(w.flOff||'muted')||'var(--muted)';
-    // --flfs ist die Schriftskala der Rohrleitung: sie haengt an der Kachelgroesse (cqmin), damit
-    // die .fl*-Regeln in styles.css spaeter auf em umgestellt werden koennen, ohne dass hier
-    // am Markup etwas geaendert werden muss.
-    return '<div class="flpipe'+(w.flDir==='v'?' v':'')+'" data-role="pipe" style="--flcol:'+onC+';--flcoloff:'+offC+';--flfs:clamp(9px,3.2cqmin,15px);font-size:var(--flfs)">'+parts.join('')+'</div>';
+    // --flfs ist die Schriftskala der Rohrleitung. Sie hing allein an cqmin, also an
+    // der KLEINEREN Kachelseite. In einem breiten, flachen Band - der natuerlichen
+    // Form einer waagrechten Rohrleitung - entschied damit die Hoehe allein, und die
+    // Schrift blieb am unteren Anschlag von 9 px kleben, egal wie viel Platz daneben
+    // frei war. Der zweite Term nimmt die Breite dazu, bleibt aber ueber die Hoehe
+    // gedeckelt (ein Knoten ist rund 8 Zeilen hoch), damit nichts ueberlaeuft. Das
+    // max() macht die Aenderung einseitig: groesser in flachen Baendern, unveraendert
+    // ueberall sonst.
+    return '<div class="flpipe'+(w.flDir==='v'?' v':'')+'" data-role="pipe" style="--flcol:'+onC+';--flcoloff:'+offC+';--flfs:clamp(9px,max(3.2cqmin,min(1.2cqw,11cqh)),20px);font-size:var(--flfs)">'+parts.join('')+'</div>';
   }
   // ===== energy-Modus (Power-Flow-Card-Plus-Stil): Home-Knoten + frei konfigurierbare Kreis-Elemente =====
   var _EF_W=400,_EF_H=300,_EF_HX=200,_EF_HY=150,_EF_RH=40,_EF_RN=32;
@@ -90,7 +115,41 @@
     // nichts, meldete stur eine Zeile, und die ganze Mehrzeilen-Rechnung lief ins Leere.
     // Hoehe des Wertblocks UNTER den Kreisen. Netz und Batterie zeigen zwei Zeilen
     // (Bezug/Einspeisung bzw. Laden/Entladen), alle anderen eine.
-    function valH(list){var m=1;(list||[]).forEach(function(o){var n=(valLines||_efValLines)(_et(o.e.type));if(n>m)m=n;});return 13+m*_EF_VLH;}
+    function valH(list){var m=1;(list||[]).forEach(function(o){var n=(valLines||_efValLines)(_et(o.e.type),o.e);if(n>m)m=n;});return 13+m*_EF_VLH;}
+    // Ringlayout: ein Zentrum mit vielen gleichrangigen Abnehmern (Haushalt,
+    // Multimedia, IT) laesst sich nicht in Spalten pressen - vierzehn Verbraucher
+    // ergaeben eine Spalte von zwei Metern. Auf einem Ring stehen sie
+    // gleichberechtigt um die Mitte, so wie in der alten Ansicht.
+    if(w.efRing){
+      var rels=w.elements||[],rn=rels.length||1;
+      var RW=(+w.efW||760),RH2=(+w.efH||560);
+      var lblT=lblH(rels.map(function(e){return {e:e};}));
+      var valB=valH(rels.map(function(e){return {e:e};}));
+      var rx=Math.max(40,RW/2-PAD-RN),
+          ry=Math.max(30,(RH2-2*PAD-2*RN-lblT-valB)/2);
+      var cy=RH2/2+(lblT-valB)/2, rpos=[];
+      // Gleicher WINKELabstand ergibt auf einer flachen Ellipse ungleiche
+      // Abstaende: oben und unten draengen sich die Knoten, links und rechts
+      // klafft es. Deshalb wird nach BOGENLAENGE verteilt - dann steht jeder
+      // Knoten gleich weit vom naechsten entfernt, und die Beschriftungen
+      // ueberlappen nicht mehr.
+      var S=720,arc=[0],pt=[],k,aa,px,py,lx=rx*Math.cos(-Math.PI/2),ly=ry*Math.sin(-Math.PI/2);
+      for(k=0;k<=S;k++){
+        aa=-Math.PI/2+k*2*Math.PI/S;px=rx*Math.cos(aa);py=ry*Math.sin(aa);
+        pt.push([px,py]);
+        if(k)arc.push(arc[k-1]+Math.sqrt((px-lx)*(px-lx)+(py-ly)*(py-ly)));
+        lx=px;ly=py;
+      }
+      var ges=arc[S],j=0;
+      rels.forEach(function(e,i){
+        var ziel=ges*i/rn;
+        while(j<S&&arc[j+1]<ziel)j++;
+        var q=pt[j];
+        rpos[i]={x:(e.x!=null&&e.x!==''?+e.x:RW/2+q[0]),
+                 y:(e.y!=null&&e.y!==''?+e.y:cy+q[1])};
+      });
+      return {pos:rpos,W:RW,H:RH2,hx:RW/2,hy:RH2/2};
+    }
     var els=w.elements||[],by={pv:[],grid:[],battery:[],consumer:[],other:[]};
     // Der Netz-Modus benennt die Seite direkt (oben/links/rechts/unten), weil "PV" oder
     // "Batterie" fuer einen Tunnel nichts aussagt. Ohne Angabe entscheidet wie bisher der Typ.
@@ -173,10 +232,18 @@
   // die Kreislinie. Aussen ist der Platz unbegrenzt, der Kreis bleibt fest, und nichts muss
   // beim Werteumschlag neu skaliert werden. Das Icon rueckt dadurch in die Kreismitte.
   var _EF_VLH=11;                                       // Zeilenhoehe des Wertblocks
-  function _efValLines(type){return (type==='grid'||type==='battery')?2:1;}
+  // Zwei Wertzeilen gibt es bei Netz und Batterie (hin/zurueck) - und bei jedem
+  // Knoten, dem ein Tageszaehler mitgegeben wurde. Ohne diese Abfrage bliebe unter
+  // dem Kreis kein Platz reserviert und die zweite Zeile liefe in den naechsten Knoten.
+  function _efValLines(type,e){return (type==='grid'||type==='battery'||(e&&e.dayVid))?2:1;}
   function _efValH(type){return 13+_efValLines(type)*_EF_VLH;}   // Hoehe UNTER dem Kreis
-  function _efNode(x,y,r,col,icon,name,type,idx){
-    var g='<g class="efnode" transform="translate('+x+','+y+')">';
+  // Ist an diesem Eintrag ein Sprungziel hinterlegt?
+  function _flZiel(o){return !!(o&&(o.goTo||o.goPage||o.scriptId));}
+  function _efNode(x,y,r,col,icon,name,type,idx,el){
+    var g='<g class="efnode'+(_flZiel(el)?' efklick':'')+'" data-efi="'+idx+'" transform="translate('+x+','+y+')">';
+    // Unsichtbare Trefferflaeche: Kreis, Beschriftung und Wert liegen weit
+    // auseinander, ein Klick zwischen sie hinein soll trotzdem zaehlen.
+    if(_flZiel(el))g+='<circle class="efhit" r="'+(r+16)+'"/>';
     g+=_efLabel(name,r);
     g+='<circle class="efring" data-role="efring-'+idx+'" r="'+r+'" style="stroke:'+col+'"/>';
     // Batterie behaelt den Ladestand INNEN - er ist nie laenger als "100%" und passt dort
@@ -194,7 +261,7 @@
     // Kontrollpunkte - sonst setzten sie neben dem Kreis an statt daran.
     var netz=(_flowMode(w)==='netz');
     var G=_energyGeo(w,netz?function(){return 2;}:null),pos=G.pos,els=w.elements||[];
-    if(netz){var box=$('.w[data-id="'+w.id+'"]',canvas);
+    if(netz){var box=_flEl(w);
       if(box){
       // Gezeichnet wird INNERHALB des Rands. Wer auf die volle Kachelhoehe
       // einpasst, schiebt die aeusserste Reihe genau um diesen Rand hinaus -
@@ -221,8 +288,9 @@
         +'<path class="efflow" data-role="efflow-'+i+'" d="'+d+'" style="stroke:'+col+';opacity:0"/>'
         +'<circle class="efdot" data-role="efdot-'+i+'" r="4" style="fill:'+col+';offset-path:path(\''+d+'\');opacity:0"/>';
     });
-    s+=_efNode(G.hx,G.hy,_EF_RH,_efCol(w.homeColor),w.homeIcon||'housepower',w.homeName||'Home','home','h');
-    els.forEach(function(e,i){var p=pos[i];if(!p)return;s+=_efNode(p.x,p.y,_EF_RN,_efCol(e.color),e.icon||_efDefIcon(_et(e.type)),e.name||'',_et(e.type),i);});
+    s+=_efNode(G.hx,G.hy,_EF_RH,_efCol(w.homeColor),w.homeIcon||'housepower',w.homeName||'Home','home','h',
+               {goTo:w.homeGoTo,goPage:w.homeGoPage});
+    els.forEach(function(e,i){var p=pos[i];if(!p)return;s+=_efNode(p.x,p.y,_EF_RN,_efCol(e.color),e.icon||_efDefIcon(_et(e.type)),e.name||'',_et(e.type),i,e);});
     return s+'</svg>';
   }
   function _efNum(vid){var d=vid&&_lastVals[vid];return d?parseFloat(String(d.v).replace(',','.')):NaN;}
@@ -235,9 +303,18 @@
   // sie bisher aus dem Kreis lief. Ab 10 kW entfaellt die Nachkommastelle, sie traegt dann
   // keine Information mehr. minimumFractionDigits und maximumFractionDigits duerfen sich
   // NICHT widersprechen (min > max wirft RangeError), darum zwei getrennte Zweige.
-  function _efFmtW(v){
+  // Der Fluss ist nicht auf Strom festgelegt. Mit efUnit steht dort GB, Liter oder
+  // was sonst fliesst; dann entfaellt auch die kW-Umrechnung, die nur fuer Watt
+  // stimmt. Ohne efUnit bleibt alles wie bisher.
+  function _efFmtW(v,w){
     if(v==null||isNaN(v))return '–';
     var a=Math.abs(v);
+    var eh=(w&&w.efUnit!=null)?String(w.efUnit).trim():'';
+    if(eh){
+      var dez=(w&&w.efDec!=null&&w.efDec!=='')?Math.max(0,Math.min(3,parseInt(w.efDec))):(a<10?1:0);
+      try{return a.toLocaleString('de-DE',{minimumFractionDigits:dez,maximumFractionDigits:dez})+' '+eh;}
+      catch(e){return a.toFixed(dez)+' '+eh;}
+    }
     try{
       if(a>=10000)return Math.round(a/1000).toLocaleString('de-DE')+' kW';
       if(a>=1000)return (Math.round(a/100)/10).toLocaleString('de-DE',{minimumFractionDigits:1,maximumFractionDigits:1})+' kW';
@@ -272,7 +349,7 @@
     }
   }
   function refreshEnergy(w){
-    var el=$('.w[data-id="'+w.id+'"]',canvas);if(!el)return;var els=w.elements||[],homeIn=0;
+    var el=_flEl(w);if(!el)return;var els=w.elements||[],homeIn=0;
     // Netz-Modus: derselbe Durchlauf, nur bedeutet ein Element hier eine VERBINDUNG.
     // Statt Leistung zaehlt ihr Zustand, statt einer Richtung laufen zwei Bahnen.
     var netz=(_flowMode(w)==='netz'),nzAn=0,nzGes=0,
@@ -328,8 +405,13 @@
         return;
       }
       if(t==='grid'||t==='battery'){var into=Math.max(isNaN(p)?0:p,0),out=Math.max(isNaN(p)?0:-p,0),A=(t==='grid')?['→ ','← ']:['↑ ','↓ '];
-        if(v1)v1.textContent=A[0]+_efFmtW(into);if(v2)v2.textContent=A[1]+_efFmtW(out);}
-      else{if(v1)v1.textContent=_efFmtW(mag);if(v2)v2.textContent='';}
+        if(v1)v1.textContent=A[0]+_efFmtW(into,w);if(v2)v2.textContent=A[1]+_efFmtW(out,w);}
+      else{if(v1)v1.textContent=_efFmtW(mag,w);
+        // Tageszaehler unter der Leistung: die Momentanleistung allein sagt nicht, ob
+        // ein Geraet heute viel verbraucht hat. Die Zahl kommt fertig formatiert vom
+        // Profil (kWh), sonst mit eigener Einheit.
+        if(v2){var dv=e.dayVid?_lastVals[e.dayVid]:null;
+          v2.textContent=dv?String(dv.f!=null&&dv.f!==''?dv.f:(Math.round((+dv.v||0)*100)/100+' kWh')):'';}}
       if(t==='battery'&&e.socVid){var soc=_efNum(e.socVid),se=$('[data-role=efsoc-'+i+']',el);if(se)se.textContent=isNaN(soc)?'':(Math.round(soc)+'%');}
       var flow=$('[data-role=efflow-'+i+']',el),dot=$('[data-role=efdot-'+i+']',el);
       var spd=e.speedVid?_efNum(e.speedVid):mag;if(isNaN(spd))spd=mag;
@@ -351,7 +433,7 @@
       var hd=w.homeVid?_lastVals[w.homeVid]:null;
       hv.textContent=hd?String(hd.f!=null&&hd.f!==''?hd.f:hd.v):(nzAn+' / '+nzGes);
       var hv2=$('[data-role=efval2-h]',el);if(hv2)hv2.textContent=w.homeSub||'';
-    }else if(hv){var hp=w.homeVid?_efWatts(w.homeVid):NaN;hv.textContent=_efFmtW(isNaN(hp)?homeIn:hp);}
+    }else if(hv){var hp=w.homeVid?_efWatts(w.homeVid):NaN;hv.textContent=_efFmtW(isNaN(hp)?homeIn:hp,w);}
   }
   // ================= Netz-Modus: Verbindungen statt Leistung =================
   // Der Energiefluss zeichnet je Leitung EINE Richtung, weil Leistung ein Vorzeichen hat:
@@ -410,7 +492,7 @@
   }
 
   function _efNeuZeichnen(w){
-    var el=$('.w[data-id="'+w.id+'"]',canvas);if(!el)return;
+    var el=_flEl(w);if(!el)return;
     var alt=el.querySelector('svg.efsvg');if(!alt)return;
     var t=document.createElement('div');t.innerHTML=energySVG(w);
     var neu=t.firstChild;if(!neu)return;
@@ -419,7 +501,7 @@
   }
   function _efBeobachte(w){
     if(typeof ResizeObserver==='undefined')return;
-    var el=$('.w[data-id="'+w.id+'"]',canvas);if(!el)return;
+    var el=_flEl(w);if(!el)return;
     if(_efRO[w.id])_efRO[w.id].disconnect();
     var ro=new ResizeObserver(function(){_efNeuZeichnen(w);});
     ro.observe(el);_efRO[w.id]=ro;
@@ -499,7 +581,9 @@
     render:function(w){var m=_flowMode(w);return m==='hub'?powerflowSVG(w):(m==='energy'||m==='netz')?energySVG(w):flowPipeline(w);},
     props:function(w){
       var m=_flowMode(w);
-      var h=row('Modus','<select id="pFlMode"><option value="pipeline"'+(m==='pipeline'?' selected':'')+'>Pipeline (Reihe)</option><option value="energy"'+(m==='energy'?' selected':'')+'>Energie (Power-Flow)</option><option value="hub"'+(m==='hub'?' selected':'')+'>Hub (Quellen→Zentrum→Senken)</option><option value="netz"'+(m==='netz'?' selected':'')+'>Netz (Verbindungen)</option></select>');
+      var h=row('Einheit','<input id="pEfUnit" value="'+esc(w.efUnit||'')+'" placeholder="leer = W/kW"> <span style="font-size:11px;color:var(--muted)">frei, z. B. GB — schaltet die kW-Umrechnung ab</span>')
+        +row('Nachkommastellen','<input id="pEfDec" type="number" min="0" max="3" style="width:70px" value="'+(w.efDec!=null?w.efDec:'')+'" placeholder="auto">')
+        +row('Modus','<select id="pFlMode"><option value="pipeline"'+(m==='pipeline'?' selected':'')+'>Pipeline (Reihe)</option><option value="energy"'+(m==='energy'?' selected':'')+'>Energie (Power-Flow)</option><option value="hub"'+(m==='hub'?' selected':'')+'>Hub (Quellen→Zentrum→Senken)</option><option value="netz"'+(m==='netz'?' selected':'')+'>Netz (Verbindungen)</option></select>');
       if(m==='hub')return h+listEditor(w,'src','Quellen: Name · ID',[{k:'label',ph:'Name'},{k:'vid',ph:'ID'}])+listEditor(w,'snk','Senken: Name · ID',[{k:'label',ph:'Name'},{k:'vid',ph:'ID'}]);
       if(m==='netz')return h
         +'<div class="pgh">Mitte</div>'
@@ -513,7 +597,7 @@
         +row('Rand / Knotenabstand','<input id="pEfPad" type="number" min="0" style="width:64px" value="'+(w.efPad!=null?w.efPad:18)+'"> <input id="pEfGap" type="number" min="0" style="width:64px" value="'+(w.efGap!=null?w.efGap:16)+'">')
         +'<div class="pgh">Verbindungen</div>'
         +'<div style="font-size:11px;color:var(--muted);margin:-2px 2px 5px">Die <b>Position</b> bestimmt die Seite. Die <b>Zustands-Variable</b> f&auml;rbt den Ring und h&auml;lt die Bahnen an, wenn sie aus ist; sie liefert auch die <b>Standzeit</b> in der zweiten Zeile. Die <b>Wert-Variable</b> ist optional und ersetzt dann online/offline in der ersten Zeile.</div>'
-        +listEditor(w,'elements','Position &middot; Name &middot; Icon &middot; Farbe &middot; Zustand &middot; Empfang &middot; Senden',[{k:'pos',type:'select',def:'rechts',options:[['oben','oben'],['links','links'],['rechts','rechts'],['unten','unten']]},{k:'name',ph:'Name'},{k:'icon',type:'icon'},{k:'color',type:'skincolor'},{k:'sVid',ph:'Zustand'},{k:'vid',ph:'Empfang'},{k:'vid2',ph:'Senden'}]);
+        +listEditor(w,'elements','Position &middot; Name &middot; Icon &middot; Farbe &middot; Zustand &middot; Empfang &middot; Senden',[{k:'pos',type:'select',def:'rechts',options:[['oben','oben'],['links','links'],['rechts','rechts'],['unten','unten']]},{k:'name',ph:'Name'},{k:'icon',type:'icon'},{k:'color',type:'skincolor'},{k:'sVid',ph:'Zustand'},{k:'vid',ph:'Empfang'},{k:'vid2',ph:'Senden'},{k:'goTo',type:'view',kind:'popup',h:'Popup',ph:'—'},{k:'goPage',type:'view',kind:'page',h:'Seite',ph:'—'}]);
       if(m==='energy')return h
         +'<div class="pgh">Home-Knoten</div>'
         +row('Name / Icon','<input id="pEfHN" value="'+esc(w.homeName||'Home')+'" style="width:88px"> <input id="pEfHI" value="'+esc(w.homeIcon||'housepower')+'" placeholder="icon" style="width:88px">')
@@ -524,9 +608,12 @@
         +row('Referenz-Leistung (Tempo)','<input id="pEfRef" type="number" value="'+(w.efRef||3000)+'" placeholder="W bei max Tempo">')
         +row('Rand (px)','<input id="pEfPad" type="number" min="0" value="'+(w.efPad!=null?w.efPad:18)+'">')
         +row('Knotenabstand (px)','<input id="pEfGap" type="number" min="0" value="'+(w.efGap!=null?w.efGap:16)+'">')
+        +row('Ringlayout','<input type="checkbox" id="pEfRing"'+(w.efRing?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">alle Knoten gleichberechtigt um die Mitte statt in Spalten</span>')
+        +(w.efRing?row('Buehne B &times; H','<input id="pEfW" type="number" min="240" style="width:78px" value="'+(w.efW||760)+'"> <input id="pEfH" type="number" min="200" style="width:78px" value="'+(w.efH||560)+'">'):'')
         +row('Verbraucher je Spalte','<input id="pEfMaxCol" type="number" min="0" value="'+(w.efMaxCol!=null?w.efMaxCol:3)+'"> <span style="font-size:11px;color:var(--muted)">dar&uuml;ber hinaus in die untere Reihe; 0 = alle in die Spalte</span>')
         +'<div class="pgh">Elemente</div><div style="font-size:11px;color:var(--muted);margin:-2px 2px 5px">Typ bestimmt Position und Standard-Icon. Das Vorzeichen entscheidet nur bei <b>Netz</b> und <b>Batterie</b>: <b>+</b> zum Haus, <b>&minus;</b> vom Haus weg. PV flie&szlig;t immer zum Haus; Verbraucher und Sonstiges immer weg &ndash; unabh&auml;ngig vom Vorzeichen.</div>'
-        +listEditor(w,'elements','Typ · Name · Icon · Farbe · Leistung-ID · Speed-ID · Speed-Referenz · SoC-ID',[{k:'type',type:'select',def:'consumer',options:[['pv','PV / Erzeuger'],['grid','Netz'],['battery','Batterie'],['consumer','Verbraucher'],['other','Sonstiges']]},{k:'name',ph:'Name'},{k:'icon',ph:'icon'},{k:'color',type:'skincolor'},{k:'vid',ph:'Leist-ID'},{k:'speedVid',ph:'Speed'},{k:'speedRef',ph:'Speed-Ref'},{k:'socVid',ph:'SoC'}]);
+        +row('Mitte: Popup / Seite','<select id="pEfHGoTo">'+viewOpts(w.homeGoTo,'popup','— Popup —')+'</select> <select id="pEfHGoPage">'+viewOpts(w.homeGoPage,'page','— Seite —')+'</select>')
+        +listEditor(w,'elements','Typ · Name · Icon · Farbe · Leistung-ID · Speed-ID · Speed-Referenz · SoC-ID · Tageszähler · Popup · Seite',[{k:'type',type:'select',def:'consumer',options:[['pv','PV / Erzeuger'],['grid','Netz'],['battery','Batterie'],['consumer','Verbraucher'],['other','Sonstiges']]},{k:'name',ph:'Name'},{k:'icon',ph:'icon'},{k:'color',type:'skincolor'},{k:'vid',ph:'Leist-ID'},{k:'speedVid',ph:'Speed'},{k:'speedRef',ph:'Speed-Ref'},{k:'socVid',ph:'SoC'},{k:'dayVid',ph:'kWh heute'},{k:'goTo',type:'view',kind:'popup',h:'Popup',ph:'—'},{k:'goPage',type:'view',kind:'page',h:'Seite',ph:'—'}]);
       return h
         +'<div class="pgh">Fluss (Variable = „Variable" oben)</div>'
         +row('Farbe (Fluss)','<span style="font-size:11px;color:var(--muted)">An</span> '+skinSel(w.flPos||'accent','id="pFlCol"')+' <span style="font-size:11px;color:var(--muted);margin-left:8px">Aus</span> '+skinSel(w.flOff||'muted','id="pFlColOff"'))
@@ -537,13 +624,18 @@
         +row('Becken-Knoten','<input type="checkbox" id="pFlTank"'+(w.endTank?' checked':'')+'> <input id="pFlTankL" value="'+esc(w.tankLabel||'')+'" placeholder="Label" style="width:84px"> <input id="pFlTankV" value="'+(w.tankVid||'')+'" placeholder="Wert-ID" style="width:70px">')
         +'<div class="pgh">Stationen</div>'
         +'<div style="font-size:11px;color:var(--muted);margin:-2px 2px 5px">Je Station: Icon + Icon-Farbe, optional eine <b>Aktiv-Farbe</b> (überschreibt die Icon-Farbe, wenn die Status-Variable an ist), Werte, und eine <b>0/1-Status-Variable</b>, die den Fluss <b>zur nächsten</b> Station stoppt, wenn sie aus ist (z. B. Solarventil zu → keine Strömung Ventil→Pumpe).</div>'
-        +listEditor(w,'stages','Stationen',[{k:'icon',type:'icon',h:'Icon'},{k:'color',type:'skincolor',h:'Icon-Farbe'},{k:'label',ph:'Label',h:'Label'},{k:'vid',ph:'ID',h:'Wert-ID'},{k:'sub',ph:'Text',h:'Zusatz'},{k:'subvid',ph:'ID',h:'Zusatz-ID'},{k:'sv',ph:'0/1-ID',h:'Status→Fluss'},{k:'svColor',type:'skincolor',h:'Icon-Farbe (Status an)'},{k:'svColorOff',type:'skincolor',h:'Icon-Farbe (Status aus)'}],{wrap:true});
+        +listEditor(w,'stages','Stationen',[{k:'icon',type:'icon',h:'Icon'},{k:'color',type:'skincolor',h:'Icon-Farbe'},{k:'label',ph:'Label',h:'Label'},{k:'vid',ph:'ID',h:'Wert-ID'},{k:'sub',ph:'Text',h:'Zusatz'},{k:'subvid',ph:'ID',h:'Zusatz-ID'},{k:'sv',ph:'0/1-ID',h:'Status→Fluss'},{k:'svColor',type:'skincolor',h:'Icon-Farbe (Status an)'},{k:'svColorOff',type:'skincolor',h:'Icon-Farbe (Status aus)'},{k:'goTo',type:'view',kind:'popup',h:'Popup beim Klick'},{k:'goPage',type:'view',kind:'page',h:'Seite beim Klick'}],{wrap:true});
     },
     wire:function(w){
+      if($('#pEfUnit'))$('#pEfUnit').oninput=function(){w.efUnit=this.value||undefined;render();commit();};
+      if($('#pEfDec'))$('#pEfDec').onchange=function(){w.efDec=(this.value===''?undefined:parseInt(this.value));render();commit();};
       if($('#pEfDur'))$('#pEfDur').onchange=function(){var v=parseFloat(this.value);w.efDur100=(isNaN(v)||v<=0)?undefined:v;render();commit();};
       if($('#pEfAuto'))$('#pEfAuto').onchange=function(){w.efSpeedAuto=this.checked?undefined:false;render();renderProps();commit();};
       if($('#pEfPad'))$('#pEfPad').onchange=function(){w.efPad=(this.value===''?undefined:Math.max(0,parseInt(this.value)||0));render();_flowRefresh(w);commit();};
       if($('#pEfGap'))$('#pEfGap').onchange=function(){w.efGap=(this.value===''?undefined:Math.max(0,parseInt(this.value)||0));render();_flowRefresh(w);commit();};
+      if($('#pEfRing'))$('#pEfRing').onchange=function(){w.efRing=this.checked||undefined;render();renderProps();_flowRefresh(w);commit();};
+      if($('#pEfW'))$('#pEfW').onchange=function(){w.efW=parseInt(this.value)||undefined;render();_flowRefresh(w);commit();};
+      if($('#pEfH'))$('#pEfH').onchange=function(){w.efH=parseInt(this.value)||undefined;render();_flowRefresh(w);commit();};
       if($('#pEfMaxCol'))$('#pEfMaxCol').onchange=function(){w.efMaxCol=(this.value===''?undefined:Math.max(0,parseInt(this.value)||0));render();commit();};
       if($('#pFlMode'))$('#pFlMode').onchange=function(){w.mode=this.value;render();renderProps();commit();};
       function b(id,prop,num){var e=$('#'+id);if(!e)return;e.oninput=e.onchange=function(){var v=num?(this.value===''?undefined:parseFloat(this.value)):(this.value||undefined);w[prop]=v;render();applyFlowState(w);commit();};}
@@ -559,9 +651,26 @@
       if($('#pEfHV'))$('#pEfHV').oninput=function(){w.homeVid=parseInt(this.value)||undefined;render();_flowRefresh(w);commit();};
       if($('#pEfRef'))$('#pEfRef').oninput=function(){w.efRef=parseInt(this.value)||undefined;refreshEnergy(w);commit();};
       // netz: Bahnen und Zusatzzeile
+      if($('#pEfHGoTo'))$('#pEfHGoTo').onchange=function(){w.homeGoTo=this.value||undefined;render();commit();};
+      if($('#pEfHGoPage'))$('#pEfHGoPage').onchange=function(){w.homeGoPage=this.value||undefined;render();commit();};
       if($('#pNzSub'))$('#pNzSub').oninput=function(){w.homeSub=this.value||undefined;render();_flowRefresh(w);commit();};
       if($('#pNzSpread'))$('#pNzSpread').onchange=function(){w.nzSpread=(this.value===''?undefined:Math.max(0,parseInt(this.value)||0));render();_flowRefresh(w);commit();};
       if($('#pNzDur'))$('#pNzDur').onchange=function(){var v=parseFloat(this.value);w.nzDur=(isNaN(v)||v<=0)?undefined:v;_flowRefresh(w);commit();};
+    },
+    // Ein Energiefluss zeigt zehn Knoten; ein einziges Sprungziel fuer die ganze
+    // Kachel hiesse, dass ein Klick auf "Pool" dieselbe Seite oeffnet wie einer auf
+    // "PV". Darum traegt JEDER Knoten sein eigenes Ziel. Faellt keines an, bleibt es
+    // beim Ziel des Widgets - der Klick wird dann nicht als erledigt gemeldet.
+    click:function(w,el,e){
+      var g=e.target.closest('[data-efi]');if(!g)return false;
+      var k=g.getAttribute('data-efi');
+      var o=(k==='h')?{goTo:w.homeGoTo,goPage:w.homeGoPage,scriptId:w.homeScriptId}
+                     :((_flowMode(w)==='pipeline'?(w.stages||[]):(w.elements||[]))[parseInt(k,10)]);
+      if(!o)return false;
+      if(o.goTo&&store.views[o.goTo]){openPopup(o.goTo,_aliasMap(w));return true;}
+      if(o.goPage&&store.views[o.goPage]){navGo(o.goPage);return true;}
+      if(o.scriptId){fetch('?api=runscript&id='+o.scriptId+'&key='+encodeURIComponent(TOKEN),{cache:'no-store'});toast('Skript gestartet');return true;}
+      return false;
     },
     mount:function(w){var m=_flowMode(w);if(m==='netz'){_efBeobachte(w);_efNeuZeichnen(w);}else if(m==='energy')refreshEnergy(w);else if(m!=='hub')applyFlowState(w);},
     live:function(w,el,id,d,base,txt,on){var m=_flowMode(w);if(m==='energy'||m==='netz')refreshEnergy(w);else if(w.varId===id)applyFlowState(w);return true;}

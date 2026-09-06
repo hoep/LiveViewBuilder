@@ -50,7 +50,19 @@
       +'<input class="tbl-actin" type="text" inputmode="numeric" placeholder="'+esc(w.tblActWertPh||'Nr.')+'">'
       +knopf+'</span>';
   }
-  function _tblSevOf(t){t=String(t==null?'':t).toLowerCase();
+  // Bei einer STUFEN-Spalte bedeuten dieselben Woerter etwas anderes: "hoch" ist bei
+  // einem Ladestand gut und bei einem Befund schlecht. Deshalb kennt der Erkenner die
+  // Spaltenart. Ohne das stand "HOCH" gruen neben "KRITISCH" rot - und eine gruene
+  // Pille auf einem dringenden Befund ist schlimmer als gar keine.
+  function _tblSevStufe(t){
+    if(/kritisch|critical|notfall/.test(t))return 'crit';
+    if(/hoch|high|dringend/.test(t))return 'warn';
+    if(/mittel|medium/.test(t))return 'info';
+    if(/niedrig|\blow\b|gering/.test(t))return 'muted';
+    return '';
+  }
+  function _tblSevOf(t,stufe){t=String(t==null?'':t).toLowerCase();
+    if(stufe){var g=_tblSevStufe(t);if(g)return g;}
     if(/leer|schwach|kritisch|critical|empty|entladen|fehler|defekt/.test(t))return 'crit';
     if(/bald|mittel|\bwarn|niedrig|\blow\b|offen|unklar|fehlt|pr(ue|ü)fen/.test(t))return 'warn';
     if(/\bok\b|voll|gut|normal|hoch|full|geladen|fertig/.test(t))return 'ok';
@@ -271,9 +283,11 @@
       if(w.colRaw&&w.colRaw[ci])return String(v==null?'':v);
       return (qhi&&qcSet[ci])?_tblMark(v,qhi):esc(v);};
     // Status-Stil: Status-Spalte (Chip+Streifen) und %-Spalte (Ladebalken) erkennen
-    var sevIdx=-1,barIdx=-1,_barMax=0;
+    var sevIdx=-1,barIdx=-1,_barMax=0,_sevIstStufe=false;
     if(w.sevStyle){for(var hi=0;hi<cols;hi++){var hs=String(head[hi]||'').toLowerCase();
-      if(sevIdx<0&&/status|zustand|schwere/.test(hs))sevIdx=hi;
+      // 'Stufe' gehoert dazu: die Befundtabellen nennen die Spalte so, und ohne sie
+      // blieb der Status-Chip aus - die Stufe stand als grauer Text da.
+      if(sevIdx<0&&/status|zustand|schwere|stufe/.test(hs)){sevIdx=hi;_sevIstStufe=/schwere|stufe/.test(hs);}
       // Balken: neben den Prozentspalten auch Zaehlspalten, die eine Menge
       // beschreiben. Ohne sie steht in der Spalte eine nackte Zahl, deren
       // Groessenverhaeltnis man Zeile fuer Zeile selbst ausrechnen muesste.
@@ -357,7 +371,7 @@
         var _oS=sicht.filter(function(ci){return ci!==sevIdx;});
         var _chip=_oS[0],_haupt=_oS.length>1?_oS[1]:_oS[0],_rest=_oS.slice(2);
         var _grp={},_wort={};
-        paged.forEach(function(r){var k=_tblSevOf(r[sevIdx])||'';(_grp[k]=_grp[k]||[]).push(r);
+        paged.forEach(function(r){var k=_tblSevOf(r[sevIdx],_sevIstStufe)||'';(_grp[k]=_grp[k]||[]).push(r);
           if(!_wort[k])_wort[k]=String(r[sevIdx]==null?'':r[sevIdx]);});
         var _keys=Object.keys(_grp).sort(function(a,b){return (_rang[b]||0)-(_rang[a]||0);});
         bodyHtml=total?('<div class="tbl-cards befund">'+_keys.map(function(k){
@@ -387,7 +401,7 @@
       var selKopf=selAn?('<th style="text-align:center"><span class="tbl-check'+(selAlle?' an':'')+'" data-tbl-selall="1"></span></th>'):'';
       var thead='<thead><tr>'+selKopf+sicht.map(function(ci){var h=head[ci];var st=(w._tblSortCol===ci)?(w._tblSortDir==='desc'?'desc':'asc'):'idle';var rc=(w.sevStyle&&(ci===sevIdx||ci===barIdx))?' class="r"':'';return '<th'+rc+tdSt(ci)+'><button class="tbl-sort" data-tbl-sort="'+ci+'">'+esc(h)+_tblChev(st)+'</button></th>';}).join('')+actKopf+'</tr></thead>';
       var tbody='<tbody>'+(total?paged.map(function(r){
-        var sev=(sevIdx>=0)?_tblSevOf(r[sevIdx]):'';
+        var sev=(sevIdx>=0)?_tblSevOf(r[sevIdx],_sevIstStufe):'';
         var selW=selAn?String(r[selCi]):'';
         var selAus=selAn&&w._tblSel[selW];
         return '<tr'+(sev?' class="tsev-'+sev+'"':'')+(selAus?' class="tbl-sel"':'')+'>'

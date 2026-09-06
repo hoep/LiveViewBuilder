@@ -245,7 +245,13 @@
     render:function(w){
       var isSel=_vcSel(w);
       var icon=w.icon?'<span class="hkbi">'+iconSVG(w.icon)+'</span>':'';
-      var title=w.title?'<span class="hvctitle">'+escL(w.title)+'</span>':'';
+      // Der Titel darf aus einer Variablen kommen: auf den Klimakarten wandert der
+      // Inhalt zwischen den Plaetzen, die Kachel bleibt stehen.
+      // Titelgroesse getrennt vom Wert begrenzbar: im Hausraster ist die Kachel
+      // schmal, der Raumname aber lang - ohne eigene Obergrenze bricht er mitten
+      // im Wort um.
+      var _tfs=w.vcTitleFs?(' style="font-size:min('+(parseInt(w.vcTitleFs)||0)+'px,26cqh)"'):'';
+      var title=(w.vcTitleVid||w.title)?'<span class="hvctitle" data-role="vctitle"'+_tfs+'>'+escL(w.title||'')+'</span>':'';
       var tr='';
       // oben-rechts: Toggle (Var2, kein Akzent, kein Bereich) hat Vorrang; sonst Badge
       if(!isSel&&w.varId2&&!w.v2acc&&!w.rngOn){
@@ -255,7 +261,7 @@
         tr='<span class="sw" data-role="sw"'+(sty?(' style="'+sty+'"'):'')+'>'+knob+'</span>';
       }else if(!isSel&&w.cmpVid){
         tr='<span class="hpill ok" data-role="cmp"><span class="hpd"></span>…</span>';
-      }else if(!isSel&&(w.badge||w.okMin!=null||w.okMax!=null)){
+      }else if(!isSel&&(w.badge||w.vcBadgeVid||w.vcBadgeStVid||w.okMin!=null||w.okMax!=null)){
         var st=w.badgeState||'ok';
         if(st==='muted')tr='<span class="hvcmuted" data-role="badge">'+esc(w.badge||'')+'</span>';
         else tr='<span class="hpill '+esc(st)+'" data-role="badge"><span class="hpd"></span>'+esc(w.badge||'')+'</span>';
@@ -264,16 +270,22 @@
       // dass ein am Desktop gewaehlter Wert die geschrumpfte Kachel am Handy nicht sprengt.
       // Leeres valfs bleibt unveraendert bei var(--wf-val) aus styles.css.
       var val='<div class="hvcval"'+(w.valfs?' style="font-size:min('+(parseInt(w.valfs)||0)+'px,22cqh)"':'')+'><span data-role="val">–</span>'+(w.unit?'<small> '+esc(w.unit)+'</small>':'')+'</div>';
-      var cap=w.label?'<div class="hvccap">'+escL(w.label)+'</div>':'';
+      // Die Beschriftung unter dem Grosswert kann aus einer Variablen kommen: in den
+      // Klima-Entwuerfen steht dort "27,5 \u2192 21,1 \u00b0C" - der Weg, den der Raum nimmt,
+      // und der aendert sich mit jeder Messung.
+      var cap=(w.vcCapVid||w.label)?'<div class="hvccap" data-role="vccap">'+escL(w.label||'')+'</div>':'';
       var _mk=(!isSel&&w.barOn)?_vcMkListe(w):[];
       var _mkLab=_mk.length?('<div class="hvcbmk" data-role="bmklab">'+_mk.map(function(m,i){return '<span data-bmk="'+i+'"></span>';}).join('')+'</div>'):'';
       var _mkTick=_mk.map(function(m,i){var c=m.color?_cssColorOrEmpty(m.color):'';return '<u class="bmk" data-bmk="'+i+'"'+(c?(' style="--bmkc:'+c+'"'):'')+'></u>';}).join('');
       var bar=(!isSel&&w.barOn)?('<div class="hvcbar">'+_mkLab+'<div class="btrack"><i data-role="bar"></i>'+_mkTick+'</div>'+((w.barCap!=null&&w.barCap!=='')?'<div class="hvcbarcap" data-role="barcap">'+esc(w.barCap)+'</div>':'')+'</div>'):'';
-      var rng=(!isSel&&w.rngOn)?('<div class="hvcrng"><span class="rmin" data-role="rmin">–</span><span class="rtrack"><i class="rdot" data-role="rdot"></i></span><span class="rmax" data-role="rmax">–</span></div>'):'';
+      var rng=(!isSel&&w.rngOn)?('<div class="hvcrng'+(w.rngPlain?' plain':'')+'"><span class="rmin" data-role="rmin">–</span><span class="rtrack"><i class="rdot" data-role="rdot"></i></span><span class="rmax" data-role="rmax">–</span></div>'):'';
       var sel=isSel?('<div class="hvcselhost" data-role="vcselhost">'+_vcSelBody(w)+'</div>'):'';
       var scl='';
       var _def=_vcDef(w);
-      if(!isSel&&_def){
+      // Die Skalenleiste ist auf einer 118-px-Kachel nicht zu gebrauchen: sie frisst
+      // eine ganze Zeile, um zu zeigen, was die Fuellung schon sagt. scaleBar:false
+      // behaelt die Farbskala fuer Fuellung und Wert und laesst die Leiste weg.
+      if(!isSel&&_def&&w.scaleBar!==false){
         var _tk=(w.scaleTicks===false)?[]:_vcTicks(_def);
         var _tkH=_tk.map(function(t){return '<u style="left:'+t.p.toFixed(2)+'%"></u>';}).join('');
         var _tkL=_tk.length?('<div class="hvcticks">'+_tk.map(function(t){
@@ -291,7 +303,47 @@
         scl='<div class="hvcscale" data-role="scale" style="background:'+_vcScaleGrad(_def)+'">'
             +_tkH+'<i class="sdot" data-role="sdot"></i></div>'+_tkL+_zn;
       }
-      return '<div class="hvcard" data-role="card"><div class="hvctop"><div class="hvctl">'+icon+title+'</div>'+tr+'</div>'+val+cap+scl+rng+bar+sel+'</div>';
+      // --- Breites Layout (vcWide) ------------------------------------------
+      //
+      // Fuer Karten, die breiter als hoch sind: Titelblock links, Grosswert
+      // rechts daneben statt darunter. Kam aus den Klima-Entwuerfen, wo eine
+      // Handlungskarte den Raumnamen gross traegt und den Gewinn als Zahl
+      // daneben - gestapelt zerfaellt das in zwei Zeilen und verliert den Bezug.
+      //
+      // vcRank   kleine laufende Nummer links oben (Rangfolge)
+      // vcSub    gedaempfte Zeile unter dem Titel (z. B. beteiligte Raeume)
+      // vcStats  bis zu drei Kennzahlen als Fusszeile, je {vid,label}
+      var rank=(w.vcRank!=null&&w.vcRank!=='')?'<span class="hvcrank">'+esc(String(w.vcRank))+'</span>':'';
+      // Unterzeile: fest (vcSub) ODER aus einer Variablen (vcSubVid). Ohne die
+      // gebundene Fassung bleibt die Kartenmitte leer - im Entwurf steht dort die
+      // Begruendung, und die aendert sich mit der Lage.
+      var sub=(w.vcSubVid||(w.vcSub!=null&&w.vcSub!==''))
+        ?'<div class="hvcsub" data-role="vcsub">'+escL(w.vcSub||'')+'</div>':'';
+      var stats='';
+      if(Array.isArray(w.vcStats)&&w.vcStats.length){
+        // Bis zu sechs Kennzahlen. Drei waren zu wenig: der Rest der Kachel ging
+        // an Fliesstext, der wiederholte, was die Unterzeile schon sagt.
+        stats='<div class="hvcstats">'+w.vcStats.slice(0,6).map(function(st,i){
+          return '<span><b data-role="vcst'+i+'">–</b><i>'+escL(st.label||'')+'</i></span>';
+        }).join('')+'</div>';
+      }
+      // Begruendung im Fuss: im Entwurf steht links vom Kennzahlenblock ein Satz,
+      // warum der Raum ganz oben steht. Der gehoert NICHT in die Unterzeile unter
+      // dem Titel - dort steht, was zu tun ist, hier steht, warum.
+      var note=(w.vcNoteVid||(w.vcNote!=null&&w.vcNote!==''))
+        ?'<div class="hvcnote" data-role="vcnote">'+escL(w.vcNote||'')+'</div>':'';
+      var foot=(note||stats)?('<div class="hvcfoot">'+note+stats+'</div>'):'';
+      if(w.vcWide&&!isSel){
+        // Rangnummer und Zustands-Plakette stehen im Entwurf NEBENEINANDER ueber dem
+        // Namen, nicht die eine neben und die andere unter dem Titel.
+        var hd=(rank||tr)?('<div class="hvcwhd">'+rank+tr+'</div>'):'';
+        return '<div class="hvcard wide" data-role="card">'
+          +'<div class="hvcwtop">'
+            +'<div class="hvcwl">'+hd+'<div class="hvctl">'+icon+title+'</div>'+sub+'</div>'
+            +'<div class="hvcwr">'+val+cap+'</div>'
+          +'</div>'+scl+rng+bar+foot+'</div>';
+      }
+      return '<div class="hvcard" data-role="card">'+rank+'<div class="hvctop"><div class="hvctl">'+icon+title+'</div>'+tr+'</div>'+val+cap+sub+scl+rng+bar+foot+sel+'</div>';
     },
     mount:function(w){if(_vcSel(w))_vcSelLoad(w);
       var _el=$('.w[data-id="'+w.id+'"]',canvas)||$('.w[data-id="'+w.id+'"]',$('#ovcanvas'));
@@ -461,16 +513,80 @@
       return false;
     },
     live:function(w,el,id,d,base,txt,on){
+      // Die Beitexte sind TEXT, nicht Zahl: Nachkommastellen, Faktor und Suffix der
+      // Karte gelten dem Hauptwert. Auf "6 von 6 Raeumen ..." angewandt bleibt davon
+      // "6,0" uebrig - deshalb hier der rohe Wert statt der formatierte.
+      var _roh=function(){return (d.f!=null&&d.f!=='')?String(d.f):String(d.v==null?'':d.v);};
+      if(w.vcSubVid===id){var _sb=$('[data-role=vcsub]',el);if(_sb)_sb.textContent=_roh();}
+      if(w.vcNoteVid===id){var _nt=$('[data-role=vcnote]',el);if(_nt)_nt.textContent=_roh();}
+      if(w.vcTitleVid===id){var _tt=$('[data-role=vctitle]',el);if(_tt)_tt.textContent=_roh();}
+      if(w.vcCapVid===id){var _cp=$('[data-role=vccap]',el);if(_cp)_cp.textContent=_roh();}
+      // Akzent aus einer Variablen: die Hausansicht faerbt jede Raumkachel nach der
+      // Empfehlung. Wortlaut wie in der Skin (ok/info/warm/crit) - so bleibt die
+      // Bedeutung dieselbe wie bei Plaketten und Zustandskacheln.
+      if(w.vcAccVid===id){
+        var _ac=String(d.v),_ok=/^(ok|info|warm|warn|crit|muted)$/.test(_ac);
+        _ac=_ac.replace('warn','warm');
+        if(_ok&&_ac!=='muted'){
+          // Der Streifen traegt die Aussage, die Flaeche nur einen Hauch davon.
+          // stateLook('soft') faerbt die ganze Kachel durch - im Raster aus 24
+          // Kacheln wird daraus eine Farbtapete, in der nichts mehr heraussticht.
+          //
+          // Traegt die Kachel eine Skala, gehoert die FLAECHE der Skala (im
+          // Hausraster: die Raumtemperatur) und der Streifen der Empfehlung.
+          // Zwei Groessen, zwei Kanaele - sonst sagt die Kachel zweimal dasselbe.
+          var _sc=stateLook(_ac,'soft').sc, _hatSkala=!!_vcDef(w);
+          el.style.setProperty('--vcacc',_sc);el.classList.add('vc-accbar');
+          if(!w.scaleFill){
+            el.style.background='color-mix(in oklab,'+_sc+' 7%,transparent)';
+            el.style.borderColor='color-mix(in oklab,'+_sc+' 26%,var(--line))';
+          }
+          if(!_hatSkala){
+            el.dataset.vcacc=_sc;
+            var _tv=$('[data-role=val]',el);if(_tv)_tv.style.color=_sc;
+          }else{delete el.dataset.vcacc;}
+        }else{
+          el.classList.remove('vc-accbar');delete el.dataset.vcacc;
+          if(!w.scaleFill){el.style.background='';el.style.borderColor='';}
+        }
+      }
+      if(w.vcBadgeStVid===id){var _bs=$('[data-role=badge]',el);
+        if(_bs&&/^(ok|info|warm|warn|crit|muted)$/.test(String(d.v)))
+          _bs.className='hpill '+String(d.v).replace('warn','warm');}
+      if(w.vcBadgeVid===id){var _bg=$('[data-role=badge]',el);
+        if(_bg){var _hp=$('.hpd',_bg);_bg.textContent='';if(_hp)_bg.appendChild(_hp);_bg.appendChild(document.createTextNode(_roh()));}}
+      // Kennzahlenfusszeile: eigene Bindungen, unabhaengig vom Hauptwert.
+      if(Array.isArray(w.vcStats)){
+        for(var _i=0;_i<w.vcStats.length&&_i<6;_i++){
+          var _st=w.vcStats[_i];
+          if(_st&&_st.vid===id){
+            var _e=$('[data-role=vcst'+_i+']',el);
+            // Eigene Nachkommastellen je Kennzahl: die Karte rechnet in Zehntel-
+            // Grad, eine Fensterzahl mit "9,0" ist aber keine Messung, sondern
+            // ein Zaehlwert. Ohne dec bleibt es bei der Formatierung der Karte.
+            if(_e){
+              if(_st.dec!=null&&_st.dec!==''){
+                var _n=parseFloat(String(d.v).replace(',','.'));
+                _e.textContent=isNaN(_n)?txt
+                  :_n.toFixed(Math.max(0,Math.min(4,_st.dec|0))).replace('.',',');
+              }else{_e.textContent=txt;}
+            }
+          }
+        }
+      }
       // Marken zuerst: eine Schwelle, die die Anlage selbst verschiebt, muss auch
       // dann wandern, wenn der Hauptwert derselbe bleibt.
       if(_vcMkListe(w).length)_vcMarken(w,el);
       if(_vcSel(w)){if(w.varId===id){var vs=$('[data-role=val]',el);if(vs)vs.textContent=txt;_vcSelMark(w,el,d.v);}_vcState(w,el);return true;}
-      if(w.rngOn&&(id===w.varId||id===w.varId2||id===w.varId3)){
+      // Der Punkt auf der Bereichsleiste muss nicht der Hauptwert sein: auf den
+      // Klimakarten traegt der Hauptwert den Gewinn, die Leiste aber laeuft von
+      // aussen bis jetzt und der Punkt sitzt auf dem Zielwert.
+      if(w.rngOn&&(id===w.varId||id===w.varId2||id===w.varId3||id===w.rngCurVid)){
         var _n=function(vid){var lv=vid&&_lastVals[vid];if(!lv)return null;var q=parseFloat(String(lv.v).replace(',','.'));return isNaN(q)?null:q;};
         var _t=function(vid){var lv=vid&&_lastVals[vid];if(!lv)return '–';
           if(w.rngDec!=null&&w.rngDec!==''){var q=parseFloat(String(lv.v).replace(',','.'));if(!isNaN(q))return q.toFixed(Math.max(0,Math.min(6,w.rngDec|0))).replace('.',',');}
           return (lv.f!=null&&lv.f!=='')?lv.f:String(lv.v);};
-        var cu=_n(w.varId),mi=_n(w.varId2),ma=_n(w.varId3);
+        var cu=_n(w.rngCurVid||w.varId),mi=_n(w.varId2),ma=_n(w.varId3);
         var eMin=$('[data-role=rmin]',el),eMax=$('[data-role=rmax]',el),dot=$('[data-role=rdot]',el);
         if(eMin)eMin.textContent=_t(w.varId2);if(eMax)eMax.textContent=_t(w.varId3);
         if(dot){var p=(cu!=null&&mi!=null&&ma!=null&&ma>mi)?((cu-mi)/(ma-mi)*100):null;dot.style.display=(p==null)?'none':'';if(p!=null)dot.style.left=Math.max(0,Math.min(100,p))+'%';}
@@ -485,7 +601,10 @@
         // vorausgefüllt). Falls die Profil-Einheit doch noch am Wert klebt (z. B. Server
         // liefert kein d.u), hier hart abschneiden, damit sie nicht doppelt erscheint.
         var v=$('[data-role=val]',el);
-        if(v){var vt=txt,uu=(w.unit||'').trim();if(uu){var st=String(vt).trim();if(st.length>=uu.length&&st.slice(-uu.length)===uu)vt=st.slice(0,-uu.length).replace(/\s+$/,'');}v.textContent=vt;}
+        if(v){var vt=txt,uu=(w.unit||'').trim();if(uu){var st=String(vt).trim();if(st.length>=uu.length&&st.slice(-uu.length)===uu)vt=st.slice(0,-uu.length).replace(/\s+$/,'');}v.textContent=vt;
+          // Die Akzentfarbe steht schon fest (vcAccVid). Sie hier nicht ueberschreiben -
+          // sonst gewinnt der zuletzt eingetroffene Wert und die Zahl wird wieder weiss.
+          if(el.dataset&&el.dataset.vcacc)v.style.color=el.dataset.vcacc;}
         var _dfl=_vcDef(w);
         if(_dfl){var _sv=parseFloat(String(d.v).replace(',','.')),_scol=_vcScaleColor(_dfl,_sv);
           if(v&&_scol)v.style.color=_scol;

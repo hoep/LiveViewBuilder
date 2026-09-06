@@ -409,6 +409,10 @@
         // wie "Skala umkehren" blieb nur ein Textfeld, in das man 1 tippt.
         if(c.type==='check'){return '<input type="checkbox" data-le="'+key+'.'+i+'.'+c.k+'" data-lechk="1"'
           +(r[c.k]?' checked':'')+' title="'+esc(c.ph||'')+'">';}
+        // Ziel-Ansicht je Zeile. Damit kann eine Liste (z. B. die Knoten eines
+        // Energieflusses) ihre EIGENEN Sprungziele tragen, statt dass nur das
+        // ganze Widget eines hat. c.kind waehlt Seiten oder Popups.
+        if(c.type==='view'){return '<select data-le="'+key+'.'+i+'.'+c.k+'" title="'+esc(c.h||c.ph||'')+'">'+viewOpts(String(r[c.k]!=null?r[c.k]:''),c.kind,c.ph||'—')+'</select>';}
         if(c.type==='skincolor'){return skinSel(String(r[c.k]!=null?r[c.k]:''),'data-le="'+key+'.'+i+'.'+c.k+'"');}
         if(c.type==='icon'){var iv=String(r[c.k]!=null?r[c.k]:'');return '<button class="btn" data-leico="'+key+'.'+i+'.'+c.k+'" title="'+esc(c.ph||'Icon wählen')+(iv?(' ('+esc(iv)+')'):'')+'" style="padding:3px;display:flex;align-items:center;justify-content:center"><span style="width:16px;height:16px;display:inline-flex;align-items:center;justify-content:center;color:var(--accent)">'+(iv?iconSVG(iv):'+')+'</span></button>';}
         return '<input data-le="'+key+'.'+i+'.'+c.k+'" value="'+esc(String(r[c.k]!=null?r[c.k]:''))+'" placeholder="'+c.ph+'">';}).join('')
