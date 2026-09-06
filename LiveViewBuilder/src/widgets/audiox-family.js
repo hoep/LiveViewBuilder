@@ -170,14 +170,24 @@
   // ---------- audioroom (Controller): Raum-Tabs (einheitlicher Selektor) ----------
   // Raumleiste. Nutzt denselben Baukasten wie die uebrigen Gewerke (Ebene 'r'): eigener
   // Beschriftungstext je Raum, vollstaendige Typografie, Stil, Reihenfolge und Ausblenden.
+  // Schluessel ist die INSTANZ-ID, nicht der Listenplatz. Frueher stand hier key:i - damit
+  // hingen Reihenfolge, Ausblenden und Beschriftung am Platz in einer Liste, die weder
+  // sortiert war noch stabil bleibt (zwei Modullisten hintereinander). Kam eine Zone dazu
+  // oder wechselte die Gattung, verschob sich alles: die Kachel "Gaestezimmer" trug den
+  // Zustand der Kueche, und das Bad rutschte ans Ende. Nachgemessen 05.09.2026:
+  // Gaestezimmer war von Platz 8 auf 1 gewandert, die Kueche von 10 auf 8.
+  // Alte, platzbasierte Eintraege werden dadurch wirkungslos statt falsch: hsOrderHideBy
+  // findet den Schluessel nicht und laesst die Zeile an ihrem Platz, hsLabel faellt auf den
+  // echten Namen zurueck. Es geht also nichts kaputt, die Reihenfolge ist einmal neu zu setzen.
+  function afRoomKey(r,i){ return String((r && r.id) ? r.id : ('#' + i)); }
   function afRoomBar(w,s){
-    var items=hsOrderHideBy(w,'r',(s.rooms||[]).map(function(r,i){return {idx:i,key:i,r:r};}),function(x){return x.key;});
+    var items=hsOrderHideBy(w,'r',(s.rooms||[]).map(function(r,i){return {idx:i,key:afRoomKey(r,i),r:r};}),function(x){return x.key;});
     var btn=hsLvlBtn(w,'r');
     return '<div class="'+hsLvlClass(w,'r')+'"'+hsFontStyle(w,'r')+'>'+items.map(function(it){var r=it.r,i=it.idx;
       var dot=r.role==='member'?'var(--info)':(r.playing?'var(--accent)':'var(--faint)');
       return '<button class="'+btn+(i===s.roomIdx?' on':'')+'" data-afroom="'+i+'">'+
         '<span style="width:.55em;height:.55em;border-radius:50%;background:'+dot+';flex:none"></span>'+
-        esc(hsLabel(w,'r',i,hsStripDomain(r.name)))+
+        esc(hsLabel(w,'r',it.key,hsStripDomain(r.name)))+
         (r.role==='member'?' <span style="font-family:var(--fm);font-size:.72em;color:var(--info);border:1px solid color-mix(in oklab,var(--info) 45%,transparent);border-radius:999px;padding:0 .42em">GRP</span>':'')+'</button>';}).join('')+'</div>';}
   defWidget('audioroom',{
     label:'Audio · Räume', cat:'HomeSuite · Audio', paletteIcon:'wselect', size:[720,52],
@@ -187,10 +197,10 @@
     mount:afMount,
     _bind:function(w,el){var s=afSess(w);$$('[data-afroom]',el).forEach(function(b){b.onclick=function(){s.roomIdx=+b.getAttribute('data-afroom');s.radio=null;afEmit(w);afLoadRadio(w);};});},
     props:function(w){var s=afSess(w);
-      var items=((s&&s.rooms)||[]).map(function(r,i){return {key:i,name:hsStripDomain(r.name)};});
+      var items=((s&&s.rooms)||[]).map(function(r,i){return {key:afRoomKey(r,i),name:hsStripDomain(r.name)};});
       return afSessRow(w)+hsLevelBlock(w,'r','Räume',items);},
     wire:function(w){afSessWire(w);var s=afSess(w);
-      var items=((s&&s.rooms)||[]).map(function(r,i){return {key:i,name:hsStripDomain(r.name)};});
+      var items=((s&&s.rooms)||[]).map(function(r,i){return {key:afRoomKey(r,i),name:hsStripDomain(r.name)};});
       hsLevelWire(w,'r',items,function(){afEmit(w);});}
   });
 
