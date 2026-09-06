@@ -31,8 +31,20 @@
       var info='<span class="ii"><span class="ondot"'+(m.online?'':' style="background:var(--faint)"')+'></span>'+(m.online?'Online':'Offline')+'</span>';
       if(m.inChargingStation)info+='<span class="sep">·</span><span class="ii">'+IBOLT+'Geladen</span>';
       if(m.nextStartText&&+m.nextStart>0)info+='<span class="sep">·</span><span class="ii">'+ICLK+'Nächster Start <b>'+esc(m.nextStartText)+'</b></span>';
-      function cb(k,label,ic,pri){var v=(m.vars||{})[k]||0;if(!v)return '';return '<button class="cbtn'+(pri?' pri':'')+'" data-bcmd="'+k+'">'+ic+'<span>'+esc(label)+'</span></button>';}
-      var cmds=cb('Start','Mähen',IMOWER,1)+cb('Park','Parken',IH)+cb('Pause','Pause',IPAU)+cb('Resume','Weiter',IRES);
+      // Der Akzent bedeutet auf dieser Karte ZUSTAND - das Automatik-Segment darunter faerbt
+      // damit seine gewaehlte Stufe (.autoseg button.on, gleiche Farbe). Frueher trug 'Mähen'
+      // das pri-Flag FEST VERDRAHTET und sah dadurch aus wie eine Auswahl: bei geparktem
+      // Maeher stand die Karte sichtbar im Widerspruch zu sich selbst (Modus 'Bis auf Weiteres
+      // geparkt', Automatik 'Pause' - und daneben leuchtete 'Mähen'). Jetzt markiert die Reihe
+      // den Befehl, der dem AKTUELLEN Zustand entspricht. Codes aus HSMW.Activity
+      // (MowerDevice/module.php): 2 Maeht, 3 Faehrt heim, 4 Laedt, 5 Verlaesst Station,
+      // 6 In Ladestation, 7 Steht im Garten. 0/1 sind unbekannt -> gar keine Markierung.
+      // 4 'Laedt' ebenfalls NICHT markiert: Laden zwischen zwei Zeitfenstern ist kein Parken,
+      // sondern nur 'gerade in der Station'. Lieber keine Aussage als eine schiefe - die
+      // Modus-Zeile darueber sagt ohnehin, ob geparkt oder Zeitplan.
+      var aktBtn=(actC===2||actC===5)?'Start':((actC===3||actC===6)?'Park':(actC===7?'Pause':''));
+      function cb(k,label,ic){var v=(m.vars||{})[k]||0;if(!v)return '';return '<button class="cbtn'+(k===aktBtn?' on':'')+'" data-bcmd="'+k+'">'+ic+'<span>'+esc(label)+'</span></button>';}
+      var cmds=cb('Start','Mähen',IMOWER)+cb('Park','Parken',IH)+cb('Pause','Pause',IPAU)+cb('Resume','Weiter',IRES);
       var cut=(+m.cuttingHeight)||0, dots='';for(var i=1;i<=9;i++)dots+='<i'+(i<=cut?' class="on"':'')+'></i>';
       var cutBlk=(m.vars||{}).CuttingHeight?('<div class="sblk"><div class="slbl">'+ICUT+'Schnitthöhe</div><div class="stepper"><button class="stepbtn" data-bcut="-1">'+IMIN+'</button><div class="stepval">'+(cut||'–')+'<small> / 9</small></div><button class="stepbtn" data-bcut="1">'+IPLU+'</button></div><div class="stepdots">'+dots+'</div></div>'):'';
       var autoBlk='';
@@ -42,11 +54,29 @@
       var hlBlk='';
       if((m.vars||{}).Headlight){var hi=+m.headlight||0;
         hlBlk='<div class="sblk"><div class="slbl">'+IHEAD+'Scheinwerfer</div><div class="seg2">'+HLLBL.map(function(t,i){return '<button data-bhl="'+i+'"'+(i===hi?' class="on"':'')+'>'+esc(t)+'</button>';}).join('')+'</div></div>';}
+      // Fehlerzeile. Die Karte zeigte bisher nur Zustand und Modus - eine Stoerung
+      // des Maehers war auf der Seite ueberhaupt nicht zu sehen, obwohl die
+      // Schnittstelle sie liefert. "Keine Meldung" ist der Ruhezustand und bleibt
+      // stumm; alles andere gehoert sichtbar, mit Quittieren, wenn der Maeher
+      // scharf geschaltet ist.
+      var errT=String(m.errorText||''), errC=+m.errorCode||0;
+      // Der Zustand allein kann schon eine Stoerung melden: 9 Fehler, 10 schwerer
+      // Fehler, 11 Fehler beim Start. Der Fehlercode bleibt dabei manchmal auf 0 -
+      // dann waere die Karte ohne diese Zeile weiter stumm, obwohl der Maeher steht.
+      var errS=(+m.state||0)>=9;
+      var errBlk='';
+      if(errC>0 || errS || (errT && errT!=='Keine Meldung' && errT!=='-')){
+        if(!errT || errT==='Keine Meldung'){ errT=String(m.stateText||'Störung'); }
+        var quitt=((m.vars||{}).ConfirmError && m.armed)
+          ? '<button class="boterrbtn" data-bconf="1">quittieren</button>' : '';
+        errBlk='<div class="boterr">'+IWARNM+'<span class="boterrtx">'+esc(errT||('Fehler '+errC))+'</span>'
+              +(errC>0?'<span class="boterrc">Code '+errC+'</span>':'')+quitt+'</div>';
+      }
       return '<div class="mtop"><div class="mbadge">'+IMOWER+'</div><div><div class="mname">'+escL(w.label||m.name||'Mäher')+'</div>'+(m.model?'<div class="mmodel">Husqvarna '+esc(m.model)+'</div>':'')+'</div><div class="mline-sp"></div><div class="pill '+pill+'">'+aic+esc(m.activityText||'')+'</div></div>'
         +'<div class="hero"><svg class="bring" viewBox="0 0 120 120"><circle class="brbg" cx="60" cy="60" r="52"/><circle class="brfg" cx="60" cy="60" r="52" transform="rotate(-90 60 60)" style="stroke-dasharray:'+C.toFixed(1)+';stroke-dashoffset:'+off.toFixed(1)+'"/><text x="60" y="61" class="brv">'+Math.round(bat)+'<tspan class="bru">%</tspan></text><text x="60" y="83" class="brl">AKKU</text></svg>'
         +'<div class="herox"><div class="actrow"><span class="actic">'+aic+'</span><span class="actbig">'+esc(m.activityText||'')+'</span></div>'
         +'<div class="stusrow">Status: <b>'+esc(m.stateText||'—')+'</b>'+(m.mode?' · Modus: <b>'+esc(m.mode)+'</b>':'')+'</div>'
-        +'<div class="infoline">'+info+'</div></div></div>'
+        +'<div class="infoline">'+info+'</div></div></div>'+errBlk
         +'<div class="divider"></div><div class="ctlrow">'+cmds+'</div>'
         +((cutBlk||hlBlk)?'<div class="srow">'+cutBlk+hlBlk+'</div>':'')
         +autoBlk;
@@ -80,6 +110,13 @@
         if(w.varId2===id){var vb=$('[data-role=sub]',el);if(vb)vb.textContent=txt;}
       },
       click:function(w,el,e){ if(!w.mowerId)return false;
+        var cf=e.target.closest('[data-bconf]');
+        if(cf){
+          var mm=_botM[w.id]||{}, vid=(mm.vars||{}).ConfirmError;
+          if(vid){fetch('?api=setvar&id='+vid+'&value=1&key='+encodeURIComponent(TOKEN),{cache:'no-store'})
+            .then(function(){setTimeout(function(){botFetch(w);},1500);});toast('Fehler quittiert');}
+          return true;
+        }
         var root=el.querySelector('[data-role=botroot]'),m=root&&root._botM; if(!m)return false;
         // Nach dem Schalten sofort quittieren und zeitnah nachlesen. Ohne das steht die
         // Kachel bis zum naechsten 15-Sekunden-Poll auf dem alten Stand - der Tipp sieht

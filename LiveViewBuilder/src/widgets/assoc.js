@@ -15,6 +15,17 @@
     var ds=(w.stufeVid&&_lastVals[w.stufeVid])||null;
     var vs=ds?ds.v:v;
     var m=stateHit(w.amap,vs);   // exakt zuerst, dann Operator/Bereich/Platzhalter (Kern)
+    // VORRANG-VARIABLE. stufeVid ersetzt den Zustand vollstaendig - das ist zu grob,
+    // wenn eine Stoerung in einer ZWEITEN Variablen steht, waehrend die erste den
+    // normalen Betrieb beschreibt. Beim Maeher ist genau das der Fall: "Aktivitaet"
+    // kennt maeht/laedt/faehrt heim, aber keinen Fehler; faellt das Geraet aus, geht
+    // die Aktivitaet auf 1 ("—") und die Kachel zeigte einen Gedankenstrich in
+    // Standardfarbe, waehrend der Fehler unbemerkt in "Status" stand.
+    // Deshalb eine eigene Zuordnung, die NUR gilt, wenn sie trifft: passt keine Zeile,
+    // laeuft alles wie bisher weiter.
+    var dst=(w.stoerVid&&_lastVals[w.stoerVid])||null;
+    var ms=dst?stateHit(w.stoerMap,dst.v):null;
+    if(ms)m=ms;
     var a=(!m)?assocFor(w,vs):null,rr=a?assocResolved(w,a):null;
     var icon=(m&&m.icon)||(rr&&rr.icon)||w.icon||'';
     var ovc=(m&&m.color)||(a&&w.assocMap&&w.assocMap[String(a.v)]?w.assocMap[String(a.v)].color:'');
@@ -32,6 +43,8 @@
     else{value=stTxt;pillTxt='';}
     var nav=!!(w.popupTo||w.navTo);
     var chip=el.querySelector('[data-role=aico]');if(chip)chip.innerHTML=icon?iconSVG(icon,v):'';
+    var mol=el.querySelector('[data-role=amold]');
+    if(mol)mol.innerHTML=(typeof _mmAbzeichen==='function')?_mmAbzeichen(w.moldChip):'';
     var vEl=el.querySelector('[data-role=aval]');if(vEl)vEl.textContent=(value==null||value==='')?(asPill?'':'–'):value;
     var pill=el.querySelector('[data-role=apill]');
     var S=function(k,x){el.style.setProperty(k,x);};
@@ -79,14 +92,33 @@
       var z1=w.zeileVid?('<div class="hassocz" data-vid="'+w.zeileVid+'">–</div>'):'';
       var z2=w.zeile2Vid?('<div class="hassocz klein" data-vid="'+w.zeile2Vid+'">–</div>'):'';
       var zeilen=(z1||z2)?('<div class="hassoc-zeilen">'+z1+z2+'</div>'):'';
-      return '<div class="hassoc" data-role="acard"><div class="hassoc-top">'+chip+pill+'</div><div class="hassoc-btm">'+val+lbl+zeilen+'</div></div>';},
+      // Platz fuer das Schimmel-Abzeichen. Es wird erst beim Live-Zeichnen
+      // gefuellt - die Daten kommen aus ?api=mold und stehen beim Aufbau der
+      // Kachel noch nicht bereit.
+      var mold=w.moldChip?'<span data-role="amold"></span>':'';
+      return '<div class="hassoc" data-role="acard"><div class="hassoc-top">'+chip+pill+mold+'</div><div class="hassoc-btm">'+val+lbl+zeilen+'</div></div>';},
+    click:function(w,el,e){
+      // Nur das Abzeichen abfangen; alles andere bleibt beim allgemeinen Klickweg.
+      if(e.target.closest('[data-mmchip]')){
+        var ziel=w.moldChipTo||w.longPopup;
+        if(ziel){openPopup(ziel);return true;}
+      }
+      return false;},
     props:function(w){var FF=[['system-ui,-apple-system,sans-serif','Sans'],['Georgia,\'Times New Roman\',serif','Serif'],['var(--fm)','Mono'],['\'Segoe UI\',Arial,sans-serif','Segoe/Arial'],['\'Courier New\',monospace','Courier'],['Verdana,sans-serif','Verdana']];
       return row('Darstellung','<select id="pFillMode">'+[['','Automatisch (crit füllt)'],['soft','Getönt'],['fill','Vollfläche']].map(function(o){return '<option value="'+o[0]+'"'+((w.fillMode||'')===o[0]?' selected':'')+'>'+o[1]+'</option>';}).join('')+'</select>')
       +row('Anzeige','<select id="pAsShow"><option value="both"'+((w.assocShow||'both')==='both'?' selected':'')+'>Icon + Wert + Label</option><option value="icon"'+(w.assocShow==='icon'?' selected':'')+'>Nur Icon</option><option value="text"'+(w.assocShow==='text'?' selected':'')+'>Wert + Label</option></select>')
       +row('Zustand als','<select id="pStateAs"><option value="value"'+((w.stateAs||'value')==='value'?' selected':'')+'>Großer Wert</option><option value="pill"'+(w.stateAs==='pill'?' selected':'')+'>Pille</option></select>')
       +row('Einheit','<input id="pAsUnit" value="'+esc(w.unit||'')+'" placeholder="z. B. kWh (bei Zählerwerten)">')
+      +row('Schimmel-Abzeichen','<select id="pAsMold">'
+          +'<option value=""'+(!w.moldChip?' selected':'')+'>— aus —</option>'
+          +'<option value="befund"'+(w.moldChip==='befund'?' selected':'')+'>nur bei Befund</option>'
+          +'<option value="immer"'+(w.moldChip==='immer'?' selected':'')+'>immer</option></select> '
+          +'<span style="font-size:11px;color:var(--muted)">zählt erhöhte Schimmelwächter; Tipp darauf öffnet das Lang-Druck-Ziel</span>')
       +row('Zustand aus','<input id="pStufeVid" type="number" value="'+(w.stufeVid||'')+'" placeholder="VarID"> <span style="font-size:11px;color:var(--muted)">eigene Variable für Farbe und Pille — sonst zählt der Wert</span>')
       +'<div class="pgh">Zeilen unter dem Wert</div>'
+      +row('Störung (Vorrang)','<input id="pStoerVid" type="number" value="'+(w.stoerVid||'')+'" placeholder="VarID">')
+      +'<div style="font-size:11px;color:var(--muted);margin:-2px 2px 5px">Zweite Variable, die eine St&ouml;rung meldet. Trifft unten eine Zeile, gewinnt sie &uuml;ber die normale Zuordnung — Icon, Text und Farbe kommen dann von dort. Trifft keine, bleibt alles wie bisher. Gedacht f&uuml;r F&auml;lle, in denen die Hauptvariable den Betrieb beschreibt und den Fehler gar nicht kennt (M&auml;her: „Aktivit&auml;t" gegen „Status").</div>'
+      +(w.stoerVid?listEditor(w,'stoerMap','Vorrang: Wert · Icon · Text · Farbe',[{k:'v',ph:'>=9, 8, 1..5, *'},{k:'icon',ph:'z.B. warning'},{k:'text',ph:'Text'},{k:'color',type:'skincolor'}]):'')
       +row('Zeile 1','<input id="pZeileVid" type="number" value="'+(w.zeileVid||'')+'" placeholder="VarID">')
       +row('Zeile 2','<input id="pZeile2Vid" type="number" value="'+(w.zeile2Vid||'')+'" placeholder="VarID"> <span style="font-size:11px;color:var(--muted)">kleiner und leiser</span>')
       +listEditor(w,'amap','Manuell: Wert · Icon · Text · Farbe',[{k:'v',ph:'0, >0, 1..5, *'},{k:'icon',ph:'z.B. winopen'},{k:'text',ph:'Text (Pille)'},{k:'color',type:'skincolor'}])
@@ -96,10 +128,12 @@
       +row('Gewicht','<select id="pVfwt"><option value="">Standard</option>'+['300','400','500','600','700','800'].map(function(x){return '<option value="'+x+'"'+(w.vfwt===x?' selected':'')+'>'+x+'</option>';}).join('')+'</select>')
       +row('Größe (px)','<input id="pVfsz" type="number" min="0" value="'+(w.vfsz||'')+'" placeholder="auto">');},
     wire:function(w){
+      if($('#pAsMold'))$('#pAsMold').onchange=function(){w.moldChip=this.value||undefined;render();commit();};
       if($('#pFillMode'))$('#pFillMode').onchange=function(){w.fillMode=this.value||undefined;render();commit();};if($('#pAsShow'))$('#pAsShow').onchange=function(){w.assocShow=this.value;render();refreshAssocLive(w);commit();};
       if($('#pStateAs'))$('#pStateAs').onchange=function(){w.stateAs=this.value==='value'?undefined:this.value;render();refreshAssocLive(w);commit();};
       if($('#pAsUnit'))$('#pAsUnit').oninput=function(){w.unit=this.value||undefined;render();refreshAssocLive(w);commit();};
       if($('#pStufeVid'))$('#pStufeVid').onchange=function(){w.stufeVid=parseInt(this.value)||undefined;render();refreshAssocLive(w);commit();};
+      if($('#pStoerVid'))$('#pStoerVid').onchange=function(){w.stoerVid=parseInt(this.value)||undefined;render();renderProps();commit();};
       if($('#pZeileVid'))$('#pZeileVid').onchange=function(){w.zeileVid=parseInt(this.value)||undefined;render();commit();};
       if($('#pZeile2Vid'))$('#pZeile2Vid').onchange=function(){w.zeile2Vid=parseInt(this.value)||undefined;render();commit();};
       if($('#pVff'))$('#pVff').onchange=function(){w.vff=this.value||undefined;render();refreshAssocLive(w);commit();};
