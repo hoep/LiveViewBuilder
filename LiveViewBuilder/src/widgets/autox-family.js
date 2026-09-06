@@ -12,6 +12,17 @@
     var A={cfg:null,scenes:[],lights:[],zones:[],motionSensors:[],awaySensors:[],sel:-1,subs:[],stations:null,dirty:false,sources:{}};
     // Senderliste fuer die Weck-Auswahl. Einmal je Sitzung; dieselbe Quelle, aus der
     // sich auch die Radioliste der Musikseite speist.
+    // Favoriten und Playlists EINER Zone. Je Zone einmal gemerkt - die Liste kommt
+    // vom Player und aendert sich selten, ein Abruf je Tastendruck waere Unfug.
+    function aSources(zone,cb){
+      zone=parseInt(zone)||0;
+      if(!zone){cb&&cb();return;}
+      if(A.sources[zone]){cb&&cb();return;}
+      if(typeof DOKU!=='undefined'&&DOKU){A.sources[zone]={favorites:[{id:'FV:2/1',title:'Morgenradio'}],playlists:[]};cb&&cb();return;}
+      fetch('?api=audio&op=sources&id='+zone,{cache:'no-store'}).then(function(r){return r.json();})
+        .then(function(j){A.sources[zone]={favorites:(j&&j.favorites)||[],playlists:(j&&j.playlists)||[]};cb&&cb();})
+        .catch(function(){A.sources[zone]={favorites:[],playlists:[]};cb&&cb();});
+    }
     function aStations(cb){
       if(A.stations){cb&&cb();return;}
       if(typeof DOKU!=='undefined'&&DOKU){A.stations=[{key:'oe3',title:'Hitradio Ö3'},{key:'fm4',title:'FM4'}];cb&&cb();return;}
@@ -130,6 +141,10 @@
         if(q.kind==='station'&&A.stations){
           var tr=A.stations.filter(function(x){return x.key===q.id;})[0];
           if(tr)qn=tr.title||q.id;
+        } else if(q.kind!=='station'){
+          var qu2=A.sources[parseInt(r.audioZone)||0];
+          var ls2=qu2?(q.kind==='playlist'?qu2.playlists:qu2.favorites):null;
+          if(ls2){var tr2=ls2.filter(function(x){return x.id===q.id;})[0]; if(tr2)qn=tr2.title||q.id;}
         }
         return (r.time||'—')+' · '+daysTxt(r.days)+' → '+(zn?zn.name:'(keine Zone)')
           +(q.id?(' · '+art+' '+qn):'')
@@ -258,7 +273,22 @@
               +'</select>'
             : '<span class="ax-mut">Senderliste lädt …</span>';
         } else {
-          srcFeld='<input class="ax-in" id="axSrc" type="number" min="0" placeholder="Index" value="'+esc(q.id)+'" style="width:clamp(70px,18cqi,110px)">';
+          // Favorit/Playlist kommen vom Player selbst. Ohne Zone gibt es nichts zu
+          // waehlen, und eine leere Liste ist eine Aussage - kein Grund fuer ein
+          // Zahlenfeld, in das man raten muesste.
+          var qu=A.sources[parseInt(r.audioZone)||0];
+          var ls=qu?(q.kind==='playlist'?qu.playlists:qu.favorites):null;
+          if(!r.audioZone){
+            srcFeld='<span class="ax-mut">erst eine Musik-Zone wählen</span>';
+          } else if(!ls){
+            srcFeld='<span class="ax-mut">Liste lädt …</span>';
+          } else if(!ls.length){
+            srcFeld='<span class="ax-mut">'+(q.kind==='playlist'?'keine Playlists am Player':'keine Favoriten am Player')+'</span>';
+          } else {
+            srcFeld='<select class="ax-sel" id="axSrc"><option value="">— wählen —</option>'
+              +ls.map(function(x){return '<option value="'+esc(x.id)+'"'+(x.id===q.id?' selected':'')+'>'+escL(x.title||x.id)+'</option>';}).join('')
+              +'</select>';
+          }
         }
         h+=fld('Quelle','<div class="ax-r"><select class="ax-sel" id="axKind">'
           +[['station','Radio'],['playlist','Playlist'],['favorite','Favorit']].map(function(o){
@@ -329,7 +359,13 @@
         if(r.type==='schedule'){r.trigger=r.trigger||{};r.trigger.time=tm.value;}else{r.time=tm.value;} }
       if(tm){tm.oninput=function(){zeitUebernehmen();aTouch();}; tm.onchange=function(){zeitUebernehmen();aTouch();};}
       var sc=h.querySelector('#axScene'); if(sc)sc.onchange=function(){r.sceneId=this.value;};
-      var zn=h.querySelector('#axZone'); if(zn)zn.onchange=function(){r.audioZone=parseInt(this.value)||0;aTouch();};
+      var zn=h.querySelector('#axZone'); if(zn)zn.onchange=function(){
+        r.audioZone=parseInt(this.value)||0;aTouch();
+        // Andere Zone, andere Favoriten/Playlists - die alte Kennung passt nicht mehr.
+        var qa=wakeQuelle(r);
+        if(qa.kind!=='station')r.audioSource={kind:qa.kind,id:''};
+        aSources(r.audioZone,function(){paintOnly(w);});
+      };
       var kd=h.querySelector('#axKind');
       var sr=h.querySelector('#axSrc');
       function quelleSetzen(){var q=wakeQuelle(r);
@@ -337,7 +373,8 @@
       if(kd)kd.onchange=function(){
         // Art gewechselt: die id passt nicht mehr (Schluessel vs. Index) - leeren
         // und das Feld neu zeichnen, damit die richtige Eingabeart erscheint.
-        r.audioSource={kind:kd.value,id:''};
+        r.audioSource={kind:kd.value,id:''};aTouch();
+        if(kd.value!=='station'&&r.audioZone){aSources(r.audioZone,function(){paintOnly(w);});return;}
         paintOnly(w);
       };
       if(sr)sr.onchange=quelleSetzen;
@@ -370,8 +407,12 @@
     // zeichnet, sonst steht dort "laedt ..." bis zum naechsten Anlass.
     function editVorbereiten(w,fertig){
       var r=A.cfg&&A.cfg.rules[A.sel];
-      if(r&&r.type==='wake'&&!A.stations){aStations(fertig);return;}
-      fertig();
+      if(!r||r.type!=='wake'){fertig();return;}
+      aStations(function(){
+        var q=wakeQuelle(r);
+        if(q.kind!=='station'&&r.audioZone){aSources(r.audioZone,fertig);return;}
+        fertig();
+      });
     }
 
     // =============================== autocard ===============================
@@ -413,6 +454,10 @@
       // Beschraenkung wie bei autolist: auf einer Weckerseite haben Bewegungs- und
       // Beleuchtungsregeln nichts zu suchen.
       var nurT=(w&&w.axOnly&&TYPES[w.axOnly])?w.axOnly:'';
+      // Tag/Nacht-Hintergrund: bei der Lichtautomatik die Bezugsgroesse (halbe
+      // Regeln haengen an Sonnenauf-/-untergang), bei Weckern nur Beiwerk, das
+      // die Flaeche fuellt und von der Sache ablenkt. Vorgabe bleibt "zeigen".
+      var sonne=!(w&&w.tlSun===false);
       var sun=A.cfg.sun||{sunrise:360,sunset:1200};
       var woche = !!(w && w.tlSpan==='woche');
       function pc(min){return Math.max(0,Math.min(100,min/1440*100));}
@@ -523,9 +568,9 @@
             spans+='<div class="ax-span pres'+off+'" style="left:'+a+'%;width:'+Math.max(4,b-a)+'%;top:78%" data-axopen="'+i+'">'+(woche?'':'Anwesenheit')+'</div>';}
         });
         return '<div class="ax-tl">'
-          +'<div class="ax-tl-band night"></div><div class="ax-tl-band day" style="left:'+srp+'%;width:'+(ssp-srp)+'%"></div>'
+          +(sonne?('<div class="ax-tl-band night"></div><div class="ax-tl-band day" style="left:'+srp+'%;width:'+(ssp-srp)+'%"></div>'):'')
           +'<div class="ax-tl-tick" style="left:'+srp+'%"></div><div class="ax-tl-tick" style="left:'+ssp+'%"></div>'
-          +(woche?'':'<div class="ax-sun" style="left:'+srp+'%">☀</div><div class="ax-sun" style="left:'+ssp+'%">☾</div>')
+          +((woche||!sonne)?'':'<div class="ax-sun" style="left:'+srp+'%">☀</div><div class="ax-sun" style="left:'+ssp+'%">☾</div>')
           +marks+spans+(anhang||'')+'</div>';
       }
 
@@ -588,6 +633,8 @@
               +row('Regelart','<select id="axOnly"><option value="">alle Regeln</option>'
                 +Object.keys(TYPES).map(function(k){return '<option value="'+k+'"'+(w.axOnly===k?' selected':'')+'>nur '+esc(TYPES[k].plural)+'</option>';}).join('')
                 +'</select>')
+              +row('Sonnenband','<label style="display:inline-flex;align-items:center;gap:6px;font-size:12px">'
+                +'<input type="checkbox" id="axTlSun"'+((w.tlSun===false)?'':' checked')+'> Tag/Nacht hinterlegen</label>')
               +'<div class="pgh">Zeitraum</div>'
               +row('Umfang','<select id="axSpan">'
                 +'<option value="tag"'+(w.tlSpan!=='woche'?' selected':'')+'>Tag (heute)</option>'
@@ -610,6 +657,7 @@
           if($('#axKind'))$('#axKind').onchange=function(){w.kind=this.value;commit();var hh=host(w);if(hh){hh.innerHTML=rnd(w);}};
           if($('#axOnly'))$('#axOnly').onchange=function(){w.axOnly=this.value||undefined;commit();var hh=host(w);if(hh){hh.innerHTML=rnd(w);wire(hh,w);}};
           if($('#axSpan'))$('#axSpan').onchange=function(){w.tlSpan=this.value;commit();var hh=host(w);if(hh){hh.innerHTML=rnd(w);wire(hh,w);}};
+          if($('#axTlSun'))$('#axTlSun').onchange=function(){w.tlSun=this.checked?undefined:false;commit();var hh=host(w);if(hh){hh.innerHTML=rnd(w);wire(hh,w);}};
         }
       });
     }
