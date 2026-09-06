@@ -2441,6 +2441,13 @@ if ($api === 'audio') {
         return;
     }
 
+    if ($op === 'sources') {                             // Favoriten + Playlists einer Zone (nur lesen)
+        $iid = (int) ($_GET['id'] ?? ($list[0] ?? 0));
+        $fn = $pfx($iid) . '_Manage';
+        echo function_exists($fn) ? $fn($iid, json_encode(['op' => 'sources'])) : json_encode(['ok' => false, 'err' => 'prefix']);
+        return;
+    }
+
     if ($op === 'playdirect') {                          // Radio: HQ-Direktstream spielen (token)
         if (!hash_equals($TOKEN, (string) ($_GET['key'] ?? ''))) {
             http_response_code(403);
