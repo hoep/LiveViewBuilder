@@ -190,7 +190,10 @@
           var ls2=qu2?(q.kind==='playlist'?qu2.playlists:qu2.favorites):null;
           if(ls2){var tr2=ls2.filter(function(x){return x.id===q.id;})[0]; if(tr2)qn=tr2.title||q.id;}
         }
-        return (r.time||'—')+' · '+daysTxt(r.days)+' → '+(zn?zn.name:'(keine Zone)')
+        // Beim Einmal-Wecker steht der Termin statt der Wochentage - "Mo Di Mi"
+        // waere dort schlicht falsch, er weckt genau einmal.
+        return (r.time||'—')+' · '+(r.once?('einmalig, '+naechsterTermin(r.time||'06:30')):daysTxt(r.days))
+          +' → '+(zn?zn.name:'(keine Zone)')
           +(q.id?(' · '+art+' '+qn):'')
           +(r.rampMin?(' · '+r.rampMin+' min Rampe'):'')
           +(+r.offAfterMin>0?(' · '+(+r.offAfterMin)+' min lang'):'');
@@ -348,7 +351,13 @@
         h+=absch('Wann',
             azeile('<input class="ax-time" type="time" id="axTime" value="'+esc(r.time||'06:30')+'">'
               +amut('einblenden über')+stepper('axRamp',(r.rampMin||0),'min'))
-          + azeile(amut('an Tagen')+'<div class="ax-days">'+daychips(r.days,'data-axday')+'</div>'));
+          + azeile('<div class="ax-seg">'
+              +'<button data-axonce="0" class="'+(r.once?'':'on')+'">wiederholt</button>'
+              +'<button data-axonce="1" class="'+(r.once?'on':'')+'">einmalig</button></div>'
+              +(r.once
+                 ? '<span class="ax-hint">weckt '+esc(naechsterTermin(r.time||'06:30'))
+                   +' und schaltet sich danach ab</span>'
+                 : amut('an Tagen')+'<div class="ax-days">'+daychips(r.days,'data-axday')+'</div>')));
         h+=absch('Wo',
             azeile('<select class="ax-sel" id="axZone"><option value="0">— keine —</option>'
               +A.zones.map(function(z){return '<option value="'+z.id+'"'+(z.id==r.audioZone?' selected':'')+'>'+escL(z.name)+'</option>';}).join('')
@@ -442,6 +451,20 @@
     }
     function azeile(inhalt){return '<div class="ax-abs-r">'+inhalt+'</div>';}
     function amut(t){return '<span class="ax-mut">'+esc(t)+'</span>';}
+    /**
+     * Naechster Termin einer Uhrzeit im Klartext. Ein Einmal-Wecker weckt beim
+     * naechsten Erreichen der Uhrzeit - liegt sie heute noch vor uns, ist das
+     * heute, sonst morgen. Ohne diese Zeile muesste man selbst nachdenken.
+     */
+    function naechsterTermin(hhmm){
+      var t=String(hhmm||'').split(':'), st=parseInt(t[0],10), mi=parseInt(t[1],10);
+      if(isNaN(st)||isNaN(mi))return '';
+      var d=new Date(), soll=new Date(d.getFullYear(),d.getMonth(),d.getDate(),st,mi,0);
+      if(soll<=d)soll=new Date(soll.getTime()+86400000);
+      var heute=(soll.toDateString()===d.toDateString());
+      var TAG=['So','Mo','Di','Mi','Do','Fr','Sa'];
+      return (heute?'heute':'morgen')+', '+TAG[soll.getDay()]+' '+soll.getDate()+'.'+(soll.getMonth()+1)+'.';
+    }
     // Weck-Quelle lesen: neues Format {kind,id}; eine blosse Zeichenkette ist ein
     // Radiosender aus der Zeit, als der Wecker nur Radio konnte.
     function wakeQuelle(r){
@@ -505,6 +528,13 @@
       ['axSensor:sensor','axLux:lux','axAway:awayVar'].forEach(function(p){var a=p.split(':');var e=h.querySelector('#'+a[0]);if(e)e.onchange=function(){r[a[1]]=parseInt(this.value)||0;};});
       var fr=h.querySelector('#axFrom'); if(fr)fr.onchange=function(){r.from=this.value;};
       var to=h.querySelector('#axTo'); if(to)to.onchange=function(){r.to=this.value;};
+      // Einmal-Wecker: die Wochentage entfallen, sonst wuerde eine leere Auswahl
+      // spaeter als "taeglich" gelesen, wenn jemand wieder auf "wiederholt" stellt.
+      h.querySelectorAll('[data-axonce]').forEach(function(e){e.onclick=function(){
+        var an=e.getAttribute('data-axonce')==='1';
+        if(an){ r.once=true; r.days=[]; } else { delete r.once; }
+        aTouch();paintOnly(w);
+      };});
       h.querySelectorAll('[data-axday]').forEach(function(e){e.onclick=function(){var d=(r.type==='schedule')?(r.trigger.days=r.trigger.days||[]):(r.days=r.days||[]);var i=+e.getAttribute('data-axday');var p=d.indexOf(i);if(p>=0)d.splice(p,1);else d.push(i);aTouch();paintOnly(w);};});
       h.querySelectorAll('[data-axdev]').forEach(function(e){e.onclick=function(){r.devices=r.devices||[];var i=+e.getAttribute('data-axdev');var p=r.devices.indexOf(i);if(p>=0)r.devices.splice(p,1);else r.devices.push(i);paintOnly(w);};});
       // Stepper
