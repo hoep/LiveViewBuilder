@@ -131,8 +131,13 @@
       try{
         // Wer nicht mehr im Dokument steht, fliegt raus. Sonst reden Seiten mit,
         // die laengst verlassen sind.
+        //
+        // Geprueft wird das ELEMENT, nicht die Kennung: eingebettete Seiten
+        // bekommen ihre Kennung aus dem Komponentennamen, und zwei verschiedene
+        // Seiten heissen darin beide "cmp__al". Eine Suche nach der Kennung fand
+        // dann das Element der ANDEREN Seite und liess den toten Zuhoerer stehen.
         A.subs=A.subs.filter(function(s){
-          return !s.wid || document.querySelector('.w[data-id="'+s.wid+'"]');
+          return !s.el || document.contains(s.el);
         });
         A.subs.slice().forEach(function(s){try{s.fn();}catch(e){}});
       }
@@ -149,7 +154,7 @@
      * Lichtseite lief die Weckerliste weiter mit, beide korrigierten die geteilte
      * Auswahl in ihre Richtung, und ein Klick auf eine Regel wirkte gar nicht.
      */
-    function aSub(fn,w){A.subs.push({fn:fn,wid:(w&&w.id)||''});}
+    function aSub(fn,w){A.subs.push({fn:fn,el:(w?elOf(w):null)});}
 
     function sceneName(id){var s=A.scenes.find(function(x){return x.id===id;});return s?s.name:(id||'—');}
     function daysTxt(d){if(!d||!d.length)return 'täglich';if(d.length===7)return 'täglich';
@@ -245,15 +250,9 @@
       // Dem Raumschalter folgen (wie "Jetzt laeuft" und "Bibliothek"): nur die
       // Regeln des gewaehlten Geraets. Ohne gewaehlte Zone bleibt alles sichtbar.
       var zone=(w&&w.axZone)?aktiveZone(w.axSession):0;
-      var alle=(A.cfg.rules||[]).map(function(r,i){return {r:r,i:i};})
-        .filter(function(x){return axPasst(x.r,f);});
-      var imRaum=zone?alle.filter(function(x){return (parseInt(x.r.audioZone,10)||0)===zone;}):alle;
-      // Hat der gewaehlte Raum keine Regel, wird NICHT ausgeblendet, sondern alles
-      // gezeigt. Sonst steht man vor einer leeren Liste und die Seite wirkt kaputt:
-      // genau das passierte, als alle drei Wecker dem Lesezimmer gehoerten und der
-      // Raumschalter woanders stand - es gab nichts zum Anklicken.
-      var raumLeer=!!(zone&&!imRaum.length);
-      var sichtbar=raumLeer?alle:imRaum;
+      var sichtbar=(A.cfg.rules||[]).map(function(r,i){return {r:r,i:i};})
+        .filter(function(x){return axPasst(x.r,f);})
+        .filter(function(x){return !zone||(parseInt(x.r.audioZone,10)||0)===zone;});
       var rows=sichtbar.map(function(x){
         var r=x.r,i=x.i;
         return '<div class="ax-row'+(i===A.sel?' on':'')+(r.enabled===false?' off':'')+'" data-axsel="'+i+'">'
@@ -266,7 +265,7 @@
       var leer=nur?('Noch keine '+TYPES[nur].plural):'Noch keine Regeln';
       return '<div class="ax">'
         +'<div class="ax-head"><span class="ax-h-t">'+esc(nur?TYPES[nur].plural:'Automatik')+'</span>'
-        +(zone?('<span class="ax-badge">'+escL(raumLeer?('nichts für '+zonenName(zone)+' – alle'):zonenName(zone))+'</span>'):'')
+        +(zone?('<span class="ax-badge">'+escL(zonenName(zone))+'</span>'):'')
         +tog(masterOn(),' data-axmaster="1"')+'</div>'
         +'<div class="ax-list">'+(rows||'<div class="ax-msg">'+esc(leer)+'</div>')+'</div>'
         +'<div class="ax-addwrap"><div class="ax-addlbl">＋ Regel</div>'+add+'</div></div>';
@@ -704,13 +703,6 @@
               return true;
             }
             var rs=A.cfg.rules||[];
-            // Gibt es im gewaehlten Raum ueberhaupt eine Regel? Wenn nicht, faellt
-            // die Liste auf alle zurueck - die Vorauswahl muss das mitmachen.
-            if(zo){
-              var da=false;
-              for(var q=0;q<rs.length;q++){ if(passt(rs[q])){da=true;break;} }
-              if(!da)zo=0;
-            }
             if(passt(rs[A.sel]))return false;
             // "true" loest aEmit() aus, das JEDES Widget neu zeichnet - und damit
             // wieder hier landet. Deshalb nur melden, wenn sich A.sel wirklich
