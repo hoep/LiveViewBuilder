@@ -23,6 +23,22 @@
         .then(function(j){A.sources[zone]={favorites:(j&&j.favorites)||[],playlists:(j&&j.playlists)||[]};cb&&cb();})
         .catch(function(){A.sources[zone]={favorites:[],playlists:[]};cb&&cb();});
     }
+    /**
+     * Welche Audiozone ist im Raumschalter der Musikseite gerade gewaehlt?
+     *
+     * audiox-family.js ist nicht gekapselt, seine Funktionen stehen also auch hier
+     * zur Verfuegung. 0, wenn es keine Musikseite gibt - dann wird nicht gefiltert,
+     * und das Widget verhaelt sich wie ueberall sonst.
+     */
+    function zonenName(id){
+      var z=(A.zones||[]).filter(function(x){return x.id==id;})[0];
+      return z?z.name:('#'+id);
+    }
+    function aktiveZone(sitzung){
+      if(typeof afSess!=='function'||typeof afCur!=='function')return 0;
+      try{ var r=afCur(afSess({session:sitzung||'audio'})); return (r&&r.id)?(parseInt(r.id,10)||0):0; }
+      catch(e){ return 0; }
+    }
     function aStations(cb){
       if(A.stations){cb&&cb();return;}
       if(typeof DOKU!=='undefined'&&DOKU){A.stations=[{key:'oe3',title:'Hitradio Ö3'},{key:'fm4',title:'FM4'}];cb&&cb();return;}
@@ -104,7 +120,17 @@
         headers:{'Content-Type':'text/plain'},body:JSON.stringify({enabled:!!A.cfg.enabled,rules:A.cfg.rules})})
         .then(function(r){return r.json();}).then(function(){A.dirty=false;cb&&cb();aEmit();}).catch(function(){cb&&cb();});
     }
-    function aEmit(){A.subs.forEach(function(s){try{s();}catch(e){}});}
+    // Notbremse: ein Zeichnen darf ein weiteres ausloesen (eine Liste korrigiert
+    // die Auswahl, der Editor daneben zieht nach), aber nicht beliebig tief. Zwei
+    // Listen mit verschiedenen Filtern koennten sich sonst um A.sel streiten und
+    // die Seite einfrieren - ohne Fehlermeldung, weil nichts wirft.
+    var _emitTiefe=0;
+    function aEmit(){
+      if(_emitTiefe>=4)return;
+      _emitTiefe++;
+      try{ A.subs.forEach(function(s){try{s();}catch(e){}}); }
+      finally{ _emitTiefe--; }
+    }
     // Der 45-Sekunden-Takt holt die Regeln neu und ERSETZT A.cfg. Wer gerade
     // Wochentage anklickt oder die Uhrzeit stellt und nicht sofort speichert,
     // verliert die Eingabe genau dann - sichtbar als "nur ein Tag uebernommen".
@@ -159,7 +185,8 @@
       var b={type:kind,enabled:true,name:TYPES[kind].label};
       if(kind==='schedule')return Object.assign(b,{trigger:{kind:'time',time:'20:00',event:'sunset',offsetMin:0,days:[]},sceneId:(A.scenes[0]||{}).id||''});
       if(kind==='circadian')return Object.assign(b,{devices:[],minK:2200,maxK:5500,minLevel:15,maxLevel:100,level:true});
-      if(kind==='wake')return Object.assign(b,{time:'06:30',days:[1,2,3,4,5],rampMin:20,volume:25,audioZone:0,audioSource:{kind:'station',id:''}});
+      if(kind==='wake')return Object.assign(b,{time:'06:30',days:[1,2,3,4,5],rampMin:20,volume:25,
+        audioZone:aktiveZone(''),audioSource:{kind:'station',id:''}});
       if(kind==='motion')return Object.assign(b,{sensor:0,lux:0,luxMax:50,devices:[],holdSec:120,level:-1});
       if(kind==='presence')return Object.assign(b,{awayVar:0,from:'18:00',to:'23:30',devices:[],every:20});
       return b;
@@ -179,8 +206,12 @@
     function listRender(w){
       if(!A.cfg)return '<div class="ax"><div class="ax-msg">lädt …</div></div>';
       var nur=(w&&w.axOnly&&TYPES[w.axOnly])?w.axOnly:'';
+      // Dem Raumschalter folgen (wie "Jetzt laeuft" und "Bibliothek"): nur die
+      // Regeln des gewaehlten Geraets. Ohne gewaehlte Zone bleibt alles sichtbar.
+      var zone=(w&&w.axZone)?aktiveZone(w.axSession):0;
       var sichtbar=(A.cfg.rules||[]).map(function(r,i){return {r:r,i:i};})
-        .filter(function(x){return !nur||x.r.type===nur;});
+        .filter(function(x){return !nur||x.r.type===nur;})
+        .filter(function(x){return !zone||(parseInt(x.r.audioZone,10)||0)===zone;});
       var rows=sichtbar.map(function(x){
         var r=x.r,i=x.i;
         return '<div class="ax-row'+(i===A.sel?' on':'')+(r.enabled===false?' off':'')+'" data-axsel="'+i+'">'
@@ -192,7 +223,9 @@
       var add='<div class="ax-add">'+arten.map(function(k){return '<button data-axadd="'+k+'"><span class="ax-ic">'+aIcon(k)+'</span>'+esc(TYPES[k].label)+'</button>';}).join('')+'</div>';
       var leer=nur?('Noch keine '+TYPES[nur].plural):'Noch keine Regeln';
       return '<div class="ax">'
-        +'<div class="ax-head"><span class="ax-h-t">'+esc(nur?TYPES[nur].plural:'Automatik')+'</span>'+tog(masterOn(),' data-axmaster="1"')+'</div>'
+        +'<div class="ax-head"><span class="ax-h-t">'+esc(nur?TYPES[nur].plural:'Automatik')+'</span>'
+        +(zone?('<span class="ax-badge">'+escL(zonenName(zone))+'</span>'):'')
+        +tog(masterOn(),' data-axmaster="1"')+'</div>'
         +'<div class="ax-list">'+(rows||'<div class="ax-msg">'+esc(leer)+'</div>')+'</div>'
         +'<div class="ax-addwrap"><div class="ax-addlbl">＋ Regel</div>'+add+'</div></div>';
     }
@@ -458,6 +491,7 @@
       // Regeln haengen an Sonnenauf-/-untergang), bei Weckern nur Beiwerk, das
       // die Flaeche fuellt und von der Sache ablenkt. Vorgabe bleibt "zeigen".
       var sonne=!(w&&w.tlSun===false);
+      var nurZone=(w&&w.axZone)?aktiveZone(w.axSession):0;
       var sun=A.cfg.sun||{sunrise:360,sunset:1200};
       var woche = !!(w && w.tlSpan==='woche');
       function pc(min){return Math.max(0,Math.min(100,min/1440*100));}
@@ -486,6 +520,7 @@
         var spannen=[];                                    // Regeln mit Endzeitpunkt: von-bis
         (A.cfg.rules||[]).forEach(function(r,i){
           if(nurT&&r.type!==nurT)return;                   // Beschraenkung auf eine Regelart
+          if(nurZone&&(parseInt(r.audioZone,10)||0)!==nurZone)return;
           if(!tlLaeuft(r,wd))return;                       // Regel schaltet an dem Tag gar nicht
           var p=tlPos(r); if(p.min<0)return;
           pkt.push({r:r,min:p.min,sun:p.sun,tm:p.tm,idx:i,band:false,
@@ -559,6 +594,7 @@
         });
         (A.cfg.rules||[]).forEach(function(r,i){
           if(nurT&&r.type!==nurT)return;                   // Beschraenkung auf eine Regelart
+          if(nurZone&&(parseInt(r.audioZone,10)||0)!==nurZone)return;
           if(!tlLaeuft(r,wd))return;
           var off=(r.enabled===false)?' off':'';
           // Spannen relativ zur Timeline-Hoehe, damit sie jeder Hoehenaenderung folgen.
@@ -610,19 +646,39 @@
         paletteIcon:'clock', size:size,
         defaults:function(w){if(name==='autocard')w.kind=w.kind||'schedule';},
         render:function(w){return rnd(w);},
+        // Wird ein Widget von aussen neu gezeichnet (afEmit beim Raumwechsel),
+        // muessen die Bedienelemente wieder verdrahtet werden - sonst waeren
+        // Liste und Schalter danach tot.
+        _bind:function(w,el){var hh=host(w);if(hh)wire(hh,w);},
         mount:function(w){var el=elOf(w);if(!el)return;
           function auswahlPruefen(){
-            if(name!=='autolist'||!w.axOnly||!A.cfg)return false;
+            if(name!=='autolist'||!A.cfg)return false;
+            var zo=w.axZone?aktiveZone(w.axSession):0;
+            if(!w.axOnly&&!zo)return false;
+            function passt(r){
+              if(!r)return false;
+              if(w.axOnly&&r.type!==w.axOnly)return false;
+              if(zo&&(parseInt(r.audioZone,10)||0)!==zo)return false;
+              return true;
+            }
             var rs=A.cfg.rules||[];
-            var akt=rs[A.sel];
-            if(akt&&akt.type===w.axOnly)return false;
-            for(var i=0;i<rs.length;i++){ if(rs[i].type===w.axOnly){A.sel=i;return true;} }
-            A.sel=-1; return true;
+            if(passt(rs[A.sel]))return false;
+            // "true" loest aEmit() aus, das JEDES Widget neu zeichnet - und damit
+            // wieder hier landet. Deshalb nur melden, wenn sich A.sel wirklich
+            // geaendert hat. Sonst dreht sich das bei einem Raum ohne passende
+            // Regel endlos im Kreis (A.sel bleibt -1, gilt aber als Aenderung)
+            // und die Seite friert beim ersten Klick ein.
+            var vorher=A.sel, neu=-1;
+            for(var i=0;i<rs.length;i++){ if(passt(rs[i])){neu=i;break;} }
+            A.sel=neu; return neu!==vorher;
           }
           function paint(){var geaendert=auswahlPruefen();
             function zeichnen(){var hh=host(w);if(hh){hh.innerHTML=rnd(w);wire(hh,w);}if(geaendert)aEmit();}
             if(name==='autoedit'&&A.cfg){editVorbereiten(w,zeichnen);}else{zeichnen();}}
           aSub(paint);                 // fuer Aenderungen an anderen Widgets (Auswahl/Speichern)
+          // Am Raumschalter der Musikseite anmelden: wechselt dort das Geraet,
+          // zeichnet afEmit uns mit - deshalb weiter unten auch ein _bind.
+          if(w.axZone&&typeof afSub==='function'){ try{ afSub({id:w.id,session:w.axSession||'audio'}); }catch(e){} }
           if(A.cfg){paint();}else{aLoad(paint);}   // jedes Widget zeichnet sich selbst nach dem Laden
           LVB.panel.startPoll('autox:'+w.id,45000,function(){if(A.dirty)return;aLoad(paint);});
         },
@@ -633,6 +689,8 @@
               +row('Regelart','<select id="axOnly"><option value="">alle Regeln</option>'
                 +Object.keys(TYPES).map(function(k){return '<option value="'+k+'"'+(w.axOnly===k?' selected':'')+'>nur '+esc(TYPES[k].plural)+'</option>';}).join('')
                 +'</select>')
+              +row('Raumschalter','<label style="display:inline-flex;align-items:center;gap:6px;font-size:12px">'
+                +'<input type="checkbox" id="axZoneF"'+(w.axZone?' checked':'')+'> nur das gewählte Musik-Gerät</label>')
               +row('Sonnenband','<label style="display:inline-flex;align-items:center;gap:6px;font-size:12px">'
                 +'<input type="checkbox" id="axTlSun"'+((w.tlSun===false)?'':' checked')+'> Tag/Nacht hinterlegen</label>')
               +'<div class="pgh">Zeitraum</div>'
@@ -646,7 +704,9 @@
               +row('Regelart','<select id="axOnly"><option value="">alle Regeln</option>'
                 +Object.keys(TYPES).map(function(k){return '<option value="'+k+'"'+(w.axOnly===k?' selected':'')+'>nur '+esc(TYPES[k].plural)+'</option>';}).join('')
                 +'</select>')
-              +'<div style="font-size:11px;color:var(--muted);line-height:1.4;padding:4px 2px">Blendet die Liste auf eine Art ein - z. B. nur Wecker auf der Musikseite. Die Auswahl ist seitenweit geteilt: der Detail-Editor daneben zeigt weiterhin die angeklickte Regel.</div>';
+              +row('Raumschalter','<label style="display:inline-flex;align-items:center;gap:6px;font-size:12px">'
+                +'<input type="checkbox" id="axZoneF"'+(w.axZone?' checked':'')+'> nur das gewählte Musik-Gerät</label>')
+              +'<div style="font-size:11px;color:var(--muted);line-height:1.4;padding:4px 2px">Blendet die Liste auf eine Art ein - z. B. nur Wecker auf der Musikseite. Mit Raumschalter folgt sie zusätzlich der Geräteauswahl oben, wie „Jetzt läuft" und „Bibliothek".</div>';
           }
           if(name!=='autocard')return '<div style="font-size:11px;color:var(--muted);padding:4px 2px">Teil der Automatik-Familie. Auf einer Seite mit autolist+autoedit kombinieren.</div>';
           var h='<div class="pgh">Kategorie</div>';
@@ -656,6 +716,7 @@
         wire:function(w){
           if($('#axKind'))$('#axKind').onchange=function(){w.kind=this.value;commit();var hh=host(w);if(hh){hh.innerHTML=rnd(w);}};
           if($('#axOnly'))$('#axOnly').onchange=function(){w.axOnly=this.value||undefined;commit();var hh=host(w);if(hh){hh.innerHTML=rnd(w);wire(hh,w);}};
+          if($('#axZoneF'))$('#axZoneF').onchange=function(){w.axZone=this.checked?true:undefined;commit();var hh=host(w);if(hh){hh.innerHTML=rnd(w);wire(hh,w);}};
           if($('#axSpan'))$('#axSpan').onchange=function(){w.tlSpan=this.value;commit();var hh=host(w);if(hh){hh.innerHTML=rnd(w);wire(hh,w);}};
           if($('#axTlSun'))$('#axTlSun').onchange=function(){w.tlSun=this.checked?undefined:false;commit();var hh=host(w);if(hh){hh.innerHTML=rnd(w);wire(hh,w);}};
         }
