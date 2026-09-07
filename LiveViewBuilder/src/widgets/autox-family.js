@@ -290,51 +290,69 @@
         +'<input class="ax-name" id="axName" value="'+esc(r.name||'')+'"><span class="ax-badge">'+esc(TYPES[r.type].label)+'</span>'
         +tog(r.enabled!==false,' id="axEnEd"')+'</div><div class="ax-ed-body">';
       if(r.type==='schedule'){var t=r.trigger||{};
-        h+=fld('Auslöser','<div class="ax-seg"><button data-axtk="time" class="'+(t.kind!=='sun'?'on':'')+'">Uhrzeit</button><button data-axtk="sun" class="'+(t.kind==='sun'?'on':'')+'">Sonne</button></div>');
-        if(t.kind==='sun'){
-          h+=fld('Sonnen-Ereignis','<div class="ax-r"><select class="ax-sel" id="axEv"><option value="sunset"'+(t.event!=='sunrise'?' selected':'')+'>Sonnenuntergang</option><option value="sunrise"'+(t.event==='sunrise'?' selected':'')+'>Sonnenaufgang</option></select>'
-            +'<span class="ax-mono ax-mut">Versatz</span>'+stepper('axOff',(t.offsetMin||0),'min')+'</div>');
-        } else {
-          h+=fld('Uhrzeit','<input class="ax-time" type="time" id="axTime" value="'+esc(t.time||'20:00')+'">');
-        }
-        h+=fld('Wochentage','<div class="ax-days">'+daychips(t.days,'data-axday')+'</div><div class="ax-hint">nichts gewählt = täglich</div>');
-        // Aktion und Gegenrichtung in EINER Zeile: der Bereich ist auf manchen Seiten
-        // nur gut 350 px hoch, zwei zusaetzliche Zeilen schoben den Endzeitpunkt unter
-        // die Kante - vorhanden, aber unerreichbar.
-        h+=fld('Aktion','<div class="ax-r">'+sceneSel(r.sceneId,'id="axScene"')
-          +'<div class="ax-seg">'
-          +'<button data-axdir="on" class="'+(r.sceneAction!=='off'?'on':'')+'">ein</button>'
-          +'<button data-axdir="off" class="'+(r.sceneAction==='off'?'on':'')+'">aus</button></div></div>');
-        // Endzeitpunkt: schaltet dieselbe Szene wieder in die Gegenrichtung.
         var et = r.endTrigger;
-        h+=fld('Endzeitpunkt','<div class="ax-r">'
-          +'<div class="ax-seg"><button data-axend="off" class="'+(!et?'on':'')+'">keiner</button>'
-          +'<button data-axend="time" class="'+(et&&et.kind!=='sun'?'on':'')+'">Uhrzeit</button>'
-          +'<button data-axend="sun" class="'+(et&&et.kind==='sun'?'on':'')+'">Sonne</button></div>'
-          +(et
-            ? (et.kind==='sun'
-                ? '<select class="ax-sel" id="axEndEv">'
-                  +'<option value="sunset"'+(et.event!=='sunrise'?' selected':'')+'>Sonnenuntergang</option>'
-                  +'<option value="sunrise"'+(et.event==='sunrise'?' selected':'')+'>Sonnenaufgang</option></select>'
-                  +stepper('axEndOff',(et.offsetMin||0),'min')
-                : '<input class="ax-time" type="time" id="axEndTime" value="'+esc(et.time||'23:00')+'">')
-            : '<span class="ax-mut" style="font-size:11px">schaltet dann '+(r.sceneAction==='off'?'ein':'aus')+'</span>')
-          +'</div>');
+        // WANN: Auslöser, Zeitpunkt und Versatz ergeben EINEN Zeitpunkt und
+        // gehoeren deshalb in eine Zeile. Die Wochentage sind eine eigene Aussage.
+        h+=absch('Wann',
+            azeile('<div class="ax-seg"><button data-axtk="time" class="'+(t.kind!=='sun'?'on':'')+'">Uhrzeit</button>'
+              +'<button data-axtk="sun" class="'+(t.kind==='sun'?'on':'')+'">Sonne</button></div>'
+              +(t.kind==='sun'
+                ? '<select class="ax-sel" id="axEv"><option value="sunset"'+(t.event!=='sunrise'?' selected':'')+'>Sonnenuntergang</option>'
+                  +'<option value="sunrise"'+(t.event==='sunrise'?' selected':'')+'>Sonnenaufgang</option></select>'
+                  +amut('Versatz')+stepper('axOff',(t.offsetMin||0),'min')
+                : '<input class="ax-time" type="time" id="axTime" value="'+esc(t.time||'20:00')+'">'))
+          + azeile(amut('an Tagen')+'<div class="ax-days">'+daychips(t.days,'data-axday')+'</div>'
+              +'<span class="ax-hint">nichts gewählt = täglich</span>'));
+        // WAS: die Szene heisst oft selbst "Alles aus" - "ein/aus" daneben war
+        // nicht zu lesen. "aktivieren/zurücknehmen" sagt, was mit ihr geschieht.
+        h+=absch('Was',
+            azeile(amut('Szene')+sceneSel(r.sceneId,'id="axScene"')
+              +'<div class="ax-seg">'
+              +'<button data-axdir="on" class="'+(r.sceneAction!=='off'?'on':'')+'">aktivieren</button>'
+              +'<button data-axdir="off" class="'+(r.sceneAction==='off'?'on':'')+'">zurücknehmen</button></div>'));
+        // BIS WANN: setzt dieselbe Szene wieder in die Gegenrichtung.
+        h+=absch('Bis wann',
+            azeile('<div class="ax-seg"><button data-axend="off" class="'+(!et?'on':'')+'">kein Ende</button>'
+              +'<button data-axend="time" class="'+(et&&et.kind!=='sun'?'on':'')+'">Uhrzeit</button>'
+              +'<button data-axend="sun" class="'+(et&&et.kind==='sun'?'on':'')+'">Sonne</button></div>'
+              +(et
+                ? (et.kind==='sun'
+                    ? '<select class="ax-sel" id="axEndEv"><option value="sunset"'+(et.event!=='sunrise'?' selected':'')+'>Sonnenuntergang</option>'
+                      +'<option value="sunrise"'+(et.event==='sunrise'?' selected':'')+'>Sonnenaufgang</option></select>'
+                      +stepper('axEndOff',(et.offsetMin||0),'min')
+                      +'<span class="ax-hint">dann wird die Szene '+(r.sceneAction==='off'?'aktiviert':'zurückgenommen')+'</span>'
+                    : '<input class="ax-time" type="time" id="axEndTime" value="'+esc(et.time||'23:00')+'">'
+                      +'<span class="ax-hint">dann wird die Szene '+(r.sceneAction==='off'?'aktiviert':'zurückgenommen')+'</span>')
+                : '<span class="ax-hint">die Szene bleibt, bis etwas anderes schaltet</span>')));
       }
       else if(r.type==='circadian'){
-        h+=fld('Lampen',devChips(r.devices,'data-axdev'));
-        h+=fld('Farbtemperatur','<div class="ax-r">'+stepper('axMinK',r.minK,'K')+'<span class="ax-mut">bis</span>'+stepper('axMaxK',r.maxK,'K')+'</div><div class="ax-ramp"></div>');
-        h+=fld('Helligkeit auch nachführen',tog(r.level!==false,' id="axLvl"'));
-        h+=fld('Helligkeitsbereich','<div class="ax-r">'+stepper('axMinLvl',(r.minLevel!=null?r.minLevel:0),'%')+'<span class="ax-mut">bis</span>'+stepper('axMaxLvl',(r.maxLevel!=null?r.maxLevel:100),'%')+'</div>');
+        // Circadian laeuft den ganzen Tag - ein "wann" gibt es nicht. Die Frage
+        // ist, WELCHE Lampen und WIE sie ueber den Tag geführt werden.
+        h+=absch('Lampen', azeile(devChips(r.devices,'data-axdev')));
+        h+=absch('Farbe',
+            azeile(amut('von')+stepper('axMinK',r.minK,'K')+amut('bis')+stepper('axMaxK',r.maxK,'K')
+              +'<span class="ax-hint">morgens warm, mittags kalt</span>')
+          + azeile('<div class="ax-ramp" style="flex:1"></div>'));
+        h+=absch('Helligkeit',
+            azeile(tog(r.level!==false,' id="axLvl"')+amut('auch nachführen'))
+          + (r.level!==false
+              ? azeile(amut('von')+stepper('axMinLvl',(r.minLevel!=null?r.minLevel:0),'%')
+                  +amut('bis')+stepper('axMaxLvl',(r.maxLevel!=null?r.maxLevel:100),'%'))
+              : ''));
       }
       else if(r.type==='wake'){
         // Wecken ist REIN AUDIO - kein Licht. Wer Licht dazu will, legt eine
         // eigene Zeitplan-Regel auf dieselbe Uhrzeit; so bleibt jede Regel bei
         // einem Zweck. Quelle als {kind,id}: Radio, Playlist oder Favorit.
         var q=wakeQuelle(r);
-        h+=fld('Weckzeit','<div class="ax-r"><input class="ax-time" type="time" id="axTime" value="'+esc(r.time||'06:30')+'">'+stepper('axRamp',(r.rampMin||0),'min Rampe')+'</div>');
-        h+=fld('Wochentage','<div class="ax-days">'+daychips(r.days,'data-axday')+'</div>');
-        h+=fld('Musik-Zone','<select class="ax-sel" id="axZone"><option value="0">— keine —</option>'+A.zones.map(function(z){return '<option value="'+z.id+'"'+(z.id==r.audioZone?' selected':'')+'>'+escL(z.name)+'</option>';}).join('')+'</select>');
+        h+=absch('Wann',
+            azeile('<input class="ax-time" type="time" id="axTime" value="'+esc(r.time||'06:30')+'">'
+              +amut('einblenden über')+stepper('axRamp',(r.rampMin||0),'min'))
+          + azeile(amut('an Tagen')+'<div class="ax-days">'+daychips(r.days,'data-axday')+'</div>'));
+        h+=absch('Wo',
+            azeile('<select class="ax-sel" id="axZone"><option value="0">— keine —</option>'
+              +A.zones.map(function(z){return '<option value="'+z.id+'"'+(z.id==r.audioZone?' selected':'')+'>'+escL(z.name)+'</option>';}).join('')
+              +'</select>'));
         // Radio kommt als Auswahlliste (die Sender sind bekannt). Playlist und
         // Favorit bleiben ein Zahlenfeld: dafuer liefert derzeit KEINE Schnittstelle
         // Namen - weder die Variablenprofile der Zone noch die Anbieter-Playlists.
@@ -364,35 +382,66 @@
               +'</select>';
           }
         }
-        h+=fld('Quelle','<div class="ax-r"><select class="ax-sel" id="axKind">'
-          +[['station','Radio'],['playlist','Playlist'],['favorite','Favorit']].map(function(o){
-              return '<option value="'+o[0]+'"'+(q.kind===o[0]?' selected':'')+'>'+o[1]+'</option>';}).join('')
-          +'</select> '+srcFeld+'</div>');
+        h+=absch('Was',
+            azeile('<select class="ax-sel" id="axKind">'
+              +[['station','Radio'],['playlist','Playlist'],['favorite','Favorit']].map(function(o){
+                  return '<option value="'+o[0]+'"'+(q.kind===o[0]?' selected':'')+'>'+o[1]+'</option>';}).join('')
+              +'</select>'+srcFeld));
         // Lautstaerke und Auto-Aus teilen sich eine Zeile: im Musik-Rahmen sind nur
         // 767 px hoch, und der Wochenbalken darunter braucht seine sieben Bahnen.
         // 'axOff2', nicht 'axOff' - der Name gehoert schon dem Sonnen-Versatz der
         // Zeitplan-Regeln, und beide Regelarten teilen sich dieselbe Stepper-Tabelle.
-        h+=fld('Lautstärke / Aus','<div class="ax-r">'+stepper('axVol',(r.volume!=null?r.volume:25),'%')
-          +'<span class="ax-mut">danach aus nach</span>'
-          +stepper('axOff2',(r.offAfterMin||0),(r.offAfterMin?'min':'min (0 = nie)'))+'</div>');
+        // Lautstaerke und Abschaltung in EINEM Abschnitt: die Weckerkarte ist auf
+        // der Musikseite nur 290 px hoch, fuenf Abschnitte passten nicht hinein.
+        h+=absch('Wie',
+            azeile(stepper('axVol',(r.volume!=null?r.volume:25),'%')
+              +amut('laut, aus nach')+stepper('axOff2',(r.offAfterMin||0),'min')
+              +'<span class="ax-hint">'+(r.offAfterMin?'ab der Weckzeit':'0 = bis jemand ausschaltet')+'</span>'));
       }
       else if(r.type==='motion'){
-        h+=fld('Bewegungsmelder',sensorSel(r.sensor||0,A.motionSensors,'id="axSensor"'));
-        h+=fld('Helligkeit (Lux-Variable, optional)','<div class="ax-r"><input class="ax-in ax-mono" id="axLux" type="number" value="'+(r.lux||'')+'" placeholder="Lux-Var" style="width:clamp(80px,24cqi,130px)"> '+stepper('axLuxMax',(r.luxMax||0),'lux max')+'</div>');
-        h+=fld('Lampen',devChips(r.devices,'data-axdev'));
-        h+=fld('Nachlaufzeit',stepper('axHold',Math.round((r.holdSec||0)/60),'min'));
-        h+=fld('Helligkeit',stepper('axLevel',lvlTxt(r.level),''));
+        h+=absch('Wann',
+            azeile(amut('Melder')+sensorSel(r.sensor||0,A.motionSensors,'id="axSensor"'))
+          + azeile(amut('nur wenn dunkler als')
+              +'<input class="ax-in ax-mono" id="axLux" type="number" value="'+(r.lux||'')+'" placeholder="Lux-Var" style="width:clamp(80px,24cqi,130px)"> '
+              +stepper('axLuxMax',(r.luxMax||0),'lux')
+              +'<span class="ax-hint">Feld leer = Helligkeit egal</span>'));
+        h+=absch('Was',
+            azeile(devChips(r.devices,'data-axdev'))
+          + azeile(amut('Helligkeit')+stepper('axLevel',lvlTxt(r.level),'')));
+        h+=absch('Bis wann',
+            azeile(amut('noch')+stepper('axHold',Math.round((r.holdSec||0)/60),'min')
+              +'<span class="ax-hint">nach der letzten Bewegung</span>'));
       }
       else if(r.type==='presence'){
-        h+=fld('Abwesend-Sensor',sensorSel(r.awayVar||0,A.awaySensors,'id="axAway"'));
-        h+=fld('Zeitfenster','<div class="ax-r"><input class="ax-time" type="time" id="axFrom" value="'+esc(r.from||'18:00')+'"><span class="ax-mut">bis</span><input class="ax-time" type="time" id="axTo" value="'+esc(r.to||'23:30')+'"></div>');
-        h+=fld('Lampen (Auswahl)',devChips(r.devices,'data-axdev'));
-        h+=fld('Takt',stepper('axEvery',(r.every||20),'min'));
+        h+=absch('Wann',
+            azeile(amut('solange abwesend laut')+sensorSel(r.awayVar||0,A.awaySensors,'id="axAway"'))
+          + azeile(amut('zwischen')+'<input class="ax-time" type="time" id="axFrom" value="'+esc(r.from||'18:00')+'">'
+              +amut('und')+'<input class="ax-time" type="time" id="axTo" value="'+esc(r.to||'23:30')+'">'));
+        h+=absch('Was',
+            azeile(devChips(r.devices,'data-axdev'))
+          + azeile('<span class="ax-hint">aus dieser Auswahl wird zufällig geschaltet</span>'));
+        h+=absch('Wie oft',
+            azeile(amut('alle')+stepper('axEvery',(r.every||20),'min')));
       }
       h+='</div><div class="ax-foot"><button class="ax-btn prim" id="axSave">Speichern</button><button class="ax-btn" id="axTest">Jetzt testen</button><button class="ax-btn danger" id="axDel">Löschen</button></div></div>';
       return h;
     }
     function fld(l,b){return '<div class="ax-fld"><label>'+esc(l)+'</label>'+b+'</div>';}
+    /**
+     * Abschnitt der Regelkarte: ein Wort links, der Inhalt rechts.
+     *
+     * Vorher lagen alle Felder als gleichrangige Kacheln in einem Raster, das sie
+     * zu dritt umbrach. Die Karte las sich dadurch quer statt als Satz: "Auslöser
+     * Sonne" oben links, "Sonnenuntergang" in Spalte zwei, "ein" eine Zeile
+     * darunter. Jetzt steht jede Aussage in EINER Zeile, und die Abschnitte
+     * beantworten der Reihe nach wann, was und bis wann.
+     */
+    function absch(wort,inhalt){
+      return '<div class="ax-abs"><div class="ax-abs-w">'+esc(wort)+'</div>'
+           + '<div class="ax-abs-i">'+inhalt+'</div></div>';
+    }
+    function azeile(inhalt){return '<div class="ax-abs-r">'+inhalt+'</div>';}
+    function amut(t){return '<span class="ax-mut">'+esc(t)+'</span>';}
     // Weck-Quelle lesen: neues Format {kind,id}; eine blosse Zeichenkette ist ein
     // Radiosender aus der Zeit, als der Wecker nur Radio konnte.
     function wakeQuelle(r){
