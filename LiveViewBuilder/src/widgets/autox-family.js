@@ -128,7 +128,14 @@
     function aEmit(){
       if(_emitTiefe>=4)return;
       _emitTiefe++;
-      try{ A.subs.forEach(function(s){try{s();}catch(e){}}); }
+      try{
+        // Wer nicht mehr im Dokument steht, fliegt raus. Sonst reden Seiten mit,
+        // die laengst verlassen sind.
+        A.subs=A.subs.filter(function(s){
+          return !s.wid || document.querySelector('.w[data-id="'+s.wid+'"]');
+        });
+        A.subs.slice().forEach(function(s){try{s.fn();}catch(e){}});
+      }
       finally{ _emitTiefe--; }
     }
     // Der 45-Sekunden-Takt holt die Regeln neu und ERSETZT A.cfg. Wer gerade
@@ -136,7 +143,13 @@
     // verliert die Eingabe genau dann - sichtbar als "nur ein Tag uebernommen".
     // Solange etwas offen ist, wird deshalb nicht nachgeladen.
     function aTouch(){A.dirty=true;}
-    function aSub(fn){A.subs.push(fn);}
+    /**
+     * Zuhoerer anmelden - MIT Widget, damit sie beim Seitenwechsel abgeraeumt
+     * werden koennen. Ohne das blieben die Zuhoerer alter Seiten stehen: auf der
+     * Lichtseite lief die Weckerliste weiter mit, beide korrigierten die geteilte
+     * Auswahl in ihre Richtung, und ein Klick auf eine Regel wirkte gar nicht.
+     */
+    function aSub(fn,w){A.subs.push({fn:fn,wid:(w&&w.id)||''});}
 
     function sceneName(id){var s=A.scenes.find(function(x){return x.id===id;});return s?s.name:(id||'—');}
     function daysTxt(d){if(!d||!d.length)return 'täglich';if(d.length===7)return 'täglich';
@@ -199,19 +212,48 @@
     // =============================== autolist ===============================
     // Gesamt-Automatik: kombiniert Regel-Store (A.cfg.enabled) + Hub-Variable (automationEnabled).
     function masterOn(){if(!A.cfg)return false;var on=!!A.cfg.enabled;if(A.cfg.automationEnabled!=null)on=on&&!!A.cfg.automationEnabled;return on;}
+    /**
+     * Welche Regelarten zeigt dieses Widget?
+     *
+     * axOnly beschraenkt auf EINE Art - fuer eine Seite, die nur Wecker zeigt.
+     * axOhne blendet EINE Art aus - fuer die Lichtseite, die alles ausser den
+     * Weckern zeigen soll. Beide leer = alles, wie es vorher war.
+     *
+     * Ohne axOhne tauchten die Weckregeln in der Licht-Zeitsteuerung auf, sobald
+     * es die ersten gab: sie liegen im selben Regelspeicher, sind dort aber fehl
+     * am Platz.
+     */
+    function axArt(w){
+      return {
+        nur:  (w && w.axOnly && TYPES[w.axOnly]) ? w.axOnly : '',
+        ohne: (w && w.axOhne && TYPES[w.axOhne]) ? w.axOhne : '',
+      };
+    }
+    function axPasst(r, f){
+      if (!r) return false;
+      if (f.nur  && r.type !== f.nur)  return false;
+      if (f.ohne && r.type === f.ohne) return false;
+      return true;
+    }
     // Beschraenkung auf EINE Regelart (w.axOnly). Leer = alle, wie bisher.
     // Wichtig: der Index in data-axsel bleibt der Index in A.cfg.rules - die
     // Auswahl wird sitzungsweit geteilt, eine Umnummerierung der gefilterten
     // Liste wuerde die falsche Regel oeffnen.
     function listRender(w){
       if(!A.cfg)return '<div class="ax"><div class="ax-msg">lädt …</div></div>';
-      var nur=(w&&w.axOnly&&TYPES[w.axOnly])?w.axOnly:'';
+      var f=axArt(w), nur=f.nur;
       // Dem Raumschalter folgen (wie "Jetzt laeuft" und "Bibliothek"): nur die
       // Regeln des gewaehlten Geraets. Ohne gewaehlte Zone bleibt alles sichtbar.
       var zone=(w&&w.axZone)?aktiveZone(w.axSession):0;
-      var sichtbar=(A.cfg.rules||[]).map(function(r,i){return {r:r,i:i};})
-        .filter(function(x){return !nur||x.r.type===nur;})
-        .filter(function(x){return !zone||(parseInt(x.r.audioZone,10)||0)===zone;});
+      var alle=(A.cfg.rules||[]).map(function(r,i){return {r:r,i:i};})
+        .filter(function(x){return axPasst(x.r,f);});
+      var imRaum=zone?alle.filter(function(x){return (parseInt(x.r.audioZone,10)||0)===zone;}):alle;
+      // Hat der gewaehlte Raum keine Regel, wird NICHT ausgeblendet, sondern alles
+      // gezeigt. Sonst steht man vor einer leeren Liste und die Seite wirkt kaputt:
+      // genau das passierte, als alle drei Wecker dem Lesezimmer gehoerten und der
+      // Raumschalter woanders stand - es gab nichts zum Anklicken.
+      var raumLeer=!!(zone&&!imRaum.length);
+      var sichtbar=raumLeer?alle:imRaum;
       var rows=sichtbar.map(function(x){
         var r=x.r,i=x.i;
         return '<div class="ax-row'+(i===A.sel?' on':'')+(r.enabled===false?' off':'')+'" data-axsel="'+i+'">'
@@ -219,12 +261,12 @@
           +'<div class="ax-tx"><div class="ax-nm">'+escL(r.name||TYPES[r.type].label)+'</div><div class="ax-sub">'+esc(aSummary(r))+'</div></div>'
           +tog(r.enabled!==false,' data-axen="'+i+'"')+'</div>';
       }).join('');
-      var arten=nur?[nur]:Object.keys(TYPES);
+      var arten=nur?[nur]:Object.keys(TYPES).filter(function(k){return k!==f.ohne;});
       var add='<div class="ax-add">'+arten.map(function(k){return '<button data-axadd="'+k+'"><span class="ax-ic">'+aIcon(k)+'</span>'+esc(TYPES[k].label)+'</button>';}).join('')+'</div>';
       var leer=nur?('Noch keine '+TYPES[nur].plural):'Noch keine Regeln';
       return '<div class="ax">'
         +'<div class="ax-head"><span class="ax-h-t">'+esc(nur?TYPES[nur].plural:'Automatik')+'</span>'
-        +(zone?('<span class="ax-badge">'+escL(zonenName(zone))+'</span>'):'')
+        +(zone?('<span class="ax-badge">'+escL(raumLeer?('nichts für '+zonenName(zone)+' – alle'):zonenName(zone))+'</span>'):'')
         +tog(masterOn(),' data-axmaster="1"')+'</div>'
         +'<div class="ax-list">'+(rows||'<div class="ax-msg">'+esc(leer)+'</div>')+'</div>'
         +'<div class="ax-addwrap"><div class="ax-addlbl">＋ Regel</div>'+add+'</div></div>';
@@ -486,7 +528,7 @@
       if(!A.cfg)return '<div class="ax"><div class="ax-msg">lädt …</div></div>';
       // Beschraenkung wie bei autolist: auf einer Weckerseite haben Bewegungs- und
       // Beleuchtungsregeln nichts zu suchen.
-      var nurT=(w&&w.axOnly&&TYPES[w.axOnly])?w.axOnly:'';
+      var fT=axArt(w), nurT=fT.nur;
       // Tag/Nacht-Hintergrund: bei der Lichtautomatik die Bezugsgroesse (halbe
       // Regeln haengen an Sonnenauf-/-untergang), bei Weckern nur Beiwerk, das
       // die Flaeche fuellt und von der Sache ablenkt. Vorgabe bleibt "zeigen".
@@ -519,7 +561,7 @@
         var pkt=[];
         var spannen=[];                                    // Regeln mit Endzeitpunkt: von-bis
         (A.cfg.rules||[]).forEach(function(r,i){
-          if(nurT&&r.type!==nurT)return;                   // Beschraenkung auf eine Regelart
+          if(!axPasst(r,fT))return;                        // Beschraenkung/Ausblendung je Regelart
           if(nurZone&&(parseInt(r.audioZone,10)||0)!==nurZone)return;
           if(!tlLaeuft(r,wd))return;                       // Regel schaltet an dem Tag gar nicht
           var p=tlPos(r); if(p.min<0)return;
@@ -593,7 +635,7 @@
           });
         });
         (A.cfg.rules||[]).forEach(function(r,i){
-          if(nurT&&r.type!==nurT)return;                   // Beschraenkung auf eine Regelart
+          if(!axPasst(r,fT))return;                        // Beschraenkung/Ausblendung je Regelart
           if(nurZone&&(parseInt(r.audioZone,10)||0)!==nurZone)return;
           if(!tlLaeuft(r,wd))return;
           var off=(r.enabled===false)?' off':'';
@@ -654,14 +696,21 @@
           function auswahlPruefen(){
             if(name!=='autolist'||!A.cfg)return false;
             var zo=w.axZone?aktiveZone(w.axSession):0;
-            if(!w.axOnly&&!zo)return false;
+            var f=axArt(w);
+            if(!f.nur&&!f.ohne&&!zo)return false;
             function passt(r){
-              if(!r)return false;
-              if(w.axOnly&&r.type!==w.axOnly)return false;
+              if(!axPasst(r,f))return false;
               if(zo&&(parseInt(r.audioZone,10)||0)!==zo)return false;
               return true;
             }
             var rs=A.cfg.rules||[];
+            // Gibt es im gewaehlten Raum ueberhaupt eine Regel? Wenn nicht, faellt
+            // die Liste auf alle zurueck - die Vorauswahl muss das mitmachen.
+            if(zo){
+              var da=false;
+              for(var q=0;q<rs.length;q++){ if(passt(rs[q])){da=true;break;} }
+              if(!da)zo=0;
+            }
             if(passt(rs[A.sel]))return false;
             // "true" loest aEmit() aus, das JEDES Widget neu zeichnet - und damit
             // wieder hier landet. Deshalb nur melden, wenn sich A.sel wirklich
@@ -670,12 +719,13 @@
             // und die Seite friert beim ersten Klick ein.
             var vorher=A.sel, neu=-1;
             for(var i=0;i<rs.length;i++){ if(passt(rs[i])){neu=i;break;} }
-            A.sel=neu; return neu!==vorher;
+            A.sel=neu;
+            return neu!==vorher;
           }
           function paint(){var geaendert=auswahlPruefen();
             function zeichnen(){var hh=host(w);if(hh){hh.innerHTML=rnd(w);wire(hh,w);}if(geaendert)aEmit();}
             if(name==='autoedit'&&A.cfg){editVorbereiten(w,zeichnen);}else{zeichnen();}}
-          aSub(paint);                 // fuer Aenderungen an anderen Widgets (Auswahl/Speichern)
+          aSub(paint,w);               // fuer Aenderungen an anderen Widgets (Auswahl/Speichern)
           // Am Raumschalter der Musikseite anmelden: wechselt dort das Geraet,
           // zeichnet afEmit uns mit - deshalb weiter unten auch ein _bind.
           if(w.axZone&&typeof afSub==='function'){ try{ afSub({id:w.id,session:w.axSession||'audio'}); }catch(e){} }
@@ -688,6 +738,9 @@
             return '<div class="pgh">Umfang</div>'
               +row('Regelart','<select id="axOnly"><option value="">alle Regeln</option>'
                 +Object.keys(TYPES).map(function(k){return '<option value="'+k+'"'+(w.axOnly===k?' selected':'')+'>nur '+esc(TYPES[k].plural)+'</option>';}).join('')
+                +'</select>')
+              +row('Ausblenden','<select id="axOhne"><option value="">nichts ausblenden</option>'
+                +Object.keys(TYPES).map(function(k){return '<option value="'+k+'"'+(w.axOhne===k?' selected':'')+'>ohne '+esc(TYPES[k].plural)+'</option>';}).join('')
                 +'</select>')
               +row('Raumschalter','<label style="display:inline-flex;align-items:center;gap:6px;font-size:12px">'
                 +'<input type="checkbox" id="axZoneF"'+(w.axZone?' checked':'')+'> nur das gewählte Musik-Gerät</label>')
@@ -704,6 +757,9 @@
               +row('Regelart','<select id="axOnly"><option value="">alle Regeln</option>'
                 +Object.keys(TYPES).map(function(k){return '<option value="'+k+'"'+(w.axOnly===k?' selected':'')+'>nur '+esc(TYPES[k].plural)+'</option>';}).join('')
                 +'</select>')
+              +row('Ausblenden','<select id="axOhne"><option value="">nichts ausblenden</option>'
+                +Object.keys(TYPES).map(function(k){return '<option value="'+k+'"'+(w.axOhne===k?' selected':'')+'>ohne '+esc(TYPES[k].plural)+'</option>';}).join('')
+                +'</select>')
               +row('Raumschalter','<label style="display:inline-flex;align-items:center;gap:6px;font-size:12px">'
                 +'<input type="checkbox" id="axZoneF"'+(w.axZone?' checked':'')+'> nur das gewählte Musik-Gerät</label>')
               +'<div style="font-size:11px;color:var(--muted);line-height:1.4;padding:4px 2px">Blendet die Liste auf eine Art ein - z. B. nur Wecker auf der Musikseite. Mit Raumschalter folgt sie zusätzlich der Geräteauswahl oben, wie „Jetzt läuft" und „Bibliothek".</div>';
@@ -716,6 +772,7 @@
         wire:function(w){
           if($('#axKind'))$('#axKind').onchange=function(){w.kind=this.value;commit();var hh=host(w);if(hh){hh.innerHTML=rnd(w);}};
           if($('#axOnly'))$('#axOnly').onchange=function(){w.axOnly=this.value||undefined;commit();var hh=host(w);if(hh){hh.innerHTML=rnd(w);wire(hh,w);}};
+          if($('#axOhne'))$('#axOhne').onchange=function(){w.axOhne=this.value||undefined;commit();var hh=host(w);if(hh){hh.innerHTML=rnd(w);wire(hh,w);}};
           if($('#axZoneF'))$('#axZoneF').onchange=function(){w.axZone=this.checked?true:undefined;commit();var hh=host(w);if(hh){hh.innerHTML=rnd(w);wire(hh,w);}};
           if($('#axSpan'))$('#axSpan').onchange=function(){w.tlSpan=this.value;commit();var hh=host(w);if(hh){hh.innerHTML=rnd(w);wire(hh,w);}};
           if($('#axTlSun'))$('#axTlSun').onchange=function(){w.tlSun=this.checked?undefined:false;commit();var hh=host(w);if(hh){hh.innerHTML=rnd(w);wire(hh,w);}};
