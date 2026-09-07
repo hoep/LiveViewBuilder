@@ -5,7 +5,12 @@
       if(w.vcNoteVid===id||w.vcCapVid===id||w.vcBadgeVid===id||w.vcBadgeStVid===id||w.rngCurVid===id||w.vcTitleVid===id||w.vcAccVid===id)return true;
       if(Array.isArray(w.vcStats)){for(var _s=0;_s<w.vcStats.length;_s++){if(w.vcStats[_s]&&w.vcStats[_s].vid===id)return true;}}
     }
-    if(w.varId===id||w.varId2===id||w.varId3===id||w.dVid===id||w.varIdB===id||w.dVidB===id||w.stufeVid===id||w.cvActId===id||w.cvAzB===id||w.cvAzE===id||w.cvElv===id||w.cvBlockVid===id||w.cmpVid===id||w.ackVid===id||w.condVar===id||w.vTemp===id||w.vCond===id||w.vHum===id||w.vWind===id||w.vGust===id||w.vRain===id||w.ssAz===id||w.ssEl===id||w.ssRad===id||w.ssRainV===id||w.ssSnowV===id||w.ssPtypeV===id||w.ssFogV===id||w.ssFogStateV===id||w.ssWindV===id||w.ssRainSensV===id||w.ssTempV===id||w.ssDewV===id||w.ssHumV===id||w.ssWetV===id||w.ssCloudV===id||w.vStorm===id||w.vStormDist===id||w.vStormAge===id||w.vStormRate===id||w.vRainRate===id||w.vRainDay===id||w.vFog===id||w.vFogFsi===id||w.ssStormV===id||w.ssStormDistV===id||w.wxFogState===id||w.ssWxJson===id||w.thPresVar===id||w.thHeatVar===id||w.thArmVar===id||w.thPowerVar===id||w.urlVid===id||w.stoerVid===id)return true;
+    if(w.varId===id||w.varId2===id||w.varId3===id||w.dVid===id||w.varIdB===id||w.dVidB===id||w.stufeVid===id||w.cvActId===id||w.cvAzB===id||w.cvAzE===id||w.cvElv===id||w.cvBlockVid===id||w.cmpVid===id||w.ackVid===id||w.condVar===id||w.vTemp===id||w.vCond===id||w.vHum===id||w.vWind===id||w.vGust===id||w.vRain===id||w.ssAz===id||w.ssEl===id||w.ssRad===id||w.ssRainV===id||w.ssSnowV===id||w.ssPtypeV===id||w.ssFogV===id||w.ssFogStateV===id||w.ssWindV===id||w.ssRainSensV===id||w.ssTempV===id||w.ssDewV===id||w.ssHumV===id||w.ssWetV===id||w.ssCloudV===id||w.vStorm===id||w.vStormDist===id||w.vStormAge===id||w.vStormRate===id||w.vRainRate===id||w.vRainDay===id||w.vFog===id||w.vFogFsi===id||w.ssStormV===id||w.ssStormDistV===id||w.wxFogState===id||w.ssWxJson===id||w.thPresVar===id||w.thHeatVar===id||w.thArmVar===id||w.thPowerVar===id||w.urlVid===id||w.stoerVid===id||w.kSubVid===id||w.kToneVid===id)return true;
+    // kSubVid/kToneVid gehoeren dazu: die KPI-Karte holt Unterzeile und Ton aus
+    // eigenen Variablen. Ohne sie hier feuerte live() nur bei der HAUPTvariablen -
+    // die Unterzeile stimmte dann bloss zufaellig, naemlich wenn ihre ID kleiner
+    // ist als die der Hauptvariablen und sie im selben Poll frueher ankommt.
+    // Sonst blieb dauerhaft ein Strich stehen, obwohl der Wert im Zwischenspeicher lag.
     // 'rings' gehoert dazu: das Ring-Gauge bindet seine Variablen dort, und ohne
     // den Eintrag wurden sie nie gepollt - die Ringe blieben leere Spuren.
     var A=['items','links','rows','src','snk','fc','elements','stages','steps','series','rings'],i,j,o;
