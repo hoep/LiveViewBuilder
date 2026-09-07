@@ -1993,9 +1993,14 @@ body:not(.run) .chrome.sel{outline:2px solid var(--accent);outline-offset:-2px;b
 .ax-ed-head .ax-ic{color:var(--accent)}
 .ax-name{flex:1;min-width:0;font:inherit;font-size:1.08em;font-weight:700;background:var(--tile);border:1px solid var(--line);border-radius:.62em;padding:.5em .75em;color:var(--text)}
 .ax-badge{font-size:.78em;text-transform:uppercase;letter-spacing:.05em;color:var(--faint);border:1px solid var(--line-soft);border-radius:.5em;padding:.25em .55em;white-space:nowrap}
-.ax-ed-body{flex:1;overflow:auto;padding:.9em .15em;display:grid;align-content:start;
-grid-template-columns:repeat(auto-fit,minmax(min(100%,clamp(190px,24cqi,300px)),1fr));
-gap:0 clamp(12px,2.2cqi,32px)}
+.ax-ed-body{flex:1;min-height:0;overflow:auto;padding:0 clamp(8px,1.6cqi,16px) clamp(6px,1.2cqi,12px);display:flex;flex-direction:column}
+.ax-abs{display:grid;grid-template-columns:clamp(58px,9cqi,86px) 1fr;gap:clamp(8px,1.4cqi,14px);align-items:start;padding:clamp(4px,2.1cqh,12px) 0;border-top:1px solid var(--line-soft)}
+.ax-abs:first-child{border-top:0}
+.ax-abs-w{font-size:var(--axf);letter-spacing:.07em;text-transform:uppercase;color:var(--accent);font-weight:700;padding-top:.5em;line-height:1.1}
+.ax-abs-i{min-width:0}
+.ax-abs-r{display:flex;align-items:center;gap:clamp(6px,1.1cqi,11px);flex-wrap:wrap}
+.ax-abs-r+.ax-abs-r{margin-top:clamp(4px,1.5cqh,9px)}
+.ax-abs-r .ax-hint{margin:0}
 .ax-fld{margin-bottom:1em;min-width:0}
 .ax-fld.wide{grid-column:1/-1}
 .ax-fld>label{display:block;font-size:.81em;text-transform:uppercase;letter-spacing:.06em;color:var(--faint);margin-bottom:.45em}
