@@ -135,6 +135,37 @@
     function edCssExtra(){
       if(document.getElementById('scedVarCss'))return;
       var e=document.createElement('style');e.id='scedVarCss';e.textContent=
+        // Zeile nach Entwurf A: Haekchen | Raum | Lampe | Balken | Wert | Entfernen.
+        // Feste Spalten, damit die Werte bei 42 Leuchten untereinander stehen.
+        '.sced-m{display:grid;grid-template-columns:18px 132px minmax(0,1fr) 190px 44px auto;'
+        +'align-items:center;gap:9px;padding:4px 8px;border-radius:7px;background:var(--tile);'
+        +'border:1px solid var(--line-soft);margin-bottom:3px}'
+        +'.sced-mtog{display:flex;align-items:center;margin:0}'
+        +'.sced-mroom{font:400 11px var(--fu);color:var(--faint);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}'
+        +'.sced-mname{font:500 12.5px var(--fu);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}'
+        +'.sced-mval{font:600 11.5px var(--fm);font-variant-numeric:tabular-nums;color:var(--muted);text-align:right}'
+        +'.sced-grp{display:flex;align-items:center;gap:8px}'
+        +'.sced-grp i{flex:1;height:1px;background:var(--line-soft)}'
+        +'.sced-grp s{text-decoration:none;color:var(--faint);font-family:var(--fm)}'
+        // Loeschen abgesetzt: es stand direkt neben Speichern.
+        +'.sced-actions button.danger{margin-left:auto}'
+        // "Dazu": eingeklappt eine Zeile, aufgeklappt der bisherige Inhalt.
+        +'.sced-dazu{margin-top:10px;border-top:1px solid var(--line);padding-top:8px}'
+        +'.sced-dazutog{display:flex;align-items:center;gap:9px;width:100%;background:transparent;'
+        +'border:0;color:var(--text);cursor:pointer;padding:4px 2px;text-align:left}'
+        +'.sced-dazutog .chev{color:var(--faint);font-size:11px}'
+        +'.sced-dazutog .w{font:700 11px var(--fu);text-transform:uppercase;letter-spacing:.07em;color:var(--accent)}'
+        +'.sced-dazutog .n{font:400 11.5px var(--fu);color:var(--faint)}'
+        +'.sced-dazubody{padding-top:4px}'
+        // Die Liste fuellt jetzt die Karte. Der Deckel von 330 px stammte aus dem
+        // alten Aufbau, in dem Variablen und Skripte darueber standen.
+        // Der Detailbereich muss in der Hoehe BEGRENZT sein, sonst waechst er ueber
+        // die Karte hinaus und der Abschnitt "Dazu" liegt hinter der Kante.
+        +'.sced{height:100%;min-height:0}'
+        +'.sced-detail{display:flex;flex-direction:column;height:100%;min-height:0;overflow:hidden}'
+        +'.sced-members.sced-scroll{flex:1;min-height:120px;max-height:none}'
+        +'.sced-icotog{flex:none}'
+        +
         '.sced-vars{margin-top:10px;border-top:1px solid var(--line);padding-top:8px}'
         +'.sced-vars h4{margin:0 0 6px;font:600 11px var(--fu);text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}'
         +'.sced-v{display:flex;align-items:center;gap:7px;padding:3px 0}'
@@ -203,7 +234,6 @@
             +'<option value="room"'+(scopeType==='room'?' selected':'')+'>Raum</option>'
           +'</select>'
           +'<label class="sced-translbl">Blende<input class="sced-trans" id="scTrans_'+w.id+'" type="number" min="0" step="100" value="'+trans+'">ms</label>'
-          +'</div>'
           +(function(){
               // Eingeklappt ist die Vorgabe: 56 Symbole schoben den ganzen Editor
               // nach unten. Sichtbar bleibt nur das gewaehlte Symbol.
@@ -211,19 +241,22 @@
               var kopf='<button type="button" class="sced-icotog" data-scicotog="1">'
                 +(typeof iconSVG==='function'?iconSVG(curIcon,100):'')
                 +'<span>Symbol</span><span class="chev">'+(offen?'▲':'▼')+'</span></button>';
-              return kopf+(offen?'':'<!--zu-->');
+              return kopf;
             })()
+          +'</div>'
           +(_sel['_ico_'+w.id]?('<div class="sced-icons">'+SC_ICON_GRUPPEN.map(function(g){
               return '<div class="sced-igrp">'+escL(g[0])+'</div><div class="sced-iconpick">'
                 +g[1].map(function(ic){return '<button type="button" class="sced-ib'+(ic===curIcon?' on':'')+'" data-scicon="'+ic+'" title="'+ic+'">'+(typeof iconSVG==='function'?iconSVG(ic,100):'')+'</button>';}).join('')
                 +'</div>';
             }).join('')+'</div>'):'')
+          // Speichern zuerst und als einziger farbiger Knopf, Loeschen ganz rechts
+          // abgesetzt: es stand vorher direkt neben Speichern.
           +'<div class="sced-actions">'
+          +'<button data-scact="save" class="prim">Speichern</button>'
           +'<button data-scact="apply">Anwenden</button>'
           +'<button data-scact="recap">Ist übernehmen</button>'
           +'<button data-scact="dup">Duplizieren</button>'
-          +'<button data-scact="del" class="danger">Löschen</button>'
-          +'<button data-scact="save" class="prim">Speichern</button></div>';
+          +'<button data-scact="del" class="danger">Löschen</button></div>';
         // Die Variablen stehen VOR den Mitgliedern: unter 39 Leuchten waeren sie
         // nicht auffindbar, und sie sind der Teil, den man beim Zusammenstellen
         // einer Szene zuerst braucht.
@@ -274,24 +307,32 @@
         }).join('');
         vh+='<div class="sced-add"><input data-scsq="1" placeholder="Skript suchen (Name oder ID) …">'
           +'<button data-scssearch="1">Suchen</button></div><div data-scshits="1"></div></div>';
-        right+=vh;
 
         if(det&&det.members){
           // Nach Geschoss und Raum gruppiert: eine flache Liste aus 39 Leuchten ist
           // beim Zusammenstellen einer Szene nicht zu ueberblicken.
+          // Nur nach GESCHOSS gruppiert. Vorher war jede Raumkombination eine eigene
+          // Ueberschrift - bei Raeumen mit einer einzigen Leuchte stand ueber jeder
+          // Zeile eine Zeile Ueberschrift. Der Raum ist jetzt eine Spalte.
           var grp={},ordg=[];
           det.members.forEach(function(m){
             var l=lightById(m.device);
-            var k=l?((l.floor||'')+' · '+(l.room||'ohne Raum')):'unbekannt';
+            var k=l?((l.floor||'')||'ohne Geschoss'):'unbekannt';
             if(!grp[k]){grp[k]=[];ordg.push(k);}
             grp[k].push(m);
           });
           ordg.sort();
           right+='<div class="sced-members sced-scroll">'+ordg.map(function(k){
-            return '<div class="sced-grp">'+escL(k)+'</div>'+grp[k].map(function(m){
-            var l=lightById(m.device); var nm=l?l.name:('#'+m.device); var caps=(l&&l.caps)||{};
-            var s='<div class="sced-m"><label class="sced-mtog"><input type="checkbox" data-scmon="'+m.device+'"'+(m.on?' checked':'')+'> '+escL(nm)+'</label>'
-              +(caps.dim?'<input type="range" min="0" max="100" step="1" value="'+(m.level>=0?m.level:100)+'" data-scmlvl="'+m.device+'">':'<span class="sced-nodim">—</span>');
+            return '<div class="sced-grp"><span>'+escL(k)+'</span><i></i><s>'+grp[k].length+'</s></div>'+grp[k].map(function(m){
+            var l=lightById(m.device); var caps=(l&&l.caps)||{};
+            // "(Licht)" haengt an fast jedem Namen und sagt in einer Lampenliste nichts.
+            var nm=(l?l.name:('#'+m.device)).replace(/\s*\(Licht\)\s*$/,'');
+            var rm=(l&&l.room)||'';
+            var s='<div class="sced-m"><label class="sced-mtog"><input type="checkbox" data-scmon="'+m.device+'"'+(m.on?' checked':'')+'></label>'
+              +'<span class="sced-mroom">'+escL(rm)+'</span>'
+              +'<span class="sced-mname">'+escL(nm)+'</span>'
+              +(caps.dim?'<input type="range" min="0" max="100" step="1" value="'+(m.level>=0?m.level:100)+'" data-scmlvl="'+m.device+'">':'<span class="sced-nodim">—</span>')
+              +'<span class="sced-mval">'+(m.on?((caps.dim&&m.level>=0)?(m.level+' %'):'ein'):'aus')+'</span>';
             if(caps.cct){var cmin=parseInt(caps.cctMin)||2700,cmax=parseInt(caps.cctMax)||6500,cv=(m.cct>0?m.cct:cmin);
               s+='<input type="range" class="sced-mcct" min="'+cmin+'" max="'+cmax+'" step="50" value="'+cv+'" data-scmcct="'+m.device+'" title="Farbtemperatur '+cv+' K">';}
             if(caps.color){s+='<input type="color" class="sced-mcolor" value="'+colHex(m.color)+'" data-scmcolor="'+m.device+'" title="Farbe">';}
@@ -316,6 +357,19 @@
         } else {
           right+='<div class="scb-msg" style="padding:12px">Mitglieder werden geladen …</div>';
         }
+        // Variablen und Skripte stehen JETZT hinter den Leuchten und zusammengeklappt.
+        // Sie standen davor, damit sie unter 39 Leuchten nicht untergehen - als
+        // Kopfzeile mit Anzahl sind sie auch hier jederzeit zu sehen und kosten
+        // keine Hoehe, solange man sie nicht braucht.
+        var dazuOffen=!!_sel['_dazu_'+w.id];
+        var nV=((det&&det.vars)||[]).length, nS=((det&&det.scripts)||[]).length;
+        right+='<div class="sced-dazu">'
+          +'<button type="button" class="sced-dazutog" data-scdazu="1">'
+            +'<span class="chev">'+(dazuOffen?'▾':'▸')+'</span><span class="w">Dazu</span>'
+            +'<span class="n">'+(nV?(nV+' Variable'+(nV>1?'n':'')):'keine Variablen')
+            +' · '+(nS?(nS+' Skript'+(nS>1?'e':'')):'keine Skripte')+'</span></button>'
+          +(dazuOffen?('<div class="sced-dazubody">'+vh+'</div>'):'')
+          +'</div>';
       }
       return '<div class="sced"><div class="sced-list">'+list
         +'<button class="sced-item sced-new" data-scnew="1">＋ Neu (aufnehmen)</button>'
@@ -525,6 +579,10 @@
       if(tr){tr.onclick=function(e){e.stopPropagation();};tr.onchange=function(){var det=_sel['_det_'+w.id];if(!det)return;det.transitionMs=Math.max(0,parseInt(this.value)||0);};}
       // Kopf: Szenen-Icon-Picker -> scene.icon
       var itg=host.querySelector('[data-scicotog]');
+      // 'Dazu' auf- und zuklappen. Der Zustand haengt am Widget, damit er beim
+      // Neuzeichnen erhalten bleibt.
+      var dtg=host.querySelector('[data-scdazu]');
+      if(dtg)dtg.onclick=function(){_sel['_dazu_'+w.id]=!_sel['_dazu_'+w.id];edPaint(w);};
       if(itg)itg.onclick=function(){_sel['_ico_'+w.id]=!_sel['_ico_'+w.id];edPaint(w);};
       host.querySelectorAll('[data-scicon]').forEach(function(b){b.onclick=function(){var det=_sel['_det_'+w.id];if(!det)return;det.icon=b.getAttribute('data-scicon');
         host.querySelectorAll('[data-scicon]').forEach(function(x){x.classList.toggle('on',x===b);});
