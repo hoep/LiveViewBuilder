@@ -2020,9 +2020,45 @@
     var sh=c.attachShadow({mode:'open'}); // Shadow DOM: transparent + style-isoliert (iOS-Weiß-Bug entfällt)
     var _skin=(w.htmlSkin!==false)?_skinVars():null; // Skin erzwingen (Schrift + nicht passende Farben)
     var _skinCss=_skin?('#shwrap{color:'+_skin.text+';font-family:'+_skin.font+'}#shwrap *{font-family:inherit!important}'):'';
-    sh.innerHTML='<style>:host{display:block;background:transparent;-webkit-text-size-adjust:100%;text-size-adjust:100%}#shwrap{transform-origin:top left;background:transparent;-webkit-text-size-adjust:100%;text-size-adjust:100%}'+_skinCss+'</style>'+headHtml+'<div id="shwrap">'+bodyHtml+'</div>';
+    sh.innerHTML='<style>[data-setvar]{cursor:pointer}:host{display:block;background:transparent;-webkit-text-size-adjust:100%;text-size-adjust:100%}#shwrap{transform-origin:top left;background:transparent;-webkit-text-size-adjust:100%;text-size-adjust:100%}'+_skinCss+'</style>'+headHtml+'<div id="shwrap">'+bodyHtml+'</div>';
     if(_skin){var _wrp=sh.getElementById('shwrap');if(_wrp)_fixHtmlColors(_wrp,_skin);}
+    _htmlKlick(host);
     applyHtmlScale(w);}
+  /**
+   * Klickbare Stellen in HTML-Inhalten.
+   *
+   * Ein Element mit  data-setvar="<Variablen-ID>:<Wert>"  schreibt beim Antippen
+   * diesen Wert. Damit werden servergerenderte Listen bedienbar, ohne dafuer ein
+   * eigenes Widget zu bauen - gedacht fuer Faelle, in denen die Zeilen aus einer
+   * Variablen kommen und ihre Zahl erst zur Laufzeit feststeht.
+   *
+   * Der Shadow laeuft mit mode:'open', der Klick blubbert also bis zum Host; ueber
+   * composedPath() ist das getroffene Element im Shadow erreichbar.
+   *
+   * Nur im Betrieb: im Builder soll ein Klick auswaehlen und verschieben, nicht
+   * schalten. Die lokale Variable 'mode' in setHtmlContent meint den Darstellungs-
+   * modus, NICHT die Betriebsart - deshalb hier die Body-Klasse statt 'mode'.
+   */
+  function _htmlKlick(host){
+    if(!host||host._klickBereit)return;
+    host._klickBereit=1;
+    host.addEventListener('click',function(e){
+      if(!document.body.classList.contains('run'))return;
+      var pfad=(e.composedPath?e.composedPath():[e.target])||[];
+      for(var i=0;i<pfad.length;i++){
+        var el=pfad[i];
+        if(!el||!el.getAttribute)continue;
+        if(el===host)break;
+        var s=el.getAttribute('data-setvar');
+        if(s){
+          var t=String(s).split(':');
+          var id=parseInt(t.shift(),10);
+          if(id>0){setVar(id,t.join(':'));e.stopPropagation();e.preventDefault();}
+          return;
+        }
+      }
+    });
+  }
   function fetchHtml(w,root){if(!w.varId)return;fetch('?api=html&id='+w.varId,{cache:'no-store'}).then(function(r){return r.text();}).then(function(t){setHtmlContent(w,t,root);}).catch(function(){});}
   function applyHtmlScale(w){
     if(w.type!=='html')return;
