@@ -12,10 +12,33 @@
   // Deshalb steht neben dem Bild nicht nur das Rechteck, sondern was es MISST - jeder
   // Wert auf der Skala, gegen die er gerechnet wird. Man sieht also nicht nur, was man
   // auswaehlt, sondern ob die Auswahl als Nebelfuehler taugt.
+  //
+  // ZWEI FELDER JE KAMERA, seit 08.09.2026. Nebel misst man am GELAENDE, weil dort der
+  // Kontrast faellt; Bewoelkung am HIMMEL, ueber das Rot/Blau-Verhaeltnis. Die Anforderungen
+  // sind fast gegenlaeufig - ein gutes Sichtfeld meidet den Himmel, ein gutes Himmelsfeld
+  // besteht aus nichts anderem. Deshalb schaltet der Kopf zwischen beiden um, und die
+  // rechte Spalte zeigt jeweils die Skalen, auf die es dabei ankommt.
 
   var _crD = {};      // Kameraliste und Messwerte je Widget-Id
 
-  function _crState(w){ return (_crD[w.id] = _crD[w.id] || {cams:null,sel:0,roi:null,mess:null,vor:null,busy:'',msg:''}); }
+  function _crState(w){ return (_crD[w.id] = _crD[w.id] || {cams:null,sel:0,feld:'sicht',roi:null,mess:null,vor:null,busy:'',msg:''}); }
+
+  /**
+   * Das Rechteck der gewaehlten Kamera fuer das gewaehlte Feld.
+   *
+   * Beim Himmel gibt es den Fall "gar keines" - Breite oder Hoehe auf 0. Das ist keine
+   * Luecke, sondern eine Aussage: diese Kamera sieht keinen Himmel. Zum Ziehen bekommt man
+   * dann einen Streifen oben angeboten, denn dort ist Himmel, wenn ueberhaupt.
+   */
+  function _crFeldRoi(c,feld){
+    if(!c)return null;
+    if(feld==='himmel'){
+      return (c.hw>=5&&c.hh>=5)?{x:c.hx,y:c.hy,w:c.hw,h:c.hh}:{x:10,y:0,w:60,h:20};
+    }
+    return {x:c.x,y:c.y,w:c.w,h:c.h};
+  }
+  /** Hat diese Kamera ueberhaupt ein Himmelsfeld? */
+  function _crHatHimmel(c){ return !!(c&&c.hw>=5&&c.hh>=5); }
   function _crEl(w){
     var sel='.w[data-id="'+w.id+'"] [data-role=crroot]';
     var oc=document.getElementById('ovcanvas');
@@ -38,7 +61,7 @@
     var s=_crState(w);
     side.innerHTML=_crPanel(w)+_crVorschlagHtml(w)
       +'<div class="crmsg">'+esc(s.busy||s.msg||'')+'</div>'
-      +'<div class="crhint">Übernehmen verwirft den gelernten Klarwert dieser Kamera – er gehört zum alten Feld.</div>';
+      +'<div class="crhint">'+_crHinweis(w)+'</div>';
     _crWireSeite(w,el);
   }
   /** Nur die Meldezeile - fuer "messen …" und Ähnliches. */
@@ -62,7 +85,7 @@
       if(s.zeigeNeu){ s.cams.forEach(function(c,i){ if(c.id===s.zeigeNeu)s.sel=i; }); s.zeigeNeu=null; }
       if(s.sel>=s.cams.length)s.sel=0;
       var c=_crCam(s);
-      s.roi=c?{x:c.x,y:c.y,w:c.w,h:c.h}:null;
+      s.roi=_crFeldRoi(c,s.feld);
       s.vor=null; s.mess=null;
       _crPaint(w); _crMessen(w);
     }).catch(function(){ s.busy=''; s.msg='Wetterstation nicht erreichbar'; _crPaint(w); });
@@ -73,9 +96,11 @@
     var s=_crState(w),c=_crCam(s); if(!c||!s.roi)return;
     var r=s.roi;
     s.busy='messen …'; _crMeldung(w);
-    fetch('?api=wxroi&was=pruefe&mid='+c.id+'&x='+r.x+'&y='+r.y+'&w='+r.w+'&h='+r.h,{cache:'no-store'})
+    fetch('?api=wxroi&was=pruefe&feld='+s.feld+'&mid='+c.id+'&x='+r.x+'&y='+r.y+'&w='+r.w+'&h='+r.h,{cache:'no-store'})
       .then(function(x){return x.json();}).then(function(j){
-        s.busy=''; s.mess=(j&&j.ok)?j.messung:null; if(j&&j.schwellen)s.schwellen=j.schwellen;
+        s.busy=''; s.mess=(j&&j.ok)?j.messung:null;
+        if(j&&j.schwellen)s.schwellen=j.schwellen;
+        if(j&&j.himmelSchwellen)s.hschwellen=j.himmelSchwellen;
         if(j&&!j.ok)s.msg=j.fehler||''; _crSeite(w);
       }).catch(function(){ s.busy=''; _crSeite(w); });
   }
@@ -83,7 +108,7 @@
   function _crVorschlag(w){
     var s=_crState(w),c=_crCam(s); if(!c)return;
     s.busy='Felder durchmessen …'; s.vor=null; _crSeite(w);
-    fetch('?api=wxroi&was=vorschlag&mid='+c.id,{cache:'no-store'})
+    fetch('?api=wxroi&was=vorschlag&feld='+s.feld+'&mid='+c.id,{cache:'no-store'})
       .then(function(x){return x.json();}).then(function(j){
         s.busy='';
         if(!j||!j.ok){ s.msg='Vorschlag fehlgeschlagen'; _crSeite(w); return; }
@@ -95,13 +120,39 @@
     var s=_crState(w),c=_crCam(s); if(!c||!s.roi)return;
     var r=s.roi;
     s.busy='übernehmen …'; _crMeldung(w);
-    fetch('?api=wxroi&was=setze&mid='+c.id+'&x='+r.x+'&y='+r.y+'&w='+r.w+'&h='+r.h
+    fetch('?api=wxroi&was=setze&feld='+s.feld+'&mid='+c.id+'&x='+r.x+'&y='+r.y+'&w='+r.w+'&h='+r.h
           +'&key='+encodeURIComponent(TOKEN),{cache:'no-store'})
       .then(function(x){return x.json();}).then(function(j){
         s.busy=''; s.msg=(j&&j.ok)?(j.hinweis||'übernommen'):((j&&j.fehler)||'nicht übernommen');
-        if(j&&j.ok&&s.cams&&s.cams[s.sel]){var cc=s.cams[s.sel];cc.x=r.x;cc.y=r.y;cc.w=r.w;cc.h=r.h;cc.klarwertTag=0;cc.klarwertNacht=0;}
+        if(j&&j.ok&&s.cams&&s.cams[s.sel]){
+          var cc=s.cams[s.sel];
+          if(s.feld==='himmel'){ cc.hx=r.x;cc.hy=r.y;cc.hw=r.w;cc.hh=r.h;cc.himKlar={}; }
+          else { cc.x=r.x;cc.y=r.y;cc.w=r.w;cc.h=r.h;cc.klarwertTag=0;cc.klarwertNacht=0; }
+        }
         _crSeite(w);
       }).catch(function(){ s.busy=''; s.msg='nicht übernommen'; _crSeite(w); });
+  }
+
+  /**
+   * Himmelsfeld loeschen: diese Kamera nimmt an der Bewoelkung nicht mehr teil.
+   *
+   * Eine eigene Handlung und kein Sonderfall des Uebernehmens - "kein Himmel im Bild" ist
+   * bei vier der acht Kameras die richtige Antwort und soll sich nicht wie ein Fehlschlag
+   * anfuehlen. Gesendet wird eine Groesse unter der Mindestgroesse; das Modul liest das
+   * ausdruecklich als Abschalten.
+   */
+  function _crHimmelAus(w){
+    var s=_crState(w),c=_crCam(s); if(!c)return;
+    s.busy='Himmelsfeld entfernen …'; _crMeldung(w);
+    fetch('?api=wxroi&was=setze&feld=himmel&mid='+c.id+'&x=0&y=0&w=0&h=0'
+          +'&key='+encodeURIComponent(TOKEN),{cache:'no-store'})
+      .then(function(x){return x.json();}).then(function(j){
+        s.busy=''; s.msg=(j&&j.ok)?'Himmelsfeld entfernt – zählt bei der Bewölkung nicht mehr mit'
+                                  :((j&&j.fehler)||'ging nicht');
+        if(j&&j.ok&&s.cams&&s.cams[s.sel]){var cc=s.cams[s.sel];cc.hx=0;cc.hy=0;cc.hw=0;cc.hh=0;cc.himKlar={};}
+        s.roi=_crFeldRoi(_crCam(s),s.feld); s.mess=null;
+        _crPaint(w);
+      }).catch(function(){ s.busy=''; s.msg='ging nicht'; _crMeldung(w); });
   }
 
   /** Kamera aufnehmen, stilllegen, herausnehmen - danach die Liste neu holen. */
@@ -146,8 +197,59 @@
       +'<div class="crsl"><span>'+esc(linksTxt)+'</span><span>'+esc(rechtsTxt)+'</span></div></div>';
   }
 
+  /**
+   * Rechte Spalte fuer das HIMMELSFELD.
+   *
+   * Vier Skalen, und jede beantwortet eine eigene Frage:
+   *   Rot/Blau     Ist das ueberhaupt Himmel? Klar liegt bei 0,70 bis 0,85, ein Dach,
+   *                eine Wand oder eine Wiese bei 1,0 und darueber.
+   *   verwertbar   Wieviel des Feldes ist hell genug fuer Himmel und nicht ausgebrannt?
+   *                Ein Feld voller Aeste faellt hier durch, auch wenn die Farbe stimmt.
+   *   ausgebrannt  Steht die Sonne im Ausschnitt, sagt er nichts.
+   *   bitgleich    Infrarot. Nachts ist R = G = B, Rot durch Blau ueberall exakt 1,00 -
+   *                keine Messung, sondern eine Bauart.
+   *
+   * Darunter der gelernte Klarwert samt Reife. Ohne ihn gibt es kein Urteil, und das ist
+   * der haeufigste Grund, warum eine frisch gezogene Kamera noch nichts sagt.
+   */
+  function _crHimmelPanel(w){
+    var s=_crState(w),m=s.mess,t=s.hschwellen||{};
+    if(!m)return '<div class="crhint">'+(s.busy?esc(s.busy):'noch nichts gemessen')+'</div>';
+    var mxW=(t.maxWeiss!=null?t.maxWeiss:35), mnA=(t.minAnteil!=null?t.minAnteil:40);
+    var mxG=(t.maxGrau!=null?t.maxGrau:80), mnH=(t.minHell!=null?t.minHell:45);
+    var mnL=(t.minLern!=null?t.minLern:40);
+    var lRB=_crLage(m.median,1.05,0.70), lAn=_crLage(m.anteil,mnA,100);
+    var lWe=_crLage(m.weiss,mxW,0),      lGr=_crLage(m.grau,mxG,0);
+    var ir=(m.grau>mxG), hell=(m.hell>=mnH), gebrannt=(m.weiss>mxW), wenig=(m.anteil<mnA);
+    var gut=(!ir&&!gebrannt&&!wenig&&hell&&m.median<=0.95);
+    var urteil = ir       ? 'Infrarotbild: Rot, Grün und Blau sind bitgleich, das Verhältnis ist überall 1,00. Nachts sagt die Kamera zur Bewölkung nichts – dann trägt das Modell. Bei Tageslicht neu ziehen.'
+      : !hell             ? 'Zu dunkel für eine Aussage. Bei Tageslicht neu wählen.'
+      : gebrannt          ? 'Überbelichtet – vermutlich steht die Sonne im Ausschnitt. Weiter von der Sonne weg wählen.'
+      : wenig             ? 'Überwiegend kein Himmel im Feld: zu viele Pixel sind zu dunkel (Laub, Dach, Mauer). Höher und freier ansetzen.'
+      : (m.median>0.95)   ? 'Sieht nicht nach klarem Himmel aus. Ist es gerade bedeckt, ist das richtig – sonst zeigt das Feld auf eine Fläche statt in den Himmel.'
+                          : 'Taugt als Bewölkungsfühler: freier Himmel, genug verwertbare Pixel, nicht ausgebrannt.';
+    var h=_crSkala('Rot / Blau',m.median,2,'1,05 Fläche','0,70 klarer Himmel',lRB,false)
+      +_crSkala('verwertbare Pixel',m.anteil,0,mnA+' % zu wenig','100 %',lAn,false)
+      +_crSkala('ausgebrannt',m.weiss,0,mxW+' % zu viel','0 %',lWe,false)
+      +_crSkala('bitgleich grau',m.grau,0,mxG+' % Infrarot','0 % Farbbild',lGr,false)
+      +'<div class="crurteil '+(gut?'gut':(ir||gebrannt||wenig||!hell?'schlecht':'mittel'))+'">'+esc(urteil)+'</div>';
+    // Der gelernte Klarwert: ohne ihn kein Urteil. Und der Modellwert daneben, weil nur
+    // bei belegt klarem Himmel ueberhaupt gelernt wird.
+    var kl = (m.klar!=null)
+      ? ('Klarwert '+_crNum(m.klar,2)+' aus '+m.gelernt+' Messungen'
+         +(m.gelernt<mnL?(' – urteilt erst ab '+mnL):'')
+         +(m.wolken!=null?(' · daraus jetzt <b>'+_crNum(m.wolken,0)+' % bewölkt</b>'):''))
+      : 'Klarwert für dieses Sonnenhöhen-Fach noch nicht gelernt';
+    h+='<div class="crlern">'+kl+'<br><span class="crdim">Fach '+esc(m.fach||'')+' · Sonne '
+      +_crNum(m.sonne,1)+'° · Modell '+(m.modell==null?'—':(_crNum(m.modell,0)+' %'))
+      +'</span></div>';
+    return h;
+  }
+
   function _crPanel(w){
-    var s=_crState(w),m=s.mess,t=s.schwellen||{};
+    var s=_crState(w);
+    if(s.feld==='himmel')return _crHimmelPanel(w);
+    var m=s.mess,t=s.schwellen||{};
     if(!m)return '<div class="crhint">'+(s.busy?esc(s.busy):'noch nichts gemessen')+'</div>';
     var dkK=(t.dkKlar!=null?t.dkKlar:25),dkN=(t.dkNebel!=null?t.dkNebel:110);
     var koK=(t.konKlar!=null?t.konKlar:0.12),koN=(t.konNebel!=null?t.konNebel:0.03);
@@ -173,13 +275,34 @@
 
   function _crVorschlagHtml(w){
     var s=_crState(w); if(!s.vor)return '';
-    var h='<div class="crvh">Vorschläge'+(s.vor.tageslicht?'':' <span class="crwarn">· ohne Tageslicht wenig wert</span>')+'</div><div class="crvl">';
+    var himmel=(s.vor.feld==='himmel');
+    // Warnungen ehrlich benennen: ein Vorschlag fuers Himmelsfeld taugt nur bei Tageslicht
+    // UND klarem Himmel. Bei Bedeckung ist echter Himmel so grau wie ein Dach, und der
+    // Vorschlag zeigte auf das Dach.
+    var warn='';
+    if(!s.vor.tageslicht)warn=' <span class="crwarn">· ohne Tageslicht wenig wert</span>';
+    else if(himmel&&s.vor.klar===false)warn=' <span class="crwarn">· Modell meldet '
+      +_crNum(s.vor.modell,0)+' % Bewölkung, bei bedecktem Himmel wenig aussagekräftig</span>';
+    var h='<div class="crvh">Vorschläge'+warn+'</div><div class="crvl">';
     (s.vor.vorschlaege||[]).forEach(function(v,i){
       h+='<button class="crv" data-crvor="'+i+'"><b>'+v.note+'</b>'
         +'<span>'+v.x+' · '+v.y+' · '+v.w+' × '+v.h+'</span>'
-        +'<span class="crvm">DK '+_crNum(v.messung.dunkel,0)+' · KD '+_crNum(v.messung.dichte,3)+'</span></button>';
+        +'<span class="crvm">'+(himmel
+          ?('R/B '+_crNum(v.messung.median,2)+' · '+_crNum(v.messung.anteil,0)+' %')
+          :('DK '+_crNum(v.messung.dunkel,0)+' · KD '+_crNum(v.messung.dichte,3)))+'</span></button>';
     });
     return h+'</div>';
+  }
+
+  /** Der Satz unter der rechten Spalte - er sagt je Feld etwas anderes. */
+  function _crHinweis(w){
+    var s=_crState(w),c=_crCam(s);
+    if(s.feld==='himmel'){
+      return _crHatHimmel(c)
+        ? 'Übernehmen verwirft die gelernten Klarwerte dieser Kamera – sie gehören zum alten Feld. Danach dauert es einige klare Stunden, bis sie wieder mitredet.'
+        : 'Diese Kamera hat noch kein Himmelsfeld und zählt bei der Bewölkung nicht mit. Rechteck auf freien Himmel ziehen und übernehmen.';
+    }
+    return 'Übernehmen verwirft den gelernten Klarwert dieser Kamera – er gehört zum alten Feld.';
   }
 
   function _crPaint(w){
@@ -193,13 +316,28 @@
     // Der Rahmen zeigt den Ausschnitt UNGEDIMMT, alles ausserhalb liegt im Schatten -
     // so sieht man beim Ziehen, was gemessen wird, und trotzdem, wo man ist.
     var src=c?('?api=media&id='+c.id+'&t='+(s.bildStand||0)):'';
+    var himmel=(s.feld==='himmel');
     var h='<div class="crbar">'+pills
       +'<button class="crp neu" data-crb="wahl" title="Kamera aufnehmen">+</button>'
       +'<span class="crsp"></span>'
+      // Der Umschalter steht VOR den Knoepfen, weil er bestimmt, was sie tun:
+      // "übernehmen" schreibt je nach Stellung das Sicht- oder das Himmelsfeld.
+      +'<span class="crfeld">'
+        +'<button class="crf'+(himmel?'':' on')+'" data-crf="sicht" title="Feld für die Nebelmessung – am Gelände">Sicht</button>'
+        +'<button class="crf'+(himmel?' on':'')+'" data-crf="himmel" title="Feld für die Bewölkung – am Himmel">Himmel</button>'
+      +'</span>'
       +(c?('<button class="crb" data-crb="aktiv" title="'+(c.aktiv?'zählt mit':'stillgelegt')+'">'
            +(c.aktiv?'aktiv':'stillgelegt')+'</button>'
+          // Getrennt vom Aktiv-Schalter: stillgelegt heisst nirgends mitzaehlen,
+          // "kein Sichtfeld" heisst reine Himmelskamera.
+          +'<button class="crb" data-crb="sicht" title="'
+           +(c.sicht?'zählt bei der Sicht mit':'reine Himmelskamera')+'">'
+           +(c.sicht?'Sicht: ja':'Sicht: nein')+'</button>'
           +'<button class="crb" data-crb="loesen" title="Kamera herausnehmen">entfernen</button>'):'')
-      +'<button class="crb" data-crb="ganz">ganzes Bild</button>'
+      +(himmel
+        ?('<button class="crb" data-crb="himmelaus"'+(_crHatHimmel(c)?'':' disabled')
+          +' title="Diese Kamera sieht keinen Himmel">kein Himmel</button>')
+        :'<button class="crb" data-crb="ganz">ganzes Bild</button>')
       +'<button class="crb" data-crb="vorschlag">Vorschlag</button>'
       +'<button class="crb pri" data-crb="setze">übernehmen</button></div>'
       +_crWahlHtml(w)
@@ -215,7 +353,7 @@
       +'</div></div>'
       +'<div class="crside">'+_crPanel(w)+_crVorschlagHtml(w)
         +'<div class="crmsg">'+esc(s.busy||s.msg||'')+'</div>'
-        +'<div class="crhint">Übernehmen verwirft den gelernten Klarwert dieser Kamera – er gehört zum alten Feld.</div>'
+        +'<div class="crhint">'+_crHinweis(w)+'</div>'
       +'</div></div>';
     el.innerHTML=h;
     _crWire(w,el);
@@ -225,15 +363,21 @@
     var s=_crState(w);
     el.querySelectorAll('[data-crcam]').forEach(function(b){b.onclick=function(){
       s.sel=parseInt(b.getAttribute('data-crcam'))||0;
-      var c=_crCam(s); s.roi=c?{x:c.x,y:c.y,w:c.w,h:c.h}:null; s.vor=null; s.mess=null; s.msg='';
+      s.roi=_crFeldRoi(_crCam(s),s.feld); s.vor=null; s.mess=null; s.msg='';
+      _crPaint(w); _crMessen(w);};});
+    el.querySelectorAll('[data-crf]').forEach(function(b){b.onclick=function(){
+      var f=b.getAttribute('data-crf'); if(f===s.feld)return;
+      s.feld=f; s.roi=_crFeldRoi(_crCam(s),f); s.vor=null; s.mess=null; s.msg='';
       _crPaint(w); _crMessen(w);};});
     el.querySelectorAll('[data-crb]').forEach(function(b){b.onclick=function(){
       var a=b.getAttribute('data-crb');
       if(a==='ganz'){ s.roi={x:0,y:0,w:100,h:100}; _crPaint(w); _crMessen(w); }
       else if(a==='vorschlag'){ _crVorschlag(w); }
       else if(a==='setze'){ _crSetzen(w); }
+      else if(a==='himmelaus'){ _crHimmelAus(w); }
       else if(a==='wahl'){ s.wahl=!s.wahl; _crPaint(w); }
       else if(a==='aktiv'){ var k=_crCam(s); if(k)_crKamera(w,'aktiv',k.id,!k.aktiv); }
+      else if(a==='sicht'){ var k3=_crCam(s); if(k3)_crKamera(w,'sicht',k3.id,!k3.sicht); }
       else if(a==='loesen'){ var k2=_crCam(s); if(k2)_crKamera(w,'loesen',k2.id); }};});
     el.querySelectorAll('[data-crbind]').forEach(function(b){b.onclick=function(){
       _crKamera(w,'binden',parseInt(b.getAttribute('data-crbind')));};});

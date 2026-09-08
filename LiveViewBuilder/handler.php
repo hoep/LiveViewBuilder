@@ -1420,13 +1420,17 @@ if ($api === 'wxroi') {
     }
     $was = (string) ($_GET['was'] ?? 'liste');
     $mid = (int) ($_GET['mid'] ?? 0);
+    // Welches der beiden Felder? "sicht" misst am Gelaende und traegt die Nebelstufe,
+    // "himmel" misst die Bewoelkung ueber das Rot/Blau-Verhaeltnis. Ohne Angabe bleibt
+    // es beim Sichtfeld - so verhalten sich aeltere Clients wie bisher.
+    $feld = (($_GET['feld'] ?? '') === 'himmel') ? 'himmel' : 'sicht';
     $z = fn(string $k, float $vor): float => isset($_GET[$k]) ? (float) $_GET[$k] : $vor;
     if ($was === 'liste')     { echo WX_Messfelder($wx); return; }
-    if ($was === 'pruefe')    { echo WX_MessfeldPruefen($wx, $mid, $z('x', 0), $z('y', 0), $z('w', 100), $z('h', 100)); return; }
-    if ($was === 'vorschlag') { echo WX_MessfeldVorschlag($wx, $mid); return; }
+    if ($was === 'pruefe')    { echo WX_MessfeldPruefen($wx, $mid, $z('x', 0), $z('y', 0), $z('w', 100), $z('h', 100), $feld); return; }
+    if ($was === 'vorschlag') { echo WX_MessfeldVorschlag($wx, $mid, $feld); return; }
     // Kamera aufnehmen, stilllegen oder herausnehmen - alles Aenderungen an der
     // Instanz, also mit Token.
-    if ($was === 'binden' || $was === 'loesen' || $was === 'aktiv') {
+    if ($was === 'binden' || $was === 'loesen' || $was === 'aktiv' || $was === 'sicht') {
         if (!hash_equals($TOKEN, (string) ($_GET['key'] ?? ''))) {
             http_response_code(403);
             echo json_encode(['ok' => false, 'fehler' => 'forbidden']);
@@ -1434,6 +1438,9 @@ if ($api === 'wxroi') {
         }
         if ($was === 'binden') { echo WX_KameraBinden($wx, $mid); return; }
         if ($was === 'loesen') { echo WX_KameraLoesen($wx, $mid); return; }
+        // Getrennt vom Aktiv-Schalter: "stillgelegt" heisst nirgends mitzaehlen,
+        // "keine Sicht" heisst reine Himmelskamera.
+        if ($was === 'sicht')  { echo WX_KameraSicht($wx, $mid, ((int) ($_GET['an'] ?? 1)) === 1); return; }
         echo WX_KameraAktiv($wx, $mid, ((int) ($_GET['an'] ?? 1)) === 1);
         return;
     }
@@ -1443,7 +1450,7 @@ if ($api === 'wxroi') {
             echo json_encode(['ok' => false, 'fehler' => 'forbidden']);
             return;
         }
-        echo WX_MessfeldSetzen($wx, $mid, $z('x', 0), $z('y', 0), $z('w', 100), $z('h', 100));
+        echo WX_MessfeldSetzen($wx, $mid, $z('x', 0), $z('y', 0), $z('w', 100), $z('h', 100), $feld);
         return;
     }
     echo json_encode(['ok' => false, 'fehler' => 'unbekannte Anfrage']);
