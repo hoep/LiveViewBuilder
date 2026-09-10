@@ -357,7 +357,15 @@
   // Vergleichsmass ist der Stand, mit dem DIESE Seite ausgeliefert wurde (LVCFG.bld) -
   // nicht der erste zur Laufzeit abgefragte. Sonst kann ein veraltet gestarteter Client
   // seine eigene Veraltung nie bemerken.
-  var _bauStand=(window.LVCFG&&parseInt(window.LVCFG.bld))||0,_bauTat=false,_bauSeit=Date.now(),_bauTipp=0;
+  var _bauStand=(window.LVCFG&&parseInt(window.LVCFG.bld))||0,_bauTat=false,_bauSeit=Date.now(),_bauTipp=0,_bauNeuSeit=0;
+  /** Ist irgendeine Kachel von "jetzt" weggeblaettert? Dann laeuft gerade eine Betrachtung. */
+  function _bauBlaettert(){
+    try{
+      var ws=(typeof allWidgets==='function')?(allWidgets()||[]):[];
+      for(var i=0;i<ws.length;i++){ if(ws[i]&&ws[i]._pOff){ return true; } }
+    }catch(e){}
+    return false;
+  }
   ['pointerdown','keydown','wheel','touchstart'].forEach(function(ev){
     document.addEventListener(ev,function(){_bauTipp=Date.now();},{passive:true});
   });
@@ -372,6 +380,23 @@
     var jetzt=Date.now();
     if(jetzt-_bauSeit<60000)return;
     if(jetzt-_bauTipp<20000)return;                    // jemand bedient gerade - spaeter
+    // WER GERADE BLAETTERT, VERLIERT SONST SEINEN STAND.
+    //
+    // Die Perioden-Umschalter (Zustands-Timeline, Chart, Zustandsprotokoll) merken sich die
+    // gewaehlte Periode als w._pOff - eine reine Laufzeitangabe, die kein Neuladen ueberlebt.
+    // Am 10.09.2026 sah das so aus: auf "Gestern" geschaltet, zwei bis drei Sekunden spaeter
+    // stand die Kachel wieder auf "Heute". Gemessen: _pOff hielt 116 s lang, dann lud die
+    // Seite neu und _pOff war nicht 0, sondern ganz weg. Es war also nie der Umschalter -
+    // es war diese Selbstauffrischung, ausgeloest von einem neuen Bau waehrend einer
+    // Entwicklungssitzung.
+    //
+    // Deshalb wird die Auffrischung verschoben, solange irgendeine Kachel von "jetzt"
+    // weggeblaettert ist. Aber nicht endlos: nach 10 Minuten frischt sie trotzdem auf, sonst
+    // bliebe eine liegengelassene Seite fuer immer auf einem alten Stand.
+    if(_bauBlaettert()){
+      if(!_bauNeuSeit)_bauNeuSeit=jetzt;
+      if(jetzt-_bauNeuSeit<600000)return;
+    }
     _bauTat=true;
     if(typeof toast==='function')toast('Neuer Stand — Seite wird aufgefrischt');
     setTimeout(function(){location.reload();},900);
