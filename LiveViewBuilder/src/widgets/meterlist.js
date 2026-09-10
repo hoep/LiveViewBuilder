@@ -265,10 +265,7 @@
             ze.classList.toggle('mlteil', teil);
             if (teil) {
               ze.title = 'Verkuerztes Fenster ab ' + _mlDatum(p.ab)
-                + ' — davor liegen keine Archivdaten vor. Verglichen wird '
-                + _mlWertTxt(r, _mlCmpIst(p)) + (r.unit ? (' ' + r.unit) : '')
-                + ' gegen ' + _mlWertTxt(r, p.past) + (r.unit ? (' ' + r.unit) : '')
-                + '. Die Zahl links ist der volle Zeitraum.';
+                + ' — davor liegen keine Archivdaten vor, deshalb wird beidseitig gleich lang gerechnet.';
             } else { ze.removeAttribute('title'); }
           }
         }
@@ -278,9 +275,20 @@
         if (!p) { return; }
         // Bei einem Zaehler ist der interessante Wert der VERBRAUCH der Periode,
         // nicht der Zaehlerstand. Die Schnittstelle liefert ihn als cur.
-        if (r.cnt && p.cur != null) {
+        if (r.cnt && _mlCmpIst(p) != null) {
           var ve = $('[data-mlrow="' + i + '"] .hmv > span', el);
-          if (ve) { ve.textContent = _mlWertTxt(r, p.cur); }
+          if (ve) { ve.textContent = _mlWertTxt(r, _mlCmpIst(p)); }
+          // Der Stern sitzt an der Wertspalte, sobald sie das verkuerzte Fenster meint -
+          // und der Hinweis nennt die volle Periode, damit die Zahl nicht verlorengeht.
+          var vz = $('[data-mlrow="' + i + '"] .hmv', el);
+          if (vz) {
+            vz.classList.toggle('mlteil', !!p.ab);
+            if (p.ab) {
+              vz.title = 'Verkuerztes Fenster ab ' + _mlDatum(p.ab)
+                + ' — davor liegen keine Archivdaten vor, deshalb wird beidseitig gleich lang gerechnet. '
+                + 'Die volle Periode ergaebe ' + _mlWertTxt(r, p.cur) + (r.unit ? (' ' + r.unit) : '') + '.';
+            } else { vz.removeAttribute('title'); }
+          }
         }
         // Der Balken vergleicht mit der Vorperiode: 100 % heisst "wie damals".
         // Damit taugt er auch fuer eine Liste aus kWh, Litern und Kilogramm -
@@ -805,7 +813,14 @@
     var _st = _mlStufe(w);
     if (_st && _st !== 'var' && r.cnt) {
       var p = _mlCmp[w.id + ':' + i + ':' + _st + ':counter'];
-      return (p && p.cur != null) ? p.cur : null;
+      // Bei VERKUERZTEM Vergleichsfenster gilt der vergleichbare Wert, nicht die volle
+      // Periode. Sonst stehen in einer Zeile zwei Zahlen, die sich widersprechen: PV 2 zeigte
+      // 634 kWh neben 628 kWh und trotzdem einen Pfeil nach unten, weil der Pfeil in
+      // Wahrheit 622 gegen 628 rechnete. Ein Sternchen daneben erklaert das zwar, aber die
+      // Zeile bleibt unlesbar - wer 634 und 628 sieht, rechnet unwillkuerlich plus 1 %.
+      // Jetzt stehen die beiden Zahlen, die auch verglichen werden; die volle Periode nennt
+      // der Hinweis beim Ueberfahren.
+      return p ? _mlCmpIst(p) : null;
     }
     var d = r.vid && _lastVals[r.vid];
     if (!d) return null;
