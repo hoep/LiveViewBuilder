@@ -3,24 +3,61 @@
   var _RCDROP='M0 0c2.3 3.1 2.3 5.5 0 5.5c-2.3 0 -2.3 -2.4 0 -5.5z';   // Tropfen (Teardrop)
   var _RCDROPS='M0 0c1.9 2.6 1.9 4.6 0 4.6c-1.9 0 -1.9 -2 0 -4.6z';    // kleiner Tropfen
   function _rainNum(id){var lv=id&&_lastVals[id];if(!lv)return NaN;return parseFloat(String(lv.v).replace(',','.'));}
+  /**
+   * Faellt gerade Niederschlag? - unabhaengig davon, ob die Wippe schon gekippt ist.
+   *
+   * EINE REGENWIPPE MISST KEIN NIESELN. Sie kippt erst, wenn ein festes Volumen
+   * zusammengekommen ist; bis dahin steht die Rate auf 0, obwohl es draussen nass wird.
+   * Gemessen am 10.09.2026: Regenrate 0,0 mm/h bei gleichzeitig Regensensor = 1,
+   * optischem Regendetektor = 1 und Niederschlagsart = Regen - die Karte zeigte nichts.
+   *
+   * Deshalb eine ZWEITE Quelle: ein Melder, der Naesse erkennt statt Menge zu zaehlen
+   * (Regensensor, optischer Detektor oder die Niederschlagsart der Station). Wahr ist
+   * alles, was als Ja gemeint ist: true, eine Zahl groesser null (die Niederschlagsart
+   * zaehlt 1=Regen, 2=Schnee, 3=Schneeregen), oder ein Text, der nicht nach Nein aussieht.
+   */
+  function _rainWet(id){
+    var lv=id&&_lastVals[id];
+    if(!lv)return false;
+    var v=lv.v;
+    if(typeof v==='boolean')return v;
+    var n=parseFloat(String(v).replace(',','.'));
+    if(!isNaN(n))return n>0;
+    var t=String(v).toLowerCase().trim();
+    return !(t===''||t==='false'||t==='aus'||t==='nein'||t==='kein'||t==='trocken');
+  }
   function _rainApply(w,el){
     var mm=_rainNum(w.varId),rate=w.varId2?_rainNum(w.varId2):NaN,mx=(w.rmax>0?w.rmax:30);
+    var nass=w.varId3?_rainWet(w.varId3):false;
+    var misst=(!isNaN(rate)&&rate>0);          // die Wippe zaehlt bereits
+    var nieselt=(nass&&!misst);                // nass, aber (noch) keine Menge
     var f=isNaN(mm)?0:Math.max(0,Math.min(1,mm/mx));
     var fill=el.querySelector('[data-role=rfill]');if(fill){var H=70;fill.setAttribute('height',(H*f).toFixed(1));fill.setAttribute('y',(80-H*f).toFixed(1));}
     var _fmt=function(x){return (w.dec!=null?x.toFixed(w.dec):(Math.round(x*10)/10).toString()).replace('.',',');};
     var v=el.querySelector('[data-role=val]');if(v)v.textContent=isNaN(mm)?'–':_fmt(mm);
-    var sub=el.querySelector('[data-role=sub]');if(sub)sub.textContent=w.varId2?(isNaN(rate)?'':(_fmt(rate)+' mm/h')):(w.label||'Regen heute');
+    // "0,0 mm/h" waehrend es nieselt ist keine Auskunft, sondern eine Verneinung dessen,
+    // was draussen passiert. Dann lieber das Wort.
+    var sub=el.querySelector('[data-role=sub]');
+    if(sub)sub.textContent=nieselt?'Nieseln':(w.varId2?(isNaN(rate)?'':(_fmt(rate)+' mm/h')):(w.label||'Regen heute'));
     // Tropfen nur bei Niederschlag; Fallgeschwindigkeit folgt der Rate (mehr mm/h -> schneller). Abschaltbar (w.rainAnim=false).
     var rain=el.querySelector('[data-role=rain]');
     if(rain){
-      var anim=(w.rainAnim!==false)&&!isNaN(rate)&&rate>0;
-      var dur=anim?Math.max(0.35,Math.min(1.5,1.5-rate*0.09)):0;
-      var want=anim?dur.toFixed(2):'';
+      var an=(w.rainAnim!==false);
+      // ZWEI GANGARTEN, nicht an/aus. Regen faellt schnell und dicht, Nieseln langsam und
+      // duenn - dieselbe Animation langsamer abzuspielen sieht aus wie schwacher Regen,
+      // nicht wie Niesel. Deshalb traegt der Nieselfall nur die kleinen Tropfen, weniger
+      // davon, gedaempft und deutlich langsamer.
+      var dur=misst?Math.max(0.35,Math.min(1.5,1.5-rate*0.09)):2.2;
+      var want=!an?'':(misst?dur.toFixed(2):(nieselt?('n'+dur.toFixed(2)):''));
       if(rain.getAttribute('data-dur')!==want){rain.setAttribute('data-dur',want);
-        if(anim){var d1=dur.toFixed(2),d2=(dur*1.28).toFixed(2),b1=(dur/2).toFixed(2),b2=(dur/4).toFixed(2);
+        if(an&&misst){var d1=dur.toFixed(2),d2=(dur*1.28).toFixed(2),b1=(dur/2).toFixed(2),b2=(dur/4).toFixed(2);
           rain.innerHTML='<path d="'+_RCDROP+'" opacity="0.9"><animateTransform attributeName="transform" type="translate" values="15,2;15,80" dur="'+d1+'s" repeatCount="indefinite"/></path>'
             +'<path d="'+_RCDROP+'" opacity="0.9"><animateTransform attributeName="transform" type="translate" values="25,2;25,80" dur="'+d1+'s" begin="'+b1+'s" repeatCount="indefinite"/></path>'
             +'<path d="'+_RCDROPS+'" opacity="0.7"><animateTransform attributeName="transform" type="translate" values="20,2;20,80" dur="'+d2+'s" begin="'+b2+'s" repeatCount="indefinite"/></path>';
+          rain.style.opacity='1';
+        }else if(an&&nieselt){var n1=dur.toFixed(2),n2=(dur*1.35).toFixed(2),nb=(dur*0.55).toFixed(2);
+          rain.innerHTML='<path d="'+_RCDROPS+'" opacity="0.55"><animateTransform attributeName="transform" type="translate" values="16,2;16,80" dur="'+n1+'s" repeatCount="indefinite"/></path>'
+            +'<path d="'+_RCDROPS+'" opacity="0.45"><animateTransform attributeName="transform" type="translate" values="24,2;24,80" dur="'+n2+'s" begin="'+nb+'s" repeatCount="indefinite"/></path>';
           rain.style.opacity='1';
         }else{rain.innerHTML='';rain.style.opacity='0';}
       }
@@ -48,14 +85,18 @@
     mount:function(w){var el=$('.w[data-id="'+w.id+'"]',canvas);if(el)_rainApply(w,el);},
     props:function(w){return row('Menge mm (Var)','<input id="pRnAmt" value="'+(w.varId||'')+'" placeholder="ID"> <button class="btn" id="pRnAmtP" style="padding:6px 8px">wählen</button>')
       +row('Rate mm/h (Var)','<input id="pRnRate" value="'+(w.varId2||'')+'" placeholder="ID (optional)"> <button class="btn" id="pRnRateP" style="padding:6px 8px">wählen</button>')
+      +row('Niederschlag erkannt (Var)','<input id="pRnWet" value="'+(w.varId3||'')+'" placeholder="ID (optional)"> <button class="btn" id="pRnWetP" style="padding:6px 8px">wählen</button>')
+      +'<div style="font-size:11px;color:var(--muted);margin:2px 2px 6px">Regensensor, optischer Detektor oder Niederschlagsart. Eine Regenwippe misst kein Nieseln — sie kippt erst ab einer gewissen Menge, bis dahin steht die Rate auf 0. Mit dieser Variablen zeigt die Karte auch dann Tropfen, langsamer und dünner, und schreibt „Nieseln“ statt „0,0 mm/h“.</div>'
       +row('Skala max (mm)','<input id="pRnMax" type="number" min="1" value="'+(w.rmax>0?w.rmax:30)+'">')
-      +row('Tropfen-Animation','<input type="checkbox" id="pRnAnim"'+(w.rainAnim!==false?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">Tempo folgt der Rate; braucht eine Rate-Variable &gt; 0</span>');},
+      +row('Tropfen-Animation','<input type="checkbox" id="pRnAnim"'+(w.rainAnim!==false?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">Tempo folgt der Rate; ohne gemessene Rate greift der Nieselgang</span>');},
     wire:function(w){
       function re(){var el=$('.w[data-id="'+w.id+'"]',canvas);if(el)_rainApply(w,el);}
       if($('#pRnAmt'))$('#pRnAmt').oninput=function(){w.varId=parseInt(this.value)||0;render();};
       if($('#pRnAmtP'))$('#pRnAmtP').onclick=function(){showTab('vars');_bindTarget=w.id;};
       if($('#pRnRate'))$('#pRnRate').oninput=function(){w.varId2=parseInt(this.value)||0;render();};
       if($('#pRnRateP'))$('#pRnRateP').onclick=function(){showTab('vars');_bindTarget2=w.id;};
+      if($('#pRnWet'))$('#pRnWet').oninput=function(){w.varId3=parseInt(this.value)||0;render();};
+      if($('#pRnWetP'))$('#pRnWetP').onclick=function(){showTab('vars');_bindTarget3=w.id;};
       if($('#pRnMax'))$('#pRnMax').oninput=function(){w.rmax=parseFloat(this.value)||30;re();};
       if($('#pRnAnim'))$('#pRnAnim').onchange=function(){w.rainAnim=this.checked?undefined:false;re();};
     },
