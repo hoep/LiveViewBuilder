@@ -1783,7 +1783,13 @@
     // Zeitraeumen sind alle Bloecke vollstaendig, nur der laufende ist naturgemaess offen.
     if(r.snap){
       var u=(r.unit==='raw')?(r.rawUnit||'hour'):r.unit;
+      // Das Fenster umfasst n GANZE Zeitraeume - es endet am ENDE des laufenden, nicht
+      // jetzt. Endete es jetzt, bekaeme der laufende Monat nur den Teil bis heute und sein
+      // Balken klebte am Vormonat. Dass rechts noch Platz ohne Messwerte steht, ist richtig
+      // so: der Monat ist eben noch nicht vorbei, und die rohe Reihe hoert einfach auf.
+      var ende=_blkEnde(_blkAnfang(to*1000,u),u);
       from=Math.floor(_blkVor(to*1000,u,Math.max(0,(r.n||24)-1))/1000);
+      to=Math.floor(ende/1000);
       win=Math.max(60,to-from);
     }
     return {from:from,to:to,win:win,level:_CHLVL[r.unit],aggF:(r.aggF==='sum'?'sum':'avg'),cal:!!r.cal,unit:r.unit,n:(r.n||24),snap:!!r.snap};
