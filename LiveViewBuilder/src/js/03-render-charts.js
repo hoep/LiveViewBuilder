@@ -422,7 +422,7 @@
         }});
     }
     var axw=_axShow(w);
-    var opt={backgroundColor:'transparent',animation:!!bcfg().chartAnim,grid:{left:8,right:10,top:6+_titleSpace(w),bottom:4,containLabel:true},
+    var opt={backgroundColor:'transparent',animation:!!bcfg().chartAnim,grid:_chGrid(w,{l:8,r:10,t:6,b:4},false),
       title:_titleOpt(w),
       tooltip:{trigger:'axis',axisPointer:{type:'shadow'},formatter:function(ps){
         // Nur den BALKEN (Serie 1) zeigen — NICHT die Basis (0) oder die Verbindungslinie
@@ -687,7 +687,7 @@
     var rad=(w.barRadius!=null?+w.barRadius:4);
     ec.setOption({backgroundColor:'transparent',title:_titleOpt(w),
       animationDuration:300,animationDurationUpdate:upd,animationEasing:'cubicOut',animationEasingUpdate:'cubicOut',
-      grid:{left:8,right:70,top:12+_titleSpace(w),bottom:8,containLabel:true},
+      grid:_chGrid(w,{l:8,r:70,t:12,b:8},false),
       tooltip:{trigger:'axis',axisPointer:{type:'none'},confine:true,valueFormatter:function(v){return _chNum(w,v,true);}},
       xAxis:{type:'value',max:'dataMax',splitNumber:(w.gridDivs>0?+w.gridDivs:undefined),
         axisLine:{show:axw.line,lineStyle:{color:cssv('--line')}},axisTick:{show:axw.ticks},
@@ -734,7 +734,7 @@
     ec.setOption({
       backgroundColor:'transparent',title:_titleOpt(w),
       animationDuration:0,animationDurationUpdate:frameMs,animationEasing:'linear',animationEasingUpdate:'linear',
-      grid:{left:8,right:70,top:12+_titleSpace(w),bottom:8,containLabel:true},
+      grid:_chGrid(w,{l:8,r:70,t:12,b:8},false),
       tooltip:{trigger:'axis',axisPointer:{type:'none'},confine:true,valueFormatter:function(v){return _chNum(w,v,true);}},
       xAxis:{type:'value',max:'dataMax',splitNumber:(w.gridDivs>0?+w.gridDivs:undefined),
         axisLine:{show:axw.line,lineStyle:{color:cssv('--line')}},axisTick:{show:axw.ticks},
@@ -756,9 +756,13 @@
   function setPie(w){var ec=_ec[w.id];if(!ec)return;var ids=[w.varId,w.varId2,w.varId3].filter(function(x){return x;});
     var data=ids.map(function(id,i){var o=(w.sopt&&w.sopt[i])||{};var lv=_lastVals[id],v=lv?parseFloat(String(lv.v).replace(',','.')):0;if(isNaN(v))v=0;return {name:o.name||(i===0?(w.label||'Serie 1'):'Serie '+(i+1)),value:Math.max(0,v),itemStyle:{color:o.color||autoColorHex(i)}};});
     var donut=(w.ctype==='donut'),rose=(w.ctype==='rose');
-    var tSp=_titleSpace(w),lpP=w.legend?(w.legPos||'bottom'):'';
-    // Mittelpunkt nach unten schieben, wenn Titel oben Platz braucht bzw. Legende oben/unten sitzt
-    var cy=50+(tSp?5:0)+(lpP==='top'?4:0)-(lpP==='bottom'?5:0);
+    // Ein Tortendiagramm hat kein Grid; es weicht ueber seinen Mittelpunkt aus. Die
+    // reservierten Streifen kommen aus derselben Quelle wie bei allen anderen Typen, der
+    // Mittelpunkt rueckt um die halbe Differenz oben/unten. Frueher standen hier feste
+    // +5/+4/-5 Prozent - und weil die Legende dabei als "unten" angenommen wurde, solange
+    // legPos nicht gesetzt war, wanderte die Torte nach OBEN, waehrend die Legende oben lag.
+    var st=_chStrips(w,w.legend),_H=0;try{_H=ec.getHeight()||0;}catch(e){}
+    var cy=_H?Math.round((50+((st.t-st.b)/2)/_H*100)*10)/10:50;
     ec.setOption({backgroundColor:'transparent',animation:!!bcfg().chartAnim,tooltip:{trigger:'item',valueFormatter:function(v){return _chNum(w,v);}},
       title:_titleOpt(w),
       legend:_legendOpt(w,w.legend),
@@ -868,11 +872,6 @@
     ec.setOption({animation:!!bcfg().chartAnim,series:[ser]},true);
   }
   function autoColorHex(i){return [cssv('--accent'),cssv('--info'),cssv('--warm')][i%3]||'#00cdab';}
-  function _legendOpt(w,on){ // Legende inkl. Position (top/bottom/left/right) — von setLine & setCalBar genutzt
-    if(!on)return {show:false};
-    var p=w.legPos||'top',o={show:true,textStyle:{color:cssv('--muted'),fontSize:_ecF(w,'legend',9)},itemWidth:11,itemHeight:8,orient:(p==='left'||p==='right')?'vertical':'horizontal'};
-    if(p==='top')o.top=0;else if(p==='bottom')o.bottom=0;else if(p==='left'){o.left=0;o.top='middle';}else{o.right=4;o.top='middle';}
-    return o;}
   // ---- Anzeige-Optionen zentral (setLine und setCalBar nutzen dieselben Regeln) ----
   function _axShow(w){return {line:!!w.axLine,ticks:!!w.axTicks,xLab:(w.xLabels!==false),yLab:(w.yLabels!==false),
     xGrid:!!w.xgrid,yGrid:(w.ygrid!==false)};}
@@ -1104,16 +1103,183 @@
     return o;
   }
 
-  function _titleOn(w){var t=(w.showTitle!=null)?w.showTitle:(!w.legend&&!!w.label);return !!(t&&(w.label||'')!=='');}
-  function _titleOpt(w){
+  // ===== Anordnung von Titel, Untertitel und Legende ==================================
+  // EIN Modell fuer beide Elemente:
+  //   Anker   3x3 - senkrecht o(ben)/m(itte)/u(nten), waagrecht l(inks)/m(itte)/r(echts),
+  //                 also 'ol' = oben links, 'ur' = unten rechts, 'mm' = Mitte.
+  //   Versatz dx/dy in Pixeln, positiv immer nach rechts bzw. nach UNTEN - unabhaengig
+  //                 davon, an welcher Kante der Anker haengt.
+  //   Streifen  Element bekommt eigenen Platz am Rand (Vorgabe) ODER liegt frei ueber der
+  //                 Zeichenflaeche (Float) und nimmt ihr keine Hoehe weg.
+  //
+  // Warum das noetig war: der Titel sass fest auf top:2, die Legende auf top:0 bzw.
+  // bottom:0 - eine senkrechte Verschiebung gab es gar nicht. Und der reservierte Platz
+  // war GERATEN, nicht gemessen: immer 18 px fuer den Titel, 20 px fuer die Legende,
+  // gleichgueltig ob die Schrift 9 px oder 22 px hoch ist und ob der Text ein- oder
+  // dreizeilig laeuft. Bei grosser Schrift lief beides in die Zeichenflaeche.
+  //
+  // Ausserdem baute frueher JEDER der acht Renderer sein Grid selbst zusammen. Eine neue
+  // Option haette man achtmal einbauen muessen - und genau daraus entstand der Fehler,
+  // dass _hbLine das fertige opt.grid wieder ueberschrieb. Ab jetzt geht jedes Grid durch
+  // _chGrid(), und _chStrips() ist die einzige Stelle, die Randbreiten kennt.
+  function _ancV(a){var c=String(a||'ol').charAt(0);return (c==='m'||c==='u')?c:'o';}
+  function _ancH(a){var c=String(a||'ol').charAt(1);return (c==='m'||c==='r')?c:'l';}
+  // Altbestand: titlePos/legPos bleiben lesbar, damit bestehende Seiten unveraendert aussehen.
+  function _titleAnc(w){if(w&&w.titleAnc)return w.titleAnc;var p=(w&&w.titlePos)||'left';return p==='center'?'om':(p==='right'?'or':'ol');}
+  function _legAnc(w){if(w&&w.legAnc)return w.legAnc;var p=(w&&w.legPos)||'top';return p==='bottom'?'um':(p==='left'?'ml':(p==='right'?'mr':'om'));}
+  // Textbreite MESSEN, nicht schaetzen. Der erste Entwurf rechnete mit 0,58 em je Zeichen;
+  // gemessen am fertigen Bild waren es 0,82 - der Legendenstreifen fiel dadurch um ein
+  // Drittel zu schmal aus und die Legende ragte in die Zeichenflaeche. Ein einzelner,
+  // gemerkter 2D-Kontext kostet nichts und kennt die echte Skin-Schrift.
+  var _mCtx=null;
+  function _txtW(s,fs,w){
+    s=String(s==null?'':s);if(!s)return 0;
+    try{
+      if(!_mCtx)_mCtx=document.createElement('canvas').getContext('2d');
+      _mCtx.font=fs+'px '+((w&&_ecFF(w))||'sans-serif');
+      return Math.ceil(_mCtx.measureText(s).width);
+    }catch(e){return Math.ceil(s.length*fs*0.62);}   // ohne Canvas: grobe Schaetzung
+  }
+  function _chLines(s){return String(s==null?'':s).replace(/\\n|\r\n|\r|\n/g,'\n').split('\n');}
+  // Element an seinen Anker setzen. gx/gy sind die Grundabstaende zur jeweiligen Kante.
+  // Mittellagen brauchen die Zeichenflaechengroesse - die liefert die ECharts-Instanz
+  // selbst (getWidth/getHeight); ohne Versatz genuegt ECharts' eigenes 'center'/'middle'.
+  function _ancPlace(anc,dx,dy,gx,gy,box,ec){
+    var o={},v=_ancV(anc),h=_ancH(anc),W=0,H=0;
+    dx=parseFloat(dx)||0;dy=parseFloat(dy)||0;
+    try{if(ec){W=ec.getWidth()||0;H=ec.getHeight()||0;}}catch(e){}
+    if(h==='l')o.left=gx+dx;
+    else if(h==='r')o.right=gx-dx;
+    else if(!dx||!W)o.left='center';
+    else o.left=Math.round(Math.max(0,(W-box.w)/2+dx));
+    if(v==='o')o.top=gy+dy;
+    else if(v==='u')o.bottom=gy-dy;
+    else if(!dy||!H)o.top='middle';
+    else o.top=Math.round(Math.max(0,(H-box.h)/2+dy));
+    return o;
+  }
+  function _titleOn(w){var t=(w.showTitle!=null)?w.showTitle:(!w.legend&&!!w.label);return !!(t&&((w.label||'')!==''||(w.subLabel||'')!==''));}
+  function _subFs(w){return _ecF(w,'sub',Math.max(8,_ecF(w,'title',11)-2));}
+  function _titleBox(w){
+    if(!_titleOn(w))return {on:false,w:0,h:0};
+    var fs=_ecF(w,'title',11),wd=0,h=0;
+    _chLines(w._chLab||w.label||'').forEach(function(l){if(l==='')return;wd=Math.max(wd,_txtW(l,fs,w));h+=fs+3;});
+    if((w.subLabel||'')!==''){var sfs=_subFs(w);
+      _chLines(w.subLabel).forEach(function(l){wd=Math.max(wd,_txtW(l,sfs,w));h+=sfs+3;});h+=2;}
+    return {on:true,w:wd,h:h};
+  }
+  function _titleOpt(w,ec){
     if(!_titleOn(w))return {show:false};
-    // "\n" (getippt als Backslash-n) bzw. CR/LF -> echter Zeilenumbruch (ECharts bricht bei \n).
-    var _tt=String(w._chLab||w.label||'').replace(/\\n|\r\n|\r|\n/g,'\n');
-    var o={text:_tt,top:2,textStyle:{color:cssv('--muted'),fontSize:_ecF(w,'title',11),fontWeight:'normal',lineHeight:_ecF(w,'title',11)+3}};
-    var p=w.titlePos||'left';
-    if(p==='center')o.left='center';else if(p==='right')o.right=6;else o.left=4;
+    ec=ec||_ec[w.id];
+    var fs=_ecF(w,'title',11),box=_titleBox(w);
+    var o={text:_chLines(w._chLab||w.label||'').join('\n'),
+      textStyle:{color:cssv('--muted'),fontSize:fs,fontWeight:(w.titleBold?'bold':'normal'),lineHeight:fs+3},
+      textAlign:({l:'left',m:'center',r:'right'})[_ancH(_titleAnc(w))]};
+    if((w.subLabel||'')!==''){var sfs=_subFs(w);
+      o.subtext=_chLines(w.subLabel).join('\n');
+      o.subtextStyle={color:cssv('--faint'),fontSize:sfs,lineHeight:sfs+3};
+      o.itemGap=2;}
+    var p=_ancPlace(_titleAnc(w),w.titleDX,w.titleDY,4,2,box,ec);
+    for(var k in p)o[k]=p[k];
     return o;}
-  function _titleSpace(w){return _titleOn(w)?18:0;} // Platz im Grid reservieren, sonst überlappt der Titel
+  function _titleSpace(w){var b=_titleBox(w);if(!b.on||w.titleFloat)return 0;var v=_ancV(_titleAnc(w));return (v==='m')?0:(b.h+4);}
+  // ---- Legende ------------------------------------------------------------------------
+  // Ausrichtung automatisch: an einer Seitenkante (links/rechts) senkrecht, sonst waagrecht.
+  // Das deckt den Altbestand genau ab (legPos left/right waren senkrecht) und ist fuer die
+  // neuen Eckpositionen die richtige Wahl. w.legOrient ueberstimmt es.
+  var LEG_GAP=6;   // fester Abstand zwischen zwei Legendeneintraegen - Messung und Zeichnung muessen ihn gemeinsam kennen
+  function _legVert(w){var lo=(w&&w.legOrient)||'auto';if(lo==='v')return true;if(lo==='h')return false;return _ancH(_legAnc(w))!=='m';}
+  // Der aktuelle Wert einer Serie als fertiger Text - Messung und Beschriftung muessen
+  // dieselbe Quelle benutzen, sonst passt der reservierte Streifen nicht zum Gemalten.
+  function _legVal(w,i){
+    var S=(typeof _chSeries==='function')?(_chSeries(w)||[]):[],s=S[i];
+    var lv=s&&s.vid&&_lastVals[s.vid];if(!lv)return '';
+    var v=parseFloat(String(lv.v).replace(',','.'));
+    return isNaN(v)?'':_chNum(w,v);
+  }
+  function _legNames(w){
+    var S=(typeof _chSeries==='function')?(_chSeries(w)||[]):[];
+    return S.map(function(s,i){return (s&&s.name)?String(s.name):('Serie '+(i+1));});
+  }
+  function _legBox(w,on){
+    if(!on)return {on:false,w:0,h:0,vert:false,cols:1};
+    var fs=_ecF(w,'legend',9),names=_legNames(w),n=Math.max(1,names.length),vert=_legVert(w);
+    // Mit "Werte anzeigen" traegt jeder Eintrag zusaetzlich eine Zahl. Wer das beim Messen
+    // vergisst, reserviert einen zu schmalen Streifen - die Legende ragt dann in die
+    // Zeichenflaeche, obwohl sie einen eigenen Platz haben sollte.
+    if(w.legVals)names=names.map(function(t,i){var e=_legVal(w,i);return e?(t+'  '+e):t;});
+    var itW=function(t){return 11+4+_txtW(t,fs,w)+12;};   // Symbol + Abstand + Text + Luft
+    // Zeilenhoehe: ECharts legt zwischen zwei Eintraege itemGap. Rechnet man ohne ihn, faellt
+    // die vorgegebene Hoehe zu klein aus und ECharts bricht die senkrechte Legende in ZWEI
+    // Spalten um - gemessen: 3 Eintraege, vorgegeben 51 px, gebraucht 63 px, Ergebnis zwei
+    // Spalten und die doppelte Breite. Deshalb itemGap fest setzen und mitrechnen.
+    var rowH=Math.max(fs,12)+LEG_GAP;
+    if(vert){
+      var wd=0;names.forEach(function(t){wd=Math.max(wd,itW(t));});
+      if(!wd)wd=60;
+      var cols=Math.max(1,parseInt(w.legCols)||1);
+      return {on:true,vert:true,w:wd*cols,h:Math.ceil(n/cols)*rowH+4,cols:cols,itemW:wd};
+    }
+    var avail=Math.max(60,((w&&w.w)||300)-12),per=parseInt(w.legCols)||0;
+    if(!per){var sum=0,fit=0;
+      for(var i=0;i<names.length;i++){sum+=itW(names[i]);if(sum>avail&&fit>0)break;fit++;}
+      per=Math.max(1,fit);}
+    var sum2=0;names.slice(0,per).forEach(function(t){sum2+=itW(t);});
+    return {on:true,vert:false,w:Math.max(60,sum2+4),h:Math.ceil(n/per)*rowH,cols:per,itemW:0};
+  }
+  function _legendOpt(w,on,ec){
+    if(!on)return {show:false};
+    ec=ec||_ec[w.id];
+    var fs=_ecF(w,'legend',9),box=_legBox(w,on);
+    var o={show:true,textStyle:{color:cssv('--muted'),fontSize:fs},itemWidth:11,itemHeight:8,
+      itemGap:LEG_GAP,orient:box.vert?'vertical':'horizontal'};
+    // Umbruch erzwingen: ECharts kennt kein "n Eintraege je Zeile", wohl aber eine Breite
+    // bzw. Hoehe, ab der es umbricht. Genau die rechnen wir aus _legBox.
+    if(w.legCols>0){if(box.vert)o.height=box.h;else o.width=box.w;}
+    // Aktuellen Wert neben den Serienname schreiben (haeufigster Wunsch bei mehreren Serien).
+    if(w.legVals){
+      var idx={};_legNames(w).forEach(function(nm,i){if(idx[nm]==null)idx[nm]=i;});
+      o.formatter=function(nm){var i=idx[nm];if(i==null)return nm;var e=_legVal(w,i);return e?(nm+'  '+e):nm;};
+    }
+    // Titel und Legende teilen sich haeufig dieselbe Kante (Vorgabe: beide oben). Beide auf
+    // Abstand 0 zu setzen legt sie uebereinander - genau das war im ersten Entwurf zu sehen.
+    // Die Legende rueckt deshalb um den Titelstreifen nach innen, wenn beide an derselben
+    // waagrechten Kante haengen und keines der beiden frei ueber der Flaeche liegt.
+    var tb=_titleBox(w),tv=_ancV(_titleAnc(w)),lv=_ancV(_legAnc(w));
+    var _stapel=(tb.on&&!w.titleFloat&&!w.legFloat&&tv===lv&&lv!=='m')?(tb.h+4):0;
+    var gap=(w.legGap!=null&&w.legGap!=='')?parseFloat(w.legGap):0;
+    var p=_ancPlace(_legAnc(w),w.legDX,w.legDY,(gap||4),gap+_stapel,box,ec);
+    for(var k in p)o[k]=p[k];
+    return o;}
+  // Der Achsentitel (kWh, W, ...) sitzt UEBER der oberen Gitterkante - containLabel erfasst
+  // nur die Skalenwerte, nicht ihn. Ohne eigenen Platz stiess er in die Legende.
+  function _axNameSpace(w){
+    if(!w)return 0;
+    var hat=((w.yunit||'')!=='')||((w.unit||'')!=='');
+    (w.yAxes||[]).forEach(function(a){if(a&&(a.name||'')!=='')hat=true;});
+    return hat?(_ecF(w,'axname',9)+6):0;
+  }
+  // ---- Reservierte Streifen: die EINZIGE Stelle, die Randbreiten kennt ------------------
+  function _chStrips(w,legOn){
+    var s={l:0,r:0,t:_axNameSpace(w),b:0};
+    var tb=_titleBox(w);
+    if(tb.on&&!w.titleFloat){var tv=_ancV(_titleAnc(w));
+      if(tv==='o')s.t+=tb.h+4;else if(tv==='u')s.b+=tb.h+4;}
+    var on=(legOn!=null)?legOn:!!w.legend,lb=_legBox(w,on);
+    if(lb.on&&!w.legFloat){var a=_legAnc(w),lv=_ancV(a),lh=_ancH(a);
+      if(lb.vert){if(lh==='l')s.l+=lb.w+6;else if(lh==='r')s.r+=lb.w+6;}
+      else {if(lv==='o')s.t+=lb.h+6;else if(lv==='u')s.b+=lb.h+4;}}   // +4 Luft: der Achsentitel (kWh/W) sitzt knapp ueber der Gitterkante und wird von containLabel nicht erfasst
+    return s;
+  }
+  // Grundrand des Renderers + Streifen; manuelle Raender (padL/padR/padT/padB) haben Vorrang.
+  function _chGrid(w,base,legOn){
+    base=base||{};
+    var s=_chStrips(w,legOn);
+    var g={left:(base.l||0)+s.l,right:(base.r||0)+s.r,top:(base.t||0)+s.t,bottom:(base.b||0)+s.b,containLabel:true};
+    var M={left:'padL',right:'padR',top:'padT',bottom:'padB'};
+    for(var k in M){var v=w[M[k]];if(v!=null&&v!=='')g[k]=Math.max(0,parseFloat(v)||0);}
+    return g;
+  }
   // ---- Reservierte Streifen am Rand der Zeichenflaeche ---------------------------------
   // Legende, Marken-Fahnen und die Perioden-Navigation teilen sich denselben Rand. Wer keinen
   // eigenen Streifen bekommt, malt in den des anderen — genau so verdeckte die Fahne „Max 23 °C"
@@ -1175,13 +1341,12 @@
       // (Standard-Position) statt ans Ende — sonst wird sie am rechten Rand abgeschnitten.
       a.nameRotate=0;a.nameLocation='middle';if(a.nameGap==null||a.nameGap<18)a.nameGap=20;
       if(a.position==='right'){a.position='top';a.offset=(iT++)*34;}else{a.position='bottom';a.offset=(iB++)*34;}});
-    var lp=w.legend?(w.legPos||'top'):'';
     // Liegende Balken: die WERT-Achse liegt unten (x). Ihre rechteste Beschriftung (groesster Wert,
     // z. B. „1.234") sitzt am rechten Rand und wird von containLabel horizontal nicht abgedeckt ->
     // ohne Legende rechts hier 28px Luft reservieren, sonst uebernimmt die Legende den Rand.
-    opt.grid={left:6+(lp==='left'?60:0),right:(lp==='right'?60:28),
-      top:6+_titleSpace(w)+(lp==='top'?20:0)+Math.max(0,nT-1)*34+_annTopSpace(w),
-      bottom:(w.zoom?34:16)+(lp==='bottom'?18:0)+Math.max(0,nB-1)*34+(_hbName?16:0)+_navSpace(w),containLabel:true};
+    opt.grid=_chGrid(w,{l:6,r:28,
+      t:6+Math.max(0,nT-1)*34+_annTopSpace(w),
+      b:(w.zoom?34:16)+Math.max(0,nB-1)*34+(_hbName?16:0)+_navSpace(w)});
     (opt.series||[]).forEach(function(s){
       if(s.data&&s.data.length&&Array.isArray(s.data[0]))s.data=s.data.map(function(p){return p[1];}); // Kategorie = Index -> nur Wert
       if(s.yAxisIndex!=null){s.xAxisIndex=s.yAxisIndex;delete s.yAxisIndex;}
@@ -1255,8 +1420,7 @@
       return {type:'value',position:(right?'right':'left'),offset:off,name:(a.name||''),nameTextStyle:{color:cssv('--muted'),fontSize:_ecF(w,'axname',9)},nameGap:7,
         scale:(a.min==null||a.min===''),min:(a.min!=null&&a.min!==''?parseFloat(a.min):null),max:(a.max!=null&&a.max!==''?parseFloat(a.max):null),
         axisLine:{show:ax0.line,lineStyle:{color:cssv('--line')}},axisTick:{show:ax0.ticks,lineStyle:{color:cssv('--line')}},axisLabel:_axLabY(w,ax0,a),splitLine:{show:(ax0.yGrid&&ix===0),lineStyle:{color:cssv('--line-soft')}},splitNumber:(w.gridDivs>0?parseInt(w.gridDivs):null)};});
-    var lp=w.legend?(w.legPos||'top'):''; // Legende reserviert Platz am jeweiligen Rand (sonst Ueberlappung)
-    var opt={backgroundColor:'transparent',animation:!!bcfg().chartAnim,grid:{left:6+Math.max(0,nL-1)*48+(lp==='left'?60:0),right:8+Math.max(0,nR-1)*48+(lp==='right'?60:0),top:6+_titleSpace(w)+(lp==='top'?20:0)+_annTopSpace(w),bottom:(w.zoom?34:14)+(lp==='bottom'?18:0)+_navSpace(w),containLabel:true},tooltip:(_chXY(w)
+    var opt={backgroundColor:'transparent',animation:!!bcfg().chartAnim,grid:_chGrid(w,{l:6+Math.max(0,nL-1)*48,r:8+Math.max(0,nR-1)*48,t:6+_annTopSpace(w),b:(w.zoom?34:14)+_navSpace(w)}),tooltip:(_chXY(w)
         ? {trigger:'item',formatter:function(p){
             return (p.seriesName?(p.seriesName+'<br>'):'')
               +_lineFmt(p.value[0])+(w.xunit?(' '+w.xunit):'')+' \u2192 '
@@ -1347,9 +1511,9 @@
           return {type:'line',shape:{x1:pt[0]-hw,y1:pt[1],x2:pt[0]+hw,y2:pt[1]},style:{stroke:mCol,lineWidth:2}};
         }});
     }
-    var lp=showLeg?(w.legPos||'top'):'',axc=_axShow(w);
+    var axc=_axShow(w);
     _annApply(w,series);   // Kalenderjahr-Balken: Marken gelten hier genauso
-    var opt={backgroundColor:'transparent',animation:!!bcfg().chartAnim,grid:{left:8+(lp==='left'?60:0),right:10+(lp==='right'?60:0),top:6+_titleSpace(w)+(lp==='top'?20:0)+_annTopSpace(w),bottom:4+(lp==='bottom'?18:0)+_navSpace(w),containLabel:true},
+    var opt={backgroundColor:'transparent',animation:!!bcfg().chartAnim,grid:_chGrid(w,{l:8,r:10,t:6+_annTopSpace(w),b:4+_navSpace(w)},showLeg),
       tooltip:{trigger:'axis',valueFormatter:function(v){return _chNum(w,v);}},
       legend:_legendOpt(w,showLeg),
       title:_titleOpt(w),
@@ -1544,7 +1708,6 @@
     var cSet=_skinToCss(w.dlSet)||cssv('--warn'),cRise=_skinToCss(w.dlRise)||cssv('--muted');
     var cFill=_skinToCss(w.dlFill)||cSet;
     var op=(w.dlOpacity!=null?w.dlOpacity:22)/100;
-    var lp=w.legend?(w.legPos||'top'):'';
     // Band: unsichtbare Basis (Aufgang) + gestapelte Differenz -> Fläche genau zwischen den Kurven
     var diff=D.rise.map(function(p,i){var a=p[1],b=D.set[i][1];return [p[0],(a==null||b==null)?null:Math.round((b-a)*1000)/1000];});
     var series=[
@@ -1567,7 +1730,7 @@
       }
     }
     ec.setOption({backgroundColor:'transparent',animation:!!bcfg().chartAnim,
-      grid:{left:6,right:8,top:6+_titleSpace(w)+(lp==='top'?20:0),bottom:6+(lp==='bottom'?18:0),containLabel:true},
+      grid:_chGrid(w,{l:6,r:8,t:6,b:6}),
       title:_titleOpt(w),legend:_legendOpt(w,w.legend),
       tooltip:{trigger:'axis',axisPointer:{type:'line'},
         formatter:function(ps){
@@ -1617,7 +1780,7 @@
     ec.setOption({backgroundColor:'transparent',animation:!!bcfg().chartAnim,
       tooltip:{position:'top',backgroundColor:cssv('--surface-2'),borderColor:cssv('--line'),textStyle:{color:cssv('--text'),fontSize:_ecF(w,'label',10)},formatter:function(p){return WD[p.value[1]]+' '+_hlbl(p.value[0])+' · '+_chNum(w,p.value[2]);}},
       title:_titleOpt(w),
-      grid:{left:6,right:6,top:6+_titleSpace(w),bottom:26,containLabel:true},
+      grid:_chGrid(w,{l:6,r:6,t:6,b:26},false),
       xAxis:{type:'category',data:xlab,splitArea:{show:!thin,areaStyle:{color:['transparent','rgba(127,127,127,0.04)']}},axisLine:{show:false},axisTick:{show:false},axisLabel:{color:muted,fontSize:fs,interval:0,hideOverlap:true}},
       yAxis:{type:'category',data:WD,inverse:true,splitArea:{show:true,areaStyle:{color:['transparent','rgba(127,127,127,0.04)']}},axisLine:{show:false},axisTick:{show:false},axisLabel:{color:muted,fontSize:fs}},
       visualMap:{min:H.min,max:H.max,calculable:true,orient:'horizontal',left:'center',bottom:2,itemWidth:12,itemHeight:90,textStyle:{color:muted,fontSize:fs},inRange:{color:pal}},

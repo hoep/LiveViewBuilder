@@ -6,6 +6,36 @@
   // die Größe noch der vorherigen Standardgröße entspricht (analog colorpick.js/slider.js).
   var CT_SIZE={spark:[150,50],waterfall:[360,220],daylight:[420,190],pie:[260,220],donut:[260,220],rose:[260,220],heatmap:[380,240],barrace:[380,280]};
   function _ctSize(ct){return CT_SIZE[ct]||[340,190];}
+  // ---- Anordnungsblock: Anker 3x3 + Feinversatz + Streifen/Ueberlagerung --------------
+  // Dieselben drei Zeilen fuer Titel und Legende. Der Anker ist ein Knopfraster statt einer
+  // Auswahlliste: neun Felder in der Anordnung, in der sie auch auf der Kachel liegen - man
+  // sieht die Wahl, statt sie zu lesen.
+  var _ANC_LBL={ol:'oben links',om:'oben mitte',or:'oben rechts',ml:'Mitte links',mm:'Mitte',mr:'Mitte rechts',ul:'unten links',um:'unten mitte',ur:'unten rechts'};
+  function _ancBlock(pfx,cur,dx,dy,fl){
+    var g='<div class="ancg" id="pAnc'+pfx+'">';
+    ['o','m','u'].forEach(function(v){['l','m','r'].forEach(function(hh){var k=v+hh;
+      g+='<button type="button" class="ancb'+(cur===k?' on':'')+'" data-anc="'+k+'" title="'+_ANC_LBL[k]+'"></button>';});});
+    g+='</div>';
+    return row('Anker',g+' <span style="font-size:11px;color:var(--muted)" id="pAnc'+pfx+'L">'+(_ANC_LBL[cur]||'')+'</span>')
+      +row('Versatz X / Y','<input id="p'+pfx+'DX" type="number" style="width:56px" value="'+(dx!=null&&dx!==''?dx:'')+'" placeholder="0"> '
+        +'<input id="p'+pfx+'DY" type="number" style="width:56px" value="'+(dy!=null&&dy!==''?dy:'')+'" placeholder="0"> px'
+        +' <span style="font-size:11px;color:var(--muted)">positiv = nach rechts / nach unten</span>')
+      +row('Über der Zeichenfläche','<input type="checkbox" id="p'+pfx+'Float"'+(fl?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">liegt frei darüber, nimmt keinen Platz weg</span>');
+  }
+  // Die Knoepfe schreiben direkt in w und faerben sich selbst um - kein renderProps(), sonst
+  // springt der Eigenschaftsbereich bei jedem Klick nach oben.
+  function _ancBind(pfx,w,kAnc,kDX,kDY,kFl,re){
+    var g=$('#pAnc'+pfx);
+    if(g)g.onclick=function(e){
+      var b=e.target&&e.target.closest?e.target.closest('.ancb'):null;if(!b)return;
+      w[kAnc]=b.getAttribute('data-anc');
+      Array.prototype.forEach.call(g.querySelectorAll('.ancb'),function(x){x.classList.toggle('on',x===b);});
+      var l=$('#pAnc'+pfx+'L');if(l)l.textContent=_ANC_LBL[w[kAnc]]||'';
+      re();};
+    [[kDX,'p'+pfx+'DX'],[kDY,'p'+pfx+'DY']].forEach(function(o){
+      var e=$('#'+o[1]);if(e)e.oninput=function(){w[o[0]]=(this.value===''?undefined:parseFloat(this.value));re();};});
+    var f=$('#p'+pfx+'Float');if(f)f.onchange=function(){w[kFl]=this.checked||undefined;re();};
+  }
   // Eigene Einheit fuer den Wasserfall (w.wfUnit) - NICHT w.yunit, das gehoert dem Achsensystem
   // (Kalenderjahr-Balken + Mehrfachachsen). Fallback liest einmalig alte Widgets, die vor dieser
   // Trennung mit yunit angelegt wurden; geschrieben wird ab jetzt ausschliesslich wfUnit.
@@ -120,13 +150,33 @@
       if(V.br)h+=row('Balken-Rundung','<input id="pBr" type="number" value="'+(w.barRadius!=null?w.barRadius:3)+'">');
       if(V.br&&!V.race)h+=row('Balken horizontal','<input type="checkbox" id="pBarHoriz"'+(w.barHoriz?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">liegende Balken statt Säulen</span>');
       if(V.wf)h+=row('Fallback Auf',skinSel(w.wfUp||'ok','id="pWfUp"'))+row('Fallback Ab',skinSel(w.wfDown||'crit','id="pWfDn"'));
-      if(V.leg)h+=row('Legende','<input type="checkbox" id="pLeg"'+(w.legend?' checked':'')+'>')+(w.legend?row('Legende-Pos','<select id="pLegPos"><option value="top"'+((w.legPos||'top')==='top'?' selected':'')+'>oben</option><option value="bottom"'+(w.legPos==='bottom'?' selected':'')+'>unten</option><option value="left"'+(w.legPos==='left'?' selected':'')+'>links</option><option value="right"'+(w.legPos==='right'?' selected':'')+'>rechts</option></select>'):'');
+      if(V.leg){
+        h+='<div class="pgh">Legende</div>'+row('Legende','<input type="checkbox" id="pLeg"'+(w.legend?' checked':'')+'>');
+        if(w.legend)h+=_ancBlock('Leg',_legAnc(w),w.legDX,w.legDY,w.legFloat)
+          +row('Ausrichtung','<select id="pLegOr"><option value="auto"'+(!w.legOrient||w.legOrient==='auto'?' selected':'')+'>automatisch</option><option value="h"'+(w.legOrient==='h'?' selected':'')+'>waagrecht</option><option value="v"'+(w.legOrient==='v'?' selected':'')+'>senkrecht</option></select> <span style="font-size:11px;color:var(--muted)">automatisch: an einer Seitenkante senkrecht</span>')
+          +row('Einträge je Zeile','<input id="pLegCols" type="number" min="1" style="width:56px" value="'+(w.legCols||'')+'" placeholder="auto"> <span style="font-size:11px;color:var(--muted)">senkrecht: je Spalte</span>')
+          +row('Abstand zur Kante','<input id="pLegGap" type="number" style="width:56px" value="'+(w.legGap!=null&&w.legGap!==''?w.legGap:'')+'" placeholder="4"> px')
+          +row('Werte anzeigen','<input type="checkbox" id="pLegVal"'+(w.legVals?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">aktueller Wert hinter dem Serienname</span>');
+      }
       if(V.dl)h+=row('Datenlabels','<input type="checkbox" id="pDl"'+(w.labels?' checked':'')+'>');
       // Titel gilt fuer fast ALLE Chart-Typen (auch Torte/Donut/Rose/Wasserfall) - deshalb ausserhalb des Achsen-Blocks
       if(V.title){
         var _tOn=(w.showTitle!=null?w.showTitle:(!w.legend&&!!w.label));
-        h+='<div class="pgh">Titel</div>'+row('Titel anzeigen','<input type="checkbox" id="pShowT"'+(_tOn?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">Label als Titel</span>')
-          +(_tOn?row('Titel-Position','<select id="pTitlePos"><option value="left"'+((w.titlePos||'left')==='left'?' selected':'')+'>links</option><option value="center"'+(w.titlePos==='center'?' selected':'')+'>zentriert</option><option value="right"'+(w.titlePos==='right'?' selected':'')+'>rechts</option></select>'+(((w.label||'')==='')?' <span style="font-size:11px;color:var(--warm)">— Label ist leer, es erscheint nichts</span>':'')):'');
+        h+='<div class="pgh">Titel</div>'+row('Titel anzeigen','<input type="checkbox" id="pShowT"'+(_tOn?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">Label als Titel</span>');
+        if(_tOn)h+=row('Untertitel','<input id="pSubLab" value="'+esc(w.subLabel||'')+'" placeholder="optional">')
+          +_ancBlock('Title',_titleAnc(w),w.titleDX,w.titleDY,w.titleFloat)
+          +row('Fett','<input type="checkbox" id="pTitleBold"'+(w.titleBold?' checked':'')+'>')
+          +(((w.label||'')===''&&(w.subLabel||'')==='')?'<div style="font-size:11px;color:var(--warm);margin:2px 2px 6px">Label und Untertitel sind leer, es erscheint nichts.</div>':'');
+      }
+      // ---- Zeichenflaeche: manuelle Raender ------------------------------------------------
+      // Der Notausgang. Die Streifen fuer Titel und Legende werden gemessen, das trifft fast
+      // immer - aber wer eine Achse mit sehr langen Beschriftungen hat oder zwei Kacheln
+      // nebeneinander auf dieselbe Nulllinie bringen will, braucht eine feste Zahl.
+      if(V.ax||V.part||V.wf){
+        h+='<div class="pgh">Zeichenfläche</div>'
+          +'<div style="font-size:11px;color:var(--muted);margin:-2px 2px 5px">Leer = automatisch. Ein Wert überstimmt die gemessenen Streifen an dieser Kante.</div>'
+          +row('Rand links / rechts','<input id="pPadL" type="number" style="width:56px" value="'+(w.padL!=null&&w.padL!==''?w.padL:'')+'" placeholder="auto"> <input id="pPadR" type="number" style="width:56px" value="'+(w.padR!=null&&w.padR!==''?w.padR:'')+'" placeholder="auto"> px')
+          +row('Rand oben / unten','<input id="pPadT" type="number" style="width:56px" value="'+(w.padT!=null&&w.padT!==''?w.padT:'')+'" placeholder="auto"> <input id="pPadB" type="number" style="width:56px" value="'+(w.padB!=null&&w.padB!==''?w.padB:'')+'" placeholder="auto"> px');
       }
       // ---- Schriftgrößen je Textart (leer = wächst mit der Kachel und folgt der zentralen Typografie) ----
       var _fsRow=function(id,lbl,val){return row(lbl,'<input id="'+id+'" type="number" min="5" max="40" step="0.5" style="width:64px" value="'+(val||'')+'" placeholder="auto">');};
@@ -135,6 +185,7 @@
       h+='<div class="pgh">Schriftgrößen (px)</div>'
         +'<div style="font-size:11px;color:var(--muted);margin:-2px 2px 5px">Leer = automatisch: wächst mit der Kachelgröße und folgt der Schriftgröße aus „Typografie".</div>'
         +(V.title?_fsRow('pFsTitle','Titel',w.fsTitle):'')
+        +(V.title?_fsRow('pFsSub','Untertitel',w.fsSub):'')
         +(V.leg?_fsRow('pFsLegend','Legende',w.fsLegend):'')
         +((V.ax||V.race)?_fsRow('pAxFs','Achsen (Skalenwerte)',w.axFs):'')
         +(V.ax?_fsRow('pFsAxName','Achsentitel / Einheit',w.fsAxName):'')
@@ -237,18 +288,26 @@ if(V.cmp)h+='<div class="pgh">Vergleich (Zeitversatz)</div>'+row('Aktiv','<input
       if($('#pBarHoriz'))$('#pBarHoriz').onchange=function(){w.barHoriz=this.checked||undefined;reChart();};
       if($('#pGrad'))$('#pGrad').onchange=function(){w.grad=this.checked;reChart();};
       if($('#pLeg'))$('#pLeg').onchange=function(){w.legend=this.checked;renderProps();reChart();};
-      if($('#pLegPos'))$('#pLegPos').onchange=function(){w.legPos=this.value;reChart();};
+      _ancBind('Leg',w,'legAnc','legDX','legDY','legFloat',reChart);
+      if($('#pLegOr'))$('#pLegOr').onchange=function(){w.legOrient=(this.value==='auto'?undefined:this.value);reChart();};
+      if($('#pLegCols'))$('#pLegCols').oninput=function(){w.legCols=this.value===''?undefined:Math.max(1,parseInt(this.value)||1);reChart();};
+      if($('#pLegGap'))$('#pLegGap').oninput=function(){w.legGap=this.value===''?undefined:parseFloat(this.value);reChart();};
+      if($('#pLegVal'))$('#pLegVal').onchange=function(){w.legVals=this.checked||undefined;reChart();};
       if($('#pYg'))$('#pYg').onchange=function(){w.ygrid=this.checked;reChart();};
       if($('#pDl'))$('#pDl').onchange=function(){w.labels=this.checked;reChart();};
       if($('#pShowT'))$('#pShowT').onchange=function(){w.showTitle=this.checked;reChart();renderProps();};
-      if($('#pTitlePos'))$('#pTitlePos').onchange=function(){w.titlePos=this.value;reChart();};
+      _ancBind('Title',w,'titleAnc','titleDX','titleDY','titleFloat',reChart);
+      if($('#pSubLab'))$('#pSubLab').oninput=function(){w.subLabel=this.value||undefined;reChart();};
+      if($('#pTitleBold'))$('#pTitleBold').onchange=function(){w.titleBold=this.checked||undefined;reChart();};
+      [['pPadL','padL'],['pPadR','padR'],['pPadT','padT'],['pPadB','padB']].forEach(function(o){
+        var e=$('#'+o[0]);if(e)e.oninput=function(){w[o[1]]=(this.value===''?undefined:parseFloat(this.value));reChart();};});
       if($('#pYLab'))$('#pYLab').onchange=function(){w.yLabels=this.checked;reChart();};
       if($('#pXLab'))$('#pXLab').onchange=function(){w.xLabels=this.checked;reChart();};
       if($('#pXg'))$('#pXg').onchange=function(){w.xgrid=this.checked||undefined;reChart();};
       if($('#pAxLine'))$('#pAxLine').onchange=function(){w.axLine=this.checked||undefined;reChart();};
       if($('#pAxTicks'))$('#pAxTicks').onchange=function(){w.axTicks=this.checked||undefined;reChart();};
       if($('#pChUnit'))$('#pChUnit').oninput=function(){w.chUnit=this.value||undefined;reChart();};
-      [['pFsTitle','fsTitle'],['pFsLegend','fsLegend'],['pAxFs','axFs'],['pFsAxName','fsAxName'],['pFsLabel','fsLabel']].forEach(function(o){
+      [['pFsTitle','fsTitle'],['pFsSub','fsSub'],['pFsLegend','fsLegend'],['pAxFs','axFs'],['pFsAxName','fsAxName'],['pFsLabel','fsLabel']].forEach(function(o){
         var e=$('#'+o[0]);if(e)e.oninput=function(){w[o[1]]=(this.value===''?undefined:parseFloat(this.value));reChart();};
       });
       if($('#pGridDivs'))$('#pGridDivs').oninput=function(){w.gridDivs=this.value===''?undefined:parseInt(this.value);reChart();};
