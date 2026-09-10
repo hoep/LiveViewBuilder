@@ -1184,6 +1184,20 @@
   // 20.09. bis 10.10. Wer Balken und Hover vergleicht, sieht dann zwei verschiedene Monate.
   // Gezeichnet wird deshalb in der Blockmitte; fuer die Blocksuche im Tooltip bleibt der
   // Blockanfang massgeblich (Feld blocks).
+  // Anfang des Blocks, in dem ein Zeitpunkt liegt. Gebraucht, damit der ERSTE Block einer
+  // gestuften Reihe nicht fehlt: das Zeitfenster beginnt mitten im Monat (365 Tage zurueck,
+  // also z. B. am 10.09.), die Aggregation wurde bisher genau ab da abgefragt - und der
+  // September fiel heraus, waehrend der Fuellstand daneben brav am 10.09. anfing.
+  function _blkAnfang(t,stage){
+    var d=new Date(t);
+    if(stage==='month')return new Date(d.getFullYear(),d.getMonth(),1).getTime();
+    if(stage==='year') return new Date(d.getFullYear(),0,1).getTime();
+    if(stage==='week'){var x=new Date(d.getFullYear(),d.getMonth(),d.getDate());x.setDate(x.getDate()-((x.getDay()+6)%7));return x.getTime();}
+    if(stage==='day')  return new Date(d.getFullYear(),d.getMonth(),d.getDate()).getTime();
+    if(stage==='hour') return new Date(d.getFullYear(),d.getMonth(),d.getDate(),d.getHours()).getTime();
+    if(stage==='min')  return Math.floor(t/300000)*300000;
+    return t;
+  }
   function _blkMitte(t,stage){return Math.round((t+_blkEnde(t,stage))/2);}
   function _blkAt(data,t,stage){
     if(!data||!data.length)return null;
@@ -1589,11 +1603,11 @@
     ec.setOption(opt,true);
     _blkBreite(w);                                                 // Balken einer gestuften Reihe: volle Blockbreite
   }
-  // Ein Monatsbalken soll seinen Monat FUELLEN, damit ohne Nachdenken klar ist, welcher
-  // Monat gemeint ist. ECharts kennt fuer eine Zeitachse keine Blockbreite: barWidth in
-  // Prozent gilt nur an Kategorieachsen, und von selbst nimmt es 30 bis 43 px statt der
-  // vollen 66 - gemessen an der Zisterne. Also wird die Breite in Pixeln ausgerechnet und
-  // nachgereicht. Das geht erst NACH setOption, weil vorher weder Achsenausschnitt noch
+  // Balkenbreite einer gestuften Reihe als ANTEIL DES BLOCKS (w.stageBarPct, Vorgabe 60 %).
+  // ECharts kennt fuer eine Zeitachse keine Blockbreite: barWidth in Prozent gilt nur an
+  // Kategorieachsen, und von selbst nimmt es irgendetwas zwischen 30 und 43 px - gemessen an
+  // der Zisterne, wo ein Monat 63 px breit ist. Also wird die Breite in Pixeln ausgerechnet
+  // und nachgereicht. Das geht erst NACH setOption, weil vorher weder Achsenausschnitt noch
   // Zeichenflaeche feststehen; nach jedem resize muss es neu gerechnet werden.
   function _blkBreite(w){
     var ec=_ec[w.id];if(!ec||w.barHoriz)return;                    // liegende Balken: die Blockbreite laege senkrecht
@@ -1616,7 +1630,8 @@
       br.sort(function(a,b){return a-b;});
       var px=br[Math.floor(br.length/2)];
       if(!(px>1)){upd.push({});return;}
-      var neu=Math.max(2,Math.round(px));
+      var pct=(w.stageBarPct!=null&&w.stageBarPct!=='')?Math.max(5,Math.min(100,parseFloat(w.stageBarPct))):60;
+      var neu=Math.max(2,Math.round(px*pct/100));
       var alt=null;try{alt=(ec.getOption().series[i]||{}).barWidth;}catch(e){}
       if(alt===neu){upd.push({});return;}
       noetig=true;upd.push({barWidth:neu});
@@ -2066,21 +2081,23 @@
         return;
       }
       var _st=(s&&s.stage)||'';
-      var _bal=(_resolveType((s&&s.type)||(w.ctype||'area')).kind==='bar');
+      var _gestuft=(_st&&_st!=='raw');
+      // Rand- und Endblock sind angeschnitten. Der Wert gilt fuer den GANZEN Block (das ist
+      // die Monatssumme), gezeichnet wird er aber in der Mitte des SICHTBAREN Teils - sonst
+      // laege der Balken des laufenden Monats halb ausserhalb der Kachel und der des ersten
+      // Monats halb davor.
+      var _von=mFrom*1000,_bis=mTo*1000;
       var _mitte=function(roh){
-        if(!_st||_st==='raw')return roh;
-        var ende=mTo*1000;
+        if(!_gestuft)return roh;
         return roh.map(function(p){
-          var bis=_blkEnde(p[0],_st);
-          // Ein BALKEN bekommt die volle Blockbreite; sein Ueberstand ueber das Ende des
-          // Zeitfensters wird von der Zeichenflaeche beschnitten und zeigt damit genau den
-          // bereits vergangenen Teil des laufenden Monats. Eine LINIE hat keine Breite -
-          // ihr Punkt darf nicht in die Zukunft wandern, also auf das Fenster begrenzen.
-          if(!_bal)bis=Math.min(bis,ende);
-          return [Math.round((p[0]+Math.max(bis,p[0]))/2),p[1]];
+          var a=Math.max(p[0],_von),b=Math.min(_blkEnde(p[0],_st),_bis);
+          if(b<a)b=a;
+          return [Math.round((a+b)/2),p[1]];
         });
       };
-      fetch(hUrl(id,mFrom,mTo,lv),{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
+      // Ab dem ANFANG des Blocks abfragen, in dem das Fenster beginnt - sonst fehlt er ganz.
+      var _from=_gestuft?Math.floor(_blkAnfang(_von,_st)/1000):mFrom;
+      fetch(hUrl(id,_from,mTo,lv),{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
         var roh=conv(hPts(j,lv,af));
         out[i]={data:_mitte(roh),color:scol,name:snm,stage:_st,blocks:roh};
       }).catch(function(){out[i]={data:[],color:scol,name:snm,stage:_st,blocks:[]};}).then(fin);

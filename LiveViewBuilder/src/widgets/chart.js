@@ -148,6 +148,10 @@
         +row('Datenlabels','<input type="checkbox" id="pDl"'+(w.labels?' checked':'')+'>')
         +row('Verbindungslinien','<input type="checkbox" id="pWfConn"'+(w.wfConnect!==false?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">gestrichelt, zwischen den Balken</span>');
       if(V.br)h+=row('Balken-Rundung','<input id="pBr" type="number" value="'+(w.barRadius!=null?w.barRadius:3)+'">');
+      // Balkenbreite gilt nur fuer Reihen mit EIGENER Aggregationsstufe - nur dort rechnet
+      // das Widget die Breite selbst; sonst bestimmt sie ECharts aus den Datenabstaenden.
+      if(V.br&&!V.race&&(w.series||[]).some(function(x){return x&&x.stage&&x.stage!=='raw';}))
+        h+=row('Balkenbreite','<input id="pStBarW" type="number" min="5" max="100" style="width:56px" value="'+(w.stageBarPct!=null&&w.stageBarPct!==''?w.stageBarPct:'')+'" placeholder="60"> % <span style="font-size:11px;color:var(--muted)">Anteil des Blocks (Monat, Woche …) bei Reihen mit eigener Stufe</span>');
       if(V.br&&!V.race)h+=row('Balken horizontal','<input type="checkbox" id="pBarHoriz"'+(w.barHoriz?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">liegende Balken statt Säulen</span>');
       if(V.wf)h+=row('Fallback Auf',skinSel(w.wfUp||'ok','id="pWfUp"'))+row('Fallback Ab',skinSel(w.wfDown||'crit','id="pWfDn"'));
       if(V.leg){
@@ -297,6 +301,7 @@ if(V.cmp)h+='<div class="pgh">Vergleich (Zeitversatz)</div>'+row('Aktiv','<input
       if($('#pLw'))$('#pLw').oninput=function(){w.lw=parseFloat(this.value)||2;reChart();};
       if($('#pBr'))$('#pBr').oninput=function(){w.barRadius=parseFloat(this.value)||0;reChart();};
       if($('#pBarHoriz'))$('#pBarHoriz').onchange=function(){w.barHoriz=this.checked||undefined;reChart();};
+      if($('#pStBarW'))$('#pStBarW').oninput=function(){w.stageBarPct=(this.value===''?undefined:parseFloat(this.value));reChart();};
       if($('#pGrad'))$('#pGrad').onchange=function(){w.grad=this.checked;reChart();};
       if($('#pLeg'))$('#pLeg').onchange=function(){w.legend=this.checked;renderProps();reChart();};
       _ancBind('Leg',w,'legAnc','legDX','legDY','legFloat',reChart);
