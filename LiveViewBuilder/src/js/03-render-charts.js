@@ -1172,9 +1172,13 @@
     if(!_titleOn(w))return {show:false};
     ec=ec||_ec[w.id];
     var fs=_ecF(w,'title',11),box=_titleBox(w);
+    // KEIN eigenes textAlign setzen. ECharts leitet die Ausrichtung selbst aus left/right ab;
+    // gibt man sie zusaetzlich vor, wird sie DOPPELT gerechnet und der Titel rutscht um seine
+    // ganze Breite nach links. Am Render nachgemessen: bei Anker "oben mitte" lag die rechte
+    // Kante des Titels auf der Mittellinie, und man musste "oben rechts" waehlen, um ihn
+    // mittig zu bekommen.
     var o={text:_chLines(w._chLab||w.label||'').join('\n'),
-      textStyle:{color:cssv('--muted'),fontSize:fs,fontWeight:(w.titleBold?'bold':'normal'),lineHeight:fs+3},
-      textAlign:({l:'left',m:'center',r:'right'})[_ancH(_titleAnc(w))]};
+      textStyle:{color:cssv('--muted'),fontSize:fs,fontWeight:(w.titleBold?'bold':'normal'),lineHeight:fs+3}};
     if((w.subLabel||'')!==''){var sfs=_subFs(w);
       o.subtext=_chLines(w.subLabel).join('\n');
       o.subtextStyle={color:cssv('--faint'),fontSize:sfs,lineHeight:sfs+3};
