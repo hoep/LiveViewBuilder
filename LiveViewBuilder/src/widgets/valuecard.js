@@ -172,12 +172,19 @@
     var opts=_vcOpts(w);
     if(opts===null)return '<div class="hsel hvcsel"><button class="hselb">…</button></div>';
     if(!opts.length)return '<div class="hvcselempty">keine Auswahlwerte im Profil</div>';
-    return '<div class="hsel hvcsel">'+opts.map(function(o){
+    // EIN zusammenhaengender Schalter, nicht drei lose Knoepfe: die Werte schliessen
+    // einander aus, und das soll man sehen, bevor man tippt.
+    return '<div class="hsel hvcsel seg">'+opts.map(function(o){
       return '<button class="hselb" data-selval="'+esc(String(o.value!=null?o.value:''))+'"'+(o.color?' style="--sc:'+esc(o.color)+'"':'')+'>'+esc(o.text||String(o.value))+'</button>';
     }).join('')+'</div>';
   }
   function _vcSelMark(w,el,v){$$('.hvcsel .hselb',el).forEach(function(b){b.classList.toggle('on',String(b.getAttribute('data-selval'))===String(v));});}
-  function _vcSelPaint(w,root){var el=$('.w[data-id="'+w.id+'"]',(root||canvas));if(!el)return;var host=$('[data-role=vcselhost]',el);if(!host)return;host.innerHTML=_vcSelBody(w);var d=w.varId&&_lastVals[w.varId];if(d)_vcSelMark(w,el,d.v);}
+  // Die Kachel liegt im BEARBEITEN in canvas, im LAUFBETRIEB in #ovcanvas. Hier stand nur
+  // canvas - also fand diese Funktion die Kachel im Laufbetrieb nie, malte nichts, und die
+  // Auswahlknoepfe blieben dauerhaft auf ihrem Platzhalter "…" stehen. Betroffen war JEDE
+  // Wertkarte im Auswahl-Modus, nicht nur die eine, an der es aufgefallen ist.
+  function _vcSelEl(w,root){return $('.w[data-id="'+w.id+'"]',(root||canvas))||$('.w[data-id="'+w.id+'"]',$('#ovcanvas'));}
+  function _vcSelPaint(w,root){var el=_vcSelEl(w,root);if(!el)return;var host=$('[data-role=vcselhost]',el);if(!host)return;host.innerHTML=_vcSelBody(w);var d=w.varId&&_lastVals[w.varId];if(d)_vcSelMark(w,el,d.v);}
   function _vcSelLoad(w,root){
     if(!w.varId)return;
     if(_vcAssoc[w.varId]){_vcSelPaint(w,root);return;}
@@ -343,6 +350,34 @@
             +'<div class="hvcwr">'+val+cap+'</div>'
           +'</div>'+scl+rng+bar+foot+'</div>';
       }
+      // AUSWAHL-MODUS HAT EINEN EIGENEN AUFBAU.
+      //
+      // Vorher lief er durch denselben Weg wie jede andere Wertkarte und bekam damit den
+      // GROSSWERT mitgeliefert - eine ganze Zeile, die den Zustand ein zweites Mal zeigt,
+      // den der aktive Knopf ohnehin traegt. Auf einer 82 px hohen Kachel blieb davon ein
+      // verwaister Strich uebrig, und darunter war fuer die Knoepfe kaum noch Platz.
+      //
+      // Jetzt: Kopfzeile mit dem Titel als Beschriftung und dem aktiven Zustand im Klartext
+      // rechts, darunter der Segmentschalter ueber die volle Hoehe. Der Zustand steht damit
+      // zweimal da, aber mit ZWEI verschiedenen Aufgaben - oben lesbar in Worten, unten als
+      // Markierung im Schalter. Wird eine Beschriftung eng, traegt die Kopfzeile die Aussage.
+      //
+      // data-role="val" bleibt auf der Zustandszeile: der Aktualisierungspfad schreibt dort
+      // hinein und braucht deshalb nicht angefasst zu werden.
+      if(isSel){
+        // Die Zustandszeile ist ABSCHALTBAR (vcSelNow=false). Sie ist die Rueckfallebene,
+        // wenn eine Schalterbeschriftung zu eng wird - bei kurzen, eindeutigen Werten
+        // wiederholt sie nur, was der markierte Abschnitt schon sagt. Abgeschaltet gehoert
+        // die ganze Kachel dem Schalter; data-role="val" bleibt als verstecktes Feld
+        // bestehen, damit der Aktualisierungspfad unveraendert weiterlaeuft und nicht ins
+        // Leere schreibt.
+        var now=(w.vcSelNow===false)
+          ? '<span class="hvcselnow" data-role="val" hidden></span>'
+          : '<span class="hvcselnow" data-role="val">–</span>';
+        var hd=(icon||title||w.vcSelNow!==false)
+          ? ('<div class="hvcselhd">'+icon+title+now+'</div>') : now;
+        return '<div class="hvcard vcsel" data-role="card">'+rank+hd+sub+sel+foot+'</div>';
+      }
       return '<div class="hvcard" data-role="card">'+rank+'<div class="hvctop"><div class="hvctl">'+icon+title+'</div>'+tr+'</div>'+val+cap+sub+scl+rng+bar+foot+sel+'</div>';
     },
     mount:function(w){if(_vcSel(w))_vcSelLoad(w);
@@ -358,7 +393,9 @@
         +row('Einheit','<input id="pVcUnit" value="'+esc(w.unit||'')+'" style="width:100px">')
         +row('Wert-Größe (px)','<input id="pVcValFs" type="number" min="0" style="width:80px" value="'+(w.valfs||'')+'" placeholder="auto"> <span style="font-size:11px;color:var(--muted)">nur die große Zahl (leer = automatisch)</span>');
       if(_vcSel(w)){
-        return s+'<div style="font-size:11px;color:var(--muted);margin:6px 2px 4px">Auswahl-Modus: Knöpfe kommen aus den Profil-Zuordnungen von <b>Var 1</b> (RequestAction bei schaltbarer Variable). Ersetzt Toggle/Badge/Balken.</div>'
+        return s+'<div style="font-size:11px;color:var(--muted);margin:6px 2px 4px">Auswahl-Modus: die Auswahl steht als Segmentschalter in der Kachel, die Werte kommen aus den Profil-Zuordnungen von <b>Var 1</b> (RequestAction bei schaltbarer Variable). Ersetzt Toggle/Badge/Balken; der Großwert entfällt, weil der markierte Abschnitt den Zustand bereits zeigt.</div>'
+          +row('Zustand im Kopf zeigen','<input type="checkbox" id="pVcSelNow"'+(w.vcSelNow!==false?' checked':'')+'>')
+          +'<div style="font-size:11px;color:var(--muted);margin:2px 2px 6px">Der aktive Wert im Klartext rechts oben. Nützlich, wenn die Beschriftungen im Schalter eng werden — bei kurzen Werten überflüssig.</div>'
           +'<div class="pgh">Farbe nach Zustand</div>'
           +listEditor(w,'vassoc','Zustand · Farbe',[{k:'v',ph:'z. B. 1'},{k:'color',type:'skincolor'}])
           +row('Ganze Kachel einfärben','<input type="checkbox" id="pVcVaFill"'+(w.vaFill?' checked':'')+'>');
@@ -471,6 +508,10 @@
       if($('#pVcSwOffIco'))$('#pVcSwOffIco').onclick=function(){_iconPick={wid:w.id,field:'swOffIcon'};showTab('icons');toast('Aus-Icon wählen');};
       if($('#pVcSwOffIcoX'))$('#pVcSwOffIcoX').onclick=function(){delete w.swOffIcon;render();renderProps();commit();};
       if($('#pVcVaFill'))$('#pVcVaFill').onchange=function(){w.vaFill=this.checked||undefined;render();if(w.varId&&_lastVals[w.varId])applyVal(w.varId,_lastVals[w.varId]);commit();};
+      // Nur der ABGESCHALTETE Zustand wird gespeichert (false); eingeschaltet ist die
+      // Vorgabe und bleibt undefined - so tragen bestehende Kacheln kein neues Feld mit.
+      if($('#pVcSelNow'))$('#pVcSelNow').onchange=function(){w.vcSelNow=this.checked?undefined:false;render();
+        if(w.varId&&_lastVals[w.varId])applyVal(w.varId,_lastVals[w.varId]);commit();};
       if($('#pVcColFrom'))$('#pVcColFrom').onchange=function(){w.colFrom=this.value||undefined;render();renderProps();if(w.varId&&_lastVals[w.varId])applyVal(w.varId,_lastVals[w.varId]);commit();};
       if($('#pVcScale'))$('#pVcScale').onchange=function(){w.vcScale=this.value||undefined;if(!w.vcScale)w.scaleFill=undefined;render();renderProps();if(w.varId&&_lastVals[w.varId])applyVal(w.varId,_lastVals[w.varId]);commit();};
       // Eigene Skala: Felder, Liste und das Uebernehmen einer eingebauten Vorlage.
