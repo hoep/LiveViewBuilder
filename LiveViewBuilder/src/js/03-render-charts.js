@@ -1760,13 +1760,35 @@
     if(w.agg!=null&&w.agg!==''){var u=({0:'hour',1:'day',2:'week',3:'month',4:'year'})[parseInt(w.agg)]||'hour';return {n:Math.max(1,Math.round((w.hours||24)*3600/_CHSEC[u])),unit:u,aggF:(w.aggField||'avg')};}
     return {n:(w.hours||24),unit:'raw',rawUnit:'hour'};
   }
+  // Anfang des Blocks, in dem d liegt, k Bloecke zurueck. Kalenderarithmetik, nicht Sekunden:
+  // ein Monat ist mal 28, mal 31 Tage lang, und mit einer Durchschnittsdauer landet man nie
+  // sauber auf dem Monatsersten.
+  function _blkVor(d,u,k){
+    var x=new Date(d);
+    if(u==='year') return new Date(x.getFullYear()-k,0,1).getTime();
+    if(u==='month')return new Date(x.getFullYear(),x.getMonth()-k,1).getTime();
+    if(u==='week'){var y=new Date(x.getFullYear(),x.getMonth(),x.getDate());y.setDate(y.getDate()-((y.getDay()+6)%7)-7*k);return y.getTime();}
+    if(u==='day'){var z=new Date(x.getFullYear(),x.getMonth(),x.getDate());z.setDate(z.getDate()-k);return z.getTime();}
+    if(u==='hour'){var h=new Date(x.getFullYear(),x.getMonth(),x.getDate(),x.getHours());h.setHours(h.getHours()-k);return h.getTime();}
+    if(u==='min') return Math.floor(x.getTime()/300000)*300000-k*300000;
+    return x.getTime()-k*1000;
+  }
   function _chWindow(w){
     var r=_chRange(w),now=Math.floor(Date.now()/1000),poff=(w._pOff||0);
     var dur=(r.unit==='raw')?_CHSEC[r.rawUnit||'hour']:_CHSEC[r.unit],win=(r.n||24)*dur;
     var to=now-poff*win,from=to-win;
-    return {from:from,to:to,win:win,level:_CHLVL[r.unit],aggF:(r.aggF==='sum'?'sum':'avg'),cal:!!r.cal,unit:r.unit,n:(r.n||24)};
+    // "Ganze Zeitraeume": das Fenster endet jetzt und beginnt am ANFANG des n-ten Zeitraums
+    // zurueck. Ohne das sind 12 Monate schlicht 12 mal 30,44 Tage - das Fenster beginnt
+    // mitten im Monat, der erste Balken ist angeschnitten und muss ausweichen. Mit ganzen
+    // Zeitraeumen sind alle Bloecke vollstaendig, nur der laufende ist naturgemaess offen.
+    if(r.snap){
+      var u=(r.unit==='raw')?(r.rawUnit||'hour'):r.unit;
+      from=Math.floor(_blkVor(to*1000,u,Math.max(0,(r.n||24)-1))/1000);
+      win=Math.max(60,to-from);
+    }
+    return {from:from,to:to,win:win,level:_CHLVL[r.unit],aggF:(r.aggF==='sum'?'sum':'avg'),cal:!!r.cal,unit:r.unit,n:(r.n||24),snap:!!r.snap};
   }
-  function _setRange(w,patch){var r=_chRange(w);w.range={n:r.n,unit:r.unit,cal:r.cal,aggF:r.aggF,rawUnit:r.rawUnit};for(var k in patch)w.range[k]=patch[k];delete _hist[w.id];fetchHist(w);}
+  function _setRange(w,patch){var r=_chRange(w);w.range={n:r.n,unit:r.unit,cal:r.cal,aggF:r.aggF,rawUnit:r.rawUnit,snap:r.snap};for(var k in patch)w.range[k]=patch[k];delete _hist[w.id];fetchHist(w);}
   function _winSec(w){var r=w.range;if(r&&r.unit&&_CHSEC[r.unit])return (r.n||24)*_CHSEC[r.unit];return (w.hours>0?w.hours:24)*3600;} // Fenster (Sek.) fuer statetl/statelog — Anzahl x Einheit, Fallback hours
   // Kalender-ausgerichteter Zeitraum-Anfang (ganze Stunde/Tag/Woche/Monat/Jahr), off = Verschiebung (0=aktuell, -1=vorheriger)
   function _periodStart(unit,off){var d=new Date();d.setMinutes(0,0,0);
