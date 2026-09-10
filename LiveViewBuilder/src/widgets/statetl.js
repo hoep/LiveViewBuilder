@@ -8,8 +8,25 @@
   function _stlMatch(sv,val){return _assocMatch(sv,val);}
   function _stlColor(w,val){var st=w.states||[];for(var i=0;i<st.length;i++){if(_stlMatch(st[i].v,val))return st[i].color?_skinColor(st[i].color):'';}return '';}
   // data aufsteigend [[ms,val]...]; span/Fraktionen über [from,fullTo]; Fuellung nur bis dataTo (Rest = "offen").
-  function _stlSegs(data,from,fullTo,dataTo,liveVal){
-    var span=(fullTo-from)||1,pts=data||[],segs=[],k,init=liveVal;
+  /**
+   * Der Gegenwert eines Zustands - oder null, wenn es keinen eindeutigen gibt.
+   *
+   * Symcon protokolliert nur AENDERUNGEN. Steht als erster Eintrag ueberhaupt ein true, dann
+   * war der Zustand davor false - sonst haette es diesen Eintrag nicht gegeben. Bei einem
+   * zweiwertigen Signal ist der Vorlauf damit nicht unbekannt, sondern erschliessbar.
+   *
+   * Nur bei ZWEI Werten. Bei drei Zustaenden (Regen / Schnee / trocken) gibt es keinen
+   * Gegenwert, und eine Vermutung waere eine Erfindung - dort bleibt die Luecke leer.
+   * Ausdruecke wie >0 oder 1..5 zaehlen nicht als Wert, aus ihnen laesst sich keiner ableiten.
+   */
+  function _stlGegen(w,val){
+    if(typeof val==='boolean')return !val;
+    var n=parseFloat(String(val).replace(',','.'));
+    if(!isNaN(n)&&(n===0||n===1))return n?0:1;
+    return null;
+  }
+  function _stlSegs(data,from,fullTo,dataTo,liveVal,vorVal){
+    var span=(fullTo-from)||1,pts=data||[],segs=[],k,init=liveVal,curInit=false;
     // Welcher Wert galt VOR dem ersten Messpunkt im Fenster?
     //
     // Liegt ein Punkt am oder vor Fensterbeginn, gilt dessen Wert - der Normalfall.
@@ -28,6 +45,9 @@
     var hatVor=false;
     for(k=0;k<pts.length&&pts[k][0]/1000<=from;k++){init=pts[k][1];hatVor=true;}
     var luecke=(!hatVor&&pts.length>0);
+    // Vorlauf erschliessen statt leer lassen (siehe _stlGegen). Nur wenn der Aufrufer einen
+    // eindeutigen Gegenwert ermitteln konnte.
+    if(luecke&&vorVal!=null){init=vorVal;curInit=true;luecke=false;}
     var curVal=init,curT=from,erst=true;
     for(;k<pts.length;k++){var t=pts[k][0]/1000;if(t>dataTo)t=dataTo;
       if(t>curT&&!(erst&&luecke))segs.push({fa:(curT-from)/span,fb:(t-from)/span,val:curVal});
@@ -116,7 +136,12 @@
           return {fa:(s.a-from)/span,fb:(s.b-from)/span,val:s.v,txt:s.t};});
         if(liveVal===null&&pj.segs.length)liveVal=pj.segs[0].v;
       }else{
-        segs=_stlSegs(data[o.vid],from,to,dataTo,liveVal);
+        // Beginnt die Aufzeichnung erst mitten im Fenster, laesst sich der Vorlauf bei
+        // einem zweiwertigen Signal erschliessen: der erste Eintrag ist eine AENDERUNG,
+        // davor galt also der Gegenwert. Abschaltbar ueber "Vorlauf erschliessen".
+        var _pts=data[o.vid]||[],_vor=null;
+        if(w.preGegen!==false&&_pts.length&&(_pts[0][0]/1000)>from)_vor=_stlGegen(w,_pts[0][1]);
+        segs=_stlSegs(_pts,from,to,dataTo,liveVal,_vor);
       }
       var fills=segs.map(function(s){var col=_stlColor(w,s.val);if(!col)return '';
         var slab=(s.txt!=null&&s.txt!=='')?s.txt:_slogLabel(w,s.val),breit=(s.fb-s.fa);
@@ -196,6 +221,7 @@
       // Die Bezeichnung IM Balken ist etwas anderes als der Name der Bahn davor. Bei einer
       // Liste aus zwei Zustaenden steht in jedem breiten Abschnitt dasselbe Wort - das sagt
       // nichts, was die Legende nicht schon sagt, und macht das Band unruhig.
+      +row('Vorlauf erschließen','<input type="checkbox" id="pStlVor"'+(w.preGegen!==false?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">beginnt die Aufzeichnung mitten im Fenster: davor den Gegenwert annehmen (nur bei zwei Zuständen)</span>')
       +row('Zustand im Balken','<input type="checkbox" id="pStlSeg"'+(!w.hideSegLbl?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">Wort im Abschnitt, ab etwa 9 % Breite; nur waagrecht</span>')
       +row('Uhrzeit / Achse','<input type="checkbox" id="pStlAx"'+(!w.hideAxis?' checked':'')+'>')
       +row('Perioden-Umschalter','<input type="checkbox" id="pStlNav"'+(!w.hideNav?' checked':'')+'>')
@@ -210,6 +236,7 @@
       if($('#pStlO'))$('#pStlO').onchange=function(){w.orient=this.value;_stlDraw(w);commit();};
       if($('#pStlLeg'))$('#pStlLeg').onchange=function(){w.hideLegend=this.checked?undefined:true;render();commit();};
       if($('#pStlLbl'))$('#pStlLbl').onchange=function(){w.hideLabels=this.checked?undefined:true;render();_stlFetch(w);commit();};
+      if($('#pStlVor'))$('#pStlVor').onchange=function(){w.preGegen=this.checked?undefined:false;render();_stlFetch(w);commit();};
       if($('#pStlSeg'))$('#pStlSeg').onchange=function(){w.hideSegLbl=this.checked?undefined:true;render();_stlFetch(w);commit();};
       if($('#pStlAx'))$('#pStlAx').onchange=function(){w.hideAxis=this.checked?undefined:true;render();_stlFetch(w);commit();};
       if($('#pStlNav'))$('#pStlNav').onchange=function(){w.hideNav=this.checked?undefined:true;render();_stlFetch(w);commit();};
