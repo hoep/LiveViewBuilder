@@ -90,7 +90,12 @@
     var rng=_winRange(w),from=rng.from,to=rng.to,now=rng.now,dataTo=Math.min(to,now),fetchFrom=from-(to-from),done=0,acc={};
     w._stlFrom=from;w._stlTo=to;w._stlNow=now;w._stlPeriod=rng.period;w._stlStart=rng.start;w._stlOffCur=rng.off;
     items.forEach(function(o){
-      fetch('?api=history&id='+o.vid+'&from='+fetchFrom+'&to='+dataTo,{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
+      // pre=1 liefert zusaetzlich den letzten Eintrag VOR dem Fenster. Ohne ihn bleibt der
+      // Balken eines selten wechselnden Signals leer: Symcon speichert nur Aenderungen, und
+      // ein Fenster weiter zurueck zu schauen (fetchFrom) reicht nicht, wenn die letzte
+      // Aenderung Wochen her ist. Gemessen am 10.09.2026: "Internet" hatte in sieben Tagen
+      // zwei Eintraege, der Balken fuer gestern begann erst um 18:44.
+      fetch('?api=history&id='+o.vid+'&from='+fetchFrom+'&to='+dataTo+'&pre=1',{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
         acc[o.vid]=(j&&j.data)||[];
       }).catch(function(){acc[o.vid]=[];}).then(function(){done++;if(done>=items.length){w._stlData=acc;_stlDraw(w);}});
     });

@@ -3028,6 +3028,22 @@ if ($api === 'history') {
     foreach (array_reverse($rows) as $r) {
         $data[] = [$r['TimeStamp'] * 1000, $r['Value']];
     }
+    // pre=1: den letzten Eintrag VOR dem Fenster voranstellen.
+    //
+    // Symcon speichert nur AENDERUNGEN. Ein Signal, das wochenlang durchgehend an ist, hat
+    // im abgefragten Fenster gar keinen Eintrag - eine Zustands-Timeline kann daraus nichts
+    // fuellen und bleibt leer, obwohl der Zustand luekenlos bekannt ist. Am 10.09.2026 auf
+    // der IT-Seite: "Internet" hatte in sieben Tagen genau zwei Eintraege, der Balken fuer
+    // gestern blieb bis 18:44 leer.
+    //
+    // Wie weit zurueck der Eintrag liegt, ist unbekannt und darf es auch sein - deshalb ab
+    // 0 mit Limit 1 suchen, genau wie es der Vergleichspfad weiter unten schon tut.
+    if ((int) ($_GET['pre'] ?? 0) === 1 && $start > 0) {
+        $vor = @AC_GetLoggedValues($acs[0], $id, 0, $start - 1, 1);
+        if (is_array($vor) && count($vor)) {
+            array_unshift($data, [$vor[0]['TimeStamp'] * 1000, $vor[0]['Value']]);
+        }
+    }
     echo json_encode(['data' => $data]);
     return;
 }
