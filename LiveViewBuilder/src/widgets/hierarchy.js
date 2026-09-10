@@ -56,6 +56,17 @@
   function _hySpalten(w){
     return (w.hyCols||[]).filter(function(c){return c&&c.feld;});
   }
+  /* Spaltenbreite: EINE Formel fuer Kopfzeile und Datenzellen. Vorher stand die
+     Zahl an vier Stellen fest (96/64 px); ein laengerer Titel wie "Zufriedenheit"
+     lief dann aus seiner Zelle heraus und ueberschrieb die Nachbarueberschrift. */
+  function _hyBreite(c){
+    var t=String((c&&(c.label||c.feld))||'').toUpperCase();   // die Kopfzeile setzt in Versalien
+    var b=0;
+    try{ if(typeof _txtW==='function') b=_txtW(t,9.5); }catch(e){ b=0; }
+    if(!b) b=t.length*6.6;
+    b+=t.length*0.67+10;                                      // Laufweite (.07em) plus Luft
+    return Math.max(c&&c.art==='balken'?96:64, Math.ceil(b));
+  }
   function _hyZahl(w,c,v){
     if(v==null||v===''||isNaN(parseFloat(v)))return null;
     return parseFloat(v);
@@ -160,7 +171,7 @@
     var sp=_hySpalten(w), zh=Math.max(15,Math.min(26,Math.floor((by-6)/Math.max(1,D.reihen.length))));
     var kopf='<div class="hyrow hyhd">'
       +'<div class="hynm">Knoten</div>'
-      +sp.map(function(c){return '<div class="hyc" style="width:'+(c.art==='balken'?96:64)+'px">'+esc(c.label||c.feld)+'</div>';}).join('')
+      +sp.map(function(c){return '<div class="hyc" style="width:'+_hyBreite(c)+'px">'+esc(c.label||c.feld)+'</div>';}).join('')
       +'</div>';
     var zeilen=D.reihen.map(function(k){
       var zc=_hyZustand(k.zustand);
@@ -179,14 +190,14 @@
             if(c.art==='balken'){
               var mx=D.max&&D.max[c.feld]?D.max[c.feld]:1;
               var q=(v==null||mx<=0)?0:Math.max(0,Math.min(100,v/mx*100));
-              return '<div class="hyc" style="width:96px"><span class="hybar"><i style="width:'+q.toFixed(1)+'%;background:'+f+'"></i></span>'
+              return '<div class="hyc" style="width:'+_hyBreite(c)+'px"><span class="hybar"><i style="width:'+q.toFixed(1)+'%;background:'+f+'"></i></span>'
                 +'<span class="hyv mono" style="color:'+f+'">'+_hyTxt(c,v)+'</span></div>';
             }
             if(c.art==='ampel'){
-              return '<div class="hyc" style="width:64px"><span class="hydot" style="background:'+f+'"></span>'
+              return '<div class="hyc" style="width:'+_hyBreite(c)+'px"><span class="hydot" style="background:'+f+'"></span>'
                 +'<span class="hyv mono" style="color:'+f+'">'+_hyTxt(c,v)+'</span></div>';
             }
-            return '<div class="hyc" style="width:64px"><span class="hyv mono" style="color:'+f+'">'+_hyTxt(c,v)+'</span></div>';
+            return '<div class="hyc" style="width:'+_hyBreite(c)+'px"><span class="hyv mono" style="color:'+f+'">'+_hyTxt(c,v)+'</span></div>';
           }).join('')
         +'</div>';
     }).join('');
@@ -291,13 +302,23 @@
       //  - ein Bogen, der fast den ganzen Kreis fuellt, hat seine Mitte dicht am Mittelpunkt;
       //    das Wort stuende dann senkrecht ueber der Nabe. Genau so sah es im ersten Lauf aus:
       //    "USW HR Aggregation" lag als weisser Strich quer durch die Mitte.
-      if(t>0&&(a1-a0)<Math.PI*1.6&&(a1-a0)*ri>26&&t<=3){
+      //    Die Tiefengrenze t<=3 lag anfangs zusaetzlich davor - in einer Kette aus
+      //    Einzelkindern (Gateway -> Aggregation -> Aggregation -> Switch) fuellen genau
+      //    diese Ringe fast den ganzen Kreis, fielen also schon durch den zweiten
+      //    Ausschluss, und der Ring blieb voellig unbeschriftet. Jetzt entscheidet allein
+      //    die Bogenlaenge, wieviel Text ein Ring traegt.
+      // Ein Knoten mit genau EINEM Kind gibt seinen Bogen unveraendert weiter: Vater und
+      // Kind stehen dann unter demselben Winkel und ihre Beschriftungen legen sich
+      // uebereinander. In so einer Kette beschriftet nur das letzte Glied.
+      var kinderHier=D.kinder[id]||[];
+      if(t>0&&kinderHier.length!==1&&(a1-a0)<Math.PI*1.6&&(a1-a0)*ri>26){
         var am=(a0+a1)/2, m=pkt((ri+ra)/2,am), gd=am*180/Math.PI, dreh=(gd>90&&gd<270)?gd+180:gd;
+        var platz=Math.max(4,Math.min(18,Math.floor((a1-a0)*ri/5)));
         out.push('<text x="'+m[0].toFixed(1)+'" y="'+(m[1]+3).toFixed(1)+'" fill="var(--text)" font-size="8.5" '
           +'font-weight="600" text-anchor="middle" transform="rotate('+dreh.toFixed(1)+' '+m[0].toFixed(1)+' '+m[1].toFixed(1)+')">'
-          +esc(k.label.slice(0,14))+'</text>');
+          +esc(k.label.slice(0,platz))+'</text>');
       }
-      var kk=D.kinder[id]||[]; if(!kk.length)return;
+      var kk=kinderHier; if(!kk.length)return;
       var gs=0; kk.forEach(function(c){gs+=feld?(D.kn[c].summe[feld]||0):1;});
       var gleich=(!feld||gs<=0);   // ohne Kennzahl oder mit lauter Nullen gleichmaessig teilen
       var aa=a0;
@@ -336,6 +357,40 @@
                   : m==='graph'? _hyGraphHtml(w,D,bx,by)
                   : m==='ring' ? _hyRingHtml(w,D,bx,by)
                   :               _hyBaumHtml(w,D,bx,by);
+    if(m!=='load'&&m!=='graph'&&m!=='ring') _hySpaltenPassen(box);
+  }
+
+  /* Spaltenbreiten nach dem Zeichnen nachziehen. Eine Schaetzung aus der Zeichenzahl
+     reicht nicht: Versalien, Laufweite und Skin-Schrift ergeben andere Breiten, und die
+     Ueberschriften schrieben sich gegenseitig zu. Hier wird der gesetzte Text WIRKLICH
+     gemessen und die Spalte notfalls verbreitert - Kopf und Datenzellen gemeinsam. */
+  function _hySpaltenPassen(box){
+    var kopf=box.querySelector('.hyhd'); if(!kopf)return;
+    var kz=kopf.querySelectorAll('.hyc'); if(!kz.length)return;
+    var mess=document.createElement('span');
+    mess.style.cssText='position:absolute;left:-9999px;top:0;visibility:hidden;white-space:nowrap';
+    box.appendChild(mess);
+    var breiten=[],i;
+    for(i=0;i<kz.length;i++){
+      var soll=parseFloat(kz[i].style.width)||64;
+      var rechteck=kz[i].getBoundingClientRect().width;
+      var skala=(rechteck>0&&soll>0)?(rechteck/soll):1;      // Buehne kann skaliert/gezoomt sein
+      var cs=getComputedStyle(kz[i]);
+      mess.style.font=cs.font||(cs.fontSize+' '+cs.fontFamily);
+      mess.style.fontSize=cs.fontSize; mess.style.fontFamily=cs.fontFamily;
+      mess.style.fontWeight=cs.fontWeight;
+      mess.style.letterSpacing=cs.letterSpacing;
+      mess.style.textTransform=cs.textTransform;
+      mess.textContent=kz[i].textContent;
+      var breit=mess.getBoundingClientRect().width/(skala||1);
+      breiten[i]=Math.ceil(Math.max(soll,breit+6));
+    }
+    if(mess.parentNode)mess.parentNode.removeChild(mess);
+    var reihen=box.querySelectorAll('.hyrow');
+    for(var r=0;r<reihen.length;r++){
+      var zz=reihen[r].querySelectorAll('.hyc');
+      for(var j=0;j<zz.length&&j<breiten.length;j++) zz[j].style.width=breiten[j]+'px';
+    }
   }
 
   defWidget('hierarchy',{
