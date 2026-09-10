@@ -249,6 +249,11 @@
     (w.items || []).forEach(function (r, i) {
       _mlCmpHolen(w, i, r, function (p) {
         _mlZeileWerten(w, el, i, r, _mlCmpDelta(p), p && p.ab);
+        // Die Vergleichswert-Spalte haengt an derselben Antwort - hier ist sie schon da.
+        if (w.mlShowDay && !r.dayVid) {
+          var ze = $('[data-mlday="' + i + '"]', el);
+          if (ze) { ze.innerHTML = _mlTagTxt(r, p ? p.past : null); }
+        }
         // Der Anteil rechnet aus den Werten ALLER Zeilen - er kann erst stimmen, wenn
         // wieder eine davon eingetroffen ist.
         _mlAnteilAlle(w, el);
@@ -828,13 +833,35 @@
     return Math.max(0, Math.min(100, Math.abs(v) / b * 100));
   }
   /**
-   * Tageswert einer Zeile ohne eigene Variable: der Verbrauch bzw. das Tagesmittel von
-   * heute, gerechnet von derselben Schnittstelle wie der Vergleich (?api=cmp, stage=day).
-   * Eine gebundene dayVid hat Vorrang - die schreibt der zentrale Live-Pfad.
+   * VERGLEICHSWERT einer Zeile: der Wert der VORPERIODE - bei "Monat" der Vormonat, bei
+   * "Jahr" das Vorjahr. Also genau die Zahl, gegen die der Pfeil daneben prozentuiert.
+   * Die Zeile liest sich damit als Dreiklang: jetzt | damals | Unterschied.
+   *
+   * Frueher stand hier fest der Tageswert (?api=cmp&stage=day), auch wenn daneben gegen den
+   * Monat oder das Jahr verglichen wurde. Die Zeile sagte dann "heute 3 kWh" und gleich
+   * daneben "12 % mehr als im Vorjahr" - zwei Zeitraeume in einer Zeile, die man
+   * unwillkuerlich aufeinander bezieht.
+   *
+   * NICHT der Wert der LAUFENDEN Periode: den traegt bei einem Zaehler bereits die
+   * Hauptspalte (_mlCmpAlle schreibt dort p.cur), die Zahl stuende sonst zweimal
+   * nebeneinander - am 10.09.2026 im Render genau so gesehen.
+   *
+   * Geholt wird er ueber DENSELBEN Abruf wie die Vergleichsspalte: _mlCmpHolen liefert in
+   * past bereits den Wert der Vorperiode. Ein zweiter Abruf waere nicht nur unnoetig,
+   * er koennte auch etwas anderes sagen als der Pfeil daneben.
+   *
+   * Ohne gesetzten Vergleichszeitraum (oder bei 'var') bleibt es beim Tageswert - sonst
+   * haetten Listen ohne Vergleich ploetzlich eine leere Spalte.
+   * Eine gebundene dayVid hat weiterhin Vorrang; die schreibt der zentrale Live-Pfad.
    */
   var _mlTag = {};
   function _mlTagHolen(w, i, r, fertig) {
     if (r.dayVid || !r.vid) { fertig(null); return; }
+    var stufe = _mlStufe(w);
+    if (stufe && stufe !== 'var') {
+      _mlCmpHolen(w, i, r, function (p) { fertig(p ? p.past : null); });
+      return;
+    }
     var art = r.cnt ? 'counter' : 'standard';
     var k = w.id + ':' + i + ':day:' + art, jetzt = Date.now(), c = _mlTag[k];
     if (c && (jetzt - c.zeit) < 90000) { fertig(c.cur); return; }
@@ -846,7 +873,7 @@
         fertig(_mlTag[k].cur);
       }).catch(function () { fertig(null); });
   }
-  /** Text der Tageswert-Zelle. Einheit klein dahinter, damit die Zahl fuehrt. */
+  /** Text der Vergleichswert-Zelle. Einheit klein dahinter, damit die Zahl fuehrt. */
   function _mlTagTxt(r, v) {
     if (v == null || !isFinite(v)) { return '<span class="fnt">–</span>'; }
     return _mlWertTxt(r, v) + (r.unit ? ('<span class="u"> ' + esc(r.unit) + '</span>') : '');
@@ -1122,7 +1149,7 @@ defWidget('meterlist',{
     +row('Wertung zeigen','<input type="checkbox" id="pMlWert"'+(w.mlWert?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">Farbstreifen links; ob eine Abweichung gut ist, sagt das Häkchen „mehr = gut" je Zeile. Pfeil und Mittenbalken folgen der Wertung auch ohne diesen Schalter.</span>')
     +row('Selbst ordnen','<input type="checkbox" id="pMlRang"'+(w.mlRang?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">groesster Anteil oben</span>')
     +row('Spalten','<label><input type="checkbox" id="pMlPct"'+(w.mlShowPct?' checked':'')+'> Anteil</label> '
-        +'<label style="margin-left:10px"><input type="checkbox" id="pMlDay"'+(w.mlShowDay?' checked':'')+'> Tageswert</label> '
+        +'<label style="margin-left:10px"><input type="checkbox" id="pMlDay"'+(w.mlShowDay?' checked':'')+'> Vergleichswert</label> '
         +'<label style="margin-left:10px"><input type="checkbox" id="pMlCmp"'+(w.mlShowCmp?' checked':'')+'> Vergleich</label>')
     +'<div style="font-size:11px;color:var(--muted);margin:-2px 2px 5px">'
     +'<b>Anteil</b> und <b>Tageswert</b> brauchen keine eigene Variable mehr. Ohne gebundene ID '
@@ -1147,7 +1174,7 @@ defWidget('meterlist',{
       {k:'inv',  ph:'umkehren', type:'check'},
       {k:'color',type:'skincolor'},
       {k:'pctVid',ph:'Anteil-ID',h:'Anteil %'},
-      {k:'dayVid',ph:'Tages-ID',h:'Tageswert'},
+      {k:'dayVid',ph:'Wert-ID',h:'Vergleichswert (feste Variable)'},
       {k:'cmpVid',ph:'Vergl.-ID',h:'Vergleich'},
       {k:'cnt',type:'check',h:'Zähler',ph:'Zähler'},
       {k:'grp',ph:'Gruppe',h:'Gruppe'},
