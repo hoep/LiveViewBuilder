@@ -5065,3 +5065,10 @@ header{height:56px;display:flex;align-items:center;gap:18px;padding:0 16px;flex:
 .hbot .boterrbtn{margin-left:clamp(4px,2cqmin,8px);border:1px solid var(--crit);background:transparent;
      color:var(--crit);border-radius:5px;cursor:pointer;white-space:nowrap;
      padding:clamp(2px,1.2cqmin,4px) clamp(6px,2.6cqmin,11px);font-size:clamp(9px,3cqmin,11.5px)}
+
+/* Ankerraster in den Eigenschaften (Titel/Legende): neun Felder in der Anordnung,
+   in der sie auch auf der Kachel liegen. Das gewaehlte Feld traegt die Akzentfarbe. */
+.ancg{display:inline-grid;grid-template-columns:repeat(3,16px);grid-auto-rows:14px;gap:2px;vertical-align:middle}
+.ancb{padding:0;border:1px solid var(--line);border-radius:2px;background:var(--panel);cursor:pointer}
+.ancb:hover{border-color:var(--accent)}
+.ancb.on{background:var(--accent);border-color:var(--accent)}
