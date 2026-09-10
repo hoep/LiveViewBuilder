@@ -124,7 +124,7 @@
         // Ein Farbklecks ohne Wort ist eine Legendenaufgabe. Ist der Abschnitt
         // breit genug, traegt er seine Bezeichnung selbst - dann liest sich das
         // Band wie ein Ablauf und nicht wie ein Balkendiagramm.
-        var txt=(!vert && breit>=0.09 && slab)
+        var txt=(!vert && !w.hideSegLbl && breit>=0.09 && slab)
           ? '<b class="stl-seg">'+esc(slab)+'</b>' : '';
         return '<i style="position:absolute;top:0;bottom:0;left:'+(s.fa*100).toFixed(2)+'%;width:'+((s.fb-s.fa)*100).toFixed(2)+'%;background:'+col+'">'+txt+'</i>';
       }).join('');
@@ -193,6 +193,10 @@
       +'<div class="pgh">Anzeige</div>'
       +row('Legende','<input type="checkbox" id="pStlLeg"'+(!w.hideLegend?' checked':'')+'>')
       +row('Signal-Bezeichnung','<input type="checkbox" id="pStlLbl"'+(!w.hideLabels?' checked':'')+'>')
+      // Die Bezeichnung IM Balken ist etwas anderes als der Name der Bahn davor. Bei einer
+      // Liste aus zwei Zustaenden steht in jedem breiten Abschnitt dasselbe Wort - das sagt
+      // nichts, was die Legende nicht schon sagt, und macht das Band unruhig.
+      +row('Zustand im Balken','<input type="checkbox" id="pStlSeg"'+(!w.hideSegLbl?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">Wort im Abschnitt, ab etwa 9 % Breite; nur waagrecht</span>')
       +row('Uhrzeit / Achse','<input type="checkbox" id="pStlAx"'+(!w.hideAxis?' checked':'')+'>')
       +row('Perioden-Umschalter','<input type="checkbox" id="pStlNav"'+(!w.hideNav?' checked':'')+'>')
       +row('Verlaufsliste','<input type="checkbox" id="pStlLog"'+(w.showLog?' checked':'')+'>')
@@ -206,6 +210,7 @@
       if($('#pStlO'))$('#pStlO').onchange=function(){w.orient=this.value;_stlDraw(w);commit();};
       if($('#pStlLeg'))$('#pStlLeg').onchange=function(){w.hideLegend=this.checked?undefined:true;render();commit();};
       if($('#pStlLbl'))$('#pStlLbl').onchange=function(){w.hideLabels=this.checked?undefined:true;render();_stlFetch(w);commit();};
+      if($('#pStlSeg'))$('#pStlSeg').onchange=function(){w.hideSegLbl=this.checked?undefined:true;render();_stlFetch(w);commit();};
       if($('#pStlAx'))$('#pStlAx').onchange=function(){w.hideAxis=this.checked?undefined:true;render();_stlFetch(w);commit();};
       if($('#pStlNav'))$('#pStlNav').onchange=function(){w.hideNav=this.checked?undefined:true;render();_stlFetch(w);commit();};
       if($('#pStlLog'))$('#pStlLog').onchange=function(){w.showLog=this.checked||undefined;render();renderProps();_stlFetch(w);commit();};
