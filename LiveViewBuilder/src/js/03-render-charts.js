@@ -1172,6 +1172,13 @@
     if(stage==='year') return new Date(d.getFullYear()+1,0,1).getTime();
     return von+86400000;
   }
+  // Ein Block-Aggregat traegt den Zeitstempel des BLOCKANFANGS. Zeichnet man es dort, sitzt
+  // der Balken mittig auf dem Monatsersten und ragt zur Haelfte in den Vormonat hinein -
+  // gemessen an der Zisterne: Monat 66 px breit, Balken 41 px, Mitte auf dem 1., also von
+  // 20.09. bis 10.10. Wer Balken und Hover vergleicht, sieht dann zwei verschiedene Monate.
+  // Gezeichnet wird deshalb in der Blockmitte; fuer die Blocksuche im Tooltip bleibt der
+  // Blockanfang massgeblich (Feld blocks).
+  function _blkMitte(t,stage){return Math.round((t+_blkEnde(t,stage))/2);}
   function _blkAt(data,t,stage){
     if(!data||!data.length)return null;
     var tr=null;
@@ -1215,7 +1222,7 @@
       });
       ((_hist[w.id]&&_hist[w.id].series)||[]).forEach(function(s){
         if(!s||!s.stage||s.stage==='raw'||gezeigt[s.name])return;
-        var b=_blkAt(s.data,t,s.stage);if(!b||b.v==null)return;
+        var b=_blkAt(s.blocks||s.data,t,s.stage);if(!b||b.v==null)return;
         zeilen.push('<span style="display:inline-block;margin-right:5px;width:9px;height:9px;border-radius:50%;background:'
           +(s.color||cssv('--muted'))+'"></span>'+s.name+' <span style="opacity:.7">('+_blkName(b.von,s.stage)+')</span>: <b>'+fmt(b.v)+'</b>');
       });
@@ -2011,9 +2018,22 @@
         }).catch(function(){out[i]={data:[],color:scol,name:snm,xy:true};fin();});
         return;
       }
+      var _st=(s&&s.stage)||'';
+      var _mitte=function(roh){
+        if(!_st||_st==='raw')return roh;
+        // Der LAUFENDE Block ist noch nicht zu Ende - seine rechnerische Mitte liegt in der
+        // Zukunft und schoebe den Balken aus der Kachel. Fuer ihn zaehlt die Mitte des
+        // bereits vergangenen Teils, begrenzt auf das Ende des Zeitfensters.
+        var ende=mTo*1000;
+        return roh.map(function(p){
+          var bis=Math.min(_blkEnde(p[0],_st),ende);
+          return [Math.round((p[0]+Math.max(bis,p[0]))/2),p[1]];
+        });
+      };
       fetch(hUrl(id,mFrom,mTo,lv),{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
-        out[i]={data:conv(hPts(j,lv,af)),color:scol,name:snm,stage:(s&&s.stage)||''};
-      }).catch(function(){out[i]={data:[],color:scol,name:snm,stage:(s&&s.stage)||''};}).then(fin);
+        var roh=conv(hPts(j,lv,af));
+        out[i]={data:_mitte(roh),color:scol,name:snm,stage:_st,blocks:roh};
+      }).catch(function(){out[i]={data:[],color:scol,name:snm,stage:_st,blocks:[]};}).then(fin);
       if(w.cmpOn&&off){var to=mTo-off,from=mFrom-off;
         fetch(hUrl(id,from,to,lv),{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
           cmp[i]={data:conv(hPts(j,lv,af)).map(function(p){return [p[0]+off*1000,p[1]];}),color:scol};
