@@ -1158,6 +1158,95 @@
     else o.top=Math.round(Math.max(0,(H-box.h)/2+dy));
     return o;
   }
+  // ===== Tooltip: gestufte Reihen ueber den ganzen Block anzeigen =========================
+  // Eine Reihe mit eigener Aggregationsstufe (z. B. Regen als MONATSSUMME) hat genau EINEN
+  // Punkt je Block, gesetzt auf den Blockanfang. ECharts zeigt sie im Hover deshalb nur
+  // genau am Monatsersten - fuer alle uebrigen Tage steht dort nichts, obwohl der Wert fuer
+  // den ganzen Monat gilt. Hier wird der Block gesucht, in dem der Zeiger steht, und sein
+  // Wert mit dem Namen des Zeitraums ausgewiesen.
+  var _BLK_MS={min:300000,hour:3600000,day:86400000,week:604800000};
+  function _blkEnde(von,stage){
+    if(_BLK_MS[stage])return von+_BLK_MS[stage];
+    var d=new Date(von);
+    if(stage==='month')return new Date(d.getFullYear(),d.getMonth()+1,1).getTime();
+    if(stage==='year') return new Date(d.getFullYear()+1,0,1).getTime();
+    return von+86400000;
+  }
+  function _blkAt(data,t,stage){
+    if(!data||!data.length)return null;
+    var tr=null;
+    for(var i=0;i<data.length;i++){var p=data[i];if(!p||p[0]>t)break;tr={von:p[0],v:p[1],i:i};}
+    if(!tr)return null;
+    // Blockende: der naechste Punkt, sonst rechnerisch aus der Stufe
+    var naechst=(data[tr.i+1]&&data[tr.i+1][0])||_blkEnde(tr.von,stage);
+    return (t<naechst)?tr:null;
+  }
+  var _BLK_M=['Jänner','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
+  function _blkName(von,stage){
+    var d=new Date(von),z=function(n){return ('0'+n).slice(-2);};
+    if(stage==='month')return _BLK_M[d.getMonth()]+' '+d.getFullYear();
+    if(stage==='year') return String(d.getFullYear());
+    if(stage==='week'){var x=new Date(d.getTime());x.setHours(0,0,0,0);x.setDate(x.getDate()+3-((x.getDay()+6)%7));
+      var e=new Date(x.getFullYear(),0,4);
+      return 'KW '+(1+Math.round(((x-e)/86400000-3+((e.getDay()+6)%7))/7));}
+    if(stage==='day')  return z(d.getDate())+'.'+z(d.getMonth()+1)+'.';
+    return z(d.getHours())+':'+z(d.getMinutes());
+  }
+  function _tipKopf(t){
+    var d=new Date(t),z=function(n){return ('0'+n).slice(-2);};
+    if(isNaN(d.getTime()))return String(t);
+    return z(d.getDate())+'.'+z(d.getMonth()+1)+'.'+d.getFullYear()+'  '+z(d.getHours())+':'+z(d.getMinutes());
+  }
+  function _lineTip(w,fmt){
+    return function(ps){
+      if(!ps)return '';
+      if(!Array.isArray(ps))ps=[ps];
+      if(!ps.length)return '';
+      var t=ps[0].axisValue,zeilen=[],gezeigt={};
+      ps.forEach(function(p){
+        var v=(p.value&&p.value.length!=null)?p.value[p.value.length-1]:p.value;
+        // NUR eine Reihe mit echtem Wert gilt als gezeigt. ECharts reicht bei trigger:'axis'
+        // ALLE Reihen durch, auch die, die an dieser Stelle nichts haben - haette man sie
+        // trotzdem als erledigt vermerkt, faende die Blocksuche unten nichts mehr, und der
+        // Tooltip bliebe an genau den Tagen leer, an denen er gebraucht wird.
+        if(v==null)return;
+        gezeigt[p.seriesName]=1;
+        zeilen.push(p.marker+' '+p.seriesName+': <b>'+fmt(v)+'</b>');
+      });
+      ((_hist[w.id]&&_hist[w.id].series)||[]).forEach(function(s){
+        if(!s||!s.stage||s.stage==='raw'||gezeigt[s.name])return;
+        var b=_blkAt(s.data,t,s.stage);if(!b||b.v==null)return;
+        zeilen.push('<span style="display:inline-block;margin-right:5px;width:9px;height:9px;border-radius:50%;background:'
+          +(s.color||cssv('--muted'))+'"></span>'+s.name+' <span style="opacity:.7">('+_blkName(b.von,s.stage)+')</span>: <b>'+fmt(b.v)+'</b>');
+      });
+      if(!zeilen.length)return '';
+      return _tipKopf(t)+'<br>'+zeilen.join('<br>');
+    };
+  }
+  // ===== Achsentitel =====================================================================
+  // Vier Angaben je Achse, gleich fuer Y und X:
+  //   Lage     entlang der Achse: Anfang / Mitte / Ende   (ECharts nameLocation)
+  //   Seite    auf welcher Seite der Achse der Titel steht (ECharts kennt dafuer keinen
+  //            eigenen Schalter - es ist das VORZEICHEN des Abstands)
+  //   Drehung  -90 / 0 / 90 Grad                          (ECharts nameRotate)
+  //   Abstand  in Pixeln                                  (ECharts nameGap)
+  // Vorgabe wie bisher: Y-Titel oben ueber der Achse, waagrecht, 7 px Abstand.
+  // Die Zeitachse hatte bisher UEBERHAUPT keinen Titel - nur das Punktdiagramm mit
+  // seiner zweiten Messgroesse kannte einen. Jetzt koennen es alle.
+  function _axNameOpt(w,c,vert,rechts){
+    var nm=(c&&c.name!=null)?String(c.name):'';
+    if(nm==='')return {name:''};
+    var loc=(c.nLoc==='start'||c.nLoc==='middle'||c.nLoc==='end')?c.nLoc:(vert?'end':'middle');
+    var rot=(c.nRot!=null&&c.nRot!=='')?parseFloat(c.nRot):0;
+    var gap=(c.nGap!=null&&c.nGap!=='')?Math.abs(parseFloat(c.nGap)):(vert?(loc==='middle'?32:7):22);
+    // Aussen heisst: auf der Seite, auf der auch die Skalenwerte stehen. Innen = ueber der
+    // Zeichenflaeche. Das Vorzeichen des Abstands schaltet um.
+    var vorgabe=vert?(rechts?'r':'l'):'u';
+    var seite=(c.nSide==='l'||c.nSide==='r'||c.nSide==='o'||c.nSide==='u')?c.nSide:vorgabe;
+    var aussen=vert?(rechts?(seite==='r'):(seite==='l')):(seite==='u');
+    return {name:nm,nameLocation:loc,nameRotate:rot,nameGap:(aussen?gap:-gap),
+      nameTextStyle:{color:cssv('--muted'),fontSize:_ecF(w,'axname',9)}};
+  }
   function _titleOn(w){var t=(w.showTitle!=null)?w.showTitle:(!w.legend&&!!w.label);return !!(t&&((w.label||'')!==''||(w.subLabel||'')!==''));}
   function _subFs(w){return _ecF(w,'sub',Math.max(8,_ecF(w,'title',11)-2));}
   function _titleBox(w){
@@ -1255,17 +1344,43 @@
     var p=_ancPlace(_legAnc(w),w.legDX,w.legDY,(gap||4),gap+_stapel,box,ec);
     for(var k in p)o[k]=p[k];
     return o;}
-  // Der Achsentitel (kWh, W, ...) sitzt UEBER der oberen Gitterkante - containLabel erfasst
-  // nur die Skalenwerte, nicht ihn. Ohne eigenen Platz stiess er in die Legende.
-  function _axNameSpace(w){
-    if(!w)return 0;
-    var hat=((w.yunit||'')!=='')||((w.unit||'')!=='');
-    (w.yAxes||[]).forEach(function(a){if(a&&(a.name||'')!=='')hat=true;});
-    return hat?(_ecF(w,'axname',9)+6):0;
+  // Achsentitel brauchen eigenen Platz: containLabel erfasst nur die SKALENWERTE, nicht den
+  // Titel. Wohin der Platz gehoert, haengt von seiner Lage ab - ein oben stehender Titel
+  // braucht ihn oben, ein gedrehter in der Mitte an der Seite. Ohne das wurde er beim ersten
+  // Versuch am linken Rand abgeschnitten (nur eine Klammer blieb sichtbar).
+  //
+  // nameGap misst ECharts ab der ACHSENLINIE nach aussen, containLabel deckt davon die
+  // Breite der Skalenwerte bereits ab - deshalb zaehlt nur, was darueber hinausgeht.
+  function _axNameStrips(w){
+    var s={l:0,r:0,t:0,b:0};
+    if(!w)return s;
+    var fs=_ecF(w,'axname',9);
+    function eintragen(c,vert,rechts){
+      if(!c||(c.name==null)||String(c.name)==='')return;
+      var loc=(c.nLoc==='start'||c.nLoc==='middle'||c.nLoc==='end')?c.nLoc:(vert?'end':'middle');
+      var gap=(c.nGap!=null&&c.nGap!=='')?Math.abs(parseFloat(c.nGap)):(vert?(loc==='middle'?32:7):22);
+      var vorgabe=vert?(rechts?'r':'l'):'u';
+      var seite=(c.nSide==='l'||c.nSide==='r'||c.nSide==='o'||c.nSide==='u')?c.nSide:vorgabe;
+      var aussen=vert?(rechts?(seite==='r'):(seite==='l')):(seite==='u');
+      if(!aussen)return;                       // innen = ueber der Zeichenflaeche, braucht nichts
+      if(vert){
+        if(loc==='middle'){var b=Math.max(0,gap-24)+fs+6;if(rechts)s.r+=b;else s.l+=b;}
+        else if(loc==='start')s.b+=fs+6;
+        else s.t+=fs+6;
+      } else {
+        if(seite==='u')s.b+=Math.max(0,gap-16)+fs+4;else s.t+=fs+6;
+      }
+    }
+    // Alte Kacheln ohne yAxes-Liste tragen ihre Einheit in yunit/unit - die steht oben.
+    var yl=(w.yAxes&&w.yAxes.length)?w.yAxes:null;
+    if(yl)yl.forEach(function(a){eintragen(a,true,(a&&a.side==='R'));});
+    else if(((w.yunit||'')!=='')||((w.unit||'')!==''))s.t+=fs+6;
+    eintragen({name:w.xname,nLoc:w.xnLoc,nRot:w.xnRot,nGap:w.xnGap,nSide:w.xnSide},false,false);
+    return s;
   }
   // ---- Reservierte Streifen: die EINZIGE Stelle, die Randbreiten kennt ------------------
   function _chStrips(w,legOn){
-    var s={l:0,r:0,t:_axNameSpace(w),b:0};
+    var an=_axNameStrips(w),s={l:an.l,r:an.r,t:an.t,b:an.b};
     var tb=_titleBox(w);
     if(tb.on&&!w.titleFloat){var tv=_ancV(_titleAnc(w));
       if(tv==='o')s.t+=tb.h+4;else if(tv==='u')s.b+=tb.h+4;}
@@ -1421,7 +1536,9 @@
     var _multiAx=(nL+nR)>1;
     var _lineFmt=function(v){return _chNum(w,v,!_multiAx);};
     var yA=yaxes.map(function(a,ix){var right=(a.side==='R'),off=right?(iR++*48):(iL++*48);
-      return {type:'value',position:(right?'right':'left'),offset:off,name:(a.name||''),nameTextStyle:{color:cssv('--muted'),fontSize:_ecF(w,'axname',9)},nameGap:7,
+      var _nm=_axNameOpt(w,a,true,right);
+      return {type:'value',position:(right?'right':'left'),offset:off,
+        name:_nm.name,nameLocation:_nm.nameLocation,nameRotate:_nm.nameRotate,nameGap:_nm.nameGap,nameTextStyle:_nm.nameTextStyle,
         scale:(a.min==null||a.min===''),min:(a.min!=null&&a.min!==''?parseFloat(a.min):null),max:(a.max!=null&&a.max!==''?parseFloat(a.max):null),
         axisLine:{show:ax0.line,lineStyle:{color:cssv('--line')}},axisTick:{show:ax0.ticks,lineStyle:{color:cssv('--line')}},axisLabel:_axLabY(w,ax0,a),splitLine:{show:(ax0.yGrid&&ix===0),lineStyle:{color:cssv('--line-soft')}},splitNumber:(w.gridDivs>0?parseInt(w.gridDivs):null)};});
     var opt={backgroundColor:'transparent',animation:!!bcfg().chartAnim,grid:_chGrid(w,{l:6+Math.max(0,nL-1)*48,r:8+Math.max(0,nR-1)*48,t:6+_annTopSpace(w),b:(w.zoom?34:14)+_navSpace(w)}),tooltip:(_chXY(w)
@@ -1429,18 +1546,18 @@
             return (p.seriesName?(p.seriesName+'<br>'):'')
               +_lineFmt(p.value[0])+(w.xunit?(' '+w.xunit):'')+' \u2192 '
               +_lineFmt(p.value[1])+(w.yunit?(' '+w.yunit):'');}}
-        : {trigger:'axis',valueFormatter:_lineFmt}),
+        : {trigger:'axis',formatter:_lineTip(w,_lineFmt)}),
       legend:_legendOpt(w,w.legend),
       title:_titleOpt(w),
       xAxis:(_chXY(w)
-        ? {type:'value',scale:true,name:(w.xname||''),nameLocation:'middle',nameGap:22,
-           nameTextStyle:{color:cssv('--faint'),fontSize:_ecF(w,'axis',10)},
-           splitNumber:_axSplitX(w),axisLine:{show:ax0.line,lineStyle:{color:cssv('--line')}},
+        ? Object.assign({type:'value',scale:true,
+           splitNumber:_axSplitX(w)},_axNameOpt(w,{name:w.xname,nLoc:w.xnLoc,nRot:w.xnRot,nGap:w.xnGap,nSide:w.xnSide},false,false),{axisLine:{show:ax0.line,lineStyle:{color:cssv('--line')}},
            axisTick:{show:ax0.ticks},
            axisLabel:{show:ax0.xLab,color:cssv('--faint'),fontSize:_axFs(w),
                       formatter:function(v){return _lineFmt(v)+(w.xunit?(' '+w.xunit):'');}},
-           splitLine:{show:ax0.xGrid,lineStyle:{color:cssv('--line-soft')}}}
-        : {type:'time',boundaryGap:anyBar,splitNumber:_axSplitX(w),axisLine:{show:ax0.line,lineStyle:{color:cssv('--line')}},axisTick:{show:ax0.ticks},axisLabel:_axLabX(w,ax0,false),splitLine:{show:ax0.xGrid,lineStyle:{color:cssv('--line-soft')}}}),
+           splitLine:{show:ax0.xGrid,lineStyle:{color:cssv('--line-soft')}}})
+        : Object.assign({type:'time',boundaryGap:anyBar},
+           _axNameOpt(w,{name:w.xname,nLoc:w.xnLoc,nRot:w.xnRot,nGap:w.xnGap,nSide:w.xnSide},false,false),{splitNumber:_axSplitX(w),axisLine:{show:ax0.line,lineStyle:{color:cssv('--line')}},axisTick:{show:ax0.ticks},axisLabel:_axLabX(w,ax0,false),splitLine:{show:ax0.xGrid,lineStyle:{color:cssv('--line-soft')}}})),
       yAxis:yA,series:series};
     if(w.zoom)opt.dataZoom=[{type:'inside'},{type:'slider',height:13,bottom:4,borderColor:'transparent',backgroundColor:accA(.06),fillerColor:accA(.18),handleStyle:{color:cssv('--accent')},dataBackground:{lineStyle:{color:cssv('--line')},areaStyle:{color:accA(.08)}},textStyle:{color:cssv('--faint'),fontSize:_ecF(w,'axis',8)}}];
     // ===== ANNOTATIONEN =========================================================
@@ -1890,8 +2007,8 @@
         return;
       }
       fetch(hUrl(id,mFrom,mTo,lv),{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
-        out[i]={data:conv(hPts(j,lv,af)),color:scol,name:snm};
-      }).catch(function(){out[i]={data:[],color:scol,name:snm};}).then(fin);
+        out[i]={data:conv(hPts(j,lv,af)),color:scol,name:snm,stage:(s&&s.stage)||''};
+      }).catch(function(){out[i]={data:[],color:scol,name:snm,stage:(s&&s.stage)||''};}).then(fin);
       if(w.cmpOn&&off){var to=mTo-off,from=mFrom-off;
         fetch(hUrl(id,from,to,lv),{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
           cmp[i]={data:conv(hPts(j,lv,af)).map(function(p){return [p[0]+off*1000,p[1]];}),color:scol};
@@ -2594,6 +2711,10 @@
     });
   }
 
+  // Auswahlliste aus Paaren [wert, beschriftung] - spart in den Achsenzeilen viel Wiederholung
+  function _optn(paare,cur){
+    return paare.map(function(o){return '<option value="'+o[0]+'"'+(String(cur)===String(o[0])?' selected':'')+'>'+o[1]+'</option>';}).join('');
+  }
   function axesEditor(w){
     var ax=_ensureYAxes(w),h='<div class="pgh">Y-Achsen (Seite · Name · Min/Max · Format)</div>';
     ax.forEach(function(a,i){
@@ -2605,7 +2726,20 @@
         +'<select data-af="'+i+'.fmt" title="Zahlenformat dieser Achse"><option value=""'+(!a.fmt?' selected':'')+'>Format …</option><option value="thousand"'+(a.fmt==='thousand'?' selected':'')+'>1.234,5</option><option value="compact"'+(a.fmt==='compact'?' selected':'')+'>1,2k</option></select>'
         +'<input data-af="'+i+'.dec" type="number" min="0" max="6" value="'+(a.dec!=null?a.dec:'')+'" placeholder="Dez" style="width:44px">'
         +(ax.length>1?'<button class="btn" data-adel="'+i+'" style="padding:2px"><svg class="i"><use href="#ic-minus"/></svg></button>':'')
-        +'</div>';
+        +'</div>'
+        // Zweite Zeile: der ACHSENTITEL selbst. Vorher war er unverrueckbar oben ueber der
+        // Achse und immer waagrecht - bei langen Namen wie "Fuellung (%)" ist das die
+        // schlechteste aller Lagen, weil er dort mit Legende und Nachbarachse kollidiert.
+        +(((a.name||'')!=='')?('<div class="serow" style="display:flex;flex-wrap:wrap;gap:4px;align-items:center;margin:-2px 0 7px 14px">'
+          +'<span style="font-size:11px;color:var(--muted);min-width:52px">Titel</span>'
+          +'<select data-af="'+i+'.nLoc" title="Lage entlang der Achse">'
+            +_optn([['end','oben'],['middle','Mitte'],['start','unten']],a.nLoc||'end')+'</select>'
+          +'<select data-af="'+i+'.nSide" title="Auf welcher Seite der Achse">'
+            +_optn([['l','links'],['r','rechts']],a.nSide||((a.side==='R')?'r':'l'))+'</select>'
+          +'<select data-af="'+i+'.nRot" title="Drehung der Schrift">'
+            +_optn([['0','0°'],['90','90°'],['-90','-90°']],String(a.nRot!=null&&a.nRot!==''?a.nRot:0))+'</select>'
+          +'<input data-af="'+i+'.nGap" type="number" value="'+(a.nGap!=null&&a.nGap!==''?a.nGap:'')+'" placeholder="Abst." style="width:56px" title="Abstand zur Achse in Pixeln, leer = automatisch">'
+          +'</div>'):'');
     });
     h+='<button class="btn" data-aadd="1" style="padding:4px 8px;font-size:11px"><svg class="i"><use href="#ic-plus"/></svg> Achse</button>';
     return h;
