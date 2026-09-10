@@ -1473,10 +1473,19 @@
   function _segApply(w,opt){
     if(!w.segOn)return;
     var st=_segStufen(w);if(st.length<2)return;
+    // JEDES Stueck bekommt BEIDE Grenzen. Ein Stueck nur mit gte (oder nur mit lt) laesst
+    // ECharts abstuerzen, sobald ALLE Stuecke einseitig offen sind - und das ist bei genau
+    // ZWEI Stufen immer der Fall. Am 10.09.2026 nachgestellt, Fuellstand mit "ab 0 / ab 30":
+    //   [{lt:30},{gte:30}]                   -> TypeError: reading 'coord', Diagramm bleibt leer
+    //   [{lt:30,gte:-R},{gte:30,lt:R}]       -> laeuft
+    //   [{lt:30},{gte:30,lt:60},{gte:60}]    -> laeuft (das mittlere Stueck ist beidseitig)
+    // Deshalb fiel es bei drei und mehr Stufen nie auf. R ist nur ein Anschlag weit
+    // ausserhalb jeder realen Messgroesse; unendlich vertraegt die Interpolation nicht.
+    var R=1e12;
     var pieces=st.map(function(s,i){
       var p={color:(_skinToCss(s.color)||cssv('--accent'))};
-      if(i>0)p.gte=s.v;                       // erste Stufe faengt alles darunter mit ab
-      if(i<st.length-1)p.lt=st[i+1].v;        // letzte Stufe laeuft nach oben offen
+      p.gte=(i>0)?s.v:-R;                     // erste Stufe faengt alles darunter mit ab
+      p.lt =(i<st.length-1)?st[i+1].v:R;      // letzte Stufe laeuft nach oben offen
       return p;
     });
     opt.visualMap={show:false,type:'piecewise',dimension:1,seriesIndex:0,pieces:pieces,
