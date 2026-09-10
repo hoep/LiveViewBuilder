@@ -1166,6 +1166,19 @@ background:var(--surface);border:2px solid var(--text);transform:translate(-50%,
 .hselb .hseli svg{width:100%;height:100%}
 .stage.preview .hselb{cursor:pointer}
 .hselb.on{background:color-mix(in oklab,var(--accent) 18%,var(--surface-2));border-color:var(--accent);color:var(--accent)}
+.hvcard.vcsel{display:flex;flex-direction:column;gap:clamp(4px,2.4cqmin,9px)}
+.hvcard.vcsel .hvcselhd{display:flex;align-items:center;gap:clamp(5px,2.6cqmin,9px);min-width:0;flex:none}
+.hvcard.vcsel .hvcselhd .hkbi{width:clamp(16px,9cqmin,26px);height:clamp(16px,9cqmin,26px);flex:none}
+.hvcard.vcsel .hvctitle{font-size:clamp(9px,3.4cqmin,11.5px);letter-spacing:.06em;text-transform:uppercase;
+color:var(--faint);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.hvcard.vcsel .hvcselnow{margin-left:auto;flex:none;font-weight:700;color:var(--accent);
+font-size:clamp(10px,3.8cqmin,13px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:60%}
+.hvcard.vcsel .hvcselhost{flex:1;min-height:0;display:flex}
+.hvcard.vcsel .hvcselnow[hidden]{display:none}
+.hsel.seg{gap:0;padding:0;border:1px solid var(--line);border-radius:var(--r-s);overflow:hidden}
+.hsel.seg .hselb{border:0;border-right:1px solid var(--line);border-radius:0;background:transparent}
+.hsel.seg .hselb:last-child{border-right:0}
+.hsel.seg .hselb.on{background:color-mix(in oklab,var(--accent) 18%,var(--surface-2));color:var(--accent)}
 .hdial{position:absolute;inset:0;display:flex;align-items:center;justify-content:center}
 .hdial svg{width:100%;height:100%;max-width:100%;max-height:100%;overflow:visible}
 .hdial .dtrack{fill:none;stroke:var(--surface-2);stroke-width:9;stroke-linecap:round}
