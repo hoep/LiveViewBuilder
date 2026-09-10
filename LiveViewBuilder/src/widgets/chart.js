@@ -199,6 +199,14 @@
         if(V.axPlus)h+='<div class="pgh">Achsenbeschriftung</div>'
           +row('X: Dichte','<select id="pXTM"><option value=""'+(!w.xTickMode?' selected':'')+'>automatisch</option><option value="count"'+(w.xTickMode==='count'?' selected':'')+'>Anzahl</option><option value="every"'+(w.xTickMode==='every'?' selected':'')+'>jede N-te</option></select> <input id="pXTN" type="number" min="1" style="width:52px" value="'+(w.xTicks||'')+'" placeholder="N">')
           +row('X: Zeitformat','<input id="pXFmt" style="width:96px" value="'+esc(w.xFmt||'')+'" placeholder="automatisch"> <span style="font-size:11px;color:var(--muted)">z.&nbsp;B. H:i oder d.m.</span>')
+          +(V.scat?'':row('X: Titel','<input id="pXName" value="'+esc(w.xname||'')+'" placeholder="Achsentitel (optional)">'))
+          +((w.xname||'')!==''?('<div class="serow" style="display:flex;flex-wrap:wrap;gap:4px;align-items:center;margin:-2px 0 7px 14px">'
+            +'<span style="font-size:11px;color:var(--muted);min-width:52px">Titel</span>'
+            +'<select id="pXnLoc" title="Lage entlang der Achse">'+_optn([['start','links'],['middle','Mitte'],['end','rechts']],w.xnLoc||'middle')+'</select>'
+            +'<select id="pXnSide" title="Ober- oder unterhalb der Achse">'+_optn([['u','unten'],['o','oben']],w.xnSide||'u')+'</select>'
+            +'<select id="pXnRot" title="Drehung der Schrift">'+_optn([['0','0°'],['90','90°'],['-90','-90°']],String(w.xnRot!=null&&w.xnRot!==''?w.xnRot:0))+'</select>'
+            +'<input id="pXnGap" type="number" value="'+(w.xnGap!=null&&w.xnGap!==''?w.xnGap:'')+'" placeholder="Abst." style="width:56px" title="Abstand zur Achse in Pixeln, leer = automatisch">'
+            +'</div>'):'')
           +row('Y: Zahlenformat','<select id="pYFmt"><option value=""'+(!w.yFmt||w.yFmt==='auto'?' selected':'')+'>automatisch</option><option value="thousand"'+(w.yFmt==='thousand'?' selected':'')+'>1.234,5</option><option value="compact"'+(w.yFmt==='compact'?' selected':'')+'>1,2k / 3,4M</option></select> <input id="pYDec" type="number" min="0" max="6" style="width:46px" value="'+(w.yDec!=null?w.yDec:'')+'" placeholder="Dez">')
           +row('Y: Einheit anzeigen','<input type="checkbox" id="pYUL"'+(w.yUnitLab?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">an den Skalenwerten</span>');
         if(V.axPlus&&(V.bar||V.line))h+=row('Stapeln','<input type="checkbox" id="pStack"'+(w.stack?' checked':'')+'>');
@@ -317,6 +325,10 @@ if(V.cmp)h+='<div class="pgh">Vergleich (Zeitversatz)</div>'+row('Aktiv','<input
       if($('#pXTM'))$('#pXTM').onchange=function(){w.xTickMode=this.value||undefined;reChart();};
       if($('#pXTN'))$('#pXTN').oninput=function(){w.xTicks=this.value===''?undefined:Math.max(1,parseInt(this.value)||1);reChart();};
       if($('#pXFmt'))$('#pXFmt').onchange=function(){w.xFmt=this.value.trim()||undefined;reChart();};
+      if($('#pXName')&&!$('#pXUnit'))$('#pXName').oninput=function(){w.xname=this.value||undefined;reChart();renderProps();};  // pXUnit gibt es nur beim Punktdiagramm - dort gehoert das Feld der anderen Bindung
+      [['pXnLoc','xnLoc'],['pXnSide','xnSide'],['pXnRot','xnRot']].forEach(function(o){
+        var e=$('#'+o[0]);if(e)e.onchange=function(){w[o[1]]=this.value||undefined;reChart();};});
+      if($('#pXnGap'))$('#pXnGap').oninput=function(){w.xnGap=(this.value===''?undefined:parseFloat(this.value));reChart();};
       if($('#pYFmt'))$('#pYFmt').onchange=function(){w.yFmt=this.value||undefined;reChart();};
       if($('#pYDec'))$('#pYDec').oninput=function(){w.yDec=this.value===''?undefined:Math.max(0,Math.min(6,parseInt(this.value)||0));reChart();};
       if($('#pYUL'))$('#pYUL').onchange=function(){w.yUnitLab=this.checked||undefined;reChart();};
