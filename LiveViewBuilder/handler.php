@@ -3246,6 +3246,77 @@ if ($api === 'partial') {
     echo json_encode(['v' => ($a0 !== null && $a1 !== null) ? ($a1 - $a0) : null]);
     return;
 }
+// ---- Hierarchie fuer das Widget "hierarchy" (api=hierarchy; api=tree ist der Objektbaum) ---------------------------------------
+// Liefert IMMER dieselbe Form, gleich woher die Daten stammen:
+//   {"nodes":[{"id","parent","label","sub","typ","werte":{},"zustand","link"}]}
+// Damit kennt das Widget nur einen Weg. Weitere Quellen kommen als zusaetzliches src
+// dazu; die generische Variante braucht gar keinen Handler - dort liest das Widget
+// eine String-Variable mit demselben JSON.
+if ($api === 'hierarchy') {
+    header('Content-Type: application/json; charset=utf-8');
+    $src = (string) ($_GET['src'] ?? 'unifi');
+    if ($src !== 'unifi') { echo json_encode(['error' => 'unbekannte Quelle']); return; }
+
+    // Der Schluessel steht in einer Symcon-Variablen; ohne Angabe wird nichts geraten.
+    $keyVar = (int) ($_GET['keyvar'] ?? 0);
+    $host   = trim((string) ($_GET['host'] ?? '')) ?: '10.10.10.254';
+    if (!$keyVar || !@IPS_VariableExists($keyVar)) {
+        echo json_encode(['error' => 'API-Schluessel-Variable waehlen']); return;
+    }
+    $key = trim((string) @GetValue($keyVar));
+    if ($key === '') { echo json_encode(['error' => 'Schluessel-Variable ist leer']); return; }
+    if (!preg_match('/^[A-Za-z0-9_.:-]{1,64}$/', $host)) { echo json_encode(['error' => 'ungueltiger Controller']); return; }
+
+    $ch = curl_init('https://' . $host . '/proxy/network/api/s/default/stat/device');
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true, CURLOPT_SSL_VERIFYPEER => false, CURLOPT_SSL_VERIFYHOST => false,
+        CURLOPT_HTTPHEADER => ['X-API-KEY: ' . $key, 'Accept: application/json'], CURLOPT_TIMEOUT => 20,
+    ]);
+    $antwort = curl_exec($ch);
+    $code    = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    if ($code !== 200 || $antwort === false) { echo json_encode(['error' => 'Controller antwortet mit HTTP ' . $code]); return; }
+    $j = json_decode($antwort, true);
+    $rows = $j['data'] ?? [];
+    if (!is_array($rows)) { echo json_encode(['error' => 'unerwartete Antwort']); return; }
+
+    $TYP = ['udm' => 'gw', 'ugw' => 'gw', 'usw' => 'sw', 'uap' => 'ap'];
+    $nodes = [];
+    foreach ($rows as $d) {
+        $mac = strtolower((string) ($d['mac'] ?? ''));
+        if ($mac === '') { continue; }
+        $up = strtolower((string) ($d['uplink']['uplink_mac'] ?? ($d['uplink']['ap_mac'] ?? '')));
+        // Der Uplink-Typ sagt, ob die Verbindung ueber Kabel oder Funk laeuft - ein
+        // Mesh-Punkt haengt sonst optisch gleichwertig am Switch.
+        $utyp = strtolower((string) ($d['uplink']['type'] ?? 'wire'));
+        $zufr = $d['satisfaction'] ?? null;
+        $zustand = ((int) ($d['state'] ?? 0) === 1) ? '' : 'off';
+        $nodes[] = [
+            'id'      => $mac,
+            'parent'  => $up,
+            'label'   => (string) ($d['name'] ?? ($d['model'] ?? $mac)),
+            'sub'     => (string) ($d['model'] ?? ''),
+            'typ'     => $TYP[strtolower((string) ($d['type'] ?? ''))] ?? 'box',
+            'werte'   => [
+                'clients' => (int) ($d['num_sta'] ?? 0),
+                'zufr'    => ($zufr === null || $zufr < 0) ? null : (int) $zufr,
+                'port'    => $d['uplink']['uplink_remote_port'] ?? null,
+            ],
+            'zustand' => $zustand,
+            'link'    => ($utyp === 'wireless') ? 'funk' : 'kabel',
+        ];
+    }
+    // Das Gateway meldet ALLE Clients gesammelt - als eigener Wert waere das doppelt
+    // gezaehlt, sobald das Widget Teilbaeume aufsummiert.
+    foreach ($nodes as &$n) {
+        $istWurzel = true;
+        foreach ($nodes as $m) { if ($m['id'] === $n['parent']) { $istWurzel = false; break; } }
+        if ($istWurzel && $n['typ'] === 'gw') { $n['werte']['clients'] = 0; }
+    }
+    unset($n);
+    echo json_encode(['nodes' => $nodes]);
+    return;
+}
+
 if ($api === 'cmp') {
     header('Content-Type: application/json; charset=utf-8');
     // Formel-Bindung "=Ausdruck": je Komponente Ist- und Vorperioden-Wert nativ bestimmen
