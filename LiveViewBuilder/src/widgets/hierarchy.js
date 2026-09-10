@@ -67,6 +67,44 @@
     b+=t.length*0.67+10;                                      // Laufweite (.07em) plus Luft
     return Math.max(c&&c.art==='balken'?96:64, Math.ceil(b));
   }
+  /* --- Textmasse fuer die drei Zeichenansichten -------------------------------
+     Die Ansichten spannen ihre viewBox genau ueber die Box, eine SVG-Einheit ist
+     also ein CSS-Pixel. Damit laesst sich echt messen statt in Zeichen zu rechnen:
+     feste Schriftgroessen und ein slice(0,14) passen nur zu genau einer Kachel-
+     groesse - auf einer schmalen Kachel ragte der Text heraus, auf einer breiten
+     verschenkte er die Haelfte des Platzes. */
+  function _hyTxtBreit(s,fs){
+    s=String(s==null?'':s); if(!s)return 0;
+    // Der dritte Parameter MUSS gesetzt sein: ohne ihn misst _txtW in sans-serif,
+    // gezeichnet wird aber in der Skin-Schrift - das waren rund 9 % zu wenig, und
+    // genau so viel ragte der Text aus seinem Block in den Nachbarn.
+    try{ if(typeof _txtW==='function') return _txtW(s,fs,{})*1.03; }catch(e){}
+    return s.length*fs*0.62;                       // ohne Canvas: grobe Schaetzung
+  }
+  /* Auf die verfuegbare Breite kuerzen. Leerer Rueckgabewert heisst: hier passt
+     nichts Lesbares hin - dann lieber gar nicht beschriften. */
+  function _hyKurz(s,fs,platz){
+    s=String(s==null?'':s); if(!s||platz<=0)return '';
+    if(_hyTxtBreit(s,fs)<=platz)return s;
+    for(var n=s.length-1;n>=3;n--){
+      var t=s.slice(0,n)+'…';
+      if(_hyTxtBreit(t,fs)<=platz)return t;
+    }
+    return '';
+  }
+  function _hyKlemm(v,lo,hi){return Math.max(lo,Math.min(hi,v));}
+  /* Die Schriftgroesse des Widgets (Eigenschaft fsz) wird ueber
+     .w.tw-fsz * {font-size:...!important} auf JEDES innere Element durchgedrueckt -
+     auch auf SVG-Text, und zwar staerker als Attribut und Inline-Stil. Rechnet die
+     Ansicht dann mit ihrer eigenen, kleineren Groesse weiter, ragt jeder Text aus
+     seinem Block. Ist fsz gesetzt, gilt also diese Groesse; beschriftet wird nur,
+     wo sie hineinpasst. Ohne fsz bestimmt die Ansicht die Groesse selbst und
+     waechst mit der Kachel. */
+  function _hyFs(w,wunsch){
+    var f=(w&&w.fsz!=null&&w.fsz!=='')?parseFloat(w.fsz):NaN;
+    return isNaN(f)?wunsch:f;
+  }
+
   function _hyZahl(w,c,v){
     if(v==null||v===''||isNaN(parseFloat(v)))return null;
     return parseFloat(v);
@@ -217,10 +255,20 @@
         +'" rx="3" fill="'+fc+'" fill-opacity="0.18" stroke="'+fc+'" stroke-width="1" stroke-opacity="0.55"'
         +(k.link==='funk'?' stroke-dasharray="3 2"':'')+'/>');
       if(zc)out.push('<rect x="'+x.toFixed(1)+'" y="'+y0.toFixed(1)+'" width="2.5" height="'+h.toFixed(1)+'" rx="1.2" fill="'+zc+'"/>');
-      if(h>=13)out.push('<text x="'+(x+7)+'" y="'+(y0+h/2+3.4).toFixed(1)+'" fill="var(--text)" font-size="10" font-weight="600">'
-        +esc(k.label.slice(0,Math.max(3,Math.floor(b/6))))+'</text>');
-      if(h>=26)out.push('<text x="'+(x+7)+'" y="'+(y0+h/2+15).toFixed(1)+'" fill="var(--muted)" font-size="9" class="mono">'
-        +esc(_hyTxt({dec:0},k.summe[feld]==null?null:k.summe[feld]))+'</text>');
+      // Ein Block traegt erst ab anderthalb Zeilenhoehen einen Namen und erst ab drei
+      // eine zweite Zeile - sonst kleben die Namen zweier duenner Nachbarbloecke
+      // aneinander oder der Name an seiner eigenen Wertzeile.
+      var fs=_hyFs(w,_hyKlemm(h*0.30,7,12)), zwei=(h>=fs*3.0);
+      var txt=(h>=fs*1.5)?_hyKurz(k.label,fs,b-13):'';
+      if(txt){
+        out.push('<text x="'+(x+7)+'" y="'+(y0+h/2+(zwei?-fs*0.28:fs*0.36)).toFixed(1)+'" fill="var(--text)" font-size="'
+          +fs.toFixed(1)+'" font-weight="600">'+esc(txt)+'</text>');
+        if(zwei){
+          var fs2=_hyFs(w,fs*0.88), wert=_hyKurz(_hyTxt({dec:0},k.summe[feld]==null?null:k.summe[feld]),fs2,b-13);
+          if(wert)out.push('<text x="'+(x+7)+'" y="'+(y0+h/2+fs*1.18).toFixed(1)+'" fill="var(--muted)" font-size="'
+            +fs2.toFixed(1)+'" class="mono">'+esc(wert)+'</text>');
+        }
+      }
       var kk=D.kinder[id]||[]; if(!kk.length)return;
       var gs=0; kk.forEach(function(c){gs+=(D.kn[c].summe[feld]||0);});
       // Ist die Kennzahl im ganzen Teilbaum 0 (ein Zweig ohne Clients, oder eine Kennzahl
@@ -250,7 +298,11 @@
       var ys=kk.map(ypos);return (Math.min.apply(null,ys)+Math.max.apply(null,ys))/2;}
     var tiefe=1; D.reihen.forEach(function(k){tiefe=Math.max(tiefe,k.tiefe+1);});
     var sx=bx/tiefe, sy=by/Math.max(1,blaetter.length);
-    var kb=Math.max(46,sx-24), kh=Math.max(18,Math.min(34,sy-6));
+    // Die Karte darf ihre Spalte nie verlassen: mit einem festen Mindestmass von
+    // 46 px schoben sich die Karten bei vielen Ebenen ineinander und die Namen
+    // liefen in die Nachbarkarte. Der Abstand waechst stattdessen mit der Spalte.
+    var luft=_hyKlemm(sx*0.18,6,24);
+    var kb=Math.max(24,sx-luft), kh=Math.max(14,Math.min(34,sy-6));
     var sp=_hySpalten(w), feld=sp.length?((w.hyFeld&&sp.some(function(c){return c.feld===w.hyFeld;}))?w.hyFeld:sp[0].feld):null;
     var kanten=[],knoten=[];
     D.reihen.forEach(function(k){
@@ -266,9 +318,16 @@
       var g='<g transform="translate('+x.toFixed(1)+','+(cy-kh/2).toFixed(1)+')">'
         +'<rect width="'+kb.toFixed(1)+'" height="'+kh+'" rx="7" fill="var(--surface)" stroke="var(--line)"/>'
         +'<rect width="2.5" height="'+kh+'" rx="1.2" fill="'+fc+'"/>'
-        +'<text x="9" y="'+(kh>=28?12.5:kh/2+3.5)+'" fill="var(--text)" font-size="9.5" font-weight="600">'
-        + esc(k.label.slice(0,Math.max(3,Math.floor(kb/5.6))))+'</text>';
-      if(kh>=28&&k.sub)g+='<text x="9" y="24" fill="var(--faint)" font-size="8.5" class="mono">'+esc(k.sub.slice(0,12))+'</text>';
+        ;
+      var kfs=_hyFs(w,_hyKlemm(kh*0.34,6.5,11)), kzwei=(kh>=kfs*3.0&&!!k.sub);
+      var ktxt=_hyKurz(k.label,kfs,kb-(zc?24:15));
+      if(ktxt)g+='<text x="9" y="'+(kh/2+(kzwei?-kfs*0.28:kfs*0.36)).toFixed(1)+'" fill="var(--text)" font-size="'
+        +kfs.toFixed(1)+'" font-weight="600">'+esc(ktxt)+'</text>';
+      if(ktxt&&kzwei){
+        var sfs=_hyFs(w,kfs*0.88), stxt=_hyKurz(k.sub,sfs,kb-15);
+        if(stxt)g+='<text x="9" y="'+(kh/2+kfs*1.18).toFixed(1)+'" fill="var(--faint)" font-size="'
+          +sfs.toFixed(1)+'" class="mono">'+esc(stxt)+'</text>';
+      }
       if(zc)g+='<circle cx="'+(kb-9).toFixed(1)+'" cy="9" r="3" fill="'+zc+'"/>';
       knoten.push(g+'</g>');
     });
@@ -297,26 +356,33 @@
       if(zc){var xa=pkt(ri+1.4,a0),xb=pkt(ri+1.4,a1);
         out.push('<path d="M'+xa[0].toFixed(2)+' '+xa[1].toFixed(2)+' A'+(ri+1.4).toFixed(2)+' '+(ri+1.4).toFixed(2)
           +' 0 '+gr+' 1 '+xb[0].toFixed(2)+' '+xb[1].toFixed(2)+'" fill="none" stroke="'+zc+'" stroke-width="2.2"/>');}
-      // Beschriftung nur, wo der Bogen sie traegt. Zwei Ausschluesse:
+      // Beschriftung nur, wo der Bogen sie traegt. Drei Ausschluesse:
       //  - die Wurzel (t=0) haette ihr Label mitten im Kern liegen,
       //  - ein Bogen, der fast den ganzen Kreis fuellt, hat seine Mitte dicht am Mittelpunkt;
-      //    das Wort stuende dann senkrecht ueber der Nabe. Genau so sah es im ersten Lauf aus:
-      //    "USW HR Aggregation" lag als weisser Strich quer durch die Mitte.
-      //    Die Tiefengrenze t<=3 lag anfangs zusaetzlich davor - in einer Kette aus
-      //    Einzelkindern (Gateway -> Aggregation -> Aggregation -> Switch) fuellen genau
-      //    diese Ringe fast den ganzen Kreis, fielen also schon durch den zweiten
-      //    Ausschluss, und der Ring blieb voellig unbeschriftet. Jetzt entscheidet allein
-      //    die Bogenlaenge, wieviel Text ein Ring traegt.
-      // Ein Knoten mit genau EINEM Kind gibt seinen Bogen unveraendert weiter: Vater und
-      // Kind stehen dann unter demselben Winkel und ihre Beschriftungen legen sich
-      // uebereinander. In so einer Kette beschriftet nur das letzte Glied.
+      //    das Wort stuende dann senkrecht ueber der Nabe,
+      //  - ein Knoten, dessen Bogen von EINEM Kind fast vollstaendig weitergereicht wird,
+      //    steht unter demselben Winkel wie dieses Kind; beide Namen laegen uebereinander.
+      //    In so einer Kette beschriftet nur das letzte Glied.
+      // Schriftgroesse und Textlaenge kommen aus Ringbreite und Bogenlaenge, nicht aus
+      // festen Zahlen: derselbe Ring traegt auf einer halben Kachel weniger Text.
       var kinderHier=D.kinder[id]||[];
-      if(t>0&&kinderHier.length!==1&&(a1-a0)<Math.PI*1.6&&(a1-a0)*ri>26){
-        var am=(a0+a1)/2, m=pkt((ri+ra)/2,am), gd=am*180/Math.PI, dreh=(gd>90&&gd<270)?gd+180:gd;
-        var platz=Math.max(4,Math.min(18,Math.floor((a1-a0)*ri/5)));
-        out.push('<text x="'+m[0].toFixed(1)+'" y="'+(m[1]+3).toFixed(1)+'" fill="var(--text)" font-size="8.5" '
-          +'font-weight="600" text-anchor="middle" transform="rotate('+dreh.toFixed(1)+' '+m[0].toFixed(1)+' '+m[1].toFixed(1)+')">'
-          +esc(k.label.slice(0,platz))+'</text>');
+      var beherrscht=false;
+      if(kinderHier.length===1){ beherrscht=true; }
+      else if(kinderHier.length>1&&feld){
+        var gs2=0,gmax=0;
+        kinderHier.forEach(function(c){var v=D.kn[c].summe[feld]||0;gs2+=v;if(v>gmax)gmax=v;});
+        beherrscht=(gs2>0&&gmax/gs2>0.82);
+      }
+      var rfs=_hyFs(w,_hyKlemm(rw*0.34,6,11));
+      // Der Ring muss anderthalb Zeilenhoehen breit sein, nicht nur zwei Pixel mehr als
+      // die Schrift: sonst stehen die Namen benachbarter Ringe aufeinander, sobald die
+      // Kachel kleiner wird und rw auf wenige Pixel faellt.
+      if(t>0&&!beherrscht&&(a1-a0)<Math.PI*1.6&&rw>=rfs*1.6){
+        var am=(a0+a1)/2, rm=(ri+ra)/2, m=pkt(rm,am), gd=am*180/Math.PI, dreh=(gd>90&&gd<270)?gd+180:gd;
+        var rtxt=_hyKurz(k.label,rfs,(a1-a0)*rm-6);
+        if(rtxt)out.push('<text x="'+m[0].toFixed(1)+'" y="'+(m[1]+rfs*0.35).toFixed(1)+'" fill="var(--text)" font-size="'
+          +rfs.toFixed(1)+'" font-weight="600" text-anchor="middle" transform="rotate('+dreh.toFixed(1)+' '
+          +m[0].toFixed(1)+' '+m[1].toFixed(1)+')">'+esc(rtxt)+'</text>');
       }
       var kk=kinderHier; if(!kk.length)return;
       var gs=0; kk.forEach(function(c){gs+=feld?(D.kn[c].summe[feld]||0):1;});
