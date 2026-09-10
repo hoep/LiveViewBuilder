@@ -5072,3 +5072,11 @@ header{height:56px;display:flex;align-items:center;gap:18px;padding:0 16px;flex:
 .ancb{padding:0;border:1px solid var(--line);border-radius:2px;background:var(--panel);cursor:pointer}
 .ancb:hover{border-color:var(--accent)}
 .ancb.on{background:var(--accent);border-color:var(--accent)}
+
+
+/* Komponenteninhalt: im Bearbeiten-Modus klicktot (man schiebt die Kachel, nicht ihren
+   Inhalt), sonst bedienbar. Frueher stand das als Inline-Stil am Element und wurde beim
+   Zeichnen eingefroren - in der Laufzeit blieb dadurch 'none' stehen, weil enterRun() erst
+   NACH dem Zeichnen auf Betrieb umschaltet. Ueber die Klasse der Buehne wirkt es sofort. */
+.compinner{pointer-events:auto}
+.stage.edit .compinner{pointer-events:none}
