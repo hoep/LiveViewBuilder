@@ -1244,8 +1244,13 @@
     var vorgabe=vert?(rechts?'r':'l'):'u';
     var seite=(c.nSide==='l'||c.nSide==='r'||c.nSide==='o'||c.nSide==='u')?c.nSide:vorgabe;
     var aussen=vert?(rechts?(seite==='r'):(seite==='l')):(seite==='u');
-    return {name:nm,nameLocation:loc,nameRotate:rot,nameGap:(aussen?gap:-gap),
-      nameTextStyle:{color:cssv('--muted'),fontSize:_ecF(w,'axname',9)}};
+    var ts={color:cssv('--muted'),fontSize:_ecF(w,'axname',9)};
+    // Ein waagrechter Titel ueber (oder unter) einer Y-Achse wird von ECharts am Achsenende
+    // verankert und laeuft von dort nach aussen. An der RECHTEN Achse ragt er dadurch aus der
+    // Kachel heraus - "Regen mm" war am rechten Rand abgeschnitten. Die Verankerung nach
+    // innen zu drehen kostet keinen Rand und macht ihn vollstaendig sichtbar.
+    if(vert&&loc!=='middle'&&!rot)ts.align=rechts?'right':'left';
+    return {name:nm,nameLocation:loc,nameRotate:rot,nameGap:(aussen?gap:-gap),nameTextStyle:ts};
   }
   function _titleOn(w){var t=(w.showTitle!=null)?w.showTitle:(!w.legend&&!!w.label);return !!(t&&((w.label||'')!==''||(w.subLabel||'')!==''));}
   function _subFs(w){return _ecF(w,'sub',Math.max(8,_ecF(w,'title',11)-2));}
