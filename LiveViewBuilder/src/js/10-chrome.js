@@ -14,7 +14,45 @@
 
   function chromeList(){if(!store.chrome||!store.chrome.length&&!Array.isArray(store.chrome))store.chrome=[];if(!Array.isArray(store.chrome))store.chrome=[];return store.chrome;}
   function chromeSize(b){return Math.max(8,parseInt(b.size)||56);}
-  function chromeOn(){return !_isPopupView(store.current);} // in Popups nie
+  // Seiten, die von einer Komponente oder einem Reiter-Hub GETRAGEN werden, stehen nie fuer
+  // sich: in der Laufzeit erscheinen sie ausschliesslich im Rahmen ihres Wirts, und die
+  // Leisten gehoeren dem Wirt. Im Builder wurden sie dagegen wie normale Seiten behandelt und
+  // bekamen die Leiste darueber - eine Anzeige, die es in der Laufzeit nie gibt, und die beim
+  // Bearbeiten oben Platz wegnahm.
+  //
+  // Dieselbe Zuordnung benutzt der Seitenbaum (_hubEltern in 13-sidepanel.js): Traeger ist,
+  // wer eine Ansicht als w.comp fuehrt oder als Reiter eines regiontabs.
+  function _isEmbeddedView(name){
+    if(!name||name===store.home)return false;
+    var getragen=false;
+    for(var vn in store.views){
+      var ws=(store.views[vn].widgets)||[];
+      for(var i=0;i<ws.length;i++){
+        var w=ws[i];if(!w)continue;
+        // Wird die Seite irgendwo unmittelbar ANGESPRUNGEN, steht sie in der Laufzeit sehr
+        // wohl fuer sich und behaelt dort ihre Leiste - dann darf der Builder sie auch nicht
+        // wegnehmen. Betrifft im Bestand "Beschattung Profile" und "Klima Haus": beide sind
+        // Reiter IHRES Hubs und zugleich Kachelziel auf der Startseite.
+        if(w.navTo===name||w.longNav===name)return false;
+        if(vn===name)continue;                                     // Selbstbezug zaehlt nicht
+        if(w.type==='component'&&w.comp===name)getragen=true;
+        else if(w.type==='regiontabs'){
+          if(w.default===name)getragen=true;
+          else {var t=w.tabs||[];for(var k=0;k<t.length;k++)if(t[k]&&t[k].view===name){getragen=true;break;}}
+        }
+      }
+    }
+    return getragen;
+  }
+  // NUR im Builder. Die Laufzeit bleibt unangetastet: dort wird eine getragene Seite gar nicht
+  // erst angesteuert - sie erscheint ausschliesslich im Rahmen ihres Wirts, und store.current
+  // steht nie auf ihr. Wuerde man chromeOn() generell aendern, verloere eine Seite, die BEIDES
+  // ist, in der Laufzeit ihre Leiste. Genau das soll nicht passieren.
+  function chromeOn(){
+    if(_isPopupView(store.current))return false;
+    if(typeof RUN!=='undefined'&&RUN)return true;
+    return !_isEmbeddedView(store.current);
+  }
 
   /** Geometrie aller Leisten + verbleibende Inhaltsflaeche. */
   function chromeLayout(){
