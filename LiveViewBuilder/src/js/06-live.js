@@ -557,7 +557,7 @@
     if(_bindField){var wfd=widget(_bindField.wid);if(wfd){setPath(wfd,_bindField.path,n.id);render();select(wfd.id);toast('Gebunden: '+n.name);}_bindField=null;return;}
     if(_bindObj){var wob=widget(_bindObj);if(wob){wob.objId=n.id;render();select(wob.id);fetchObjInfo(wob);toast('Objekt: '+n.name);}_bindObj=null;return;}
     if(_bindVis){var wvs=widget(_bindVis);if(wvs){wvs.visVar=n.id;render();select(wvs.id);toast('Sichtbarkeit: '+n.name);}_bindVis=null;return;}
-    if(_bindTarget3){var w3=widget(_bindTarget3);if(w3){w3.varId3=n.id;render();select(w3.id);toast('Untergang: '+n.name);}_bindTarget3=null;return;}
+    if(_bindTarget3){var w3=widget(_bindTarget3);if(w3){w3.varId3=n.id;render();select(w3.id);toast('3. Variable: '+n.name);}_bindTarget3=null;return;}
     if(_bindTarget2){var w2=widget(_bindTarget2);if(w2){w2.varId2=n.id;render();select(w2.id);toast('Gebunden: '+n.name);}_bindTarget2=null;return;}
     if(_bindTarget){var w=widget(_bindTarget);if(w){w.varId=n.id;if(!w.label||w.label==='Label')w.label=n.name;autoUnit(w,n);render();select(w.id);toast('Gebunden: '+n.name);}_bindTarget=null;return;}
     // sonst neue Wert-Kachel
