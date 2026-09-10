@@ -252,7 +252,25 @@
         // Die Vergleichswert-Spalte haengt an derselben Antwort - hier ist sie schon da.
         if (w.mlShowDay && !r.dayVid) {
           var ze = $('[data-mlday="' + i + '"]', el);
-          if (ze) { ze.innerHTML = _mlTagTxt(r, p ? p.past : null); }
+          if (ze) {
+            ze.innerHTML = _mlTagTxt(r, p ? p.past : null);
+            // Reicht das Archiv nicht bis zum Anfang der Vorperiode, vergleicht die
+            // Schnittstelle ein beidseitig VERKUERZTES Fenster - die Zahl links bleibt
+            // aber der volle Zeitraum. Dann passen die drei Spalten scheinbar nicht
+            // zusammen: PV 2 zeigte 634 kWh neben 628 kWh und trotzdem einen Pfeil nach
+            // unten, weil in Wahrheit 622 gegen 628 verglichen wurde (Archiv beginnt erst
+            // am 21.02.2025). Derselbe Stern wie bei der Prozentspalte sagt das an, und
+            // der Hinweis nennt das Paar, aus dem der Pfeil wirklich stammt.
+            var teil = !!(p && p.ab);
+            ze.classList.toggle('mlteil', teil);
+            if (teil) {
+              ze.title = 'Verkuerztes Fenster ab ' + _mlDatum(p.ab)
+                + ' — davor liegen keine Archivdaten vor. Verglichen wird '
+                + _mlWertTxt(r, _mlCmpIst(p)) + (r.unit ? (' ' + r.unit) : '')
+                + ' gegen ' + _mlWertTxt(r, p.past) + (r.unit ? (' ' + r.unit) : '')
+                + '. Die Zahl links ist der volle Zeitraum.';
+            } else { ze.removeAttribute('title'); }
+          }
         }
         // Der Anteil rechnet aus den Werten ALLER Zeilen - er kann erst stimmen, wenn
         // wieder eine davon eingetroffen ist.
