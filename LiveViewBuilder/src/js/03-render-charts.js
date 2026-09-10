@@ -451,6 +451,12 @@
         if(ts.color==null)ts.color=cssv('--text');
       }
       return _so.apply(ec,arguments);};})(_ec[w.id]);
+    // Die Balkenbreite einer gestuften Reihe steht in PIXELN; aendert sich die Kachelgroesse,
+    // muss sie neu gerechnet werden. resize() haelt die Option unveraendert und wuerde sonst
+    // eine Breite von der alten Zeichenflaeche stehen lassen.
+    (function(ec){var _rs=ec.resize.bind(ec);ec.resize=function(){var r=_rs.apply(ec,arguments);
+      try{_blkBreite(w);}catch(e){}
+      return r;};})(_ec[w.id]);
     if(w.type==='gauge'){setGauge(w,_lastVals[w.varId]);}
     else if(w.type==='gaugepro'){setGaugePro(w,_lastVals[w.varId]);}
     else if(w.type==='sankey'){setSankey(w);}
@@ -1581,6 +1587,47 @@
     if(w.barHoriz&&(ct==='bar'||ct==='barstack'))_hbLine(opt,w);   // liegende Balken
     _segApply(w,opt);                                              // Farbsegmentierung nach Wert
     ec.setOption(opt,true);
+    _blkBreite(w);                                                 // Balken einer gestuften Reihe: volle Blockbreite
+  }
+  // Ein Monatsbalken soll seinen Monat FUELLEN, damit ohne Nachdenken klar ist, welcher
+  // Monat gemeint ist. ECharts kennt fuer eine Zeitachse keine Blockbreite: barWidth in
+  // Prozent gilt nur an Kategorieachsen, und von selbst nimmt es 30 bis 43 px statt der
+  // vollen 66 - gemessen an der Zisterne. Also wird die Breite in Pixeln ausgerechnet und
+  // nachgereicht. Das geht erst NACH setOption, weil vorher weder Achsenausschnitt noch
+  // Zeichenflaeche feststehen; nach jedem resize muss es neu gerechnet werden.
+  function _blkBreite(w){
+    var ec=_ec[w.id];if(!ec||w.barHoriz)return;                    // liegende Balken: die Blockbreite laege senkrecht
+    var H=_hist[w.id];if(!H||!H.series||!H.series.length)return;
+    var defs=_chSeries(w),upd=[],noetig=false;
+    H.series.forEach(function(sr,i){
+      var d=defs[i]||{};
+      var istBalken=(_resolveType(d.type||w.ctype||'area').kind==='bar');
+      if(!sr||!sr.stage||sr.stage==='raw'||!istBalken||!(sr.blocks&&sr.blocks.length)){upd.push({});return;}
+      // barWidth gilt fuer die GANZE Reihe, Bloecke sind aber verschieden lang (Februar 28,
+      // Oktober 31 Tage). Der Median trifft die Mitte: gemessen weicht damit kein Balken um
+      // mehr als zwei bis drei Pixel von seinen Monatsgrenzen ab - mit der Breite des ersten
+      // Blocks war der Februar vier Pixel je Seite zu breit.
+      var br=[];
+      sr.blocks.forEach(function(b){
+        try{var d=ec.convertToPixel({xAxisIndex:0},_blkEnde(b[0],sr.stage))-ec.convertToPixel({xAxisIndex:0},b[0]);
+          if(Math.abs(d)>1)br.push(Math.abs(d));}catch(e){}
+      });
+      if(!br.length){upd.push({});return;}
+      br.sort(function(a,b){return a-b;});
+      var px=br[Math.floor(br.length/2)];
+      if(!(px>1)){upd.push({});return;}
+      var neu=Math.max(2,Math.round(px));
+      var alt=null;try{alt=(ec.getOption().series[i]||{}).barWidth;}catch(e){}
+      if(alt===neu){upd.push({});return;}
+      noetig=true;upd.push({barWidth:neu});
+    });
+    if(!noetig)return;
+    ec.setOption({series:upd});
+    // Beim ERSTEN Lauf steht die Zeichenflaeche noch nicht endgueltig: die Achsentitel- und
+    // Legendenstreifen kommen erst mit dem Layout dazu, und convertToPixel liefert dann noch
+    // die Masse davor - gemessen 65 statt der endgueltigen 63 px. Deshalb ein Nachlauf im
+    // naechsten Bild. Er endet von selbst, sobald sich die Breite nicht mehr aendert.
+    if(typeof requestAnimationFrame==='function')requestAnimationFrame(function(){try{_blkBreite(w);}catch(e){}});
   }
   // ===== FARBSEGMENTIERUNG ====================================================
   // Faerbt die KURVE nach ihrem Wert statt nach ihrer Serie: kalt blau, heiss rot.
@@ -2019,14 +2066,17 @@
         return;
       }
       var _st=(s&&s.stage)||'';
+      var _bal=(_resolveType((s&&s.type)||(w.ctype||'area')).kind==='bar');
       var _mitte=function(roh){
         if(!_st||_st==='raw')return roh;
-        // Der LAUFENDE Block ist noch nicht zu Ende - seine rechnerische Mitte liegt in der
-        // Zukunft und schoebe den Balken aus der Kachel. Fuer ihn zaehlt die Mitte des
-        // bereits vergangenen Teils, begrenzt auf das Ende des Zeitfensters.
         var ende=mTo*1000;
         return roh.map(function(p){
-          var bis=Math.min(_blkEnde(p[0],_st),ende);
+          var bis=_blkEnde(p[0],_st);
+          // Ein BALKEN bekommt die volle Blockbreite; sein Ueberstand ueber das Ende des
+          // Zeitfensters wird von der Zeichenflaeche beschnitten und zeigt damit genau den
+          // bereits vergangenen Teil des laufenden Monats. Eine LINIE hat keine Breite -
+          // ihr Punkt darf nicht in die Zukunft wandern, also auf das Fenster begrenzen.
+          if(!_bal)bis=Math.min(bis,ende);
           return [Math.round((p[0]+Math.max(bis,p[0]))/2),p[1]];
         });
       };
