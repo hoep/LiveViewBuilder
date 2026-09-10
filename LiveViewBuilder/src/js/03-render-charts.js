@@ -181,6 +181,25 @@
       var _mwr=WIDGETS[w.type];if(_mwr&&_mwr.mount)_mwr.mount(w); // Registry-Post-Render-Hook (z.B. Canvas zeichnen)
       }catch(_e){} // ein defektes Widget darf Init/Interaktion der anderen nicht blockieren
     });
+    // BLAETTERSTAND DER KOMPONENTEN-KINDER RETTEN.
+    //
+    // Eine Komponente baut ihre Kinder bei JEDEM Zeichnen als frische Kopien neu auf
+    // (expandComponent: var c={};for(var k in mw)c[k]=mw[k]). Alles, was zur Laufzeit am
+    // Kind haengt, ist danach weg - auch die gewaehlte Periode w._pOff der Zustands-
+    // Timeline, des Charts und des Zustandsprotokolls.
+    //
+    // Am 10.09.2026 sah das so aus: auf der Seite IT (Reiter-Hub) auf "Gestern" geschaltet,
+    // rund zwei Sekunden spaeter stand die Kachel wieder auf "Heute". Auf der Einzelansicht
+    // "IT Live" trat es NICHT auf - dort ist die Kachel das Original, kein Klon. Genau daran
+    // ist meine erste Reproduktion vorbeigelaufen.
+    //
+    // Der Klon traegt eine feste Kennung (Wirt-ID + "__" + Kind-ID), also laesst sich der
+    // Stand daran wiedererkennen. Gemerkt wird er hier, VOR dem Leeren von _compKids -
+    // danach gibt es die alten Klone nicht mehr.
+    _compKids.forEach(function(k){
+      if(!k||!k.id)return;
+      if(k._pOff)_compOff[k.id]=k._pOff; else delete _compOff[k.id];   // zurueck auf jetzt = vergessen
+    });
     _compKids=[];allWidgets().forEach(function(w){if(w.type==='component')expandComponent(w);}); // M3: Komponenten-Instanzen expandieren
     _contKids=[];state.widgets.forEach(function(w){if(w.type==='container')expandContainer(w);}); // Container-Kinder zeichnen (echte, editierbare Widgets)
     state.widgets.forEach(function(w){if(w.type==='alarmpanel'&&typeof expandAlarmPanel==='function')expandAlarmPanel(w);}); // Alarm-Panel: aktive Alarm-Karten einhaengen
@@ -2660,6 +2679,7 @@
   function closePopup(){var ov=$('#overlay');if(ov)ov.classList.remove('open');var oc=$('#ovcanvas');if(oc)oc.innerHTML='';_popup=null;invalidateVidx();}
   // M3: Custom Controls — eine Ansicht als parametrierbare, wiederverwendbare Komponente (Master), Instanzen remappen IDs (Alias)
   var _compKids=[];
+  var _compOff={};   // Klon-Kennung -> gewaehlte Periode (w._pOff), ueberlebt das Neuaufbauen der Komponente
   var _contKids=[]; // Container-Kinder: echte, editierbare Widget-Instanzen (liegen in w.kids)
   var _cbase={};    // Laufzeit: contId -> {w,h} eingefrorene Artboard-Größe im Editor (NICHT persistiert)
   function _contBBox(w){var cw=0,ch=0;(w.kids||[]).forEach(function(k){if(k&&k.type!=='container'){cw=Math.max(cw,(k.x||0)+(k.w||0));ch=Math.max(ch,(k.y||0)+(k.h||0));}});return {w:Math.max(20,cw+6),h:Math.max(20,ch+6)};}
@@ -2679,12 +2699,21 @@
     function mp(id){return (id&&map[id]!=null)?map[id]:id;}
     host.innerHTML='';
     var inner=document.createElement('div');inner.className='compinner';
-    inner.style.cssText='position:absolute;left:0;top:0;width:'+sw+'px;height:'+sh+'px;transform-origin:top left;transform:scale('+sc+');pointer-events:'+(mode==='edit'?'none':'auto');
+    // pointer-events NICHT einbrennen. Es stand hier als Inline-Stil aus dem Modus ZUM
+    // ZEITPUNKT DES ZEICHNENS - und enterRun() zeichnet ueber switchView(), BEVOR es den
+    // Modus auf Betrieb stellt. Der Komponenteninhalt behielt dadurch in der Laufzeit
+    // 'none' und war vollstaendig klicktot: am 10.09.2026 liess sich der Perioden-
+    // Umschalter der Zustands-Timeline auf der Seite IT nicht bedienen, weil der Klick auf
+    // .compclip endete statt auf dem Pfeil. Gleiches gilt fuer den Wechsel Bearbeiten <->
+    // Vorschau im Builder, der ebenfalls nicht neu zeichnet.
+    // Ueber die Klasse der Buehne entscheidet das jetzt das Stylesheet, ohne Neuzeichnen.
+    inner.style.cssText='position:absolute;left:0;top:0;width:'+sw+'px;height:'+sh+'px;transform-origin:top left;transform:scale('+sc+')';
     host.appendChild(inner);
     // Kinder über _mkWidgetEl bauen — IDENTISCH zum Container. Dadurch gelten in Komponenten
     // GENAUSO wie auf der Seite: Rahmen (frame/no-frame), Hintergrund/Deckung (bgT), Wert/Icon-
     // Verschiebungen, Icon-Farbe/-Grafik, Typografie, Groß-/Kleinschreibung, Animation, Sichtbarkeit.
     (src.widgets||[]).forEach(function(mw){var c={};for(var k in mw)c[k]=mw[k];c.id=w.id+'__'+mw.id;c.varId=mp(c.varId);c.varId2=mp(c.varId2);c.varId3=mp(c.varId3);if(c.visVar)c.visVar=mp(c.visVar);
+      if(_compOff[c.id])c._pOff=_compOff[c.id];   // gewaehlte Periode wiederherstellen
       try{var ke=_mkWidgetEl(c);ke.classList.add('compkid');inner.appendChild(ke);}catch(e){}
       _compKids.push(c);});}
   // ---- Container: Kinder (w.kids) einbetten; Kinder sind echte, editierbare Widgets ----
