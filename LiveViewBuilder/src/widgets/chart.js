@@ -17,10 +17,10 @@
       g+='<button type="button" class="ancb'+(cur===k?' on':'')+'" data-anc="'+k+'" title="'+_ANC_LBL[k]+'"></button>';});});
     g+='</div>';
     return row('Anker',g+' <span style="font-size:11px;color:var(--muted)" id="pAnc'+pfx+'L">'+(_ANC_LBL[cur]||'')+'</span>')
-      +row('Versatz X / Y','<input id="p'+pfx+'DX" type="number" style="width:56px" value="'+(dx!=null&&dx!==''?dx:'')+'" placeholder="0"> '
-        +'<input id="p'+pfx+'DY" type="number" style="width:56px" value="'+(dy!=null&&dy!==''?dy:'')+'" placeholder="0"> px'
-        +' <span style="font-size:11px;color:var(--muted)">positiv = nach rechts / nach unten</span>')
-      +row('Über der Zeichenfläche','<input type="checkbox" id="p'+pfx+'Float"'+(fl?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">liegt frei darüber, nimmt keinen Platz weg</span>');
+      +row('Versatz','<input id="p'+pfx+'DX" type="number" style="width:52px" value="'+(dx!=null&&dx!==''?dx:'')+'" placeholder="X"> '
+        +'<input id="p'+pfx+'DY" type="number" style="width:52px" value="'+(dy!=null&&dy!==''?dy:'')+'" placeholder="Y"> px'
+        +' <span style="font-size:11px;color:var(--muted)">X / Y — positiv = nach rechts / nach unten</span>')
+      +row('Überlagern','<input type="checkbox" id="p'+pfx+'Float"'+(fl?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">liegt frei über der Zeichenfläche, nimmt keinen Platz weg</span>');
   }
   // Die Knoepfe schreiben direkt in w und faerben sich selbst um - kein renderProps(), sonst
   // springt der Eigenschaftsbereich bei jedem Klick nach oben.
@@ -154,15 +154,15 @@
         h+='<div class="pgh">Legende</div>'+row('Legende','<input type="checkbox" id="pLeg"'+(w.legend?' checked':'')+'>');
         if(w.legend)h+=_ancBlock('Leg',_legAnc(w),w.legDX,w.legDY,w.legFloat)
           +row('Ausrichtung','<select id="pLegOr"><option value="auto"'+(!w.legOrient||w.legOrient==='auto'?' selected':'')+'>automatisch</option><option value="h"'+(w.legOrient==='h'?' selected':'')+'>waagrecht</option><option value="v"'+(w.legOrient==='v'?' selected':'')+'>senkrecht</option></select> <span style="font-size:11px;color:var(--muted)">automatisch: an einer Seitenkante senkrecht</span>')
-          +row('Einträge je Zeile','<input id="pLegCols" type="number" min="1" style="width:56px" value="'+(w.legCols||'')+'" placeholder="auto"> <span style="font-size:11px;color:var(--muted)">senkrecht: je Spalte</span>')
-          +row('Abstand zur Kante','<input id="pLegGap" type="number" style="width:56px" value="'+(w.legGap!=null&&w.legGap!==''?w.legGap:'')+'" placeholder="4"> px')
-          +row('Werte anzeigen','<input type="checkbox" id="pLegVal"'+(w.legVals?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">aktueller Wert hinter dem Serienname</span>');
+          +row('je Zeile','<input id="pLegCols" type="number" min="1" style="width:56px" value="'+(w.legCols||'')+'" placeholder="auto"> <span style="font-size:11px;color:var(--muted)">senkrecht: je Spalte</span>')
+          +row('Abstand','<input id="pLegGap" type="number" style="width:56px" value="'+(w.legGap!=null&&w.legGap!==''?w.legGap:'')+'" placeholder="4"> px')
+          +row('Werte','<input type="checkbox" id="pLegVal"'+(w.legVals?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">aktueller Wert hinter dem Serienname</span>');
       }
       if(V.dl)h+=row('Datenlabels','<input type="checkbox" id="pDl"'+(w.labels?' checked':'')+'>');
       // Titel gilt fuer fast ALLE Chart-Typen (auch Torte/Donut/Rose/Wasserfall) - deshalb ausserhalb des Achsen-Blocks
       if(V.title){
         var _tOn=(w.showTitle!=null?w.showTitle:(!w.legend&&!!w.label));
-        h+='<div class="pgh">Titel</div>'+row('Titel anzeigen','<input type="checkbox" id="pShowT"'+(_tOn?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">Label als Titel</span>');
+        h+='<div class="pgh">Titel</div>'+row('Titel','<input type="checkbox" id="pShowT"'+(_tOn?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">Label als Titel</span>');
         if(_tOn)h+=row('Untertitel','<input id="pSubLab" value="'+esc(w.subLabel||'')+'" placeholder="optional">')
           +_ancBlock('Title',_titleAnc(w),w.titleDX,w.titleDY,w.titleFloat)
           +row('Fett','<input type="checkbox" id="pTitleBold"'+(w.titleBold?' checked':'')+'>')
@@ -175,8 +175,11 @@
       if(V.ax||V.part||V.wf){
         h+='<div class="pgh">Zeichenfläche</div>'
           +'<div style="font-size:11px;color:var(--muted);margin:-2px 2px 5px">Leer = automatisch. Ein Wert überstimmt die gemessenen Streifen an dieser Kante.</div>'
-          +row('Rand links / rechts','<input id="pPadL" type="number" style="width:56px" value="'+(w.padL!=null&&w.padL!==''?w.padL:'')+'" placeholder="auto"> <input id="pPadR" type="number" style="width:56px" value="'+(w.padR!=null&&w.padR!==''?w.padR:'')+'" placeholder="auto"> px')
-          +row('Rand oben / unten','<input id="pPadT" type="number" style="width:56px" value="'+(w.padT!=null&&w.padT!==''?w.padT:'')+'" placeholder="auto"> <input id="pPadB" type="number" style="width:56px" value="'+(w.padB!=null&&w.padB!==''?w.padB:'')+'" placeholder="auto"> px');
+          +row('Ränder','<input id="pPadL" type="number" style="width:52px" value="'+(w.padL!=null&&w.padL!==''?w.padL:'')+'" placeholder="li"> '
+            +'<input id="pPadR" type="number" style="width:52px" value="'+(w.padR!=null&&w.padR!==''?w.padR:'')+'" placeholder="re"> '
+            +'<input id="pPadT" type="number" style="width:52px" value="'+(w.padT!=null&&w.padT!==''?w.padT:'')+'" placeholder="ob"> '
+            +'<input id="pPadB" type="number" style="width:52px" value="'+(w.padB!=null&&w.padB!==''?w.padB:'')+'" placeholder="un"> px'
+            +' <span style="font-size:11px;color:var(--muted)">links · rechts · oben · unten</span>');
       }
       // ---- Schriftgrößen je Textart (leer = wächst mit der Kachel und folgt der zentralen Typografie) ----
       var _fsRow=function(id,lbl,val){return row(lbl,'<input id="'+id+'" type="number" min="5" max="40" step="0.5" style="width:64px" value="'+(val||'')+'" placeholder="auto">');};
