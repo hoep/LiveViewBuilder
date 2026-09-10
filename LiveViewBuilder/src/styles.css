@@ -4956,8 +4956,8 @@ header{height:56px;display:flex;align-items:center;gap:18px;padding:0 16px;flex:
    Seiten wurden gleich weit gekuerzt. Ein Sternchen genuegt - der Zeitraum steht im
    Titel. Ohne Kennzeichnung stuende dort eine Prozentzahl, die einen anderen Zeitraum
    meint als die Ueberschrift der Kachel. */
-.hmeters.dense .hmc.mlteil::after{content:"\2009*";color:var(--faint)}
-.hmeters.dense .hmc.mlteil{cursor:help}
+.hmeters.dense .hmc.mlteil::after,.hmeters.dense .hmd.mlteil::after{content:"\2009*";color:var(--faint)}
+.hmeters.dense .hmc.mlteil,.hmeters.dense .hmd.mlteil{cursor:help}
 
 /* --- Alle Zeilen einpassen (mlFit) ---------------------------------------
    Bisher behielt jede Zeile ihre Eigenhoehe: passten nicht alle in die Kachel,
