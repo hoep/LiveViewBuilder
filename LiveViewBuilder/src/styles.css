@@ -1266,6 +1266,16 @@
   .rt .rttab:hover{color:var(--text)}
   .rt .rttab.on{border-color:var(--accent);color:var(--accent);
     background:color-mix(in oklab,var(--accent) 16%,var(--surface))}
+  /* Abzeichen am Reiter: Punkt = hoechste Warnstufe der verborgenen Gruppe,
+     Pille = Zahl der dort ungespeicherten Aenderungen. Ohne sie waere die Faltung ein
+     blinder Fleck - man saehe nicht, dass hinter einem anderen Reiter etwas klemmt. */
+  .rt .rttab .rtdot{flex:none;width:9px;height:9px;border-radius:50%;background:var(--info)}
+  .rt .rttab .rtdot-warn{background:var(--warn)}
+  .rt .rttab .rtdot-crit{background:var(--crit)}
+  .rt .rttab .rtbadge{flex:none;min-width:18px;height:18px;padding:0 5px;border-radius:999px;
+    display:inline-flex;align-items:center;justify-content:center;
+    background:var(--accent);color:var(--text-inv);
+    font-size:clamp(8px,2.2cqmin,11px);font-weight:700;font-variant-numeric:tabular-nums}
   /* Im Reiterbetrieb stehen je Reiter nur wenige Spalten - dann darf der Kopftext umbrechen,
      statt die Begriffe des Geraetehandbuchs zu verstuemmeln. */
   .rt .rttabs~.rtscroll .rtt thead th{white-space:normal}

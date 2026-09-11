@@ -257,6 +257,7 @@
         if(_rtOp('eq',v,_rtRaw(w,r2,c.key)))hit.push(r2);
       });
       if(hit.length)out.push({lvl:(hit.some(function(x){return x>r;})?'warn':'info'),
+        col:c.key,          // damit der Reiter weiss, wohin diese Meldung gehoert
         text:(c.label||c.key)+' ist auch in Regel '+hit.join(', ')+' belegt – die höhere Regelnummer gewinnt.'});
     });
     return out;
@@ -473,6 +474,63 @@
     return gs;
   }
   function _rtTabOn(w){return _rtG(w,'rtGroups','')==='reiter'&&_rtRuns(w).length>1;}
+
+  /**
+   * Was steht hinter einem NICHT sichtbaren Reiter?
+   *
+   * Ein gefaltete Tabelle verbirgt zwangslaeufig etwas - und das Verborgene darf sich
+   * nicht lautlos aendern. Je Gruppe wird deshalb ermittelt:
+   *   lvl   hoechste Warnstufe der Meldungen, die eine Spalte DIESER Gruppe betreffen
+   *   offen Zahl der Zellen dieser Gruppe, die ungespeichert im Sammelpuffer liegen
+   *
+   * Eine Warnung, die Spalten aus zwei Gruppen nennt, markiert beide. Das sieht nach
+   * doppelter Meldung aus, ist aber richtig: sie geht beide Reiter etwas an.
+   */
+  function _rtTabStand(w){
+    var cols=w.cols||[],grpVon={},stand={};
+    cols.forEach(function(c){if(c&&!c.hidden)grpVon[c.key]=c.group||'';});
+    _rtRuns(w).forEach(function(x){stand[x.g]={lvl:'',offen:0};});
+    var rang={'':0,info:1,warn:2,crit:3};
+    var hebe=function(g,l){
+      var e=stand[g];if(!e)return;
+      if((rang[l]||0)>(rang[e.lvl]||0))e.lvl=l;
+    };
+    (w.rows||[]).forEach(function(ro,r){
+      if(ro.hidden)return;
+      _rtWarns(w,r).forEach(function(x){
+        var keys=[];
+        if(x.col)keys.push(x.col);
+        (x.when||[]).forEach(function(c){if(c&&c.col)keys.push(c.col);});
+        var l=x.lvl||'info';
+        if(!keys.length){for(var g in stand)hebe(g,l);return;}   // ohne Spaltenbezug: alle
+        keys.forEach(function(k){if(k in grpVon)hebe(grpVon[k],l);});
+      });
+    });
+    if(typeof deferHas==='function'){
+      (w.items||[]).forEach(function(it){
+        if(!it||!it.vid||it.r<0)return;
+        if(!(it.k in grpVon))return;
+        try{ if(deferHas(it.vid)){var e=stand[grpVon[it.k]];if(e)e.offen++;} }catch(_e){}
+      });
+    }
+    return stand;
+  }
+  function _rtTabsHTML(w){
+    if(!_rtTabOn(w))return '';
+    var akt=_rtTabAkt(w),st=_rtTabStand(w);
+    return '<div class="rttabs" role="tablist">'+_rtRuns(w).map(function(x){
+      var e=st[x.g]||{lvl:'',offen:0};
+      return '<button class="rttab'+(x.g===akt?' on':'')+'" role="tab" aria-selected="'
+        +(x.g===akt?'true':'false')+'" data-rttab="'+esc(x.g)+'"'
+        +' title="'+esc((x.g||'Übrige')+' · '+x.n+' Felder'
+            +(e.offen?(' · '+e.offen+' ungespeichert'):'')
+            +(e.lvl?(' · '+(e.lvl==='crit'?'kritische':(e.lvl==='warn'?'offene':'')) +' Meldung'):''))+'">'
+        +esc(x.g||'Übrige')
+        +(e.lvl?('<span class="rtdot rtdot-'+e.lvl+'"></span>'):'')
+        +(e.offen?('<span class="rtbadge">'+e.offen+'</span>'):'')
+        +'</button>';
+    }).join('')+'</div>';
+  }
   function _rtTabAkt(w){
     var runs=_rtRuns(w);if(!runs.length)return '';
     var g=_rtTab[w.id];
@@ -672,9 +730,20 @@
     var cell=$('.rtc[data-r="'+r+'"][data-k="'+key+'"]',el);
     _rtWrite(w,el,vid,val,cell);
     _rtSheetClose(el);
+    _rtRepaintSoon(w);   // Abzeichen des betroffenen Reiters sofort nachziehen
   }
 
   // ---------- Neuanstrich ----------
+  /** Von _defPaint gerufen: Reiterabzeichen aller Regeltabellen nachziehen (Speichern/Verwerfen). */
+  function rtBadgesRefresh(){
+    try{
+      $$('[data-role=rtroot]').forEach(function(rt){
+        var wel=rt.closest('.w');if(!wel)return;
+        var w=(typeof _wForEl==='function')?_wForEl(wel):null;
+        if(w&&w.type==='ruletable')_rtPaintEl(w,rt);
+      });
+    }catch(e){}
+  }
   function _rtRoots(w){return $$('.w[data-id="'+w.id+'"] [data-role=rtroot]');}
   function _rtRepaintSoon(w){
     if(_rtRepT[w.id])return;
@@ -691,6 +760,13 @@
   }
   function _rtPaintEl(w,el){
     (w.rows||[]).forEach(function(ro,r){if(!ro.hidden)_rtRowPaint(w,el,r);});
+    // Die Reiterleiste traegt Warnstufe und Zahl der ungespeicherten Aenderungen der
+    // VERBORGENEN Gruppen - sie muss also bei jedem Neuanstrich mit.
+    var tb=$('.rttabs',el);
+    if(tb){
+      var box=document.createElement('div');box.innerHTML=_rtTabsHTML(w);
+      if(box.firstChild)tb.parentNode.replaceChild(box.firstChild,tb);
+    }
     var lb=$('[data-role=rtlock]',el);
     if(lb){var box=document.createElement('span');box.innerHTML=_rtLockBtn(w);if(box.firstChild)lb.parentNode.replaceChild(box.firstChild,lb);}
   }
@@ -954,13 +1030,7 @@
           +((head==='full')?('<span class="rth-meta">'+rows.length+' Regeln · '+vis.length+' Felder</span>'):'')
           +lock+'</span></div>';
       }
-      if(_rtTabOn(w)){
-        var _akt=_rtTabAkt(w);
-        h+='<div class="rttabs" role="tablist">'+_rtRuns(w).map(function(x){
-          return '<button class="rttab'+(x.g===_akt?' on':'')+'" role="tab" aria-selected="'
-            +(x.g===_akt?'true':'false')+'" data-rttab="'+esc(x.g)+'">'+esc(x.g||'Übrige')+'</button>';
-        }).join('')+'</div>';
-      }
+      h+=_rtTabsHTML(w);
       h+='<div class="rtscroll"><table class="rtt">';
       if(ch!=='none'){
         h+='<thead>';

@@ -515,7 +515,16 @@
   // beim naechsten Poll zurueck und man glaubt, es habe nicht funktioniert).
   var _defBuf={};          // VariablenID -> gewuenschter Wert
   var _defBars=0;          // Zahl der savebar-Widgets in der aktuellen Ansicht
-  function deferActive(){return _defBars>0;}
+  // Nicht am Zaehler allein festmachen. _renderRest() ruft die mount-Hooks der Widgets
+  // auf und ganz zum Schluss invalidateVidx() - und das setzt den Zaehler wieder auf 0.
+  // Die Leiste war damit nach JEDEM Neuzeichnen abgemeldet: deferActive() blieb false,
+  // jede Aenderung ging sofort einzeln zum Geraet, und "Speichern" hatte nie etwas zu
+  // schreiben. Massgeblich ist deshalb der DOM: steht eine Werte-Speicherleiste in der
+  // Ansicht, wird gesammelt. Nur in der Laufzeit - im Bauwerkzeug wird nicht gepuffert.
+  function deferActive(){
+    if(_defBars>0)return true;
+    try{return !!RUN&&!!document.querySelector('[data-role=savewrap][data-defer="1"]');}catch(e){return false;}
+  }
   function deferCount(){var n=0,k;for(k in _defBuf)n++;return n;}
   function deferReset(){_defBars=0;}
   function deferRegister(){_defBars++;}
@@ -541,6 +550,10 @@
         el.classList.toggle('w-dirty',dirty);
       });
       $$('[data-role=savecount]').forEach(function(n){n.textContent=String(deferCount());});
+      // Die Reiter der Regeltabellen tragen die Zahl der ungespeicherten Aenderungen der
+      // gerade NICHT sichtbaren Gruppe. Ohne diesen Anstoss bliebe das Abzeichen nach
+      // Speichern oder Verwerfen stehen.
+      if(typeof rtBadgesRefresh==='function')rtBadgesRefresh();
       $$('[data-role=savewrap]').forEach(function(n){n.classList.toggle('has',deferCount()>0);});
     }catch(e){}
   }
