@@ -82,6 +82,8 @@
 
   var _EPGD={};        // je Widget-ID: zuletzt geladenes Fenster
   var _EPGL={};        // je Widget-ID: laeuft gerade eine Abfrage?
+  var _EPGP={};        // je Widget-ID: waehrend der Abfrage kam ein neuer Wunsch
+  var _EPGR={};        // dazu die Wurzel, in der gezeichnet werden soll
 
   function _epgVon(w){
     // Startzeitpunkt des Fensters. Zwei Wege fuehren dorthin: die Verschiebung
@@ -108,13 +110,26 @@
   function _epgCol(v,fb){var c=v?_skinColor(v):'';return c||fb;}
 
   function _epgFetch(w,root){
-    if(_EPGL[w.id])return;
+    // Ein Wunsch, der waehrend eines laufenden Abrufs kommt, darf nicht verloren gehen.
+    // Frueher stieg die Funktion hier wortlos aus: der Zustand (neues Fenster, anderer
+    // Tag) war gesetzt, GEHOLT wurde er nie - der Klick verpuffte, und erst der naechste
+    // wirkte. Gleich nach dem Aufruf der Seite laeuft noch der Abruf aus mount(), und
+    // genau dann trifft es den ersten Klick. Jetzt wird der Wunsch gemerkt und
+    // nachgeholt, sobald der laufende Abruf durch ist.
+    if(_EPGL[w.id]){_EPGP[w.id]=1;_EPGR[w.id]=root||null;return;}
     _EPGL[w.id]=1;
     var von=_epgVon(w),dauer=_epgDauer(w);
+    var fertig=function(){
+      _EPGL[w.id]=0;
+      if(_EPGP[w.id]){_EPGP[w.id]=0;_epgFetch(w,_EPGR[w.id]);}
+    };
     fetch('?api=epg&von='+von+'&dauer='+dauer,{cache:'no-store'})
       .then(function(r){return r.json();})
-      .then(function(j){_EPGL[w.id]=0;if(j&&j.ok){_EPGD[w.id]=j;_epgPaint(w,root);}else _epgLeer(w,(j&&j.fehler)||'keine Daten',root);})
-      .catch(function(){_EPGL[w.id]=0;_epgLeer(w,'Programm nicht abrufbar',root);});
+      .then(function(j){
+        if(j&&j.ok){_EPGD[w.id]=j;_epgPaint(w,root);}else _epgLeer(w,(j&&j.fehler)||'keine Daten',root);
+        fertig();
+      })
+      .catch(function(){_epgLeer(w,'Programm nicht abrufbar',root);fertig();});
   }
   function _epgLeer(w,txt,root){
     var el=$('.w[data-id="'+w.id+'"] [data-role=epgbody]',(root||canvas));
@@ -264,6 +279,14 @@
     var nl=(jetzt>=d.von&&jetzt<=d.bis)
       ? '<div class="epgnl" style="left:'+nlx+'px;background:'+cNow+'"></div>' : '';
 
+    // Die Senderliste ist laenger als die Kachel - wer ORF III sehen will, scrollt
+    // hinunter. Jeder Neuaufbau (Tageswechsel, Blaettern, Selbstauffrischung) ersetzt
+    // das Raster und setzte den Scrollstand damit auf Null: nach jedem Sprung stand man
+    // wieder beim obersten Sender und musste erneut suchen. Die senkrechte Position
+    // gehoert aber dem Betrachter, nicht den Daten.
+    var _scAlt=$('[data-role=epgsc]',host);
+    var _scY=_scAlt?_scAlt.scrollTop:0, _scX=_scAlt?_scAlt.scrollLeft:0;
+
     body.innerHTML=
       '<div class="epgnames" data-role="epgnames" style="width:'+swb+'px">'
       +'<div style="height:'+(axH+1)+'px;border-bottom:1px solid var(--line)"></div>'+namen+'</div>'
@@ -273,6 +296,11 @@
     // Senkrecht scrollen beide Spalten gemeinsam: die Sendernamen folgen dem
     // Raster, sonst stuenden nach dem Scrollen die falschen Namen vor den Zeilen.
     var sc=$('[data-role=epgsc]',host),nm=$('[data-role=epgnames]',host);
+    if(sc){
+      if(_scY)sc.scrollTop=_scY;
+      if(_scX)sc.scrollLeft=_scX;      // waagrecht nur vorhanden, wenn das Raster breiter ist als die Kachel
+      if(nm)nm.scrollTop=sc.scrollTop; // die Sendernamen sofort mitziehen, nicht erst beim naechsten Scrollen
+    }
     if(sc&&nm)sc.onscroll=function(){nm.scrollTop=sc.scrollTop;};
     _epgKopf(w,host);
   }
