@@ -1237,7 +1237,39 @@
   .rt .rthead{display:flex;align-items:baseline;justify-content:space-between;gap:clamp(6px,3cqmin,12px);padding:clamp(7px,3cqmin,13px) clamp(10px,4cqmin,18px) clamp(6px,2.8cqmin,12px);flex:none;border-bottom:1px solid var(--line)}
   .rt .rthead .rth-eyebrow{font-size:clamp(9px,3cqmin,13px);font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
   .rt .rthead .rth-meta{font-size:clamp(8.5px,2.8cqmin,12px);font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--faint);font-variant-numeric:tabular-nums;white-space:nowrap}
-  .rt .rtscroll{flex:1;overflow:auto;overscroll-behavior:contain;position:relative}
+  /* Rollschatten an den Raendern: die Regeltabelle ist breiter als ihre Kachel - bei
+     16 Spalten rollt sie ueber 1100 px nach rechts. Die Overlay-Rollleiste ist 0 px
+     breit, es gab also KEINEN Hinweis darauf, dass rechts noch Spalten stehen; die
+     Schwellwerte einer Analogregel waren damit schlicht unauffindbar. Der Schatten
+     erscheint nur, solange in die jeweilige Richtung noch etwas zu holen ist
+     (background-attachment: local fuer die Deckflaechen, scroll fuer die Schatten). */
+  .rt .rtscroll{flex:1;overflow:auto;overscroll-behavior:contain;position:relative;
+    background:
+      linear-gradient(to right, var(--surface) 40%, transparent) left center,
+      linear-gradient(to left, var(--surface) 40%, transparent) right center,
+      radial-gradient(farthest-side at 0 50%, color-mix(in oklab,var(--text) 26%,transparent), transparent) left center,
+      radial-gradient(farthest-side at 100% 50%, color-mix(in oklab,var(--text) 26%,transparent), transparent) right center;
+    background-repeat:no-repeat;
+    background-size:40px 100%,40px 100%,15px 100%,15px 100%;
+    background-attachment:local,local,scroll,scroll}
+  /* Reiterleiste: faltet eine breite Regeltabelle in Spaltengruppen. Sie sitzt zwischen
+     Kopfzeile und Rollflaeche und ist am Finger zu treffen (mind. 32 px, Vorgabe 44).
+     Nie dunkle Schrift auf Akzent - dieselbe Sprache wie das Schloss in .rtlock.on. */
+  .rt .rttabs{flex:none;display:flex;gap:clamp(4px,2cqmin,8px);align-items:center;
+    padding:clamp(5px,2.4cqmin,10px) clamp(10px,4cqmin,18px);border-bottom:1px solid var(--line);
+    overflow-x:auto;scrollbar-width:none}
+  .rt .rttabs::-webkit-scrollbar{display:none}
+  .rt .rttab{flex:none;min-height:clamp(32px,8cqmin,44px);padding:0 clamp(10px,4cqmin,18px);
+    border-radius:10px;border:1px solid var(--line);background:var(--surface-2);color:var(--muted);
+    font-size:clamp(10px,2.8cqmin,13px);font-weight:600;letter-spacing:.03em;cursor:pointer;
+    display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+  .rt .rttab:hover{color:var(--text)}
+  .rt .rttab.on{border-color:var(--accent);color:var(--accent);
+    background:color-mix(in oklab,var(--accent) 16%,var(--surface))}
+  /* Im Reiterbetrieb stehen je Reiter nur wenige Spalten - dann darf der Kopftext umbrechen,
+     statt die Begriffe des Geraetehandbuchs zu verstuemmeln. */
+  .rt .rttabs~.rtscroll .rtt thead th{white-space:normal}
+
   .rtt{border-collapse:separate;border-spacing:0;width:100%;font-size:var(--rt-fs,clamp(10px,3.2cqmin,14px));font-variant-numeric:tabular-nums}
   .rtt thead th{position:sticky;top:0;z-index:3;background:var(--surface-2);color:var(--muted);font-weight:600;font-size:clamp(8px,2.6cqmin,11px);letter-spacing:.06em;text-transform:uppercase;text-align:center;padding:clamp(6px,2.6cqmin,11px) clamp(8px,3.2cqmin,14px) clamp(5px,2.4cqmin,10px);border-bottom:1px solid var(--line);white-space:nowrap}
   .rtt thead th small{display:block;font-size:clamp(7px,2.2cqmin,10px);font-weight:500;color:var(--faint);letter-spacing:.04em;margin-top:2px}
