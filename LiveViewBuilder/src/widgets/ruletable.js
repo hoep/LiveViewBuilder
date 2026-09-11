@@ -276,21 +276,26 @@
   function _rtUnlocked(w){var t=_rtLockT[w.id];return !!(t&&t>Date.now());}
   function _rtLockTouch(w){if(_rtG(w,'rtGate','sheet')==='lock')_rtLockT[w.id]=Date.now()+(( +_rtG(w,'rtLockSec',120))*1000);}
   // Wird VOR jedem Schreibvorgang und VOR dem Setzen von data-rv beim Zeichnen ausgewertet.
+  // Der Grund wird zusaetzlich als CODE geliefert. Eine Sperre, die sich AUFHEBEN laesst
+  // (Verriegelung, Scharf-Signal), muss anders behandelt werden als eine dauerhafte
+  // (Nur-Anzeige): auf die erste hin bleibt die Zelle antippbar und erklaert sich.
   function _rtCanWrite(w,col,r){
-    if(typeof mode!=='undefined'&&mode==='edit')return {ok:false,grund:'Bearbeiten-Modus'};
-    if(_rtG(w,'rtWrite','on')==='off')return {ok:false,grund:'Widget ist auf Nur-Anzeige gestellt'};
-    if(!col||col.ro||col.type==='text')return {ok:false,grund:'Spalte ist Nur-Anzeige'};
+    if(typeof mode!=='undefined'&&mode==='edit')return {ok:false,code:'edit',grund:'Bearbeiten-Modus'};
+    if(_rtG(w,'rtWrite','on')==='off')return {ok:false,code:'off',grund:'Widget ist auf Nur-Anzeige gestellt'};
+    if(!col||col.ro||col.type==='text')return {ok:false,code:'ro',grund:'Spalte ist Nur-Anzeige'};
     var dp=_rtDep(w,col,r);
-    if(dp&&dp.act==='disable')return {ok:false,grund:dp.hint||'Durch eine andere Spalte gesperrt'};
+    if(dp&&dp.act==='disable')return {ok:false,code:'dep',grund:dp.hint||'Durch eine andere Spalte gesperrt'};
     if(w.rtArmVid){
       var d=_lastVals[w.rtArmVid];
-      if(!d)return {ok:false,grund:'Scharf-Signal noch unbekannt'};
+      if(!d)return {ok:false,code:'arm',grund:'Scharf-Signal noch unbekannt'};
       var on=_rtOn(d.v);if(w.rtArmInv)on=!on;
-      if(!on)return {ok:false,grund:'Schreiben ist am Gerät nicht scharf'};
+      if(!on)return {ok:false,code:'arm',grund:'Schreiben ist am Gerät nicht scharf'};
     }
-    if(_rtG(w,'rtGate','sheet')==='lock'&&!_rtUnlocked(w))return {ok:false,grund:'Bedienung ist verriegelt'};
-    return {ok:true,grund:''};
+    if(_rtG(w,'rtGate','sheet')==='lock'&&!_rtUnlocked(w))return {ok:false,code:'lock',grund:'Bedienung ist verriegelt'};
+    return {ok:true,code:'',grund:''};
   }
+  /** Laesst sich die Sperre hier und jetzt aufheben? Dann ist die Zelle trotzdem antippbar. */
+  function _rtLoesbar(g){return !g.ok&&(g.code==='lock'||g.code==='arm');}
   // Der Panel-Satz wird BERECHNET. Der alte Satz "Schreiben ist gegated (armed)" war
   // unbelegt: ?api=setvar prueft nur den Token und ruft RequestAction/SetValue.
   function _rtGateText(w){
@@ -394,7 +399,12 @@
     if(dep&&dep.hint)tip.push(dep.hint);
     if(!g.ok&&g.grund!=='Bearbeiten-Modus')tip.push(g.grund);
     if(_rtFail[it.vid])tip.push('Das Gerät hat den Wert nicht übernommen.');
-    var at=base+(g.ok?(' data-rv="'+it.vid+'" tabindex="0" role="button"'):'')+' title="'+esc(tip.join(' · '))+'"';
+    // Bis 11.09.2026 trug eine gesperrte Zelle KEIN data-rv - der Klickzweig fand sie
+    // gar nicht erst und kam nie bis zur Begruendung. Auf dem Wandtablett sah das aus,
+    // als sei die Tabelle tot: kein Blatt, keine Meldung, nichts.
+    var at=base+(g.ok?(' data-rv="'+it.vid+'" tabindex="0" role="button"')
+                     :(_rtLoesbar(g)?(' data-rvx="'+it.vid+'" tabindex="0" role="button"'):''))
+           +' title="'+esc(tip.join(' · '))+'"';
     var inner;
     if(t==='bool'){
       inner='<span class="rtsw'+((d&&_rtOn(d.v))?'':' off')+'" data-role="rtsw"><i></i></span>';
@@ -416,7 +426,10 @@
     wr.forEach(function(x){var l=x.lvl||'info';if(l==='crit')lvl='crit';else if(l==='warn'&&lvl!=='crit')lvl='warn';else if(!lvl)lvl='info';});
     var tip=[];if(ro.note)tip.push(ro.note);
     wr.forEach(function(x){tip.push(x.text||'');});
-    return '<td class="rtrl"'+(tip.length?(' title="'+esc(tip.join(' · '))+'"'):'')+'><span class="rtrl-in">'
+    // Der Regelname oeffnet das Zeilenblatt: die ganze Regel auf einen Blick, samt der
+    // Felder aus den gerade verdeckten Gruppen und der Warntexte, die sonst nur im
+    // title-Attribut stehen - auf einem Tablett also nirgends.
+    return '<td class="rtrl" data-rtrow="'+r+'" tabindex="0" role="button"'+(tip.length?(' title="'+esc(tip.join(' · '))+'"'):'')+'><span class="rtrl-in">'
       +(_rtG(w,'rtRowNum',true)!==false?'<span class="rtrl-ix">'+r+'</span>':'')
       +'<span class="rtrl-tx">'+esc(ro.label||('Regel '+r))+'</span>'
       +(wr.length?('<span class="rtwarn rtwarn-'+lvl+'">'+_rtIco(lvl==='info'?'info':'warning',lvl==='crit'?'crit':(lvl==='warn'?'warn':'info'),'clamp(12px,3.4cqmin,17px)')+'</span>'):'')
@@ -442,10 +455,14 @@
   function _rtLockBtn(w){
     if(_rtG(w,'rtGate','sheet')!=='lock'||_rtG(w,'rtWrite','on')==='off')return '';
     var open=_rtUnlocked(w);
+    // MIT Beschriftung. Ein unbeschriftetes 30x30-Icon ganz rechts aussen ist auf einem
+    // Wandtablett nicht auffindbar - und es ist der einzige Weg zur Bedienung.
+    // Der Pill-Stil steht in styles.css (.rt .rthead .rtlock); ein Inline-Style hat ihn
+    // frueher komplett ausgehebelt (background:none;border:0;padding:0).
     return '<button class="rtlock'+(open?' on':'')+'" data-role="rtlock" title="'
       +esc(open?('Bedienung ist frei – Klick verriegelt sofort'):('Bedienung ist verriegelt – Klick gibt '+_rtG(w,'rtLockSec',120)+' s frei'))
-      +'" style="display:inline-flex;align-items:center;justify-content:center;background:none;border:0;padding:0;cursor:pointer;color:var('+(open?'--ok':'--muted')+')">'
-      +_rtIco(open?'unlock':'lock','','clamp(13px,3.6cqmin,19px)')+'</button>';
+      +'">'+_rtIco(open?'unlock':'lock','','clamp(13px,3.6cqmin,19px)')
+      +'<span>'+(open?'Offen':'Ändern')+'</span></button>';
   }
   // Spaltengruppen (ADCC: 0-9 Schaltregel, 10-15 Monitor) als zweite Kopfzeile. Die beiden
   // Bloecke sind laut Handbuch unabhaengig - nur der Monitor loest Alarme aus.
@@ -649,7 +666,7 @@
       h+='<div style="font-size:.85em;color:var(--muted);margin-top:6px">Zulässig: '+(lim.min!=null?_rtFix(lim.min,dec):'–')+' bis '+(lim.max!=null?_rtFix(lim.max,dec):'–')+(eff.unit?(' '+eff.unit):'')+'</div>';
     return h;
   }
-  function _rtSheetOpen(w,el,r,key,vid){
+  function _rtSheetOpen(w,el,r,key,vid,vonZeile){
     var root=$('[data-role=rtroot]',el);if(!root)return;
     _rtSheetClose(el);
     var col=_rtCol(w,key);if(!col)return;
@@ -657,6 +674,7 @@
     var box=document.createElement('div');
     box.className='rtsheet';box.setAttribute('data-role','rtsheet');
     box.setAttribute('data-r',String(r));box.setAttribute('data-k',key);box.setAttribute('data-vid',String(vid));
+    if(vonZeile)box.setAttribute('data-vonzeile','1');   // danach zurueck ins Zeilenblatt
     box.setAttribute('style',_RT_SHEET);
     // Zeichnet der Rumpf ein Knopfraster (bool, oder sel mit hoechstens acht Optionen),
     // schreibt schon der Klick auf einen Knopf und schliesst das Blatt. Ein zusaetzlicher
@@ -680,6 +698,123 @@
     var f=$('[data-role^=rtv]',box);if(f&&f.focus)try{f.focus();}catch(e){}
   }
   function _rtSheetClose(el){var s=$('[data-role=rtsheet]',el);if(s)s.parentNode.removeChild(s);}
+
+  // ---------- Zeilenblatt: die ganze Regel ----------
+  // Eine Regel hat zehn bis sechzehn Felder, verteilt auf Gruppen, von denen immer nur
+  // eine sichtbar ist. Was die Regel TUT, stand deshalb nirgends zusammen; die Warntexte
+  // steckten ausschliesslich im title-Attribut und sind auf einem Tablett unerreichbar.
+  // Das Zeilenblatt zeigt beides und ist zugleich der bequemste Editor: jedes Feld ist
+  // von hier aus direkt zu aendern, auch die einer gerade verdeckten Gruppe.
+  var _RT_CARD_BREIT=_RT_CARD.replace('width:min(400px,100%)','width:min(560px,100%)');
+  var _RT_FELD='display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:7px 10px;min-height:clamp(38px,9cqmin,48px);'
+              +'border:1px solid var(--line);border-radius:10px;background:var(--surface-2);color:var(--text);font-size:inherit;cursor:pointer';
+  var _RT_FELD_RO=_RT_FELD.replace('cursor:pointer','cursor:default').replace('background:var(--surface-2)','background:transparent');
+
+  function _rtFeldZeile(w,r,col){
+    var it=_rtItem(w,r,col.key);if(!it||!it.vid)return '';
+    var dep=_rtDep(w,col,r);if(dep&&dep.act==='hide')return '';
+    var eff=_rtEff(w,col,r),g=_rtCanWrite(w,col,r),tap=g.ok||_rtLoesbar(g);
+    var wert=_rtDisp(w,col,r);if(eff.unit)wert+=' '+eff.unit;
+    var h='<'+(tap?('button data-rtfeld="'+esc(col.key)+'"'):'div')+' style="'+(tap?_RT_FELD:_RT_FELD_RO)+'">'
+      +'<span style="flex:1;min-width:0">'+esc(eff.label||col.key)
+      +(eff.sub?('<small style="display:block;color:var(--muted);font-weight:400">'+esc(eff.sub)+'</small>'):'')
+      +'</span>'
+      +'<b style="flex:none;font-variant-numeric:tabular-nums;'+(tap?'':'color:var(--muted)')+'">'+esc(wert)+'</b>'
+      +(tap?'<span style="flex:none;color:var(--muted)">'+_rtChevron()+'</span>'
+           :'<span style="flex:none;color:var(--faint);font-size:.85em">'+esc(g.code==='ro'?'nur Anzeige':(g.grund||''))+'</span>')
+      +'</'+(tap?'button':'div')+'>';
+    if(dep&&dep.hint)h+='<div style="color:var(--warn);font-size:.86em;margin:-2px 2px 0">'+esc(dep.hint)+'</div>';
+    return h;
+  }
+
+  function _rtRowSheetOpen(w,el,r){
+    var root=$('[data-role=rtroot]',el);if(!root)return;
+    _rtSheetClose(el);
+    var ro=(w.rows||[])[r]||{},cols=w.cols||[],wr=_rtWarns(w,r);
+    var box=document.createElement('div');
+    box.className='rtsheet';box.setAttribute('data-role','rtsheet');
+    box.setAttribute('data-zeilenblatt','1');box.setAttribute('data-r',String(r));
+    box.setAttribute('style',_RT_SHEET);
+    var h='<div style="'+_RT_CARD_BREIT+'">'
+      +'<div style="display:flex;align-items:center;gap:9px">'
+        +'<span class="rtrl-ix">'+r+'</span>'
+        +'<span style="font-weight:700;flex:1">'+esc(ro.label||('Regel '+r))+'</span>'
+      +'</div>';
+    if(ro.note)h+='<div style="color:var(--muted);font-size:.9em;margin:4px 0 0">'+esc(ro.note)+'</div>';
+    var zus=_rtSum(w,r);
+    if(zus)h+='<div style="margin-top:7px;padding:7px 9px;border-radius:9px;background:var(--tile);font-size:.95em">'+esc(zus)+'</div>';
+    // Warnungen im Klartext - genau die, die sonst nur als Dreieck in der Namensspalte stehen.
+    if(wr.length){
+      h+='<div style="margin-top:9px;display:flex;flex-direction:column;gap:5px">';
+      wr.forEach(function(x){
+        var l=x.lvl||'info',f=(l==='crit')?'--crit':(l==='warn'?'--warn':'--accent');
+        h+='<div style="display:flex;gap:8px;align-items:flex-start;padding:7px 9px;border-radius:9px;'
+          +'background:color-mix(in oklab,var('+f+') 12%,var(--surface));border:1px solid color-mix(in oklab,var('+f+') 34%,transparent)">'
+          +'<span style="flex:none;color:var('+f+')">'+_rtIco(l==='info'?'info':'warning',l==='crit'?'crit':(l==='warn'?'warn':'info'),'clamp(12px,3.4cqmin,16px)')+'</span>'
+          +'<span style="flex:1">'+esc(x.text||'')+'</span></div>';
+      });
+      h+='</div>';
+    }
+    // Alle Felder, nach Gruppe geordnet - auch die der gerade verdeckten Reiter.
+    var grp='',felder='';
+    cols.forEach(function(c){
+      var z=_rtFeldZeile(w,r,c);if(!z)return;
+      var gn=c.group||'';
+      if(gn!==grp){grp=gn;
+        if(gn)felder+='<div style="margin:9px 2px 3px;color:var(--faint);font-size:.82em;letter-spacing:.06em;text-transform:uppercase">'+esc(gn)+'</div>';}
+      felder+=z;
+    });
+    h+='<div style="display:flex;flex-direction:column;gap:5px;margin-top:4px">'+felder+'</div>';
+    h+='<div style="display:flex;justify-content:flex-end;margin-top:11px">'+_rtSheetBtn('data-rtcancel="1"','Schließen')+'</div></div>';
+    box.innerHTML=h;
+    root.appendChild(box);
+  }
+
+  // ---------- Gemeinsamer Antipp-Weg einer Zelle ----------
+  // Aus der Tabelle UND aus dem Zeilenblatt. Ist die Sperre loesbar, wird sie erklaert
+  // und zum Aufheben angeboten - statt den Tipp wie bisher stillschweigend zu schlucken.
+  function _rtZelleTippen(w,el,r,key,vid,vonZeile){
+    var col=_rtCol(w,key);if(!col)return;
+    var g=_rtCanWrite(w,col,r);
+    if(g.ok){
+      if(col.type==='bool'&&_rtG(w,'rtGate','sheet')==='direkt'&&!col.confirm&&!vonZeile){
+        var d=_lastVals[vid],on=d?_rtOn(d.v):false,cell=$('.rtc[data-r="'+r+'"][data-k="'+key+'"]',el),sw=cell?$('[data-role=rtsw]',cell):null;
+        if(sw)sw.classList.toggle('off',on);
+        _rtWrite(w,el,vid,on?0:1,cell);
+        return;
+      }
+      _rtSheetOpen(w,el,r,key,vid,vonZeile);
+      return;
+    }
+    if(_rtLoesbar(g)){_rtFreigabeBlatt(w,el,r,key,vid,g,vonZeile);return;}
+    toast(g.grund);
+  }
+
+  /** Erklaert die aufhebbare Sperre und bietet die Freigabe an. */
+  function _rtFreigabeBlatt(w,el,r,key,vid,g,vonZeile){
+    var root=$('[data-role=rtroot]',el);if(!root)return;
+    _rtSheetClose(el);
+    var col=_rtCol(w,key)||{},eff=_rtEff(w,col,r),ro=(w.rows||[])[r]||{},sek=+_rtG(w,'rtLockSec',120);
+    var box=document.createElement('div');
+    box.className='rtsheet';box.setAttribute('data-role','rtsheet');
+    box.setAttribute('data-freigabe','1');box.setAttribute('data-r',String(r));
+    box.setAttribute('data-k',key);box.setAttribute('data-vid',String(vid));
+    if(vonZeile)box.setAttribute('data-vonzeile','1');
+    box.setAttribute('style',_RT_SHEET);
+    var kann=(g.code==='lock');
+    box.innerHTML='<div style="'+_RT_CARD+'">'
+      +'<div style="font-weight:700;margin-bottom:2px">'+esc((ro.label||('Regel '+r))+' · '+(eff.label||key))+'</div>'
+      +'<div style="color:var(--muted);font-size:.9em;margin-bottom:9px">'+esc(g.grund)+'.</div>'
+      +'<div style="font-size:.92em;line-height:1.45">'+(kann
+          ?('Die Verriegelung verhindert Fehltipps auf dem Wandtablett. Nach der Freigabe bleibt die Tabelle '+sek+' s lang bedienbar; jede Änderung wird trotzdem einzeln bestätigt.')
+          :'Das Gerät meldet den Schreibweg als nicht scharf. Solange das so ist, nimmt es keine Änderung an.')+'</div>'
+      +'<div style="display:flex;gap:6px;justify-content:flex-end;margin-top:11px">'
+      +_rtSheetBtn('data-rtcancel="1"','Abbrechen')
+      +(kann?_rtSheetBtn('data-rtfrei="1"','Freigeben ('+sek+' s)',';border-color:var(--accent);color:var(--accent)'):'')
+      +'</div></div>';
+    root.appendChild(box);
+  }
+
   // Wert aus dem Sheet lesen. Gibt null zurueck, wenn die Eingabe unbrauchbar ist - und sagt
   // dann auch, warum. Frueher verschwand ein NaN stillschweigend.
   function _rtSheetTake(w,sh,col,r){
@@ -728,9 +863,13 @@
     var g=_rtCanWrite(w,col,r);
     if(!g.ok){toast(g.grund);return;}
     var cell=$('.rtc[data-r="'+r+'"][data-k="'+key+'"]',el);
+    var zurueck=sh.hasAttribute('data-vonzeile');
     _rtWrite(w,el,vid,val,cell);
     _rtSheetClose(el);
     _rtRepaintSoon(w);   // Abzeichen des betroffenen Reiters sofort nachziehen
+    // Wer aus dem Zeilenblatt kam, will die naechsten Felder derselben Regel stellen -
+    // nicht nach jedem Wert in der Tabelle wieder von vorn suchen.
+    if(zurueck)setTimeout(function(){_rtRowSheetOpen(w,el,r);},80);
   }
 
   // ---------- Neuanstrich ----------
@@ -1069,7 +1208,9 @@
           if(e.key==='Escape'){_rtSheetClose(el);return;}
           var sh=e.target.closest&&e.target.closest('[data-role=rtsheet]');
           if(sh){if(e.key==='Enter'){e.preventDefault();var ok=$('[data-rtok]',sh);if(ok)ok.click();}return;}
-          var cell=e.target.closest&&e.target.closest('.rtc[data-rv]');
+          // Auch die gesperrte Zelle (data-rvx) und der Regelname sind mit der Tastatur
+          // erreichbar - sie tragen tabindex, also muessen sie auf Enter reagieren.
+          var cell=e.target.closest&&e.target.closest('.rtc[data-rv],.rtc[data-rvx],.rtrl[data-rtrow]');
           if(cell&&(e.key==='Enter'||e.key===' '||e.key==='Spacebar')){e.preventDefault();cell.click();}
         });
       });
@@ -1101,6 +1242,28 @@
         var b=e.target.closest('button');
         if(!b){if(e.target===sh)_rtSheetClose(el);return true;}
         if(b.hasAttribute('data-rtcancel')){_rtSheetClose(el);return true;}
+        // Zeilenblatt: ein Feld fuehrt in das gewohnte Wertblatt.
+        if(sh.hasAttribute('data-zeilenblatt')){
+          var fb=b.closest('[data-rtfeld]');
+          if(fb){
+            var zr=parseInt(sh.getAttribute('data-r')),zk=fb.getAttribute('data-rtfeld'),zi=_rtItem(w,zr,zk);
+            if(zi&&zi.vid)_rtZelleTippen(w,el,zr,zk,zi.vid,true);
+          }
+          return true;
+        }
+        // Freigabeblatt: entriegeln und gleich mit dem Feld weitermachen, das angetippt war.
+        if(sh.hasAttribute('data-freigabe')){
+          if(b.hasAttribute('data-rtfrei')){
+            var fr=parseInt(sh.getAttribute('data-r')),fk=sh.getAttribute('data-k'),
+                fv=parseInt(sh.getAttribute('data-vid')),fz=sh.hasAttribute('data-vonzeile');
+            _rtLockTouch(w);
+            _rtSheetClose(el);
+            _rtPaintEl(w,el);
+            setTimeout(function(){_rtRepaintSoon(w);},(+_rtG(w,'rtLockSec',120))*1000+200);
+            _rtZelleTippen(w,el,fr,fk,fv,fz);
+          }
+          return true;
+        }
         var key=sh.getAttribute('data-k'),col=_rtCol(w,key)||{},r=parseInt(sh.getAttribute('data-r'));
         if(b.hasAttribute('data-rtv')){_rtSheetApply(w,el,sh,b.getAttribute('data-rtv'));return true;}
         if(b.hasAttribute('data-rtpick')){          // nur vorwaehlen, schreiben tut der rote Knopf
@@ -1173,21 +1336,17 @@
         if(_rtUnlocked(w))setTimeout(function(){_rtRepaintSoon(w);},(+_rtG(w,'rtLockSec',120))*1000+200);
         return true;
       }
-      var cell=e.target.closest('.rtc[data-rv]');
+      // Regelname -> Zeilenblatt mit der ganzen Regel.
+      var rl=e.target.closest('.rtrl[data-rtrow]');
+      if(rl){_rtRowSheetOpen(w,el,parseInt(rl.getAttribute('data-rtrow')));return true;}
+      // data-rvx: gesperrt, aber aufhebbar - _rtZelleTippen erklaert das und bietet die
+      // Freigabe an. Ein Fehltipp in einer 8x16-Matrix kann Pumpe, Absorberventil oder
+      // eine Dosierpumpe schalten; geschaltet wird deshalb erst nach der Bestaetigung.
+      var cell=e.target.closest('.rtc[data-rv],.rtc[data-rvx]');
       if(!cell)return false;
-      var cr=parseInt(cell.getAttribute('data-r')),ck=cell.getAttribute('data-k'),vid=parseInt(cell.getAttribute('data-rv'));
-      var ccol=_rtCol(w,ck);if(!ccol)return true;
-      var g=_rtCanWrite(w,ccol,cr);
-      if(!g.ok){toast(g.grund);return true;}
-      // Ein Fehltipp in einer 8x16-Matrix kann Pumpe, Absorberventil oder eine Dosierpumpe
-      // schalten. Nur bei ausdruecklich gewaehlter Absicherung "direkt" schaltet ein Tipp.
-      if(ccol.type==='bool'&&_rtG(w,'rtGate','sheet')==='direkt'&&!ccol.confirm){
-        var d=_lastVals[vid],on=d?_rtOn(d.v):false,sw=$('[data-role=rtsw]',cell);
-        if(sw)sw.classList.toggle('off',on);       // optimistisch, aber OHNE _lastVals zu faelschen
-        _rtWrite(w,el,vid,on?0:1,cell);
-        return true;
-      }
-      _rtSheetOpen(w,el,cr,ck,vid);
+      var cr=parseInt(cell.getAttribute('data-r')),ck=cell.getAttribute('data-k'),
+          vid=parseInt(cell.getAttribute('data-rv')||cell.getAttribute('data-rvx'));
+      _rtZelleTippen(w,el,cr,ck,vid,false);
       return true;
     },
 
