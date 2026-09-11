@@ -27,6 +27,44 @@
       // groesser als eine einzelne Karte - ohne diesen Container wuerde alles zu gross geraten.
       +'.irxc{container-type:inline-size;border:1px solid var(--line,rgba(128,128,128,.35));border-radius:var(--r-s,10px);background:var(--tile);padding:clamp(7px,3cqmin,13px) clamp(8px,3.2cqmin,14px);display:flex;flex-direction:column;gap:clamp(6px,3cqmin,12px)}'
       +'.irxc.run{border-color:var(--accent)}'
+      // ---- Karte im Entwurfsstil (irxStil='karte'): eine Kachel je Kreis, grosse
+      // effektive Dauer, Sperrgrund im Klartext, Batterie und ein Knopf. Die volle
+      // Reglerkarte bleibt erreichbar - ein Tipp auf die Kachel klappt sie auf.
+      // Im Kartenstil sollen die Kacheln die Breite AUFTEILEN, nicht in ein auto-fill-
+      // Raster mit fester Mindestbreite fallen: bei drei Kreisen in einer 1430 breiten
+      // Kachel entstanden sonst fuenf Spalten, von denen zwei leer blieben.
+      +'.irxwrap.karte .irx-grid{grid-template-columns:repeat(auto-fit,minmax(clamp(230px,30cqi,460px),1fr));grid-auto-rows:1fr;align-content:stretch;height:100%;box-sizing:border-box}'
+      +'.irxwrap.karte{container-type:inline-size;padding:0}'
+      +'.irk{container-type:inline-size;border:1px solid var(--line);border-radius:var(--r,12px);background:var(--surface);'
+      + 'padding:clamp(10px,3.4cqmin,17px);display:flex;flex-direction:column;cursor:pointer}'
+      +'.irk-h{display:flex;align-items:flex-start;gap:clamp(6px,2.6cqi,11px)}'
+      +'.irk-nm{font-size:clamp(13px,5.6cqi,18px);font-weight:600;line-height:1.2}'
+      +'.irk-pl{font-size:clamp(10px,3.9cqi,12.5px);color:var(--faint);margin-top:3px;font-variant-numeric:tabular-nums}'
+      +'.irk-st{flex:none;display:flex;align-items:center;gap:5px;padding:5px 10px;border-radius:var(--r-s,9px);'
+      + 'font-size:clamp(10px,3.8cqi,12.5px);font-weight:600;white-space:nowrap}'
+      +'.irk-st.ok{color:var(--accent);background:color-mix(in oklab,var(--accent) 12%,transparent);border:1px solid color-mix(in oklab,var(--accent) 45%,transparent)}'
+      +'.irk-st.blk{color:var(--crit);background:color-mix(in oklab,var(--crit) 12%,transparent);border:1px solid color-mix(in oklab,var(--crit) 45%,transparent)}'
+      +'.irk-st.run{color:var(--info);background:color-mix(in oklab,var(--info) 12%,transparent);border:1px solid color-mix(in oklab,var(--info) 45%,transparent)}'
+      +'.irk-big{display:flex;align-items:baseline;gap:clamp(5px,2.4cqi,9px);margin-top:clamp(8px,3.2cqmin,15px)}'
+      +'.irk-big b{font-size:clamp(22px,13cqi,40px);font-weight:700;line-height:1;font-variant-numeric:tabular-nums;font-family:var(--fm)}'
+      +'.irk-big i{font-style:normal;font-size:clamp(11px,4.4cqi,15px);color:var(--muted)}'
+      +'.irk-big s{font-size:clamp(10px,3.9cqi,13px);color:var(--faint);font-variant-numeric:tabular-nums;font-family:var(--fm)}'
+      +'.irk-why{font-size:clamp(10px,3.9cqi,12.5px);color:var(--muted);margin-top:5px;line-height:1.35}'
+      +'.irk-why.warn{color:var(--warn)}'
+      +'.irk-sep{height:1px;background:var(--line-soft);margin:clamp(8px,3.2cqmin,13px) 0 clamp(7px,2.8cqmin,11px)}'
+      +'.irk-kv{display:flex;gap:clamp(10px,5cqi,22px)}'
+      +'.irk-kv>div{flex:1;min-width:0}'
+      +'.irk-k{font-size:clamp(8px,3.1cqi,11px);letter-spacing:.06em;text-transform:uppercase;color:var(--faint);font-weight:600}'
+      +'.irk-v{font-size:clamp(10px,4.1cqi,13.5px);margin-top:2px;font-variant-numeric:tabular-nums;font-family:var(--fm)}'
+      +'.irk-v.leer{color:var(--faint);font-family:var(--fu)}'
+      +'.irk-f{display:flex;align-items:center;gap:clamp(7px,3cqi,13px);margin-top:auto;padding-top:clamp(8px,3.2cqmin,13px)}'
+      +'.irk-bat{display:flex;align-items:center;gap:6px;font-size:clamp(10px,3.9cqi,13px);color:var(--muted);font-variant-numeric:tabular-nums}'
+      +'.irk-bat.warn{color:var(--warn)}'
+      +'.irk-go{margin-left:auto;min-height:clamp(38px,11cqmin,46px);min-width:clamp(96px,42cqi,140px);display:flex;align-items:center;'
+      + 'justify-content:center;gap:7px;border:1px solid var(--accent-2);border-radius:var(--r-s,9px);background:var(--surface-2);'
+      + 'color:var(--accent);font-size:clamp(11px,4.3cqi,14.5px);font-weight:600;cursor:pointer}'
+      +'.irk-go:disabled{opacity:.45;cursor:default}'
+      +'.irk-zu{margin-top:clamp(8px,3.2cqmin,13px);border-top:1px solid var(--line-soft);padding-top:clamp(8px,3.2cqmin,13px)}'
       +'.irxc-h{display:flex;align-items:center;gap:clamp(5px,2.6cqi,10px)}'
       +'.irxc-ic{width:clamp(16px,7cqi,26px);height:clamp(16px,7cqi,26px);flex:none;color:var(--accent);display:flex;align-items:center;justify-content:center}'
       +'.irxc-ic svg{width:100%;height:100%}'
@@ -89,6 +127,8 @@
         // armed steckt in der Config (kein State-Feld) -> per manage getConfig (Token) nachziehen.
         list.forEach(function(c){ jobs.push(
           irManagePromise(c.iid,{op:'getConfig'}).then(function(g){ if(g&&g.config)c.armed=!!g.config.armed; }).catch(function(){}) ); });
+        // Effektive Dauer, Sperre und Wochenfenster - die Karte im Entwurfsstil lebt davon.
+        list.forEach(function(c){ jobs.push(irProbe(c)); jobs.push(irPlan(c)); });
         Promise.all(jobs).then(function(){_irData=list;_irErr='';_irLoading=false;cb&&cb();})
           .catch(function(){_irData=list;_irErr='';_irLoading=false;cb&&cb();});
       }).catch(function(){_irErr='net';_irLoading=false;cb&&cb();});
@@ -96,17 +136,26 @@
     // Kreis-Liste aus der Topologie ziehen (gleiche Baumform wie heatx: Haus->Bereich->Raum->entities).
     function irCircuitsFromTopo(j){
       var out=[];
-      function pushEnt(e,room,group){ if((e.domain||'')!=='irrigation')return;
-        out.push({iid:e.iid,name:e.name||room||('#'+e.iid),room:room||'',group:group||'',armed:false,
+      // Die Kette Haus/Bereich/Raum wird MITGEFUEHRT. Bei zwei Standorten heissen beide
+      // Bereiche "Garten" - ohne das Haus waeren die Gruppen nicht unterscheidbar, und
+      // eine Ansicht koennte sich nicht auf einen Standort beschraenken.
+      function pushEnt(e,room,group,kette,haus){ if((e.domain||'')!=='irrigation')return;
+        out.push({iid:e.iid,name:e.name||room||('#'+e.iid),room:room||'',group:group||'',haus:haus||'',
+          kette:kette||[],armed:false,
           vars:{},prog:[],dur:{min:1,max:120,step:1},adj:{min:0,max:200,step:5},runMin:0,st:{}}); }
-      (j&&j.tree||[]).forEach(function(haus){ (haus.children||[]).forEach(function(area){
+      (j&&j.tree||[]).forEach(function(haus){ var hid=haus.iid||haus.id||0, hn=haus.name||'';
+        (haus.children||[]).forEach(function(area){ var aid=area.iid||area.id||0;
         if(area.kind==='Bereich'){ var g=area.abbr||area.name||'';
-          (area.children||[]).forEach(function(rm){ if(rm.kind==='Raum')(rm.entities||[]).forEach(function(e){pushEnt(e,rm.name,g);}); });
-        } else if(area.kind==='Raum'){ (area.entities||[]).forEach(function(e){pushEnt(e,area.name,'');}); }
+          (area.children||[]).forEach(function(rm){ var rid=rm.iid||rm.id||0;
+            if(rm.kind==='Raum')(rm.entities||[]).forEach(function(e){pushEnt(e,rm.name,g,[hid,aid,rid],hn);}); });
+        } else if(area.kind==='Raum'){ (area.entities||[]).forEach(function(e){pushEnt(e,area.name,'',[hid,aid],hn);}); }
       }); });
-      (j&&j.unassigned||[]).forEach(function(e){ pushEnt(e,'',''); });
+      (j&&j.unassigned||[]).forEach(function(e){ pushEnt(e,'','',[],''); });
       return out;
     }
+    /** Gehoert der Kreis unter den gewaehlten Standort-Knoten? 0 = keine Einschraenkung. */
+    function irImStandort(c,root){ root=parseInt(root)||0; if(!root)return true;
+      return (c.kette||[]).indexOf(root)>=0; }
     function irApplyManifest(c,m){
       if(!m||!m.controls)return;
       m.controls.forEach(function(ctrl){
@@ -120,6 +169,74 @@
       if(!c.runMin)c.runMin=num(c.st.Duration,20);
     }
     function num(v,d){var n=parseFloat(v);return isNaN(n)?d:n;}
+
+    // ---- Zusatzdaten fuer die Karte im Entwurfsstil --------------------------
+    // computeProbe rechnet effektive Dauer und Gate (Regen/Temperatur) OHNE Geraete-
+    // zugriff - es liest nur Variablen. getSchedule liefert die Wochenfenster, aus
+    // denen "taeglich 15:07-15:17" und "naechster Lauf" entstehen.
+    function irProbe(c){ return irManagePromise(c.iid,{op:'computeProbe'})
+      .then(function(j){ if(j&&j.ok)c.probe=j; }).catch(function(){}); }
+    function irPlan(c){ return irManagePromise(c.iid,{op:'getSchedule'})
+      .then(function(j){ if(j&&j.ok)c.week=j.week||null; }).catch(function(){}); }
+    /** Fenster eines Tages: [{von,bis}] in Minuten. Slots sind kumulierte Enden. */
+    function irFenster(slots){
+      var out=[],vor=0;
+      (slots||[]).forEach(function(sl){
+        var end=num(sl.end,0), val=num(sl.val,0);
+        if(val>0&&end>vor)out.push({von:vor,bis:end});
+        vor=end;
+      });
+      return out;
+    }
+    function irHM(m){ m=Math.max(0,Math.round(m)); var h=Math.floor(m/60)%24,i=m%60;
+      return (h<10?'0':'')+h+':'+(i<10?'0':'')+i; }
+    /** "taeglich 15:07-15:17" wenn alle sieben Tage dasselbe einzelne Fenster tragen. */
+    function irPlanText(c){
+      if(!c.week)return '';
+      var ref=null,gleich=true,leer=true;
+      for(var d=0;d<7;d++){
+        var f=irFenster(c.week[d]);
+        if(f.length)leer=false;
+        var k=f.map(function(x){return x.von+'-'+x.bis;}).join(',');
+        if(ref===null)ref=k; else if(k!==ref)gleich=false;
+      }
+      if(leer)return '';
+      if(gleich){ var f0=irFenster(c.week[0]);
+        if(f0.length===1)return 'täglich '+irHM(f0[0].von)+'–'+irHM(f0[0].bis);
+        return 'täglich · '+f0.length+' Fenster';
+      }
+      return 'Wochenplan hinterlegt';
+    }
+    /** Naechstes An-Fenster ab jetzt, bis zu sieben Tage voraus. */
+    function irNaechster(c){
+      if(!c.week)return '';
+      var jetzt=new Date(), heute=(jetzt.getDay()+6)%7, min=jetzt.getHours()*60+jetzt.getMinutes();
+      var tage=['Mo','Di','Mi','Do','Fr','Sa','So'];
+      for(var i=0;i<8;i++){
+        var d=(heute+i)%7, f=irFenster(c.week[d]);
+        for(var k=0;k<f.length;k++){
+          if(i===0&&f[k].von<=min)continue;
+          if(i===0)return 'heute '+irHM(f[k].von);
+          if(i===1)return 'morgen '+irHM(f[k].von);
+          return tage[d]+' '+irHM(f[k].von);
+        }
+      }
+      return '';
+    }
+    // ---- Ventilzustand aus der Bewaesserungs-Wache ---------------------------
+    // Batterie und Funk haengen am GERAET, nicht an der HomeSuite-Entitaet. Die Wache
+    // schreibt sie je Kreis in eine JSON-Variable; ohne sie bleibt die Zeile leer.
+    var _irWache={}, _irWacheT=0;
+    function irWacheLaden(vid,cb){
+      vid=parseInt(vid)||0;
+      if(!vid||irDoku()){cb&&cb();return;}
+      if(Date.now()-_irWacheT<20000){cb&&cb();return;}
+      fetch('?api=val&ids='+vid,{cache:'no-store'}).then(function(r){return r.ok?r.json():null;})
+        .then(function(j){ var d=j&&j.values&&j.values[vid];
+          if(d&&d.v){ try{_irWache=JSON.parse(d.v)||{};}catch(e){} }
+          _irWacheT=Date.now(); cb&&cb(); }).catch(function(){cb&&cb();});
+    }
+    function irWacheFor(c){ return _irWache[String(c.iid)]||null; }
     // Leichter State-Refresh (ohne Manifest) — fuers Polling.
     function irRefresh(cb){
       if(irDoku()||!_irData){cb&&cb();return;}
@@ -127,6 +244,11 @@
         return fetch('?api=mod&op=state&id='+c.iid,{cache:'no-store'}).then(function(r){return r.json();})
           .then(function(s){ if(s&&!s.err)c.st=s; }).catch(function(){});
       });
+      // Das Gate haengt an Regen und Temperatur und kann sich zwischen zwei Laeufen
+      // drehen - der Trockenlauf gehoert deshalb in den Takt. Er kostet keinen
+      // Geraetezugriff, er liest nur Variablen. Der Wochenplan aendert sich nicht
+      // von selbst und bleibt beim Laden.
+      _irData.forEach(function(c){ jobs.push(irProbe(c)); });
       Promise.all(jobs).then(function(){cb&&cb();}).catch(function(){cb&&cb();});
     }
 
@@ -193,10 +315,87 @@
       h+='</div>';
       return h;
     }
+    // ---- Karte im Entwurfsstil ----------------------------------------------
+    function irTropfen(){return '<svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22a7 7 0 0 0 7-7c0-4-7-12-7-12S5 11 5 15a7 7 0 0 0 7 7Z"/></svg>';}
+    function irBattIco(p){
+      var f=Math.max(0,Math.min(10,Math.round((num(p,0)/100)*10)));
+      return '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'
+        +'<rect x="2" y="7" width="17" height="10" rx="2"/><path d="M22 11v2"/>'
+        +(f?'<rect x="4" y="9" width="'+(f*1.3)+'" height="6" rx="1" fill="currentColor" stroke="none"/>':'')+'</svg>';
+    }
+    /** "Bewaesserung Buchshecke (Bewässerung)" -> "Buchshecke". Der Suffix kommt vom
+        Modul, der Praefix aus dem Instanznamen; auf einer Bewaesserungsseite ist beides
+        nur Wiederholung. */
+    function irName(n){
+      n=String(n||'');
+      n=n.replace(/\s*\((?:Bew[äa]sserung|Irrigation)\)\s*$/i,'');
+      n=n.replace(/^\s*Bew[äa]sserung\s+/i,'');
+      return n.trim();
+    }
+    /** Sperrgrund lesbar machen: das Modul liefert "Regen 4.83 mm (>= 2)". */
+    function irGrund(t){
+      t=String(t||'');
+      t=t.replace(/(\d),?(\d*)\.(\d+)/g,function(m,a,b,d){return a+b+','+d;});
+      t=t.replace(/\(>=\s*([0-9,]+)\)/,'über der Schranke von $1 mm');
+      return t;
+    }
+    function irKarte(c,w){
+      var s=c.st||{}, pr=c.probe||{}, wa=irWacheFor(c);
+      var run=(s.Running===1||s.Running===true||s.Running==='1');
+      var gesperrt=!!(pr.gate&&pr.gate.blocked);
+      var stat = run ? ['Läuft','run'] : (gesperrt ? ['Gesperrt','blk'] : ['Bereit','ok']);
+      var basis = (pr.baseMin!=null) ? num(pr.baseMin,0) : num(s.Duration,0);
+      var eff   = (pr.effectiveMin!=null) ? num(pr.effectiveMin,basis) : basis;
+      var plan  = irPlanText(c), naechst = irNaechster(c);
+      var grund = gesperrt ? (pr.gate.reason||'gesperrt') : '';
+      var h='<div class="irk" data-irkarte="'+c.iid+'">'
+        +'<div class="irk-h"><div style="flex:1;min-width:0">'
+          +'<div class="irk-nm">'+escL(irName(c.name))+'</div>'
+          +'<div class="irk-pl'+(plan?'':' ')+'" style="'+(plan?'':'color:var(--warn)')+'">'+esc(plan||'kein Zeitplan hinterlegt')+'</div>'
+        +'</div><span class="irk-st '+stat[1]+'">'+esc(stat[0])+'</span></div>'
+        +'<div class="irk-big"><b>'+(Math.round(eff*10)/10)+'</b><i>min</i>'
+        + (Math.abs(eff-basis)>0.05 ? '<s style="text-decoration:line-through">'+(Math.round(basis*10)/10)+' min</s>'
+                                     : '<s style="text-decoration:none">Basis '+(Math.round(basis*10)/10)+' min</s>')+'</div>';
+      if(grund) h+='<div class="irk-why">'+esc(irGrund(grund))+'</div>';
+      else if(wa&&wa.stufe&&wa.stufe!=='ok'&&wa.text) h+='<div class="irk-why warn">'+esc(wa.text)+'</div>';
+      else if(pr.tempFactor!=null&&num(pr.tempFactor,1)!==1)
+        h+='<div class="irk-why">Temperatur '+Math.round(num(pr.tempFactor,1)*100)+' % · '+(pr.tempNow!=null?(String(pr.tempNow).replace('.',',')+' °C'):'')+'</div>';
+      else h+='<div class="irk-why">&nbsp;</div>';
+      h+='<div class="irk-sep"></div>'
+        +'<div class="irk-kv">'
+          +'<div><div class="irk-k">Nächster Lauf</div><div class="irk-v'+(naechst?'':' leer')+'">'+esc(naechst||'—')+'</div></div>'
+          +'<div><div class="irk-k">Zuletzt</div><div class="irk-v'+((wa&&wa.letzte)?'':' leer')+'">'
+            +esc((wa&&wa.letzte)?wa.letzte:'keine Aufzeichnung')+'</div></div>'
+        +'</div>'
+        +'<div class="irk-f">';
+      if(wa&&wa.batt!=null)
+        h+='<span class="irk-bat'+(wa.batt<=25?' warn':'')+'">'+irBattIco(wa.batt)+num(wa.batt,0)+' %</span>';
+      h+='<button class="irk-go" data-irrun="'+c.iid+'"'+(run?' disabled':'')+'>'+irTropfen()
+        +(run?'Läuft':'Jetzt gießen')+'</button></div>';
+      // Aufgeklappt: die volle Reglerkarte, damit nichts unerreichbar wird.
+      if(_irOffen[c.iid]) h+='<div class="irk-zu">'+irCard(c)+'</div>';
+      h+='</div>';
+      return h;
+    }
+    var _irOffen={};
+
     function irCircuitsFor(w){
       var all=_irData||[];
       if(w._kind==='circuit'){ var cid=parseInt(w.circuitId||0)||0; return cid?all.filter(function(c){return c.iid===cid;}):(all.length?[all[0]]:[]); }
-      return all;
+      // Standort-Filter: eine Ansicht je Haus. Ohne ihn stuenden beide Gaerten
+      // untereinander, und die Gruppentitel hiessen beide "Garten".
+      var aus=all.filter(function(c){return irImStandort(c,w.irxRoot);});
+      if(w.irxStil==='karte'){
+        // Nach der ERSTEN Startzeit des Plans ordnen. Die Reihenfolge aus der Topologie
+        // ist die der Objekt-IDs und damit fuer den Betrachter zufaellig.
+        aus=aus.slice().sort(function(a,b){
+          var fa=a.week?irFenster(a.week[0]):[], fb=b.week?irFenster(b.week[0]):[];
+          var va=fa.length?fa[0].von:99999, vb=fb.length?fb[0].von:99999;
+          if(va!==vb)return va-vb;
+          return irName(a.name).localeCompare(irName(b.name));
+        });
+      }
+      return aus;
     }
     function irRender(w){
       var list=irCircuitsFor(w);
@@ -204,9 +403,16 @@
       if(!_irData) return '<div class="irxwrap"><div class="irx-msg">Bewässerung lädt …</div></div>';
       if(!list.length) return '<div class="irxwrap"><div class="irx-msg">Keine Bewässerungskreise</div></div>';
       var shadow=list.some(function(c){return c.armed===false;});
-      var h='<div class="irxwrap">';
-      if(shadow)h+='<div class="irx-shadow">Schatten-Modus aktiv – im Schatten laufende Kreise schalten den Aktor noch nicht real.</div>';
-      if(w._kind==='circuit'){ h+='<div class="irx-grid">'+list.map(irCard).join('')+'</div></div>'; return h; }
+      var stil=(w.irxStil==='karte')?'karte':'voll';
+      var h='<div class="irxwrap'+(stil==='karte'?' karte':'')+'">';
+      // Im Entwurfsstil traegt die SEITE den Schatten-Hinweis (Kopfzeile), nicht jede
+      // Kachel - sonst steht er auf beiden Standortseiten doppelt.
+      if(shadow&&stil!=='karte')h+='<div class="irx-shadow">Schatten-Modus aktiv – im Schatten laufende Kreise schalten den Aktor noch nicht real.</div>';
+      var zeichne=(stil==='karte')?function(c){return irKarte(c,w);}:irCard;
+      if(w._kind==='circuit'){ h+='<div class="irx-grid">'+list.map(zeichne).join('')+'</div></div>'; return h; }
+      // Im Entwurfsstil zeigt EINE Ansicht EINEN Standort - die Bereichs-/Raumtitel
+      // waeren dort nur Wiederholung der Seitenueberschrift.
+      if(stil==='karte'){ h+='<div class="irx-grid">'+list.map(zeichne).join('')+'</div></div>'; return h; }
       // Gruppieren: Bereich/Geschoss -> Raum (stabil)
       var groups={}, order=[];
       list.forEach(function(c){var key=(c.group||'')+'||'+(c.room||'');if(!groups[key]){groups[key]={group:c.group,room:c.room,items:[]};order.push(key);}groups[key].items.push(c);});
@@ -215,7 +421,7 @@
       order.forEach(function(key){var g=groups[key];
         var head=g.group||g.room||'';
         if(head!==cur){cur=head;h+='<div class="irx-floor">'+escL(head||'Bewässerung')+'</div>';}
-        h+='<div class="irx-grid">'+g.items.map(irCard).join('')+'</div>';});
+        h+='<div class="irx-grid">'+g.items.map(zeichne).join('')+'</div>';});
       h+='</div>';
       return h;
     }
@@ -226,7 +432,18 @@
 
     function irWire(w,host){
       host.querySelectorAll('[data-irarm]').forEach(function(b){b.addEventListener('click',function(){var c=irById(+b.getAttribute('data-irarm'));if(!c)return;irSetArmed(c,!c.armed);irPaint(w);});});
-      host.querySelectorAll('[data-irrun]').forEach(function(b){b.addEventListener('click',function(){var c=irById(+b.getAttribute('data-irrun'));if(!c)return;irRunNow(c,Math.round(c.runMin||0));irPaint(w);});});
+      host.querySelectorAll('[data-irrun]').forEach(function(b){b.addEventListener('click',function(e){
+        var c=irById(+b.getAttribute('data-irrun'));if(!c)return;
+        e.stopPropagation();   // sonst klappt zugleich die Reglerkarte auf
+        // Im Entwurfsstil gilt die EFFEKTIVE Dauer - das ist die Zahl, die auf der
+        // Kachel steht. Alles andere waere ein anderer Lauf als der angezeigte.
+        var min=(w.irxStil==='karte'&&c.probe&&c.probe.effectiveMin!=null)
+                ? Math.max(1,Math.round(num(c.probe.effectiveMin,0)))
+                : Math.round(c.runMin||0);
+        irRunNow(c,min);irPaint(w);});});
+      host.querySelectorAll('[data-irkarte]').forEach(function(k){k.addEventListener('click',function(e){
+        if(e.target.closest('button,input,select'))return;
+        var id=+k.getAttribute('data-irkarte');_irOffen[id]=!_irOffen[id];irPaint(w);});});
       host.querySelectorAll('[data-irstop]').forEach(function(b){b.addEventListener('click',function(){var c=irById(+b.getAttribute('data-irstop'));if(!c)return;irStopNow(c);irPaint(w);});});
       host.querySelectorAll('[data-irmin]').forEach(function(b){b.addEventListener('click',function(){var c=irById(+b.getAttribute('data-irmin'));if(!c)return;var d=+b.getAttribute('data-ird');var v=Math.round((c.runMin||0)+d);var mx=(c.dur&&c.dur.max)||120;c.runMin=Math.max(1,Math.min(mx,v));irPaint(w);});});
       host.querySelectorAll('[data-irdur]').forEach(function(b){b.addEventListener('click',function(){var c=irById(+b.getAttribute('data-irdur'));if(!c)return;var d=+b.getAttribute('data-ird');var cur=Math.round(num(c.st.Duration,c.runMin||20));var st=(c.dur&&c.dur.step)||1;var v=cur+d*st;v=Math.max(c.dur.min,Math.min(c.dur.max,v));irSetVar(c,'Duration',v);irPaint(w);});});
@@ -246,8 +463,11 @@
         defaults:function(w){w._kind=(kind==='irrigcircuit')?'circuit':'grid';},
         render:function(w){w._kind=(kind==='irrigcircuit')?'circuit':'grid';return irRender(w);},
         mount:function(w){w._kind=(kind==='irrigcircuit')?'circuit':'grid';var el=irEl(w);if(!el)return;
-          if(_irData){irPaint(w);}else{irLoad(function(){irPaint(w);});}
-          LVB.panel.startPoll('irrigx:'+w.id,30000,function(){ if(_irData)irRefresh(function(){irPaint(w);}); else irLoad(function(){irPaint(w);}); });},
+          if(_irData){irWacheLaden(w.irxWache,function(){irPaint(w);});}
+          else{irLoad(function(){irWacheLaden(w.irxWache,function(){irPaint(w);});});}
+          LVB.panel.startPoll('irrigx:'+w.id,30000,function(){
+            if(_irData)irRefresh(function(){irWacheLaden(w.irxWache,function(){irPaint(w);});});
+            else irLoad(function(){irPaint(w);}); });},
         _bind:function(w){irPaint(w);},
         props:function(w){
           var h='';
@@ -258,10 +478,20 @@
           } else {
             h+='<div style="font-size:11px;color:var(--muted);padding:4px 2px">Zeigt alle HomeSuite-Bewässerungskreise (IrrigationCircuit), gruppiert nach Bereich und Raum.</div>';
           }
+          h+='<div class="pgh">Darstellung</div>';
+          h+=row('Stil','<select id="irStil"><option value="voll"'+((w.irxStil||'voll')==='voll'?' selected':'')+'>Regler (alle Bedienelemente)</option>'
+            +'<option value="karte"'+(w.irxStil==='karte'?' selected':'')+'>Karte (Entwurf: Dauer, Sperre, Batterie)</option></select>');
+          h+=row('Standort','<input id="irRoot" type="number" value="'+(w.irxRoot||'')+'" placeholder="Haus/Bereich-Instanz-ID">');
+          h+='<div style="font-size:11px;color:var(--muted);padding:2px 2px 6px">Leer = alle. Mit einer Haus-ID zeigt die Ansicht nur diesen Standort.</div>';
+          h+=row('Wache (JSON)','<input id="irWache" type="number" value="'+(w.irxWache||'')+'" placeholder="VentileJson der Bewässerungs-Wache">');
+          h+='<div style="font-size:11px;color:var(--muted);padding:2px 2px 6px">Liefert Batterie und Funkzustand je Kreis. Ohne sie bleibt die Batteriezeile leer.</div>';
           return h;
         },
         wire:function(w){
           if($('#irCid'))$('#irCid').onchange=function(){w.circuitId=parseInt(this.value)||undefined;commit();irPaint(w);};
+          if($('#irStil'))$('#irStil').onchange=function(){w.irxStil=(this.value==='karte')?'karte':undefined;commit();irPaint(w);};
+          if($('#irRoot'))$('#irRoot').onchange=function(){w.irxRoot=parseInt(this.value)||undefined;commit();irPaint(w);};
+          if($('#irWache'))$('#irWache').onchange=function(){w.irxWache=parseInt(this.value)||undefined;commit();irPaint(w);};
         }
       });
     }
