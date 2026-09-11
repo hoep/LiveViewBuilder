@@ -28,6 +28,9 @@
 
   // Laufzeitzustand - bewusst NICHT am Widget, damit nichts davon im Seiten-JSON landet.
   var _rtLockT={};      // Widget-ID -> Zeitpunkt, bis zu dem das Schloss offen ist
+  var _rtTab={};        // Widget-ID -> Name der aktiven Spaltengruppe (Reiterbetrieb)
+                        // Beides ist LAUFZEIT und gehoert nie ins Seiten-JSON: am Widget-Objekt
+                        // gehalten wuerde commit() es mitspeichern.
   var _rtPend ={};      // vid -> {v,t}  gesendet, noch unbestaetigt
   var _rtFail ={};      // vid -> 1      Geraet hat den Wert nicht uebernommen
   var _rtPrf  ={};      // Profilname -> Profildaten (Optionen, Grenzen, Nachkomma)
@@ -88,7 +91,19 @@
   // ---------- Zugriff auf Spalten, Zeilen, Zellen ----------
   function _rtCol(w,key){var a=w.cols||[];for(var i=0;i<a.length;i++)if(a[i]&&a[i].key===key)return a[i];return null;}
   function _rtColIdx(w,key){var a=w.cols||[];for(var i=0;i<a.length;i++)if(a[i]&&a[i].key===key)return i;return -1;}
-  function _rtVis(w){var o=[];(w.cols||[]).forEach(function(c,i){if(!c.hidden)o.push(i);});return o;}
+  function _rtVis(w){
+    var o=[];(w.cols||[]).forEach(function(c,i){if(!c.hidden)o.push(i);});
+    // Im Reiterbetrieb bleibt nur die aktive Gruppe stehen - plus die Scharf-Spalte, die in
+    // JEDEM Reiter mitlaeuft: ohne sie sieht man die gedaempfte Zeile einer unscharfen Regel,
+    // kann sie aber nur auf einem einzigen Reiter wieder scharf schalten.
+    if(!_rtTabOn(w))return o;
+    var akt=_rtTabAkt(w),cols=w.cols||[],ak=_rtG(w,'rtActKey','');
+    var f=o.filter(function(i){
+      var c=cols[i];
+      return (c.group||'')===akt||(ak&&c.key===ak);
+    });
+    return f.length?f:o;
+  }
   function _rtItem(w,r,key){var a=w.items||[];for(var i=0;i<a.length;i++){var it=a[i];if(it&&it.r===r&&it.k===key)return it;}return null;}
   function _rtItemIdx(w,r,key){   // legt die Zelle an, falls sie fehlt - vid:0 ist ueberall unschaedlich
     var a=w.items||(w.items=[]);
@@ -307,6 +322,12 @@
     if(cell){cell.classList.remove('rtc-fail');cell.classList.add('rtc-pend');}
     _rtLockTouch(w);
     if(typeof DOKU!=='undefined'&&DOKU)return;
+    // Sammelt eine Speicherleiste auf der Seite, geht setVar in den Puffer und erreicht
+    // den Server gar nicht (06-live.js). Eine Ruecklesung 1,5 s spaeter findet dann
+    // zwangslaeufig den ALTEN Wert und meldet "Nicht uebernommen" - fuer jede einzelne
+    // Aenderung, obwohl noch gar nichts geschrieben werden sollte. Die Quittung gehoert
+    // hier nicht hin; das Uebernehmen quittiert die Leiste selbst.
+    if(typeof deferActive==='function'&&deferActive())return;
     // Quittung durch RUECKLESEN, nicht durch ein zweites Schreiben. Ein zweiter
     // setvar-Aufruf waere am ProCon kein Zusatznutzen, sondern ein kompletter
     // zweiter Read-Modify-Write der INI-Sektion gegen das Stundenbudget von 60,
@@ -427,6 +448,38 @@
   }
   // Spaltengruppen (ADCC: 0-9 Schaltregel, 10-15 Monitor) als zweite Kopfzeile. Die beiden
   // Bloecke sind laut Handbuch unabhaengig - nur der Monitor loest Alarme aus.
+  // Reiterbetrieb (rtGroups==='reiter'): die Spaltengruppen werden zur Reiterleiste, und
+  // sichtbar ist immer genau EINE Gruppe. Grund: die Analogseite hat 16 Spalten und rollt
+  // 1139 px nach rechts - am Wandtablett ist die halbe Regel damit unerreichbar.
+  //
+  // Ein Reiter je GRUPPENNAME - nicht je zusammenhaengendem Lauf.
+  //
+  // Die Gruppenkopfzeile zaehlt Laeufe, weil ein colspan zusammenhaengen muss. Fuer Reiter
+  // waere das falsch: auf der Digital-IO-Seite stehen die Spalten als ena, inp, rel, func,
+  // time, state - also Schalten, Bedingung, Schalten, Bedingung, Schalten. Laufweise
+  // gezaehlt ergab das FUENF Reiter, dreimal "Schalten". Nach Namen sind es zwei, und die
+  // Reihenfolge der Spalten innerhalb eines Reiters bleibt die der Tabelle.
+  //
+  // Gerechnet wird ueber alle nicht versteckten Spalten, nicht ueber die schon gefilterte
+  // Liste: sonst haette die Leiste im Reiterbetrieb immer genau einen Knopf.
+  function _rtRuns(w){
+    var cols=w.cols||[],gs=[],seen={};
+    cols.forEach(function(c,i){
+      if(!c||c.hidden)return;
+      var g=c.group||'';
+      if(Object.prototype.hasOwnProperty.call(seen,g)){gs[seen[g]].n++;return;}
+      seen[g]=gs.length;gs.push({g:g,n:1,erste:i});
+    });
+    return gs;
+  }
+  function _rtTabOn(w){return _rtG(w,'rtGroups','')==='reiter'&&_rtRuns(w).length>1;}
+  function _rtTabAkt(w){
+    var runs=_rtRuns(w);if(!runs.length)return '';
+    var g=_rtTab[w.id];
+    for(var i=0;i<runs.length;i++)if(runs[i].g===g)return g;
+    return runs[0].g;                       // Vorwahl: der erste Lauf
+  }
+
   function _rtGrpRow(w,vis){
     var cols=w.cols||[],runs=[],last=null;
     vis.forEach(function(ci){
@@ -447,13 +500,28 @@
   var _rtTimeOk=(function(){try{var i=document.createElement('input');i.setAttribute('type','time');i.value='xy';return i.value==='';}catch(e){return false;}})();
   var _RT_SHEET='position:absolute;inset:0;z-index:9;display:flex;align-items:center;justify-content:center;padding:clamp(6px,3cqmin,16px);background:color-mix(in oklab,var(--bg) 74%,transparent)';
   var _RT_CARD ='background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.38);padding:clamp(9px,3cqmin,16px);width:min(400px,100%);max-height:100%;overflow:auto;font-size:clamp(11px,2.6cqmin,14px);color:var(--text)';
-  var _RT_BTN  ='padding:5px 10px;border-radius:8px;border:1px solid var(--line);background:var(--surface-2);color:var(--text);cursor:pointer;font-size:inherit';
+  // Die Knoepfe des Eingabeblatts sind am WANDTABLETT die eigentliche Bedienflaeche. Bei
+  // padding 5/10 und font-size:inherit waren sie rund 26 px hoch - unter jeder Fingergroesse.
+  // Die Konstante wird ausschliesslich im Blatt benutzt, die Tabelle bleibt unberuehrt.
+  var _RT_BTN  ='padding:5px 12px;min-height:clamp(40px,10cqmin,52px);min-width:56px;border-radius:10px;border:1px solid var(--line);background:var(--surface-2);color:var(--text);cursor:pointer;font-size:inherit';
   function _rtSheetBtn(attr,txt,style){return '<button '+attr+' style="'+_RT_BTN+(style||'')+'">'+esc(txt)+'</button>';}
   function _rtSheetBody(w,col,r,vid){
     var t=col.type||'num',d=_lastVals[vid],lim=_rtLim(w,col),eff=_rtEff(w,col,r);
     var cur=d?d.v:null,h='';
+    // Bei einer Spalte mit Rueckfrage (col.confirm) WAEHLT das Knopfraster nur vor;
+    // geschrieben wird erst ueber den roten Knopf. Vorher schrieb der Rasterknopf sofort
+    // (data-rtv, Klickzweig), und weil derselbe Zweig den Abschlussknopf unterdrueckte,
+    // erschien die eigens dafuer gebaute rote Rueckfrage bei "Anwenden", "Ausgang" und
+    // "Schaltzustand" NIE - also genau bei den drei Spalten, die ein Relais schalten.
+    var _pick=!!col.confirm;
+    var _attr=function(v){return (_pick?'data-rtpick="':'data-rtv="')+esc(String(v))+'"';};
     if(t==='bool'){
-      h+='<div style="display:flex;gap:6px">'+_rtSheetBtn('data-rtv="0"','Aus')+_rtSheetBtn('data-rtv="1"','An')+'</div>';
+      h+='<div style="display:flex;gap:6px" data-role="rtgrid">'
+        +_rtSheetBtn(_attr(0)+(String(cur)==='false'||String(cur)==='0'?' data-on="1"':''),'Aus',
+                     (String(cur)==='false'||String(cur)==='0')?';border-color:var(--accent);color:var(--accent)':'')
+        +_rtSheetBtn(_attr(1)+(String(cur)==='true'||String(cur)==='1'?' data-on="1"':''),'An',
+                     (String(cur)==='true'||String(cur)==='1')?';border-color:var(--accent);color:var(--accent)':'')
+        +'</div>';
       return h;
     }
     if(t==='sel'){
@@ -461,15 +529,24 @@
       if(o===null)return '<div style="color:var(--muted)">Optionen werden geladen …</div>';
       if(!o.length)return '<div style="color:var(--crit)">Dieses Profil hat keine Zuordnungen – nichts zum Auswählen.</div>';
       if(o.length<=8){
-        return '<div style="display:grid;grid-template-columns:1fr 1fr;gap:5px">'+o.map(function(x){
+        return '<div style="display:grid;grid-template-columns:1fr 1fr;gap:5px" data-role="rtgrid">'+o.map(function(x){
           var on=String(x.value)===String(cur);
-          return _rtSheetBtn('data-rtv="'+esc(String(x.value))+'"',String(x.text||x.value),on?';border-color:var(--accent);color:var(--accent)':'');
+          return _rtSheetBtn(_attr(x.value)+(on?' data-on="1"':''),String(x.text||x.value),
+                             on?';border-color:var(--accent);color:var(--accent)':'');
         }).join('')+'</div>';
       }
       var grp={},order=[],has=false;
       o.forEach(function(x){var k=x.group||'';if(k)has=true;if(!(k in grp)){grp[k]=[];order.push(k);}grp[k].push(x);});
       var opt=function(x){return '<option value="'+esc(String(x.value))+'"'+(String(x.value)===String(cur)?' selected':'')+'>'+esc(String(x.text||x.value))+'</option>';};
       var body=has?order.map(function(k){var inner=grp[k].map(opt).join('');return k?('<optgroup label="'+esc(k)+'">'+inner+'</optgroup>'):inner;}).join(''):o.map(opt).join('');
+      // Passt KEINE Option auf den Ist-Wert, waehlt der Browser stillschweigend die erste
+      // aus. Wer dann nur bestaetigt, schreibt einen Wert, den er nie gewaehlt hat - beim
+      // Pool ist das ein Relais. Ein nicht waehlbarer Platzhalter macht sichtbar, dass hier
+      // noch nichts steht; _rtSheetTake weist ihn zurueck.
+      var trifft=o.some(function(x){return String(x.value)===String(cur);});
+      if(!trifft){
+        body='<option value="" selected disabled>— bitte wählen —</option>'+body;
+      }
       return '<select data-role="rtvsel" style="width:100%;padding:5px">'+body+'</select>';
     }
     if(t==='time'){
@@ -506,7 +583,10 @@
       +' style="flex:1;padding:5px;text-align:right;font-size:inherit">'
       +'<span style="color:var(--muted)">'+esc(eff.unit||'')+'</span>'
       +_rtSheetBtn('data-rtstep="1"','+')+'</div>';
+    // Schnellknoepfe auch fuer 'num': die Analogseite fuehrt Schwellwert und Hysterese als
+    // num, und 22 auf 25 waeren sonst drei Tipper auf ein Zahlenfeld.
     if(t==='temp')h+='<div style="display:flex;gap:4px;margin-top:5px">'+_rtSheetBtn('data-rtdelta="-0.25"','− 0,25')+_rtSheetBtn('data-rtdelta="0.25"','+ 0,25')+'</div>';
+    else if(t==='num')h+='<div style="display:flex;gap:4px;margin-top:5px">'+_rtSheetBtn('data-rtdelta="-1"','− 1')+_rtSheetBtn('data-rtdelta="1"','+ 1')+'</div>';
     if(lim.min!=null||lim.max!=null)
       h+='<div style="font-size:.85em;color:var(--muted);margin-top:6px">Zulässig: '+(lim.min!=null?_rtFix(lim.min,dec):'–')+' bis '+(lim.max!=null?_rtFix(lim.max,dec):'–')+(eff.unit?(' '+eff.unit):'')+'</div>';
     return h;
@@ -520,6 +600,12 @@
     box.className='rtsheet';box.setAttribute('data-role','rtsheet');
     box.setAttribute('data-r',String(r));box.setAttribute('data-k',key);box.setAttribute('data-vid',String(vid));
     box.setAttribute('style',_RT_SHEET);
+    // Zeichnet der Rumpf ein Knopfraster (bool, oder sel mit hoechstens acht Optionen),
+    // schreibt schon der Klick auf einen Knopf und schliesst das Blatt. Ein zusaetzlicher
+    // "Uebernehmen"-Knopf hat dann nichts, was er uebernehmen koennte - er sieht aus wie
+    // der eigentliche Abschluss und tut nichts.
+    var _o=(col.type==='sel')?_rtOpts(w,col):null;
+    var raster=((col.type==='bool')||!!(_o&&_o.length&&_o.length<=8))&&!col.confirm;
     var okTxt=col.confirm?('Ja – '+(eff.label||key)+' schreiben'):'Übernehmen';
     var okStyle=col.confirm?';border-color:var(--crit);background:var(--crit);color:#08201c;font-weight:700':';border-color:var(--accent);color:var(--accent)';
     box.innerHTML='<div style="'+_RT_CARD+'">'
@@ -530,7 +616,7 @@
       +(col.confirm?('<div style="color:var(--crit);font-size:.9em;margin-top:7px">Diese Spalte schaltet unmittelbar am Gerät.</div>'):'')
       +'<div style="display:flex;gap:6px;justify-content:flex-end;margin-top:11px">'
       +_rtSheetBtn('data-rtcancel="1"','Abbrechen')
-      +(col.type==='bool'?'':_rtSheetBtn('data-rtok="1"',okTxt,okStyle))
+      +(raster?'':_rtSheetBtn('data-rtok="1"',okTxt,okStyle))
       +'</div></div>';
     root.appendChild(box);
     var f=$('[data-role^=rtv]',box);if(f&&f.focus)try{f.focus();}catch(e){}
@@ -540,7 +626,24 @@
   // dann auch, warum. Frueher verschwand ein NaN stillschweigend.
   function _rtSheetTake(w,sh,col,r){
     var t=col.type||'num',lim=_rtLim(w,col),dec=_rtDec(w,col,_rtEff(w,col,r)),n;
-    if(t==='sel'){var s=$('[data-role=rtvsel]',sh);return s?s.value:null;}
+    // Raster mit Rueckfrage: der Wert steht in der Vorwahl, nicht in einem Eingabefeld.
+    if(col.confirm&&$('[data-role=rtgrid]',sh)){
+      var pk=sh.getAttribute('data-pick');
+      if(pk===null||pk===''){toast('Bitte zuerst einen Wert wählen');return null;}
+      return pk;
+    }
+    if(t==='sel'){
+      var s=$('[data-role=rtvsel]',sh);
+      if(!s)return null;
+      if(String(s.value)===''){toast('Bitte einen Wert auswählen');return null;}
+      // Der Wert MUSS aus der Optionsliste stammen. Ohne diese Pruefung liefe 'sel' als
+      // einziger Zellentyp an den Grenzpruefungen unten vorbei.
+      var erl=_rtOpts(w,col)||[];
+      if(erl.length&&!erl.some(function(x){return String(x.value)===String(s.value);})){
+        toast('Unzulässige Auswahl');return null;
+      }
+      return s.value;
+    }
     if(t==='time'){
       var ti=$('[data-role=rtvtime]',sh);
       if(ti){n=_rtHMto(ti.value);if(n==null){toast('Keine gültige Uhrzeit');return null;}}
@@ -670,8 +773,12 @@
       if((c=C('lower')))c.depend=[{col:'cLow',op:'eq',val:0,act:'disable',hint:'Der untere Grenzwert ist abgeschaltet.'}];
       if((c=C('upper')))c.depend=[{col:'cHigh',op:'eq',val:0,act:'disable',hint:'Der obere Grenzwert ist abgeschaltet.'}];
       ['diff','hyst','lower','upper'].forEach(function(k){if((c=C(k)))c.unitFrom='sens';});
-      (w.cols||[]).forEach(function(x,i){x.group=(i<10)?'Schaltregel':'Monitor';});
-      w.rtGroups=true;
+      // Gruppen und Gruppenmodus NUR vorbelegen, wenn noch nichts dasteht - sonst wirft
+      // jedes erneute "Regeln einlesen" einen von Hand gezogenen Schnitt still weg.
+      // Dieselbe Wache steht drei Zeilen weiter schon bei rtWarn.
+      if(!(w.cols||[]).some(function(x){return x&&x.group;}))
+        (w.cols||[]).forEach(function(x,i){x.group=(i<10)?'Schaltregel':'Monitor';});
+      if(w.rtGroups===undefined)w.rtGroups=true;
       if(!(w.rtWarn||[]).length)w.rtWarn=[
         {when:[{col:'bad',op:'eq',val:0}],lvl:'warn',text:'Prüfzeit 0 ist unzulässig (Minimum 1 s).'},
         {when:[{col:'good',op:'eq',val:0}],lvl:'warn',text:'Prüfzeit 0 ist unzulässig (Minimum 1 s).'}
@@ -847,10 +954,19 @@
           +((head==='full')?('<span class="rth-meta">'+rows.length+' Regeln · '+vis.length+' Felder</span>'):'')
           +lock+'</span></div>';
       }
+      if(_rtTabOn(w)){
+        var _akt=_rtTabAkt(w);
+        h+='<div class="rttabs" role="tablist">'+_rtRuns(w).map(function(x){
+          return '<button class="rttab'+(x.g===_akt?' on':'')+'" role="tab" aria-selected="'
+            +(x.g===_akt?'true':'false')+'" data-rttab="'+esc(x.g)+'">'+esc(x.g||'Übrige')+'</button>';
+        }).join('')+'</div>';
+      }
       h+='<div class="rtscroll"><table class="rtt">';
       if(ch!=='none'){
         h+='<thead>';
-        if(w.rtGroups)h+=_rtGrpRow(w,vis);
+        // Im Reiterbetrieb waere die Gruppenkopfzeile ein zweiter, widerspruechlicher
+        // Reitersatz - es ist ja ohnehin nur eine Gruppe sichtbar.
+        if(w.rtGroups&&!_rtTabOn(w))h+=_rtGrpRow(w,vis);
         h+='<tr><th class="rtrl">Regel</th>';
         vis.forEach(function(ci){
           var c=cols[ci],al=_rtAlign(c);
@@ -917,6 +1033,17 @@
         if(b.hasAttribute('data-rtcancel')){_rtSheetClose(el);return true;}
         var key=sh.getAttribute('data-k'),col=_rtCol(w,key)||{},r=parseInt(sh.getAttribute('data-r'));
         if(b.hasAttribute('data-rtv')){_rtSheetApply(w,el,sh,b.getAttribute('data-rtv'));return true;}
+        if(b.hasAttribute('data-rtpick')){          // nur vorwaehlen, schreiben tut der rote Knopf
+          var gr=$('[data-role=rtgrid]',sh);
+          if(gr)$$('button',gr).forEach(function(x){
+            x.removeAttribute('data-on');
+            x.style.borderColor='';x.style.color='';
+          });
+          b.setAttribute('data-on','1');
+          b.style.borderColor='var(--accent)';b.style.color='var(--accent)';
+          sh.setAttribute('data-pick',b.getAttribute('data-rtpick'));
+          return true;
+        }
         if(b.hasAttribute('data-rttime')){
           var mv=_rtHMto(b.getAttribute('data-rttime'));
           var ti=$('[data-role=rtvtime]',sh);
@@ -955,6 +1082,18 @@
           if(val!==null&&val!==undefined)_rtSheetApply(w,el,sh,val);
           return true;
         }
+        return true;
+      }
+      // Reiterwechsel VOR dem Schloss- und Zellenzweig: er schreibt nichts und holt nichts
+      // vom Geraet, alle Zellenwerte liegen ohnehin im Wertespeicher.
+      var tb=e.target.closest('[data-rttab]');
+      if(tb){
+        _rtTab[w.id]=tb.getAttribute('data-rttab');
+        _rtSheetClose(el);
+        // Voller Neuaufbau: die Kopfzeile und die Reitermarkierung gehoeren zum Geruest,
+        // _rtPaintEl zeichnet nur die Zeilen neu. Dasselbe Muster wie beim
+        // Periodenumschalter der Zustandszeitleiste.
+        render();
         return true;
       }
       var lk=e.target.closest('[data-role=rtlock]');
@@ -1143,7 +1282,11 @@
       h+=row('Zeilenhöhe',_rtSel('#pRtDens',_rtG(w,'rtDens','normal'),[['kompakt','kompakt'],['normal','normal'],['weit','weit']]));
       h+=row('Zebrastreifen','<input type="checkbox" id="pRtZebra"'+(_rtG(w,'rtZebra',true)!==false?' checked':'')+'>');
       h+=row('Nummernchip','<input type="checkbox" id="pRtRowNum"'+(_rtG(w,'rtRowNum',true)!==false?' checked':'')+'>');
-      h+=row('Spaltengruppen','<input type="checkbox" id="pRtGroups"'+(w.rtGroups?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">zweite Kopfzeile aus dem Feld Gruppe</span>');
+      // Dreiwahl statt Haken. Der Altwert true bleibt "Kopfzeile" - keine Wanderung
+      // bestehender Seiten, kein Anfassen ihrer JSON-Dateien.
+      h+=row('Spaltengruppen',_rtSel('#pRtGroups',(w.rtGroups==='reiter')?'reiter':(w.rtGroups?'kopf':'aus'),
+        [['aus','aus'],['kopf','zweite Kopfzeile'],['reiter','Reiter (eine Gruppe je Reiter)']])
+        +'<div style="font-size:11px;color:var(--muted);margin:3px 2px 0">Reiter falten breite Tabellen; am Tablett bleibt so jede Spalte erreichbar.</div>');
       h+=row('Zusammenfassung','<input type="checkbox" id="pRtSum"'+(w.rtSum?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">Klartextsatz je Regel</span>');
       if(w.rtSum){
         h+=row('Satzvorlage','<input id="pRtSumPat" value="'+esc(w.rtSumPat||'')+'" placeholder="%sens1 %logic %sens2 + %diff, %start–%end → %rel %state">');
@@ -1280,7 +1423,7 @@
       sel('pRtDens',function(v){w.rtDens=(v==='normal')?undefined:v;});
       chk('pRtZebra',function(v){w.rtZebra=v?undefined:false;});
       chk('pRtRowNum',function(v){w.rtRowNum=v?undefined:false;});
-      chk('pRtGroups',function(v){w.rtGroups=v||undefined;});
+      sel('pRtGroups',function(v){w.rtGroups=(v==='reiter')?'reiter':(v==='kopf'?true:undefined);});
       chk('pRtSum',function(v){w.rtSum=v||undefined;});
       txt('pRtSumPat',function(v){w.rtSumPat=undef(v);});
       sel('pRtActKey',function(v){w.rtActKey=undef(v);});
