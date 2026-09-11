@@ -1056,6 +1056,13 @@ display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
 .rt .rttab:hover{color:var(--text)}
 .rt .rttab.on{border-color:var(--accent);color:var(--accent);
 background:color-mix(in oklab,var(--accent) 16%,var(--surface))}
+.rt .rttab .rtdot{flex:none;width:9px;height:9px;border-radius:50%;background:var(--info)}
+.rt .rttab .rtdot-warn{background:var(--warn)}
+.rt .rttab .rtdot-crit{background:var(--crit)}
+.rt .rttab .rtbadge{flex:none;min-width:18px;height:18px;padding:0 5px;border-radius:999px;
+display:inline-flex;align-items:center;justify-content:center;
+background:var(--accent);color:var(--text-inv);
+font-size:clamp(8px,2.2cqmin,11px);font-weight:700;font-variant-numeric:tabular-nums}
 .rt .rttabs~.rtscroll .rtt thead th{white-space:normal}
 .rtt{border-collapse:separate;border-spacing:0;width:100%;font-size:var(--rt-fs,clamp(10px,3.2cqmin,14px));font-variant-numeric:tabular-nums}
 .rtt thead th{position:sticky;top:0;z-index:3;background:var(--surface-2);color:var(--muted);font-weight:600;font-size:clamp(8px,2.6cqmin,11px);letter-spacing:.06em;text-transform:uppercase;text-align:center;padding:clamp(6px,2.6cqmin,11px) clamp(8px,3.2cqmin,14px) clamp(5px,2.4cqmin,10px);border-bottom:1px solid var(--line);white-space:nowrap}

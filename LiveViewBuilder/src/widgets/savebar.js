@@ -71,7 +71,9 @@
           +'</div></div>';
       }
       var n=(typeof deferCount==='function')?deferCount():0;
-      return '<div class="sbar'+(n>0?' has':'')+'" data-role="savewrap">'
+      // data-defer kennzeichnet die sammelnde Bauform. deferActive() liest genau das -
+      // ein Zaehler ueberlebt den Neuanstrich nicht (siehe 06-live.js).
+      return '<div class="sbar'+(n>0?' has':'')+'" data-role="savewrap" data-defer="1">'
         +'<div class="sb-l">'
           +'<span class="sb-lbl">'+esc(w.label||'Änderungen')+'</span>'
           +'<span class="sb-cnt" data-role="savecount">'+n+'</span>'
