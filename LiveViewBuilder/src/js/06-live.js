@@ -22,11 +22,31 @@
     return false;
   }
   // C1: Sichtbarkeits-Bedingung auswerten
+  // Sichtbarkeit auswerten.
+  //
+  // Boolesche Variablen kamen hier als echtes true/false herein, im Eingabefeld steht aber,
+  // was der Nutzer im Variablenprofil sieht - und das sind bei ~Switch und Konsorten die
+  // Zahlen 0 und 1. String(false) ist "false", parseFloat("0") ist 0: weder der Text- noch
+  // der Zahlenvergleich traf je zu. Die Bedingung war damit IMMER falsch, sobald der Wert
+  // bekannt war. Auf der Hauptseite hiess das: die Pool-Sinnbilder "Heizen" und "Winter"
+  // standen nur in der kurzen Spanne zwischen Zeichnen und erstem Wertabruf da und
+  // verschwanden dann - nach einem Ansichtswechsel, wo der Wert schon bekannt ist,
+  // erschienen sie gar nicht mehr.
+  function _visGleich(vv,soll){
+    if(String(vv)===String(soll))return true;
+    var n=(vv===true)?1:((vv===false)?0:parseFloat(String(vv).replace(',','.')));
+    var t=parseFloat(String(soll).replace(',','.'));
+    if(!isNaN(n)&&!isNaN(t)&&n===t)return true;
+    if(vv===true) return /^(1|true|wahr|an|ein|on|ja)$/i.test(String(soll));
+    if(vv===false)return /^(0|false|falsch|aus|off|nein)$/i.test(String(soll));
+    return false;
+  }
   function evalVis(w,d){var m=w.visMode||'truthy',vv=d.v;
     if(m==='truthy')return !(vv===false||vv===0||vv==='0'||vv===''||vv==null||String(vv).toLowerCase()==='false');
-    var n=parseFloat(String(vv).replace(',','.')),t=parseFloat(w.visVal);
-    if(m==='eq')return String(vv)===String(w.visVal)||(!isNaN(n)&&!isNaN(t)&&n===t);
-    if(m==='ne')return !(String(vv)===String(w.visVal)||(!isNaN(n)&&!isNaN(t)&&n===t));
+    var n=(vv===true)?1:((vv===false)?0:parseFloat(String(vv).replace(',','.')));
+    var t=parseFloat(String(w.visVal).replace(',','.'));
+    if(m==='eq')return _visGleich(vv,w.visVal);
+    if(m==='ne')return !_visGleich(vv,w.visVal);
     if(m==='ge')return !isNaN(n)&&!isNaN(t)&&n>=t;
     if(m==='le')return !isNaN(n)&&!isNaN(t)&&n<=t;
     return true;}

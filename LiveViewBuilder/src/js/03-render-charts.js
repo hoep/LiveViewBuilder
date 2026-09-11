@@ -166,7 +166,13 @@
     if(w.type==='calendar')fetchCalEvents(w,root);
     if(w.type==='eventctl')fetchEvent(w,root);
     if(w.type==='objinfo')fetchObjInfo(w,root);
-    if(w.visVar&&mode!=='edit'&&_lastVals[w.visVar]){var _ve=$('.w[data-id="'+w.id+'"]',(root||canvas));if(_ve)_ve.style.display=evalVis(w,_lastVals[w.visVar])?'':'none';}
+    // Sichtbarkeit per Variable (nicht im Edit). Ist der Wert noch nicht bekannt, wurde
+    // frueher GAR NICHTS gesetzt - das Widget blieb also sichtbar und verschwand erst beim
+    // ersten Wertabruf wieder. Dasselbe Widget verhielt sich damit je nach Weg anders:
+    // frisch geladen kurz da, nach einem Ansichtswechsel (Wert schon bekannt) sofort weg.
+    // Unbekannt heisst jetzt verborgen; der erste Abruf holt es hervor.
+    if(w.visVar&&mode!=='edit'){var _ve=$('.w[data-id="'+w.id+'"]',(root||canvas));
+      if(_ve)_ve.style.display=(_lastVals[w.visVar]&&evalVis(w,_lastVals[w.visVar]))?'':'none';}
     // Nur die klassische Bauform: die Raumkarte (thStil='karte') zeichnet sich ueber ihren
     // eigenen mount-Hook. Liefe updateTherm auch dort, wuerde es Rollen wie [data-role=modes]
     // vergeblich suchen und die Klasse auf ein .htc-Element setzen, das es dort nicht gibt.
