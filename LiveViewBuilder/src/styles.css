@@ -1291,6 +1291,13 @@
   .rtrl-in{display:flex;align-items:center;gap:clamp(6px,3cqmin,12px);min-height:var(--rt-rowh,44px)}
   .rtrl-ix{flex:none;width:clamp(18px,5cqmin,26px);height:clamp(18px,5cqmin,26px);border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:clamp(9px,2.8cqmin,12px);font-weight:700;font-variant-numeric:tabular-nums;background:color-mix(in oklab,var(--accent) 15%,var(--surface));color:var(--accent);box-shadow:inset 0 0 0 1px color-mix(in oklab,var(--accent) 28%,transparent)}
   .rtrl-tx{font-weight:600;color:var(--text)}
+  /* Der Regelname oeffnet das Zeilenblatt - er muss aussehen wie ein Ziel. */
+  .rtt td.rtrl[data-rtrow]{cursor:pointer}
+  .rtt td.rtrl[data-rtrow]:hover .rtrl-tx{color:var(--accent)}
+  .rtt td.rtrl[data-rtrow]:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+  /* Gesperrt, aber antippbar: gedaempft statt tot - der Tipp erklaert die Sperre. */
+  .rtt td.rtc[data-rvx]{cursor:pointer;opacity:.72}
+  .rtt td.rtc[data-rvx]:hover{opacity:1}
   .rtt tbody td{padding:clamp(4px,2.2cqmin,9px) clamp(8px,3.2cqmin,14px);border-bottom:1px solid var(--line-soft);text-align:center;vertical-align:middle;height:var(--rt-rowh,44px)}
   .rt-zeb .rtt tbody tr:nth-child(even) td{background:var(--tile)}
   .rtt tbody tr:hover td{background:color-mix(in oklab,var(--accent) 7%,var(--surface))}
