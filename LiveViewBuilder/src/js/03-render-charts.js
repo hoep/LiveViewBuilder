@@ -204,7 +204,9 @@
     // danach gibt es die alten Klone nicht mehr.
     _compKids.forEach(function(k){
       if(!k||!k.id)return;
-      if(k._pOff)_compOff[k.id]=k._pOff; else delete _compOff[k.id];   // zurueck auf jetzt = vergessen
+      var m={},n=0;
+      _COMP_ZUST.forEach(function(key){ if(k[key]){m[key]=k[key];n++;} });   // 0 heisst "jetzt" = vergessen
+      if(n)_compOff[k.id]=m; else delete _compOff[k.id];
     });
     _compKids=[];allWidgets().forEach(function(w){if(w.type==='component')expandComponent(w);}); // M3: Komponenten-Instanzen expandieren
     _contKids=[];state.widgets.forEach(function(w){if(w.type==='container')expandContainer(w);}); // Container-Kinder zeichnen (echte, editierbare Widgets)
@@ -2685,7 +2687,16 @@
   function closePopup(){var ov=$('#overlay');if(ov)ov.classList.remove('open');var oc=$('#ovcanvas');if(oc)oc.innerHTML='';_popup=null;invalidateVidx();}
   // M3: Custom Controls — eine Ansicht als parametrierbare, wiederverwendbare Komponente (Master), Instanzen remappen IDs (Alias)
   var _compKids=[];
-  var _compOff={};   // Klon-Kennung -> gewaehlte Periode (w._pOff), ueberlebt das Neuaufbauen der Komponente
+  // Laufzeitzustand eines Komponenten-Kindes, der das Neuaufbauen ueberleben muss.
+  // Ein Klon wird bei JEDEM Zeichnen neu aus der Vorlage gebaut; alles, was der
+  // Betrachter am Klon eingestellt hat, waere sonst beim naechsten Strich wieder weg.
+  // Anfangs stand hier nur die gewaehlte Periode der Zustandszeitleiste (_pOff). Beim
+  // EPG-Raster kam dasselbe heraus: es liegt auf der Seite "Fernsehausstrahlungen" in
+  // einer Komponente, ein Klick auf "20:15" setzte _epgAbs am KLON, und der naechste
+  // Aufbau warf ihn weg - man musste ein zweites Mal klicken. Die Liste steht deshalb
+  // an EINER Stelle; ein Widget mit eigenem Laufzeitzustand traegt sich hier ein.
+  var _compOff={};   // Klon-Kennung -> gemerkte Laufzeitangaben
+  var _COMP_ZUST=['_pOff','_epgAbs','_epgOff'];
   var _contKids=[]; // Container-Kinder: echte, editierbare Widget-Instanzen (liegen in w.kids)
   var _cbase={};    // Laufzeit: contId -> {w,h} eingefrorene Artboard-Größe im Editor (NICHT persistiert)
   function _contBBox(w){var cw=0,ch=0;(w.kids||[]).forEach(function(k){if(k&&k.type!=='container'){cw=Math.max(cw,(k.x||0)+(k.w||0));ch=Math.max(ch,(k.y||0)+(k.h||0));}});return {w:Math.max(20,cw+6),h:Math.max(20,ch+6)};}
@@ -2719,7 +2730,7 @@
     // GENAUSO wie auf der Seite: Rahmen (frame/no-frame), Hintergrund/Deckung (bgT), Wert/Icon-
     // Verschiebungen, Icon-Farbe/-Grafik, Typografie, Groß-/Kleinschreibung, Animation, Sichtbarkeit.
     (src.widgets||[]).forEach(function(mw){var c={};for(var k in mw)c[k]=mw[k];c.id=w.id+'__'+mw.id;c.varId=mp(c.varId);c.varId2=mp(c.varId2);c.varId3=mp(c.varId3);if(c.visVar)c.visVar=mp(c.visVar);
-      if(_compOff[c.id])c._pOff=_compOff[c.id];   // gewaehlte Periode wiederherstellen
+      var _zs=_compOff[c.id]; if(_zs)for(var _zk in _zs)c[_zk]=_zs[_zk];   // Laufzeitzustand wiederherstellen
       try{var ke=_mkWidgetEl(c);ke.classList.add('compkid');inner.appendChild(ke);}catch(e){}
       _compKids.push(c);});}
   // ---- Container: Kinder (w.kids) einbetten; Kinder sind echte, editierbare Widgets ----
