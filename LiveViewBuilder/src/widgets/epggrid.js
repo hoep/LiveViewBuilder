@@ -137,7 +137,8 @@
   }
 
   function _epgPaint(w,root){
-    var d=_EPGD[w.id];if(!d)return;
+    var d=_EPGD[w.id];
+    if(!d)return;
     var host=$('.w[data-id="'+w.id+'"]',(root||canvas));if(!host)return;
     var body=$('[data-role=epgbody]',host);if(!body)return;
 

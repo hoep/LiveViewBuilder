@@ -21,7 +21,7 @@
   });
 
   // Vorschau/Runtime: interaktive Widgets schreiben
-  var _lpTimer=null,_lpFired=false;
+  var _lpTimer=null,_lpFired=false,_lpEl=null;
   // Widget-Config zu einem angeklickten Element bestimmen. IDs koennen zwischen Seite und
   // Popup/Hover kollidieren (z. B. Meldungsliste im Popup vs. Kachel auf der Seite, beide "w131").
   // Fuer Interaktionen zaehlt der KONTEXT: liegt das Element im Overlay, zuerst dort aufloesen,
@@ -34,7 +34,14 @@
     return widget(id);
   }
   function _wClick(e){
-    if(mode==='edit')return;if(_lpFired){_lpFired=false;return;} // O1: nach Long-Press Klick unterdrücken
+    if(mode==='edit')return;
+    if(_lpFired){                                   // O1: nach Long-Press Klick unterdruecken
+      _lpFired=false;var _lpe=_lpEl;_lpEl=null;
+      // Nur den Klick schlucken, der WIRKLICH zu diesem Langdruck gehoert. Ist die
+      // Herkunft unbekannt (Merker aus einer frueheren, schon verlassenen Seite), wird
+      // NICHT geschluckt - das war ja gerade der Fehler.
+      if(_lpe&&e.target.closest('.w')===_lpe)return;
+    }
     var el=e.target.closest('.w');if(!el)return;var w=_wForEl(el);if(!w)return;
     var _wc=WIDGETS[w.type];if(_wc&&_wc.click&&_wc.click(w,el,e)===true)return; // Registry-Widget-Klick
     if(w.closePopup){closePopup();return;} // A1: Popup schließen
@@ -112,14 +119,30 @@
     document.addEventListener('keydown',function(e){if((e.key||'')==='Escape'){if(_popup)closePopup();if(typeof _hover!=='undefined'&&_hover)closeHover();}});
   })();
   // O1: Long-Press an button/tile -> Popup
+  //
+  // _lpFired unterdrueckt den Klick, der einem Langdruck folgt - sonst wuerde das Widget
+  // zusaetzlich zu Popup oder Seitenwechsel auch noch normal schalten. Der Merker wurde
+  // aber NUR zurueckgesetzt, wenn die naechste gedrueckte Kachel selbst eine
+  // Langdruck-Aktion traegt; jeder andere Druck lief vorher in ein return.
+  //
+  // Loest ein Langdruck eine Seitennavigation aus (longNav), landet der zugehoerige Klick
+  // auf der bereits verlassenen Seite - er raeumt also nichts mehr auf. Der Merker stand
+  // danach weiter, und auf der NEUEN Seite wurde der erste Klick verschluckt. Genau so war
+  // das EPG-Raster nur mit zwei Klicks zu bedienen; gemessen am 11.09.2026 im Browser des
+  // Nutzers: erster Klick lpFired=1 (wirkungslos), zweiter lpFired=0 (wirkt).
+  //
+  // Zwei Riegel dagegen: JEDER neue Druck beendet die Nachwirkung des vorigen, und
+  // unterdrueckt wird nur noch der Klick auf DIE Kachel, die den Langdruck ausgeloest hat.
   document.addEventListener('pointerdown',function(e){
-    if(mode==='edit')return;var el=e.target.closest('.w');if(!el)return;var w=_wForEl(el);
+    if(mode==='edit')return;
+    _lpFired=false;_lpEl=null;                       // neuer Druck = alte Nachwirkung endet
+    var el=e.target.closest('.w');if(!el)return;var w=_wForEl(el);
     if(!w||(!w.longPopup&&!w.longNav))return; // Lang-Druck (Popup ODER Seite) für JEDES Widget
-    _lpFired=false;if(_lpTimer)clearTimeout(_lpTimer);
-    _lpTimer=setTimeout(function(){_lpFired=true;if(w.longNav&&store.views[w.longNav])navGo(w.longNav);else if(w.longPopup)openPopup(w.longPopup,_aliasMap(w));},550);
+    if(_lpTimer)clearTimeout(_lpTimer);
+    _lpTimer=setTimeout(function(){_lpFired=true;_lpEl=el;if(w.longNav&&store.views[w.longNav])navGo(w.longNav);else if(w.longPopup)openPopup(w.longPopup,_aliasMap(w));},550);
   },true);
   document.addEventListener('pointerup',function(){if(_lpTimer){clearTimeout(_lpTimer);_lpTimer=null;}});
-  document.addEventListener('pointercancel',function(){if(_lpTimer){clearTimeout(_lpTimer);_lpTimer=null;}_lpFired=false;});
+  document.addEventListener('pointercancel',function(){if(_lpTimer){clearTimeout(_lpTimer);_lpTimer=null;}_lpFired=false;_lpEl=null;});
   function _wChange(e){
     if(mode==='edit')return;
     var ss=e.target.closest('[data-role=skwsel]');if(ss){var _base=store.skin;store.skin=ss.value;applySkin();try{localStorage.setItem('lvskin',store.skin);localStorage.setItem('lvskinbase',_base);}catch(_){}return;}  // Layout-Stand mitschreiben: aendert er sich spaeter, verfaellt die Geraete-Wahl
