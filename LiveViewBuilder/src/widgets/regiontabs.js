@@ -133,7 +133,11 @@
       var el=b.closest('.w[data-id]');
       if(!el)return;
       var w=(typeof _wForEl==='function')?_wForEl(el):null;
-      if(!w||w.type!=='regiontabs'||!w.slot||typeof setRegion!=='function')return;
+      // Im NAVIGATIONS-Betrieb hat dieser Fänger nichts zu suchen. Steht am Widget
+      // trotzdem ein Region-Name (etwa aus den Vorgaben), setzte er hier eine
+      // Zeitmarke - und der Klickzweig hielt sich danach 800 ms lang für schon
+      // erledigt und rief navGo() nie auf. Der Reiter sah aus, als tue er nichts.
+      if(!w||w.type!=='regiontabs'||w.nav||!w.slot||typeof setRegion!=='function')return;
       w._rtZeit=Date.now();
       setRegion(w.slot,b.getAttribute('data-rtv'));
     }catch(_e){}
