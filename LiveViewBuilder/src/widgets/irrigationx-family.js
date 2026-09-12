@@ -36,7 +36,7 @@
       +'.irxwrap.karte .irx-grid{grid-template-columns:repeat(auto-fit,minmax(clamp(230px,30cqi,460px),1fr));grid-auto-rows:1fr;align-content:stretch;height:100%;box-sizing:border-box}'
       +'.irxwrap.karte{container-type:inline-size;padding:0}'
       +'.irk{container-type:inline-size;border:1px solid var(--line);border-radius:var(--r,12px);background:var(--surface);'
-      + 'padding:clamp(10px,3.4cqmin,17px);display:flex;flex-direction:column;cursor:pointer}'
+      + 'padding:clamp(9px,2.9cqmin,15px);display:flex;flex-direction:column;overflow:hidden;cursor:pointer}'
       +'.irk-h{display:flex;align-items:flex-start;gap:clamp(6px,2.6cqi,11px)}'
       +'.irk-nm{font-size:clamp(13px,5.6cqi,18px);font-weight:600;line-height:1.2}'
       +'.irk-pl{font-size:clamp(10px,3.9cqi,12.5px);color:var(--faint);margin-top:3px;font-variant-numeric:tabular-nums}'
@@ -45,19 +45,19 @@
       +'.irk-st.ok{color:var(--accent);background:color-mix(in oklab,var(--accent) 12%,transparent);border:1px solid color-mix(in oklab,var(--accent) 45%,transparent)}'
       +'.irk-st.blk{color:var(--crit);background:color-mix(in oklab,var(--crit) 12%,transparent);border:1px solid color-mix(in oklab,var(--crit) 45%,transparent)}'
       +'.irk-st.run{color:var(--info);background:color-mix(in oklab,var(--info) 12%,transparent);border:1px solid color-mix(in oklab,var(--info) 45%,transparent)}'
-      +'.irk-big{display:flex;align-items:baseline;gap:clamp(5px,2.4cqi,9px);margin-top:clamp(8px,3.2cqmin,15px)}'
+      +'.irk-big{display:flex;align-items:baseline;gap:clamp(5px,2.4cqi,9px);margin-top:clamp(5px,2.2cqmin,10px)}'
       +'.irk-big b{font-size:clamp(22px,13cqi,40px);font-weight:700;line-height:1;font-variant-numeric:tabular-nums;font-family:var(--fm)}'
       +'.irk-big i{font-style:normal;font-size:clamp(11px,4.4cqi,15px);color:var(--muted)}'
       +'.irk-big s{font-size:clamp(10px,3.9cqi,13px);color:var(--faint);font-variant-numeric:tabular-nums;font-family:var(--fm)}'
-      +'.irk-why{font-size:clamp(10px,3.9cqi,12.5px);color:var(--muted);margin-top:5px;line-height:1.35}'
+      +'.irk-why{font-size:clamp(10px,3.9cqi,12.5px);color:var(--muted);margin-top:4px;line-height:1.3}'
       +'.irk-why.warn{color:var(--warn)}'
-      +'.irk-sep{height:1px;background:var(--line-soft);margin:clamp(8px,3.2cqmin,13px) 0 clamp(7px,2.8cqmin,11px)}'
+      +'.irk-sep{height:1px;background:var(--line-soft);margin:clamp(6px,2.4cqmin,10px) 0 clamp(5px,2cqmin,8px)}'
       +'.irk-kv{display:flex;gap:clamp(10px,5cqi,22px)}'
       +'.irk-kv>div{flex:1;min-width:0}'
       +'.irk-k{font-size:clamp(8px,3.1cqi,11px);letter-spacing:.06em;text-transform:uppercase;color:var(--faint);font-weight:600}'
       +'.irk-v{font-size:clamp(10px,4.1cqi,13.5px);margin-top:2px;font-variant-numeric:tabular-nums;font-family:var(--fm)}'
       +'.irk-v.leer{color:var(--faint);font-family:var(--fu)}'
-      +'.irk-f{display:flex;align-items:center;gap:clamp(7px,3cqi,13px);margin-top:auto;padding-top:clamp(8px,3.2cqmin,13px)}'
+      +'.irk-f{display:flex;align-items:center;gap:clamp(7px,3cqi,13px);margin-top:auto;padding-top:clamp(6px,2.4cqmin,10px)}'
       +'.irk-bat{display:flex;align-items:center;gap:6px;font-size:clamp(10px,3.9cqi,13px);color:var(--muted);font-variant-numeric:tabular-nums}'
       +'.irk-bat.warn{color:var(--warn)}'
       +'.irk-go{margin-left:auto;min-height:clamp(38px,11cqmin,46px);min-width:clamp(96px,42cqi,140px);display:flex;align-items:center;'
@@ -360,7 +360,7 @@
       else if(wa&&wa.stufe&&wa.stufe!=='ok'&&wa.text) h+='<div class="irk-why warn">'+esc(wa.text)+'</div>';
       else if(pr.tempFactor!=null&&num(pr.tempFactor,1)!==1)
         h+='<div class="irk-why">Temperatur '+Math.round(num(pr.tempFactor,1)*100)+' % · '+(pr.tempNow!=null?(String(pr.tempNow).replace('.',',')+' °C'):'')+'</div>';
-      else h+='<div class="irk-why">&nbsp;</div>';
+
       h+='<div class="irk-sep"></div>'
         +'<div class="irk-kv">'
           +'<div><div class="irk-k">Nächster Lauf</div><div class="irk-v'+(naechst?'':' leer')+'">'+esc(naechst||'—')+'</div></div>'
@@ -412,7 +412,16 @@
       if(w._kind==='circuit'){ h+='<div class="irx-grid">'+list.map(zeichne).join('')+'</div></div>'; return h; }
       // Im Entwurfsstil zeigt EINE Ansicht EINEN Standort - die Bereichs-/Raumtitel
       // waeren dort nur Wiederholung der Seitenueberschrift.
-      if(stil==='karte'){ h+='<div class="irx-grid">'+list.map(zeichne).join('')+'</div></div>'; return h; }
+      if(stil==='karte'){
+        // FESTE Spaltenzahl statt auto-fit: ein umbrechendes Raster erzeugt eine zweite
+        // Reihe, die nicht mehr in die Kachel passt - und dann scrollt die Seite, was auf
+        // einem Wandtablett niemand will. Lieber schmalere Karten; die Schrift rechnet
+        // ohnehin aus der Kartenbreite (cqi).
+        var sp=Math.max(1,Math.min(3,list.length));
+        h+='<div class="irx-grid" style="grid-template-columns:repeat('+sp+',minmax(0,1fr))">'
+          +list.map(zeichne).join('')+'</div></div>';
+        return h;
+      }
       // Gruppieren: Bereich/Geschoss -> Raum (stabil)
       var groups={}, order=[];
       list.forEach(function(c){var key=(c.group||'')+'||'+(c.room||'');if(!groups[key]){groups[key]={group:c.group,room:c.room,items:[]};order.push(key);}groups[key].items.push(c);});
