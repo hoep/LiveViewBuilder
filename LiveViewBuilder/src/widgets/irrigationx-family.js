@@ -34,7 +34,19 @@
       // Raster mit fester Mindestbreite fallen: bei drei Kreisen in einer 1430 breiten
       // Kachel entstanden sonst fuenf Spalten, von denen zwei leer blieben.
       +'.irxwrap.karte .irx-grid{grid-template-columns:repeat(auto-fit,minmax(clamp(230px,30cqi,460px),1fr));grid-auto-rows:1fr;align-content:stretch;height:100%;box-sizing:border-box}'
-      +'.irxwrap.karte{container-type:inline-size;padding:0}'
+      +'.irxwrap.karte{container-type:inline-size;padding:0;display:flex;flex-direction:column;gap:clamp(5px,1.6cqmin,9px)}'
+      +'.irxwrap.karte .irx-grid{flex:1;min-height:0}'
+      // Der Schatten-Modus ist die wichtigste Aussage der Seite: es sieht aus wie eine
+      // Steuerung, schaltet aber nichts. Er gehoert deshalb sichtbar ueber die Kacheln -
+      // und verschwindet von selbst, sobald scharf geschaltet ist.
+      +'.irx-schatten{flex:none;display:flex;align-items:center;gap:9px;padding:6px 12px;border-radius:var(--r-s,9px);'
+      + 'border:1px solid var(--warn);background:color-mix(in oklab,var(--warn) 10%,transparent);'
+      + 'color:var(--warn);font-size:clamp(10px,2.4cqmin,13px);line-height:1.3}'
+      +'.irx-schatten b{font-weight:700}'
+      +'.irx-schatten span{color:var(--muted);font-weight:400}'
+      +'.irk-sch{flex:none;padding:4px 8px;border-radius:var(--r-s,9px);font-size:clamp(9px,3.2cqi,11px);font-weight:600;'
+      + 'color:var(--warn);border:1px solid color-mix(in oklab,var(--warn) 45%,transparent);'
+      + 'background:color-mix(in oklab,var(--warn) 10%,transparent);white-space:nowrap}'
       +'.irk{container-type:inline-size;border:1px solid var(--line);border-radius:var(--r,12px);background:var(--surface);'
       + 'padding:clamp(9px,2.9cqmin,15px);display:flex;flex-direction:column;overflow:hidden;cursor:pointer}'
       +'.irk-h{display:flex;align-items:flex-start;gap:clamp(6px,2.6cqi,11px)}'
@@ -352,7 +364,9 @@
         +'<div class="irk-h"><div style="flex:1;min-width:0">'
           +'<div class="irk-nm">'+escL(irName(c.name))+'</div>'
           +'<div class="irk-pl'+(plan?'':' ')+'" style="'+(plan?'':'color:var(--warn)')+'">'+esc(plan||'kein Zeitplan hinterlegt')+'</div>'
-        +'</div><span class="irk-st '+stat[1]+'">'+esc(stat[0])+'</span></div>'
+        +'</div>'
+        +(c.armed===false?'<span class="irk-sch">Schatten</span>':'')
+        +'<span class="irk-st '+stat[1]+'">'+esc(stat[0])+'</span></div>'
         +'<div class="irk-big"><b>'+(Math.round(eff*10)/10)+'</b><i>min</i>'
         + (Math.abs(eff-basis)>0.05 ? '<s style="text-decoration:line-through">'+(Math.round(basis*10)/10)+' min</s>'
                                      : '<s style="text-decoration:none">Basis '+(Math.round(basis*10)/10)+' min</s>')+'</div>';
@@ -408,6 +422,15 @@
       // Im Entwurfsstil traegt die SEITE den Schatten-Hinweis (Kopfzeile), nicht jede
       // Kachel - sonst steht er auf beiden Standortseiten doppelt.
       if(shadow&&stil!=='karte')h+='<div class="irx-shadow">Schatten-Modus aktiv – im Schatten laufende Kreise schalten den Aktor noch nicht real.</div>';
+      if(shadow&&stil==='karte'){
+        var nSch=list.filter(function(c){return c.armed===false;}).length;
+        h+='<div class="irx-schatten">'
+          +'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">'
+          +'<path d="M12 9v4"/><path d="M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/></svg>'
+          +'<b>Schatten-Modus</b>'
+          +'<span>'+(nSch===list.length?'Die Steuerung schaltet nicht':(nSch+' von '+list.length+' Kreisen schalten nicht'))
+          +' – gegossen wird von der LinkTap-App. Antippen einer Kachel zeigt den Schalter zum Scharfstellen.</span></div>';
+      }
       var zeichne=(stil==='karte')?function(c){return irKarte(c,w);}:irCard;
       if(w._kind==='circuit'){ h+='<div class="irx-grid">'+list.map(zeichne).join('')+'</div></div>'; return h; }
       // Im Entwurfsstil zeigt EINE Ansicht EINEN Standort - die Bereichs-/Raumtitel
