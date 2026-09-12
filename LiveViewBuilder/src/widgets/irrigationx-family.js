@@ -76,7 +76,18 @@
       + 'justify-content:center;gap:7px;border:1px solid var(--accent-2);border-radius:var(--r-s,9px);background:var(--surface-2);'
       + 'color:var(--accent);font-size:clamp(11px,4.3cqi,14.5px);font-weight:600;cursor:pointer}'
       +'.irk-go:disabled{opacity:.45;cursor:default}'
-      +'.irk-zu{margin-top:clamp(8px,3.2cqmin,13px);border-top:1px solid var(--line-soft);padding-top:clamp(8px,3.2cqmin,13px)}'
+      // Die volle Reglerkarte passt NICHT in die Kachel: sie ist hoeher als die Zeile,
+      // und ein Raster mit fester Zeilenhoehe schneidet sie ab. Sie kommt deshalb als
+      // Blatt ueber die Kacheln - dieselbe Sprache wie bei den Regeltabellen.
+      +'.irx-blatt{position:absolute;inset:0;z-index:9;display:flex;align-items:center;justify-content:center;'
+      + 'padding:clamp(6px,3cqmin,16px);background:color-mix(in oklab,var(--bg) 74%,transparent)}'
+      +'.irx-blatt-in{background:var(--surface);border:1px solid var(--line);border-radius:var(--r,12px);'
+      + 'box-shadow:0 10px 30px rgba(0,0,0,.38);padding:clamp(9px,3cqmin,16px);width:min(460px,100%);'
+      + 'max-height:100%;overflow:auto;container-type:inline-size}'
+      +'.irx-blatt-k{display:flex;align-items:center;gap:9px;margin-bottom:6px}'
+      +'.irx-blatt-k b{flex:1;font-size:clamp(13px,3.4cqmin,17px)}'
+      +'.irx-blatt-zu{flex:none;min-height:36px;min-width:36px;display:flex;align-items:center;justify-content:center;'
+      + 'border:1px solid var(--line);border-radius:var(--r-s,9px);background:var(--surface-2);color:var(--muted);cursor:pointer}'
       +'.irxc-h{display:flex;align-items:center;gap:clamp(5px,2.6cqi,10px)}'
       +'.irxc-ic{width:clamp(16px,7cqi,26px);height:clamp(16px,7cqi,26px);flex:none;color:var(--accent);display:flex;align-items:center;justify-content:center}'
       +'.irxc-ic svg{width:100%;height:100%}'
@@ -386,8 +397,6 @@
         h+='<span class="irk-bat'+(wa.batt<=25?' warn':'')+'">'+irBattIco(wa.batt)+num(wa.batt,0)+' %</span>';
       h+='<button class="irk-go" data-irrun="'+c.iid+'"'+(run?' disabled':'')+'>'+irTropfen()
         +(run?'Läuft':'Jetzt gießen')+'</button></div>';
-      // Aufgeklappt: die volle Reglerkarte, damit nichts unerreichbar wird.
-      if(_irOffen[c.iid]) h+='<div class="irk-zu">'+irCard(c)+'</div>';
       h+='</div>';
       return h;
     }
@@ -442,7 +451,16 @@
         // ohnehin aus der Kartenbreite (cqi).
         var sp=Math.max(1,Math.min(3,list.length));
         h+='<div class="irx-grid" style="grid-template-columns:repeat('+sp+',minmax(0,1fr))">'
-          +list.map(zeichne).join('')+'</div></div>';
+          +list.map(zeichne).join('')+'</div>';
+        var auf=list.filter(function(c){return _irOffen[c.iid];})[0];
+        if(auf){
+          h+='<div class="irx-blatt" data-irblatt="1"><div class="irx-blatt-in">'
+            +'<div class="irx-blatt-k"><b></b>'
+            +'<button class="irx-blatt-zu" data-irzu="'+auf.iid+'" title="Schließen">'
+            +'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>'
+            +'</button></div>'+irCard(auf)+'</div></div>';
+        }
+        h+='</div>';
         return h;
       }
       // Gruppieren: Bereich/Geschoss -> Raum (stabil)
@@ -476,6 +494,11 @@
       host.querySelectorAll('[data-irkarte]').forEach(function(k){k.addEventListener('click',function(e){
         if(e.target.closest('button,input,select'))return;
         var id=+k.getAttribute('data-irkarte');_irOffen[id]=!_irOffen[id];irPaint(w);});});
+      host.querySelectorAll('[data-irzu]').forEach(function(b){b.addEventListener('click',function(e){
+        e.stopPropagation();delete _irOffen[+b.getAttribute('data-irzu')];irPaint(w);});});
+      host.querySelectorAll('[data-irblatt]').forEach(function(bl){bl.addEventListener('click',function(e){
+        if(e.target!==bl)return;            // nur der Klick NEBEN die Karte schliesst
+        _irOffen={};irPaint(w);});});
       host.querySelectorAll('[data-irstop]').forEach(function(b){b.addEventListener('click',function(){var c=irById(+b.getAttribute('data-irstop'));if(!c)return;irStopNow(c);irPaint(w);});});
       host.querySelectorAll('[data-irmin]').forEach(function(b){b.addEventListener('click',function(){var c=irById(+b.getAttribute('data-irmin'));if(!c)return;var d=+b.getAttribute('data-ird');var v=Math.round((c.runMin||0)+d);var mx=(c.dur&&c.dur.max)||120;c.runMin=Math.max(1,Math.min(mx,v));irPaint(w);});});
       host.querySelectorAll('[data-irdur]').forEach(function(b){b.addEventListener('click',function(){var c=irById(+b.getAttribute('data-irdur'));if(!c)return;var d=+b.getAttribute('data-ird');var cur=Math.round(num(c.st.Duration,c.runMin||20));var st=(c.dur&&c.dur.step)||1;var v=cur+d*st;v=Math.max(c.dur.min,Math.min(c.dur.max,v));irSetVar(c,'Duration',v);irPaint(w);});});
