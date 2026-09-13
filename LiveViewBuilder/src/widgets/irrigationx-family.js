@@ -76,6 +76,35 @@
       + 'justify-content:center;gap:7px;border:1px solid var(--accent-2);border-radius:var(--r-s,9px);background:var(--surface-2);'
       + 'color:var(--accent);font-size:clamp(11px,4.3cqi,14.5px);font-weight:600;cursor:pointer}'
       +'.irk-go:disabled{opacity:.45;cursor:default}'
+      // Verdichtung nach VERFUEGBARER KARTENHOEHE, nicht nach Bildschirmbreite: was
+      // zaehlt, ist der Platz IN der Kachel. Weggelassen wird von aussen nach innen -
+      // zuerst die Planzeile (steht als "naechster Lauf" ohnehin da), dann das
+      // Wertepaar. Name, Zustand, Dauer, Sperrgrund und Knopf bleiben immer.
+      +'.irx-knapp .irk-pl{display:none}'
+      +'.irx-knapp .irk-big{margin-top:clamp(3px,1.4cqmin,7px)}'
+      +'.irx-enger .irk-kv,.irx-enger .irk-sep{display:none}'
+      +'.irx-schmal .irk-go i{display:none}'
+      +'.irx-schmal .irk-go{min-width:clamp(44px,18cqi,64px)}'
+      +'.irx-schmal .irk-sch{display:none}'
+      // Unter etwa 120 px Kartenhoehe hilft Weglassen nicht mehr - dann ist die Karte
+      // die falsche FORM. Sie wird zur Zeile: Name und Zustand links, Dauer, Batterie
+      // und Knopf rechts. Das ist dieselbe Auskunft in einer Anordnung, die passt.
+      +'.irx-zeile .irk{flex-direction:row;align-items:center;gap:clamp(8px,3cqi,16px);padding:clamp(7px,2.4cqmin,12px) clamp(9px,2.9cqmin,15px)}'
+      +'.irx-zeile .irk-h{flex:1;min-width:0;align-items:center}'
+      +'.irx-zeile .irk-big{margin:0;flex:none}'
+      +'.irx-zeile .irk-big b{font-size:clamp(17px,9cqi,30px)}'
+      +'.irx-zeile .irk-big s{display:none}'
+      +'.irx-zeile .irk-why,.irx-zeile .irk-kv,.irx-zeile .irk-sep,.irx-zeile .irk-pl{display:none}'
+      +'.irx-zeile .irk-f{margin:0;padding:0;flex:none}'
+      // In der Zeilenform steht der Name neben den Marken statt darueber. Ohne
+      // Kuerzung laeuft er unter ihnen durch - flex:1 schrumpft die BOX, nicht den TEXT.
+      +'.irx-zeile .irk-nm{font-size:clamp(12px,5cqi,16px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'
+      // Der NAME ist die wichtigste Angabe - er darf nicht als erstes weichen.
+      // In der Zeilenform faellt deshalb die Schatten-Marke weg (sie steht im Band
+      // darueber) und der Name bekommt eine Untergrenze.
+      +'.irx-zeile .irk-h>div:first-child{overflow:hidden;flex:1 1 auto;min-width:clamp(64px,26cqi,150px)}'
+      +'.irx-zeile .irk-sch{display:none}'
+      +'.irx-zeile .irk-bat{flex:none}'
       // Die volle Reglerkarte passt NICHT in die Kachel: sie ist hoeher als die Zeile,
       // und ein Raster mit fester Zeilenhoehe schneidet sie ab. Sie kommt deshalb als
       // Blatt ueber die Kacheln - dieselbe Sprache wie bei den Regeltabellen.
@@ -396,11 +425,62 @@
       if(wa&&wa.batt!=null)
         h+='<span class="irk-bat'+(wa.batt<=25?' warn':'')+'">'+irBattIco(wa.batt)+num(wa.batt,0)+' %</span>';
       h+='<button class="irk-go" data-irrun="'+c.iid+'"'+(run?' disabled':'')+'>'+irTropfen()
-        +(run?'Läuft':'Jetzt gießen')+'</button></div>';
+        +'<i style="font-style:normal">'+(run?'Läuft':'Jetzt gießen')+'</i></button></div>';
       h+='</div>';
       return h;
     }
     var _irOffen={};
+
+    // ---- Aufteilung nach gemessener Flaeche ---------------------------------
+    // Eine feste Spaltenzahl ist nur solange richtig, wie die Kachel breit genug ist.
+    // Deshalb wird nach dem Zeichnen GEMESSEN: wie viele Karten passen nebeneinander,
+    // ohne unter eine brauchbare Mindestbreite zu fallen - und wie hoch wird eine Karte
+    // dann. Aus der Kartenhoehe folgt, wie viel Inhalt sie noch traegt.
+    var IRK_MIN=190;     // Mindestbreite einer Karte in Pixeln
+    function irAufteilen(w){
+      var el=irEl(w); if(!el) return;
+      var wrap=el.querySelector('.irxwrap.karte'); if(!wrap) return;
+      var grid=wrap.querySelector('.irx-grid'); if(!grid) return;
+      var n=grid.children.length; if(!n) return;
+      var breite=grid.clientWidth, hoehe=grid.clientHeight;
+      if(breite<40||hoehe<40) return;
+      var lueck=parseFloat(getComputedStyle(grid).columnGap)||10;
+      // Obergrenze: Eigenschaft, sonst so viele wie Kreise.
+      var deckel=parseInt(w.irxCols)||0;
+      var max=(deckel>0)?Math.min(deckel,n):n;
+      var passt=Math.floor((breite+lueck)/(IRK_MIN+lueck));
+      var spalten=Math.max(1,Math.min(max,passt||1));
+      var zeilen=Math.ceil(n/spalten);
+      grid.style.gridTemplateColumns='repeat('+spalten+',minmax(0,1fr))';
+      var kh=(hoehe-(zeilen-1)*lueck)/zeilen;
+      var kb=(breite-(spalten-1)*lueck)/spalten;
+      // Stufen: was bei dieser Kartengroesse noch Platz hat.
+      wrap.classList.toggle('irx-knapp', kh<190);
+      wrap.classList.toggle('irx-enger', kh<145);
+      wrap.classList.toggle('irx-zeile', kh<135);
+      wrap.classList.toggle('irx-schmal', kb<230);
+      // GEGENPROBE statt geratener Schwellen: passt eine Karte danach immer noch nicht,
+      // wird eine Stufe weiter verdichtet. Schwellenwerte treffen Randfaelle nie genau -
+      // die Frage "laeuft es ueber?" laesst sich dagegen direkt beantworten.
+      var zuEng=function(){
+        var k=grid.children, i;
+        for(i=0;i<k.length;i++){ if(k[i].scrollHeight>k[i].clientHeight+1) return true; }
+        return false;
+      };
+      if(zuEng()&&!wrap.classList.contains('irx-knapp')) wrap.classList.add('irx-knapp');
+      if(zuEng()&&!wrap.classList.contains('irx-enger')) wrap.classList.add('irx-enger');
+      if(zuEng()&&!wrap.classList.contains('irx-zeile')) wrap.classList.add('irx-zeile');
+      // Und erst wenn auch die Zeilenform nicht reicht, darf das Raster scrollen.
+      grid.style.overflowY=zuEng()?'auto':'hidden';
+    }
+    var _irBeob={};
+    function irBeobachten(w){
+      if(typeof ResizeObserver!=='function')return;
+      var el=irEl(w); if(!el) return;
+      if(_irBeob[w.id]){try{_irBeob[w.id].disconnect();}catch(e){}}
+      var ro=new ResizeObserver(function(){irAufteilen(w);});
+      try{ro.observe(el);_irBeob[w.id]=ro;}catch(e){}
+    }
 
     function irCircuitsFor(w){
       var all=_irData||[];
@@ -449,7 +529,8 @@
         // Reihe, die nicht mehr in die Kachel passt - und dann scrollt die Seite, was auf
         // einem Wandtablett niemand will. Lieber schmalere Karten; die Schrift rechnet
         // ohnehin aus der Kartenbreite (cqi).
-        var sp=Math.max(1,Math.min(3,list.length));
+        // Startwert; die endgueltige Zahl rechnet irAufteilen() aus der Breite.
+        var sp=Math.max(1,Math.min(parseInt(w.irxCols)||list.length,list.length));
         h+='<div class="irx-grid" style="grid-template-columns:repeat('+sp+',minmax(0,1fr))">'
           +list.map(zeichne).join('')+'</div>';
         var auf=list.filter(function(c){return _irOffen[c.iid];})[0];
@@ -477,7 +558,7 @@
     }
 
     function irEl(w){return $('.w[data-id="'+w.id+'"]',canvas)||$('.w[data-id="'+w.id+'"]',$('#ovcanvas'));}
-    function irPaint(w){var el=irEl(w);if(!el)return;var host=el.querySelector('.winner')||el;host.innerHTML=irRender(w);irWire(w,host);}
+    function irPaint(w){var el=irEl(w);if(!el)return;var host=el.querySelector('.winner')||el;host.innerHTML=irRender(w);irWire(w,host);irAufteilen(w);}
     function irById(id){return (_irData||[]).find(function(c){return c.iid===id;});}
 
     function irWire(w,host){
@@ -518,6 +599,7 @@
         defaults:function(w){w._kind=(kind==='irrigcircuit')?'circuit':'grid';},
         render:function(w){w._kind=(kind==='irrigcircuit')?'circuit':'grid';return irRender(w);},
         mount:function(w){w._kind=(kind==='irrigcircuit')?'circuit':'grid';var el=irEl(w);if(!el)return;
+          irBeobachten(w);
           if(_irData){irWacheLaden(w.irxWache,function(){irPaint(w);});}
           else{irLoad(function(){irWacheLaden(w.irxWache,function(){irPaint(w);});});}
           LVB.panel.startPoll('irrigx:'+w.id,30000,function(){
@@ -536,6 +618,8 @@
           h+='<div class="pgh">Darstellung</div>';
           h+=row('Stil','<select id="irStil"><option value="voll"'+((w.irxStil||'voll')==='voll'?' selected':'')+'>Regler (alle Bedienelemente)</option>'
             +'<option value="karte"'+(w.irxStil==='karte'?' selected':'')+'>Karte (Entwurf: Dauer, Sperre, Batterie)</option></select>');
+          h+=row('Spalten (höchstens)','<input id="irCols" type="number" min="0" max="12" value="'+(w.irxCols||'')+'" placeholder="0 = so viele wie passen">');
+          h+='<div style="font-size:11px;color:var(--muted);padding:2px 2px 6px">Wie viele Karten nebeneinander stehen dürfen. Wie viele es WIRKLICH werden, rechnet das Widget aus der Breite – es fällt nie unter '+IRK_MIN+' px je Karte.</div>';
           h+=row('Standort','<input id="irRoot" type="number" value="'+(w.irxRoot||'')+'" placeholder="Haus/Bereich-Instanz-ID">');
           h+='<div style="font-size:11px;color:var(--muted);padding:2px 2px 6px">Leer = alle. Mit einer Haus-ID zeigt die Ansicht nur diesen Standort.</div>';
           h+=row('Wache (JSON)','<input id="irWache" type="number" value="'+(w.irxWache||'')+'" placeholder="VentileJson der Bewässerungs-Wache">');
@@ -545,6 +629,7 @@
         wire:function(w){
           if($('#irCid'))$('#irCid').onchange=function(){w.circuitId=parseInt(this.value)||undefined;commit();irPaint(w);};
           if($('#irStil'))$('#irStil').onchange=function(){w.irxStil=(this.value==='karte')?'karte':undefined;commit();irPaint(w);};
+          if($('#irCols'))$('#irCols').onchange=function(){w.irxCols=parseInt(this.value)||undefined;commit();irPaint(w);};
           if($('#irRoot'))$('#irRoot').onchange=function(){w.irxRoot=parseInt(this.value)||undefined;commit();irPaint(w);};
           if($('#irWache'))$('#irWache').onchange=function(){w.irxWache=parseInt(this.value)||undefined;commit();irPaint(w);};
         }
