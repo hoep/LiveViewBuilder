@@ -492,20 +492,41 @@
    * denselben Weg, damit es nur eine Stelle gibt, die auf Antworten wartet.
    */
   function _epgAuftrag(w,auftrag,fertig){
-    setVar(w.epgSel,JSON.stringify(auftrag));
     w._epgMsg='Auftrag läuft …';_epgOverlay(w);
-    if(!w.epgMsgVar)return;
+    var schicken=function(){ setVar(w.epgSel,JSON.stringify(auftrag)); };
+    if(!w.epgMsgVar){ schicken(); return; }
+
+    // ERST DAS FELD LEEREN, DANN den Auftrag abgeben.
+    //
+    // Alle Rueckmeldungen dieses Weges teilen sich EINE Variable. Bis das Skript
+    // gelaufen ist, steht dort noch die Antwort der VORIGEN Aktion. Die alte
+    // Fassung verglich die Abfrage mit dem gerade angezeigten Text ("Auftrag
+    // läuft …") - und die alte Antwort ist davon verschieden. Die erste Abfrage
+    // hielt sie also fuer die eigene, zeigte sie an und brach ab. Am 13.09.2026
+    // meldete die Kachel deshalb beim Programmieren von "Restaurantlegenden"
+    // die Loeschung eines Mittermeier-Timers von vorher - richtige Aufnahme,
+    // falsche und beunruhigende Auskunft.
+    //
+    // Ein Vergleich mit dem Zeitstempel reicht nicht: 'c' ist VariableChanged,
+    // und zweimal derselbe Text aendert ihn nicht. Ein leeres Feld dagegen ist
+    // eindeutig - was danach kommt, gehoert zu diesem Auftrag.
+    fetch('?api=setvar&id='+w.epgMsgVar+'&value=&key='+encodeURIComponent(typeof TOKEN!=='undefined'?TOKEN:''),
+          {cache:'no-store'})
+      .then(function(){ schicken(); })
+      .catch(function(){ schicken(); });   // Leeren fehlgeschlagen: lieber senden als haengen
+
     var n=0,iv=setInterval(function(){
       n++;
       fetch('?api=val&ids='+w.epgMsgVar,{cache:'no-store'}).then(function(r){return r.json();})
         .then(function(j){
           var v=j&&j.values&&j.values[w.epgMsgVar];
-          if(v&&String(v.v)!==''&&String(v.v)!==w._epgMsg){
+          if(v&&String(v.v)!==''){
             w._epgMsg=String(v.v);_epgOverlay(w);clearInterval(iv);
             if(fertig)fertig(w._epgMsg);
           }
         }).catch(function(){});
-      if(n>14){clearInterval(iv);}
+      if(n>14){ clearInterval(iv);
+        if(w._epgMsg==='Auftrag läuft …'){ w._epgMsg='keine Rückmeldung nach 10 s';_epgOverlay(w); } }
     },700);
   }
   /**
