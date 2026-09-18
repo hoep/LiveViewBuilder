@@ -252,7 +252,7 @@ function lv_route_passt($e, $lat, $lon, $kurs = null, $tempo = 0)
     /* Und FLIEGT die Maschine auch dorthin?
      *
      * Der Korridor allein sagt nichts ueber die Richtung: der Grosskreis
-     * Frankfurt->Athen laeuft ueber der Region, und wer ihn von Athen nach
+     * Frankfurt->Athen laeuft ueber den Standort, und wer ihn von Athen nach
      * Frankfurt zurueckfliegt, liegt genauso darauf. Am 01.09.2026 stand
      * deshalb ueber uns ein "FRA -> ATH", das erkennbar nach Nordwesten flog.
      * Also den Kurs gegen die Peilung zum Ziel halten. Die Schwelle ist mit 120
@@ -396,7 +396,7 @@ if ($api === 'flights') {
      * Die Strecke wird gegen die BEOBACHTETE POSITION geprueft. adsbdb kennt zu
      * einem Rufzeichen den Flugplan, nicht den Flug: Rufzeichen werden taeglich
      * neu vergeben, Plaene aendern sich, und manche Eintraege sind schlicht alt.
-     * Ungeprueft stand am 01.09.2026 ueber Musterhuegeln ein "Ankara -> Izmir"
+     * Ungeprueft stand am 01.09.2026 ueber dem Standort ein "Ankara -> Izmir"
      * und ein "Frankfurt -> Goeteborg" - beide Grosskreise laufen 600 bis 1500 km
      * an uns vorbei. Eine Strecke, auf der die Maschine nicht liegt, ist keine
      * Strecke, sondern Rauschen; sie wird verworfen.
