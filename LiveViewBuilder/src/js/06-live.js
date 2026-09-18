@@ -5,7 +5,7 @@
       if(w.vcNoteVid===id||w.vcCapVid===id||w.vcBadgeVid===id||w.vcBadgeStVid===id||w.rngCurVid===id||w.vcTitleVid===id||w.vcAccVid===id)return true;
       if(Array.isArray(w.vcStats)){for(var _s=0;_s<w.vcStats.length;_s++){if(w.vcStats[_s]&&w.vcStats[_s].vid===id)return true;}}
     }
-    if(w.varId===id||w.varId2===id||w.varId3===id||w.dVid===id||w.varIdB===id||w.dVidB===id||w.stufeVid===id||w.cvActId===id||w.cvAzB===id||w.cvAzE===id||w.cvElv===id||w.cvBlockVid===id||w.cmpVid===id||w.ackVid===id||w.condVar===id||w.vTemp===id||w.vCond===id||w.vHum===id||w.vWind===id||w.vGust===id||w.vRain===id||w.ssAz===id||w.ssEl===id||w.ssRad===id||w.ssRainV===id||w.ssSnowV===id||w.ssPtypeV===id||w.ssFogV===id||w.ssFogStateV===id||w.ssWindV===id||w.ssRainSensV===id||w.ssTempV===id||w.ssDewV===id||w.ssHumV===id||w.ssWetV===id||w.ssCloudV===id||w.vStorm===id||w.vStormDist===id||w.vStormAge===id||w.vStormRate===id||w.vRainRate===id||w.vRainDay===id||w.vFog===id||w.vFogFsi===id||w.ssStormV===id||w.ssStormDistV===id||w.wxFogState===id||w.ssWxJson===id||w.thPresVar===id||w.thHeatVar===id||w.thArmVar===id||w.thPowerVar===id||w.thAcSwingH===id||w.thAcLight===id||w.thAcFire===id||w.thAcPlan===id||w.thAcSched===id||w.thAcNext===id||w.thAcOutdoor===id||w.thAcHum===id||w.thAcPresence===id||w.thAcWindow===id||w.thAcClean===id||w.thAcOnline===id||w.urlVid===id||w.stoerVid===id||w.kSubVid===id||w.kToneVid===id)return true;
+    if(w.varId===id||w.varId2===id||w.varId3===id||w.dVid===id||w.varIdB===id||w.dVidB===id||w.stufeVid===id||w.cvActId===id||w.cvAzB===id||w.cvAzE===id||w.cvElv===id||w.cvBlockVid===id||w.cmpVid===id||w.ackVid===id||w.condVar===id||w.vTemp===id||w.vCond===id||w.vHum===id||w.vWind===id||w.vGust===id||w.vRain===id||w.ssAz===id||w.ssEl===id||w.ssRad===id||w.ssRainV===id||w.ssSnowV===id||w.ssPtypeV===id||w.ssFogV===id||w.ssFogStateV===id||w.ssWindV===id||w.ssRainSensV===id||w.ssTempV===id||w.ssDewV===id||w.ssHumV===id||w.ssWetV===id||w.ssCloudV===id||w.vStorm===id||w.vStormDist===id||w.vStormAge===id||w.vStormRate===id||w.vRainRate===id||w.vRainDay===id||w.vFog===id||w.vFogFsi===id||w.ssStormV===id||w.ssStormDistV===id||w.wxFogState===id||w.ssWxJson===id||w.thPresVar===id||w.thHeatVar===id||w.thArmVar===id||w.thPowerVar===id||w.thAcSwingH===id||w.thAcLight===id||w.thAcFire===id||w.thAcPlan===id||w.thAcSched===id||w.thAcNext===id||w.thAcOutdoor===id||w.thAcHum===id||w.thAcPresence===id||w.thAcWindow===id||w.thAcClean===id||w.thAcOnline===id||w.urlVid===id||w.stoerVid===id||w.kSubVid===id||w.kToneVid===id||w.gRefVid===id)return true;
     // kSubVid/kToneVid gehoeren dazu: die KPI-Karte holt Unterzeile und Ton aus
     // eigenen Variablen. Ohne sie hier feuerte live() nur bei der HAUPTvariablen -
     // die Unterzeile stimmte dann bloss zufaellig, naemlich wenn ihre ID kleiner
@@ -105,6 +105,11 @@
       if(c===' '||c==='\t'||c==='.'){i++;continue;} // Leerraum + Verkettungspunkt
       if(c==='"'||c==="'"){var q=c,j=i+1,buf='';while(j<n&&s.charAt(j)!==q){buf+=s.charAt(j);j++;}if(j>=n)return null;out.push({str:buf});i=j+1;continue;}
       if(c==='#'){var j2=i+1;while(j2<n&&s.charAt(j2)>='0'&&s.charAt(j2)<='9')j2++;if(j2===i+1)return null;out.push({vid:parseInt(s.slice(i+1,j2),10)});i=j2;continue;}
+      // Gerechnetes Stueck in geschweiften Klammern: ."{#<ID>/365*100}"." %"
+      // Verketten konnte die String-Formel immer, rechnen nicht - fuer "Tag 260 von 365
+      // · 71,2 %" haette es sonst eine eigene Variable im Objektbaum gebraucht, nur um
+      // eine Division anzuzeigen. Innen gilt dieselbe Zahlen-Formel wie ueberall.
+      if(c==='{'){var j3=s.indexOf('}',i+1);if(j3<0)return null;var sub=s.slice(i+1,j3);if(!sub.trim())return null;out.push({expr:sub});i=j3+1;continue;}
       return null; // unerwartetes Zeichen -> keine gueltige String-Formel
     }
     return out.length?out:null;
@@ -117,10 +122,18 @@
   }
   function _fEvalStr(expr){ // verkettetes Ergebnis oder null, falls eine beteiligte Variable (noch) fehlt
     var toks=_fParseStr(expr);if(!toks)return null;var res='';
-    for(var i=0;i<toks.length;i++){var t=toks[i];if(t.str!=null){res+=t.str;continue;}var tx=_fVarText(t.vid);if(tx===null)return null;res+=tx;}
+    for(var i=0;i<toks.length;i++){var t=toks[i];
+      if(t.str!=null){res+=t.str;continue;}
+      if(t.expr!=null){var nv=_fEvalNum('='+t.expr);if(nv===null)return null;res+=_fFmt(nv);continue;}
+      var tx=_fVarText(t.vid);if(tx===null)return null;res+=tx;}
     return res;
   }
-  function _fIdsStr(expr){var toks=_fParseStr(expr);if(!toks)return [];var seen={},ids=[];toks.forEach(function(t){if(t.vid!=null&&!seen[t.vid]){seen[t.vid]=1;ids.push(t.vid);}});return ids;}
+  function _fIdsStr(expr){var toks=_fParseStr(expr);if(!toks)return [];var seen={},ids=[];
+    toks.forEach(function(t){
+      if(t.vid!=null&&!seen[t.vid]){seen[t.vid]=1;ids.push(t.vid);}
+      if(t.expr!=null)_fIds('='+t.expr).forEach(function(id){if(!seen[id]){seen[id]=1;ids.push(id);}}); // auch die Variablen im gerechneten Stueck pollen
+    });
+    return ids;}
   function _fEvalNum(expr){ // aktuellen Formelwert aus _lastVals; null falls eine Komponente fehlt
     var rpn=_fParse(expr);if(!rpn)return null;var st=[];
     for(var i=0;i<rpn.length;i++){var t=rpn[i];
@@ -163,6 +176,7 @@
     // ... und die IDs, die ?api=profvars zurueckgemeldet hat. Erst damit werden sie gepollt
     // und loesen live() aus - sonst haette die Treemap nur im eigenen Takt aktualisiert.
     if(w._tmIds)w._tmIds.forEach(function(n){if(n>0)add(n);});
+    add(w.gRefVid);   // Gauge: Referenzstrich (Variable oder Formel)
     add(w.sollVid);add(w.tbWarnVid);add(w.mgThrVid);add(w.kToneVid);add(w.kSubVid);add(w.ttlRightVid);                                  // Saeule: Soll-Marke und Warnschwelle aus Variablen
     if(w.phases)w.phases.forEach(function(o){if(o)add(o.hintVid);});   // Ablaufkette: Unterzeile je Schritt
     add(w.ilhBadgeVid);add(w.ilhSubVid);add(w.ilfVid);   // Info-Liste: Kopf- und Fusszeile

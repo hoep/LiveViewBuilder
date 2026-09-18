@@ -207,8 +207,18 @@
     var tol=(w.cmpTol!=null)?w.cmpTol:10;
     var arrow=diff>0?'▲ ':(diff<0?'▼ ':'→ ');
     var num=Math.round(((mode==='abs')?diff:metric)*10)/10;
-    var txt=(num>0?'+':'')+num+(mode==='abs'?'':' %')+(w.cmpText?(' '+w.cmpText):'');
-    pill.className='hpill '+(Math.abs(metric)<=tol?'ok':'warn');
+    // Komma statt Punkt: jede andere Zahl auf der Oberflaeche wird deutsch gesetzt,
+    // nur die Pille schrieb "+9.7 %" - in derselben Zeile wie "3.551,0 kg".
+    var txt=(num>0?'+':'')+String(num).replace('.',',')+(mode==='abs'?'':' %')+(w.cmpText?(' '+w.cmpText):'');
+    // Richtung: bei VERBRAUCH ist unter Plan gut, bei ERZEUGUNG ueber Plan. Ohne diese
+    // Angabe bleibt es bei der reinen Toleranz - dann faerbt eine Wasserersparnis von
+    // 12 % genauso warnend wie eine Ueberschreitung von 12 %, und die Farbe sagt nur
+    // noch "weit weg vom Plan" statt "gut" oder "schlecht".
+    var gut;
+    if(w.cmpGood==='low')       gut=(metric<=tol);
+    else if(w.cmpGood==='high') gut=(metric>=-tol);
+    else                        gut=(Math.abs(metric)<=tol);
+    pill.className='hpill '+(gut?'ok':'warn');
     pill.innerHTML='<span class="hpd"></span>'+esc(arrow+txt);
   }
   /**
@@ -445,7 +455,8 @@
         +fieldPick(w,'cmpVid','Soll-Variable')
         +(w.cmpVid?(row('Modus','<select id="pVcCmpMode"><option value="pct"'+((w.cmpMode||'pct')==='pct'?' selected':'')+'>Prozent</option><option value="abs"'+(w.cmpMode==='abs'?' selected':'')+'>Absolut</option></select>')
           +row('Toleranz grün','<input id="pVcCmpTol" type="number" step="0.1" style="width:74px" value="'+(w.cmpTol!=null?w.cmpTol:10)+'"> <span style="font-size:11px;color:var(--muted)">'+(w.cmpMode==='abs'?'in Einheit':'%')+'</span>')
-          +row('Zusatztext','<input id="pVcCmpText" value="'+esc(w.cmpText||'')+'" placeholder="ggü. Plan">')):'');
+          +row('Zusatztext','<input id="pVcCmpText" value="'+esc(w.cmpText||'')+'" placeholder="ggü. Plan">')
+          +row('Bewertung','<select id="pVcCmpGood"><option value=""'+(!w.cmpGood?' selected':'')+'>nur Toleranz</option><option value="low"'+(w.cmpGood==='low'?' selected':'')+'>weniger ist besser</option><option value="high"'+(w.cmpGood==='high'?' selected':'')+'>mehr ist besser</option></select>')):'');
       // Toggle / Akzent (Var2)
       s+='<div class="pgh">Schalter / Akzent (Var 2)</div>'
         +row('Var 2 = Akzent','<input type="checkbox" id="pVcV2acc"'+(w.v2acc?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">Kachel leuchtet auf (statt Schalter)</span>');
@@ -495,7 +506,7 @@
       function bind(id,prop,num){var e=$('#'+id);if(!e)return;e.oninput=e.onchange=function(){var v=num?(this.value===''?undefined:parseFloat(this.value)):(this.value||undefined);w[prop]=v;render();};}
       bind('pVcTitle','title');bind('pVcUnit','unit');bind('pVcValFs','valfs',1);bind('pVcBadge','badge');bind('pVcBarCap','barCap');bind('pVcOkT','okText');bind('pVcBadT','badText');
       bind('pVcOkMin','okMin',1);bind('pVcOkMax','okMax',1);bind('pVcBarMin','barMin',1);bind('pVcBarMax','barMax',1);
-      bind('pVcCmpText','cmpText');bind('pVcCmpTol','cmpTol',1);
+      bind('pVcCmpText','cmpText');bind('pVcCmpTol','cmpTol',1);bind('pVcCmpGood','cmpGood');
       if($('#pVcCmpMode'))$('#pVcCmpMode').onchange=function(){w.cmpMode=this.value;render();renderProps();commit();};
       if($('#pVcBst'))$('#pVcBst').onchange=function(){w.badgeState=this.value;render();};
       if($('#pVcRng'))$('#pVcRng').onchange=function(){w.rngOn=this.checked||undefined;render();renderProps();commit();};

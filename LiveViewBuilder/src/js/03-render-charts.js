@@ -1258,7 +1258,38 @@
       ser.progress={show:true,width:width,roundCap:true,itemStyle:{color:fillCol,shadowBlur:8,shadowColor:_glowCol(fillCol,0.45)}};
       ser.pointer={show:false};
     }
-    ec.setOption({animation:!!bcfg().chartAnim,series:[ser]},true);
+    /* ---- Referenzstrich auf dem Ring + zweite Unterzeile -------------------------
+       Ein Fortschrittsring beantwortet "wie viel ist verbraucht", aber nicht "wie viel
+       DUERFTE zum jetzigen Zeitpunkt verbraucht sein". Erst die Marke macht aus dem
+       Ring eine Aussage: liegt die Fuellung vor dem Strich, ist man unter Plan.
+
+       Echarts kennt fuer Gauges keine Zielmarke. Sie entsteht hier als ZWEITE Serie mit
+       derselben Geometrie (Mittelpunkt, Radius, Winkel) - deren Achslinie ist bis auf ein
+       schmales Stueck an der Referenzstelle durchsichtig. Weil beide Serien dieselben
+       Werte fuer center/radius/startAngle/endAngle benutzen, sitzt der Strich in jeder
+       Kachelgroesse exakt richtig; eine eigene Rechnung in Pixeln gaebe es nicht her.
+       Dieselbe Serie traegt die zweite Unterzeile - ein Gauge hat nur EIN title-Feld,
+       zwei Zeilen brauchen also zwei Serien. */
+    var serien=[ser];
+    var refRoh=(w.gRefVid!=null&&w.gRefVid!=='')?_lastVals[w.gRefVid]:null;
+    var refV=refRoh?parseFloat(String(refRoh.v).replace(',','.')):NaN;
+    var refZeile=(w.gRefText||'');
+    if(!isNaN(refV)||refZeile){
+      var spanne=(mx-mn)||1,pos=Math.max(0,Math.min(1,((refV*_sc)-mn)/spanne)),eps=0.009;
+      var refCol=_skinToCss(w.gRefCol)||cssv('--text');
+      var txt=refZeile.replace('{v}',isNaN(refV)?'–':_fmtNum(refV,{dec:(w.gRefDec!=null?w.gRefDec:1),thousand:w.thousand}));
+      serien.push({type:'gauge',min:mn,max:mx,startAngle:ANG[0],endAngle:ANG[1],center:center,radius:radius,
+        silent:true,
+        axisLine:{lineStyle:{width:width+10,color:isNaN(refV)
+          ?[[1,'rgba(0,0,0,0)']]
+          :[[Math.max(0,pos-eps),'rgba(0,0,0,0)'],[Math.min(1,pos+eps),refCol],[1,'rgba(0,0,0,0)']]}},
+        axisTick:{show:false},splitLine:{show:false},axisLabel:{show:false},
+        pointer:{show:false},progress:{show:false},anchor:{show:false},
+        detail:{show:false},
+        title:{show:!!txt,offsetCenter:[0,(style==='ring'?'64%':'92%')],color:cssv('--muted'),fontSize:_ecF(w,'label',11)},
+        data:[{value:mn,name:txt}]});
+    }
+    ec.setOption({animation:!!bcfg().chartAnim,series:serien},true);
   }
   function autoColorHex(i){return [cssv('--accent'),cssv('--info'),cssv('--warm')][i%3]||'#00cdab';}
   // ---- Anzeige-Optionen zentral (setLine und setCalBar nutzen dieselben Regeln) ----

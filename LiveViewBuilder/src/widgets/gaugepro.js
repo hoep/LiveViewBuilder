@@ -18,7 +18,13 @@ defWidget('gaugepro',{
     +row('Gewicht','<select id="pGvFwt"><option value="">Standard</option>'+['300','400','500','600','700','800'].map(function(x){return '<option value="'+x+'"'+(w.gvfwt===x?' selected':'')+'>'+x+'</option>';}).join('')+'</select>')
     +row('Stil','<select id="pGvSty"><option value=""'+(!w.gvsty?' selected':'')+'>Normal</option><option value="italic"'+(w.gvsty==='italic'?' selected':'')+'>Kursiv</option></select>')
     +row('Größe (px)','<input id="pGvSz" type="number" min="0" value="'+(w.gvsz||'')+'" placeholder="auto">')
-    +row('Einheit','<input id="pGvUnit" value="'+esc(w.gvUnit||'')+'" placeholder="Profil (z. B. °C)">');},
+    +row('Einheit','<input id="pGvUnit" value="'+esc(w.gvUnit||'')+'" placeholder="Profil (z. B. °C)">')
+      +'<div class="pgh">Referenzstrich</div>'
+      +'<div style="font-size:11px;color:var(--muted);margin:-2px 2px 5px">Marke auf dem Ring - z. B. der Jahresfortschritt. Der Ring sagt, wie viel verbraucht ist; erst die Marke sagt, wie viel zum jetzigen Zeitpunkt verbraucht sein DUERFTE.</div>'
+      +fieldPick(w,'gRefVid','Referenz-Variable')
+      +row('Unterzeile','<input id="pGRefText" value="'+esc(w.gRefText||'')+'" placeholder="Strich = {v} %">')
+      +row('Nachkommast.','<input id="pGRefDec" type="number" min="0" max="3" style="width:60px" value="'+(w.gRefDec!=null?w.gRefDec:'')+'" placeholder="1">')
+      +row('Farbe',skinSel(w.gRefCol,'id="pGRefCol"'));},
   wire:function(w){
     if($('#pGStyle'))$('#pGStyle').onchange=function(){w.gstyle=this.value;render();commit();};
     if($('#pGColor'))$('#pGColor').onchange=function(){w.gcolor=this.value;render();renderProps();commit();};
@@ -32,6 +38,13 @@ defWidget('gaugepro',{
     if($('#pGvSty'))$('#pGvSty').onchange=function(){w.gvsty=this.value||undefined;render();commit();};
     if($('#pGvSz'))$('#pGvSz').oninput=function(){w.gvsz=parseInt(this.value)||undefined;render();commit();};
     if($('#pGvUnit'))$('#pGvUnit').oninput=function(){w.gvUnit=this.value||undefined;render();commit();};
+      if($('#pGRefText'))$('#pGRefText').oninput=function(){w.gRefText=this.value||undefined;render();commit();};
+      if($('#pGRefDec'))$('#pGRefDec').oninput=function(){w.gRefDec=this.value===''?undefined:parseInt(this.value);render();commit();};
+      if($('#pGRefCol'))$('#pGRefCol').onchange=function(){w.gRefCol=this.value||undefined;render();commit();};
   },
-  live:function(w,el,id,d,base,txt,on){setGaugePro(w,d);}
+  // live() bekommt die Daten DER GEAENDERTEN Variablen - nicht zwingend die der eigenen.
+  // Seit der Referenzstrich eine zweite Variable hat, traf hier auch deren Wert ein und
+  // wurde als Hauptwert gezeichnet: der Pellets-Ring stand auf 71,2 (dem Jahresfortschritt)
+  // statt auf 67,1. Deshalb IMMER den eigenen Wert nachschlagen; d bleibt nur Rueckfall.
+  live:function(w,el,id,d,base,txt,on){setGaugePro(w,((w.varId!=null&&w.varId!=='')?_lastVals[w.varId]:null)||d);}
 });
