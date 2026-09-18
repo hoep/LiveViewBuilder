@@ -1,4 +1,11 @@
 #!/bin/bash
+# ---------------------------------------------------------------------------
+# VERALTET. Der unterstuetzte Weg ist "php build.php" AUS DEM MODULORDNER.
+# Dieses Werkzeug stammt aus einem getrennten Entwicklungsbaum und kopiert am
+# Ende ueber "sync" Dateien in den Modulordner - steht dort ein neuerer Stand,
+# wird er dabei ueberschrieben. Nur benutzen, wenn man genau diesen Baum pflegt.
+# Die zu pruefende Ansicht kommt aus LV_VIEW (Vorgabe: view).
+# ---------------------------------------------------------------------------
 # Build + Validierungs-Gauntlet. Optional: arg1=sync -> ins Modul kopieren
 cd /var/lib/symcon/scripts/livebuilder-dev || exit 1
 php build.php || { echo "BUILD FAIL"; exit 1; }
@@ -102,8 +109,8 @@ for f in handler.php module.php store.inc.php; do
   [ -f "$t" ] || continue
   php -l "$t" >/dev/null || { echo "$f LINT FAIL"; exit 1; }
 done
-code=$(curl -s -m 6 -o /dev/null -w "%{http_code}" "http://127.0.0.1:3777/hook/run/view")
-echo "Laufzeit erreichbar: HTTP $code   (prueft den BEREITS ausgelieferten Stand, nicht den neuen Build)"
+code=$(curl -s -m 6 -o /dev/null -w "%{http_code}" "http://127.0.0.1:3777/hook/run/${LV_VIEW:-view}")
+echo "Laufzeit erreichbar: HTTP $code   (prueft den BEREITS ausgelieferten Stand, nicht den neuen Build; Ansicht ueber LV_VIEW setzen)"
 [ "$code" != "200" ] && { echo "HTTP FAIL"; exit 1; }
 if [ "$1" = "sync" ]; then
   M=/var/lib/symcon/modules/LiveViewBuilder/LiveViewBuilder
