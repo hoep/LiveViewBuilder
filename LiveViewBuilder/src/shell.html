@@ -3,11 +3,11 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Standort">
+<meta name="apple-mobile-web-app-title" content="LiveView">
 <link rel="preload" href="?api=font&file=inter-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
 <script>/* Sitzungsdaten bleiben INLINE. Das grosse Buendel wird oeffentlich
    zwischengespeichert und darf deshalb den Schreib-Token nicht enthalten. */
-window.LVCFG={t:"__LV_TOKEN__",run:"__LV_RUN__",doku:"__LV_DOKU__",wsp:"__LV_WSPORT__",wsu:"__LV_WSURL__",bld:"__LV_BUILD__",tzo:"__LV_TZOFF__",tz:"__LV_TZNAME__"};</script>
+window.LVCFG={t:"__LV_TOKEN__",run:"__LV_RUN__",doku:"__LV_DOKU__",wsp:"__LV_WSPORT__",wsu:"__LV_WSURL__",bld:"__LV_BUILD__",tzo:"__LV_TZOFF__",tz:"__LV_TZNAME__",lat:"__LV_LAT__",lon:"__LV_LON__"};</script>
 <script>/* Javascript-Fehler an den Server melden - auf einem Telefon gibt es keine
    Konsole, und ohne die Ausnahme ist ein Aufbaufehler nicht zu finden. Hoechstens
    fuenf je Seitenaufruf, damit ein Dauerfehler nicht selbst zur Last wird. */
@@ -63,7 +63,7 @@ setTimeout(function(){var c=document.getElementById('canvas');if(!c)return;
 },1500);
 })();</script>
 <script>if((window.LVCFG.run==="1")||/[?&]run=1/.test(location.search)||/\/hook\/run(\/|$|\?)/.test(location.pathname)){document.documentElement.classList.add('run-boot');setTimeout(function(){document.documentElement.classList.remove('run-boot');},4000);}</script>
-<title>Standort — View-Builder</title>
+<title>LiveView Builder</title>
 <style>
 {{STYLES}}
 </style>
@@ -112,7 +112,7 @@ setTimeout(function(){var c=document.getElementById('canvas');if(!c)return;
 </defs></svg>
 
 <div class="bar">
-  <b>View-Builder</b><span class="muted" style="font-size:11px">Standort</span>
+  <b>View-Builder</b>
   <div class="sep"></div>
   <button class="btn on" id="gridBtn" title="Raster ein/aus (Snap am Raster)"><svg class="i"><use href="#ic-grid"/></svg></button>
   <button class="btn" id="modeBtn" title="Vorschau: Widgets interaktiv testen (ohne Verschieben)"><svg class="i"><use href="#ic-eye"/></svg></button>

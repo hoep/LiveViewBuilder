@@ -10,7 +10,7 @@
   // damit fuer das eigene Netz nichts einzurichten ist; jede andere Quelle (Proxmox,
   // Objektbaum, Raeume, Unterverteilungen) fuellt eine String-Variable mit demselben JSON:
   //
-  //   [{"id":"a1","parent":"","label":"Standort","sub":"UDMA6A8","typ":"gw",
+  //   [{"id":"a1","parent":"","label":"Standort","sub":"Gateway","typ":"gw",
   //     "werte":{"clients":133,"zufr":null},"zustand":"ok","link":"kabel"}, ...]
   //
   //   id       eindeutig; parent leer oder unbekannt = Wurzel

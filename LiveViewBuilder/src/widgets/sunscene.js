@@ -295,7 +295,7 @@
       if (typeof e.v === 'boolean') return e.v ? 1 : 0;
       var n = parseFloat(e.v); return isNaN(n) ? null : n;
     }
-    function ssGeo(w) { return { lat: ssNum(w.lat, 48.2082), lon: ssNum(w.lon, 16.3738) }; }
+    function ssGeo(w) { return { lat: ssNum(w.lat, _lvGeoLat()), lon: ssNum(w.lon, _lvGeoLon()) }; }
     // Darstellungszeit: normalerweise jetzt. w.ssNow (ms) erlaubt einen abweichenden Zeitpunkt -
     // gebraucht fuer Pruef-Renderings und spaeter fuer den Zeitleisten-Regler.
     /**

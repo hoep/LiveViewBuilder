@@ -17,7 +17,7 @@
     }
     function scMg(idx){return fetch('?api=mod&op=manage&id='+idx+'&key='+encodeURIComponent(TOKEN),
       {method:'POST',cache:'no-store',headers:{'Content-Type':'text/plain'},body:JSON.stringify({op:'reconcileProbe'})}).then(function(r){return r.json();});}
-    function scGeo(w){return {lat:(w.lat!=null?+w.lat:48.2082), lon:(w.lon!=null?+w.lon:16.3738)};}
+    function scGeo(w){return {lat:(w.lat!=null?+w.lat:_lvGeoLat()), lon:(w.lon!=null?+w.lon:_lvGeoLon())};}
     function scDemo(){return {inputs:{az:212,el:34,bright:41000},geoProfile:{azimuthBgn:109,azimuthEnd:289,elevation:8,brightnessMin:0},rawSun:100,driverActive:true};}
 
     // NOAA-Sonnenposition (gegen IPS Location verifiziert) — fuer den Tagesbogen
@@ -172,8 +172,8 @@
         h+=row('Akzentfarbe',skinSel(w.accent||'','id="scAcc"'));
         h+=row('Fenster-Halbwinkel','<input id="scAcc2" type="number" value="'+(w.sunAcc!=null?w.sunAcc:'')+'" placeholder="auto" style="width:70px"> °');
         h+='<div class="pgh">Standort (für Sonnenbahn)</div>';
-        h+=row('Breite','<input id="scLat" type="number" step="0.0001" value="'+(w.lat!=null?w.lat:48.2082)+'" style="width:110px">');
-        h+=row('Länge','<input id="scLon" type="number" step="0.0001" value="'+(w.lon!=null?w.lon:16.3738)+'" style="width:110px">');
+        h+=row('Breite','<input id="scLat" type="number" step="0.0001" value="'+(w.lat!=null?w.lat:_lvGeoLat())+'" style="width:110px">');
+        h+=row('Länge','<input id="scLon" type="number" step="0.0001" value="'+(w.lon!=null?w.lon:_lvGeoLon())+'" style="width:110px">');
         return h;
       },
       wire:function(w){

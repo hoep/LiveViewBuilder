@@ -89,8 +89,8 @@
   }
   function satOrt(w) {
     try { var g = (typeof houseGeo === 'function') ? houseGeo() : null;
-          return { lat: (g && g.lat) || 48.2082, lon: (g && g.lon) || 16.3738 }; }
-    catch (e) { return { lat: 48.2082, lon: 16.3738 }; }
+          return { lat: (g && g.lat) || _lvGeoLat(), lon: (g && g.lon) || _lvGeoLon() }; }
+    catch (e) { return { lat: _lvGeoLat(), lon: _lvGeoLon() }; }
   }
   function satBeob(o) { return { latitude: o.lat * Math.PI / 180, longitude: o.lon * Math.PI / 180, height: 0.4 }; }
 

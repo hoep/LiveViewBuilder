@@ -270,17 +270,23 @@ function lv_route_passt($e, $lat, $lon, $kurs = null, $tempo = 0)
 if ($api === 'flights') {
     header('Content-Type: application/json; charset=utf-8');
 
-    $LV_FL_CID  = 46729;   // OpenSky Client-ID          (Baum: Standort/Flugverkehr)
-    $LV_FL_SEC  = 21002;   // OpenSky Geheimnis
-    $LV_FL_ANZ  = 35965;   // Flugzeuge im Umkreis
-    $LV_FL_NAE  = 23007;   // Naechste Entfernung
-    $LV_FL_RUF  = 20389;   // Naechstes Rufzeichen
-    $LV_FL_ZEN  = 49347;   // Fast senkrecht ueber uns
-    $LV_FL_HOE  = 57532;   // Hoehe der naechsten
+    /* Rueckfall-Variablen fuer den Flugverkehr. Der Zugang kommt bevorzugt aus der
+       HomeSuite-Hub-Konfiguration; diese IDs sind nur fuer Anlagen gedacht, die den
+       Hub nicht haben. Sie stehen absichtlich auf 0: eine fremde Anlage haette hier
+       sonst fremde Variablen GESCHRIEBEN (@SetValue weiter unten). Wer die Rueckfall-
+       Variablen nutzen will, traegt seine eigenen IDs ein. */
+    $LV_FL_CID  = 0;   // OpenSky Client-ID
+    $LV_FL_SEC  = 0;   // OpenSky Geheimnis
+    $LV_FL_ANZ  = 0;   // Flugzeuge im Umkreis
+    $LV_FL_NAE  = 0;   // Naechste Entfernung
+    $LV_FL_RUF  = 0;   // Naechstes Rufzeichen
+    $LV_FL_ZEN  = 0;   // Fast senkrecht ueber uns
+    $LV_FL_HOE  = 0;   // Hoehe der naechsten
 
     $r    = max(5.0, min(200.0, (float) ($_GET['r'] ?? 30)));
-    $lat  = (float) ($_GET['lat'] ?? 48.2082);
-    $lon  = (float) ($_GET['lon'] ?? 16.3738);
+    $geo  = lv_anlagenGeo();
+    $lat  = (float) ($_GET['lat'] ?? $geo[0]);
+    $lon  = (float) ($_GET['lon'] ?? $geo[1]);
     $datei = $DATADIR . '/flights-' . (int) round($r) . '.json';
     $alt   = @json_decode((string) @file_get_contents($datei), true);
     if (is_array($alt) && (time() - (int) ($alt['stand'] ?? 0)) < 30) {
@@ -1479,8 +1485,8 @@ if ($api === 'poolsave') {
 if ($api === 'wxroi') {
     header('Content-Type: application/json; charset=utf-8');
     // Welche Wetterstation? Bis 28.08.2026 gab es genau eine, und "die erste
-    // gefundene" war eindeutig. Seit es je Standort eine gibt - Standort,
-    // Standort B, Standort C, Standort D - ist die erste die mit der kleinsten ID
+    // gefundene" war eindeutig. Seit es je Standort eine gibt, ist die erste
+    // schlicht die mit der kleinsten ID
     // und damit rein zufaellig. Die Feinjustierung landete so bei einer Station
     // ohne Kameras und lief ins Leere.
     //
@@ -1863,7 +1869,10 @@ if ($api === 'mold') {
     $plan = null; $prog = null;
     if (!empty($_GET['plan']) && function_exists('ko_plan')) {
         $plan = ko_plan();
-        $j = @json_decode((string) @GetValue(15215), true);
+        // Stundenvorhersage-JSON: anlagenspezifisch, deshalb ueber den Parameter.
+        // Ohne Angabe entfaellt die Prognosespalte, statt eine fremde Variable zu lesen.
+        $progVid = (int) ($_GET['progvid'] ?? 0);
+        $j = $progVid > 0 ? @json_decode((string) @GetValue($progVid), true) : null;
         if (isset($j['hourly']['time'])) {
             $prog = [];
             foreach ($j['hourly']['time'] as $i => $iso) {
@@ -2191,6 +2200,10 @@ if ($api === 'mower') {
         $d = json_decode((string) @HSMW_Manage($iid, json_encode(['op' => 'getConfig'])), true);
         return (bool) ($d['config']['armed'] ?? false);
     };
+    // Regen-Empfehlung: eine anlagenspezifische Variable, deshalb als Parameter.
+    // Ohne Angabe bleibt das Feld leer - eine fest verdrahtete ID waere in einer
+    // fremden Anlage irgendeine andere Variable.
+    $recVid = (int) ($_GET['recvid'] ?? 0);
 
     if ($op === 'list') {
         $out = [];
@@ -2221,7 +2234,9 @@ if ($api === 'mower') {
                 'cuttingHeight' => (int) $val($iid, 'CuttingHeight'),
                 'headlight' => (int) $val($iid, 'Headlight'), 'headlightText' => $fmt($iid, 'Headlight'),
                 'autoMode' => (int) $val($iid, 'AutoMode'),
-                'recMow' => (bool) @GetValue(57646), 'recText' => (string) @GetValueFormatted(57646), // Regen-Empfehlung (global)
+                // Regen-Empfehlung: anlagenspezifische Variable, per Parameter zu binden.
+                'recMow' => ($recVid > 0 ? (bool) @GetValue($recVid) : false),
+                'recText' => ($recVid > 0 ? (string) @GetValueFormatted($recVid) : ''),
                 'mission' => (string) $val($iid, 'Mission'),
                 'chargingCycles' => (int) $val($iid, 'ChargingCycles'),
                 'bladeHours' => (int) $val($iid, 'BladeHours'),
@@ -3961,6 +3976,26 @@ if ($html === false) {
     echo 'builder.html fehlt im Modul';
     return;
 }
+/**
+ * Koordinaten der Anlage aus der ersten Location-Instanz mit gesetztem Breitengrad.
+ * Ohne Fund [0.0, 0.0] - die Widgets zeigen dann keinen Sonnenstand, statt einen
+ * fremden Ort zu behaupten.
+ *
+ * @return array{0:float,1:float}
+ */
+function lv_anlagenGeo(): array
+{
+    foreach (@IPS_GetInstanceList() as $iid) {
+        $cfg = json_decode((string) @IPS_GetConfiguration($iid), true);
+        if (!is_array($cfg) || !isset($cfg['Location'])) { continue; }
+        $loc = json_decode((string) $cfg['Location'], true);
+        if (is_array($loc) && isset($loc['latitude']) && $loc['latitude'] != 0) {
+            return [(float) $loc['latitude'], (float) ($loc['longitude'] ?? 0)];
+        }
+    }
+    return [0.0, 0.0];
+}
+
 $html = str_replace('__LV_TOKEN__', $TOKEN, $html);
 // Der Shell traegt seinen EIGENEN Bauzeitstempel. Ohne ihn nahm der Client den ersten
 // zur Laufzeit abgefragten Wert als Vergleichsmass - ein Geraet, das bereits mit einem
@@ -3977,6 +4012,12 @@ try { $lvTzOff = (int) round((new DateTimeZone($lvTzName))->getOffset(new DateTi
 catch (Throwable $e) { $lvTzName = 'UTC'; $lvTzOff = 0; }
 $html = str_replace('__LV_TZOFF__', (string) $lvTzOff, $html);
 $html = str_replace('__LV_TZNAME__', $lvTzName, $html);
+// Standort der ANLAGE aus der Location-Instanz. Frueher trugen mehrere Widgets die
+// Koordinaten als festen Vorgabewert im Quelltext - das war der Standort EINER Anlage
+// und in jeder anderen schlicht falsch. Jetzt fragt die Huelle den Kern.
+$lvGeo = lv_anlagenGeo();
+$html = str_replace('__LV_LAT__', (string) $lvGeo[0], $html);
+$html = str_replace('__LV_LON__', (string) $lvGeo[1], $html);
 $html = str_replace('__LV_WSPORT__', (string) ($WSPORT ?? ''), $html);     // WebSocket-Push optional (Property)
 $html = str_replace('__LV_WSURL__', (string) ($WSURL ?? ''), $html);       // volle wss-Adresse (Reverse Proxy) - schlaegt den Port
 $html = str_replace('__LV_RUN__', ($LV_MODE === 'run' ? '1' : ''), $html); // /hook/run/<site> -> Laufzeit

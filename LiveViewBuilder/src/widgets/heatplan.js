@@ -443,8 +443,8 @@
         (area.children||[]).forEach(function(rm){ if(rm.kind==='Raum')pushRoom(rm,g); });
       });
         // Raeume direkt unter dem Haus (ohne Bereich): der HAUSNAME ist die
-        // Gruppe. Vorher landeten sie unter „Sonstige" - bei Standort D,
-        // Standort B und Standort C also alle Raeume in einem Sammeltopf.
+        // Gruppe. Vorher landeten sie unter „Sonstige" - an den Nebenstandorten
+        // also alle Raeume in einem Sammeltopf.
         var hg=haus.name||''; if(hg)grp(hg);
         (haus.children||[]).forEach(function(rm){ if(rm.kind==='Raum')pushRoom(rm,hg); });
       });

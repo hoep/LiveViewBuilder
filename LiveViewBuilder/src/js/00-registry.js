@@ -1,3 +1,10 @@
+  /* Standort der ANLAGE. Frueher stand hier die Koordinate EINER Anlage als
+     Vorgabewert - in jeder anderen Installation war sie schlicht falsch, und man
+     sah es dem Sonnenstand nicht an. Die Huelle liefert sie jetzt aus der
+     Location-Instanz mit (LVCFG.lat/lon); ohne Fund bleibt 0/0, dann zeigt das
+     Widget keinen Sonnenstand statt einen fremden Ort. */
+  function _lvGeoLat(){var v=(typeof LVCFG!=='undefined'&&LVCFG)?parseFloat(LVCFG.lat):NaN;return isNaN(v)?0:v;}
+  function _lvGeoLon(){var v=(typeof LVCFG!=='undefined'&&LVCFG)?parseFloat(LVCFG.lon):NaN;return isNaN(v)?0:v;}
   // ===== Sichtbarer Fehler-Overlay (Diagnose) — zeigt jeden JS-Fehler als rote Box auf dem Bildschirm =====
 
   // ---- Nebel in Worte, EINMAL fuer alle Anzeigen -----------------------------

@@ -46,7 +46,7 @@
     return {az:az,elev:el};
   }
   // Standort: Widget-Koordinaten oder Haus-Vorgabe (Location #<ID> verifiziert)
-  function _covGeo(w){return {lat:(w.covLat!=null&&w.covLat!=='')?+w.covLat:48.2082, lon:(w.covLon!=null&&w.covLon!=='')?+w.covLon:16.3738};}
+  function _covGeo(w){return {lat:(w.covLat!=null&&w.covLat!=='')?+w.covLat:_lvGeoLat(), lon:(w.covLon!=null&&w.covLon!=='')?+w.covLon:_lvGeoLon()};}
 
   // Rohwert <-> Oeffnungsgrad. openPct = was die Kachel zeigt (100 = ganz offen).
   function _covOpen(w,raw){var n=parseFloat(raw);if(isNaN(n))n=0;return w.cvInv?(100-n):n;}
@@ -382,8 +382,8 @@
         +fieldPick(w,'covBrightVid','Helligkeit (Lux, optional)')
         +fieldPick(w,'cvBlockVid','Sperrgrund (BlockReason)')
         +row('Fensterrichtung (Azimut)','<input id="pCovFace" type="number" min="0" max="360" value="'+(w.covFace!=null?w.covFace:'')+'" placeholder="180 = Süd" style="width:90px"> °')
-        +row('Breitengrad','<input id="pCovLat" value="'+esc(String(w.covLat==null?'':w.covLat))+'" placeholder="48.2082" style="width:110px">')
-        +row('Längengrad','<input id="pCovLon" value="'+esc(String(w.covLon==null?'':w.covLon))+'" placeholder="16.3738" style="width:110px">')
+        +row('Breitengrad','<input id="pCovLat" value="'+esc(String(w.covLat==null?'':w.covLat))+'" placeholder="Standort der Anlage" style="width:110px">')
+        +row('Längengrad','<input id="pCovLon" value="'+esc(String(w.covLon==null?'':w.covLon))+'" placeholder="Standort der Anlage" style="width:110px">')
         +'<div class="pgh">Schriftgrößen (px, leer = auto)</div>'
         +row('Name','<input id="pCovNameFs" type="number" min="8" max="40" value="'+(w.covNameFs||'')+'" placeholder="auto" style="width:70px">')
         +row('Status','<input id="pCovStatusFs" type="number" min="7" max="30" value="'+(w.covStatusFs||'')+'" placeholder="auto" style="width:70px">')

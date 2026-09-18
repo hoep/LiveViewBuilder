@@ -323,7 +323,7 @@
   function flNacht(w) {
     try {
       var g = (typeof houseGeo === 'function') ? houseGeo() : null;
-      var la = (g && g.lat) || 48.2082, lo = (g && g.lon) || 16.3738;
+      var la = (g && g.lat) || _lvGeoLat(), lo = (g && g.lon) || _lvGeoLon();
       return LVSUN.pos(la, lo, Date.now() / 1000).elev < -1;
     } catch (e) { return false; }
   }
@@ -677,7 +677,7 @@
         var holeSats = function () {
           // Nur nachts sichtbar - das steckt schon in s.sichtbar (Sonne unter -6 Grad,
           // ueber 10 Grad Hoehe, von der Sonne angestrahlt) und wird beim Malen geprueft.
-          satJetzt(w.flSatGroup || 'visual', { lat: 48.2082, lon: 16.3738 }, function (L) {
+          satJetzt(w.flSatGroup || 'visual', { lat: _lvGeoLat(), lon: _lvGeoLon() }, function (L) {
             _flSatPos[w.id] = L || [];
             zeichne();          // sonst liegt das Ergebnis bis zum naechsten Bild brach
           });
