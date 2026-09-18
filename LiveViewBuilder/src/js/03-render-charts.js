@@ -1120,21 +1120,43 @@
       ec2.setOption(opt,true);
     });
   }
-  function setPie(w){var ec=_ec[w.id];if(!ec)return;var ids=[w.varId,w.varId2,w.varId3].filter(function(x){return x;});
-    var data=ids.map(function(id,i){var o=(w.sopt&&w.sopt[i])||{};var lv=_lastVals[id],v=lv?parseFloat(String(lv.v).replace(',','.')):0;if(isNaN(v))v=0;return {name:o.name||(i===0?(w.label||'Serie 1'):'Serie '+(i+1)),value:Math.max(0,v),itemStyle:{color:o.color||autoColorHex(i)}};});
+  // Anteilsdiagramme lasen hier nur varId/varId2/varId3 - der Serien-Editor, den der
+  // Eigenschaften-Block fuer Kreis/Donut/Rose ausdruecklich einblendet (_chartVis: ser),
+  // schreibt aber nach w.series. Ein im heutigen Editor zusammengestelltes Anteilsdiagramm
+  // blieb deshalb LEER: gepollt wurden die Serien laengst (06-live.js sammelt series[].vid),
+  // gezeichnet wurde aus Feldern, die der Editor nie mehr fuellt. _chSeries() liefert die
+  // Serien und faellt auf die alten Felder zurueck, solange keine gesetzt sind - alte
+  // Konfigurationen zeichnen also unveraendert weiter.
+  function setPie(w){var ec=_ec[w.id];if(!ec)return;
+    var ser=_chSeries(w).filter(function(s){return s&&s.vid;});
+    var data=ser.map(function(s,i){var lv=_lastVals[s.vid],v=lv?parseFloat(String(lv.v).replace(',','.')):0;if(isNaN(v))v=0;
+      return {name:s.name||(i===0?(w.label||'Serie 1'):'Serie '+(i+1)),value:Math.max(0,v),
+        itemStyle:{color:(_skinToCss(s.color)||s.color||autoColorHex(i))}};});
     var donut=(w.ctype==='donut'),rose=(w.ctype==='rose');
     // Ein Tortendiagramm hat kein Grid; es weicht ueber seinen Mittelpunkt aus. Die
     // reservierten Streifen kommen aus derselben Quelle wie bei allen anderen Typen, der
     // Mittelpunkt rueckt um die halbe Differenz oben/unten. Frueher standen hier feste
     // +5/+4/-5 Prozent - und weil die Legende dabei als "unten" angenommen wurde, solange
     // legPos nicht gesetzt war, wanderte die Torte nach OBEN, waehrend die Legende oben lag.
-    var st=_chStrips(w,w.legend),_H=0;try{_H=ec.getHeight()||0;}catch(e){}
+    var st=_chStrips(w,w.legend),_H=0,_pW=0;try{_H=ec.getHeight()||0;_pW=ec.getWidth()||0;}catch(e){}
     var cy=_H?Math.round((50+((st.t-st.b)/2)/_H*100)*10)/10:50;
     ec.setOption({backgroundColor:'transparent',animation:!!bcfg().chartAnim,tooltip:{trigger:'item',valueFormatter:function(v){return _chNum(w,v);}},
       title:_titleOpt(w),
       legend:_legendOpt(w,w.legend),
-      series:[{type:'pie',roseType:(rose?'radius':false),radius:rose?['22%','74%']:(donut?['46%','72%']:'70%'),center:['50%',cy+'%'],data:data,
-        label:{color:cssv('--text'),fontSize:_ecF(w,'label',10),formatter:(w.labels?'{b}\n{d}%':'{d}%')},labelLine:{length:6,length2:6,lineStyle:{color:cssv('--line')}},
+      /* Im Ring ist die Nachkommastelle verschenkter Platz: "67,15 %" ist breiter als das
+         Band und sagt nicht mehr als "67 %". Nur im schmalen Fall runden - grosse Torten
+         mit Aussenbeschriftung behalten die Vorgabe. */
+      series:[{type:'pie',percentPrecision:(_pW<320?0:2),roseType:(rose?'radius':false),radius:rose?['22%','74%']:(donut?['46%','72%']:'70%'),center:['50%',cy+'%'],data:data,
+        /* Beschriftung nach AUSSEN braucht links und rechts je gut 60 px fuer Text und
+         Fuehrungslinie. In einer schmalen Kachel gibt es die nicht: echarts zeichnet
+         trotzdem nach aussen und kuerzt auf "R..." / "3..." - die Zahl ist dann weg.
+         Unter 320 px wandert die Beschriftung deshalb IN die Scheibe, mit dunklem
+         Textrand, damit sie auf jeder Fuellfarbe lesbar bleibt. */
+      label:(_pW<320
+        ?{position:'inside',color:'#fff',textBorderColor:'rgba(0,0,0,.45)',textBorderWidth:2,
+          fontSize:_ecF(w,'label',10),formatter:(w.labels?'{b}\n{d}%':'{d}%')}
+        :{color:cssv('--text'),fontSize:_ecF(w,'label',10),formatter:(w.labels?'{b}\n{d}%':'{d}%')}),
+      labelLine:(_pW<320?{show:false}:{length:6,length2:6,lineStyle:{color:cssv('--line')}}),
         itemStyle:{borderColor:cssv('--bg'),borderWidth:2,borderRadius:((donut||rose)?3:0)},minAngle:3}]},true);}
   function chartSeries(w){return (_hist[w.id]&&_hist[w.id].series)?_hist[w.id].series:[];}
   // Sparkline (ctype 'spark') — kompakte Verlaufskurve: keine Achsen, kein Titel, keine Legende.
