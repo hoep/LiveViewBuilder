@@ -85,8 +85,11 @@
   //      also blenden wir bestätigte (aelter/gleich Cutoff) aus statt zu loeschen ("Verlauf" = weiter im Log). ----
   function _msgTs(t){if(!t)return 0;var s=String(t).trim();
     var m=s.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})\s+(\d{1,2}):(\d{2})(?::(\d{2}))?/); // DD.MM.YYYY HH:MM[:SS] (Symcon-Log, deutsch)
-    if(m){var d=new Date(+m[3],+m[2]-1,+m[1],+m[4],+m[5],+(m[6]||0));var tt=d.getTime();return isNaN(tt)?0:Math.floor(tt/1000);}
-    var d2=Date.parse(s.replace(' ','T'));return isNaN(d2)?0:Math.floor(d2/1000);}
+    // Die Zeitangabe im Log ist HAUSZEIT. Mit new Date(...) gelesen waere sie die Zeit des
+    // Geraets - auf einem Telefon in einer fremden Zeitzone lagen dadurch alle Meldungen vor
+    // dem Bestaetigt-Zeitpunkt, und die Liste war leer.
+    if(m){var d=_hzMs(new Date(+m[3],+m[2]-1,+m[1],+m[4],+m[5],+(m[6]||0)));return isNaN(d)?0:Math.floor(d/1000);}
+    var d2=Date.parse(s.replace(' ','T'));return isNaN(d2)?0:Math.floor(_hzMs(new Date(d2))/1000);}
   function _msgHist(w){try{return localStorage.getItem('lvmsghist_'+w.id)==='1';}catch(e){return false;}}
   // Bestaetigt-Status aus w.ackVid: {cutoff:Epoch, keys:{key:1}}. Abwaertskompatibel: reine Integer-Variable = nur cutoff.
   function _ackData(w){var lv=w.ackVid&&_lastVals[w.ackVid];if(!lv)return {cutoff:0,keys:{}};

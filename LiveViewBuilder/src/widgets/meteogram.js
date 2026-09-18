@@ -58,7 +58,7 @@
     function _p2(n){return ('0'+n).slice(-2);}
     var timeFmt=w.mgTimeFmt||'hm',dayFmt=w.mgDayFmt||'dm';
     var labels=rows.map(function(r,i){if(!r||!r.ts)return String(i);
-      var dt=new Date(r.ts*1000),h=dt.getHours(),mi=dt.getMinutes(),Dd=dt.getDate(),Mo=dt.getMonth()+1,wd=WD[dt.getDay()];
+      var dt=_hzD(r.ts*1000),h=dt.getHours(),mi=dt.getMinutes(),Dd=dt.getDate(),Mo=dt.getMonth()+1,wd=WD[dt.getDay()];
       if(hourly){switch(timeFmt){
         case 'h':    return _p2(h);                          // 14
         case 'hwd':  return h===0?wd:_p2(h);                 // Mitternacht -> Wochentag, sonst 14
@@ -80,7 +80,7 @@
     var tgrad=w.tgrad||[{t:-5,color:'#4aa3ff'},{t:4,color:'#3bd6c6'},{t:14,color:'#39d08a'},{t:22,color:'#f2b441'},{t:32,color:'#f2685a'}];
     // Tag/Nacht-Bänder (stündlich): Nacht = 20..6 Uhr
     var nightAreas=[];
-    if(hourly){var st=-1;rows.forEach(function(r,i){var h=r&&r.ts?new Date(r.ts*1000).getHours():12;var night=(h>=20||h<6);if(night&&st<0)st=i;if((!night||i===rows.length-1)&&st>=0){var end=night?i:i-1;nightAreas.push([{xAxis:st},{xAxis:end}]);st=-1;}});}
+    if(hourly){var st=-1;rows.forEach(function(r,i){var h=r&&r.ts?_hzD(r.ts*1000).getHours():12;var night=(h>=20||h<6);if(night&&st<0)st=i;if((!night||i===rows.length-1)&&st>=0){var end=night?i:i-1;nightAreas.push([{xAxis:st},{xAxis:end}]);st=-1;}});}
     // ---- Panels ----
     var panels=[{key:'temp',wt:2.7}];
     if(w.mgPrecip!==false&&(some(pop)||some(precip)||some(hum)))panels.push({key:'precip',wt:1.5});
@@ -194,7 +194,7 @@
     ec.setOption({backgroundColor:'transparent',animation:!!bcfg().chartAnim,
       tooltip:{trigger:'axis',axisPointer:{type:'cross',label:{show:false}},backgroundColor:surf,borderColor:line,borderWidth:1,textStyle:_tst({color:text,fontSize:_ecF(w,'label',10)}),
         formatter:function(ps){if(!ps||!ps.length)return '';var idx=ps[0].dataIndex,r=rows[idx],head=labels[idx];
-          if(r&&r.ts){var dt=new Date(r.ts*1000);head=hourly?(WD[dt.getDay()]+' '+_p2(dt.getHours())+':'+_p2(dt.getMinutes())):(WD[dt.getDay()]+' '+dt.getDate()+'.'+(dt.getMonth()+1)+'.');}
+          if(r&&r.ts){var dt=_hzD(r.ts*1000);head=hourly?(WD[dt.getDay()]+' '+_p2(dt.getHours())+':'+_p2(dt.getMinutes())):(WD[dt.getDay()]+' '+dt.getDate()+'.'+(dt.getMonth()+1)+'.');}
           var s='<b>'+head+'</b>'+ln('Temp',temp[idx],unit,null,crit,'line');if(some(feels))s+=ln('Gefühlt',feels[idx],unit,null,muted,'dash');
           if(!hourly&&some(tlo))s+=ln('Min',tlo[idx],unit,null,info,'line'); // im Tagesmodus Min/Max-Band -> auch das Tief zeigen
           if(gIdx.precip!=null){s+=ln('Regen',pop[idx],' %',0,accent,'line');if(precip[idx]>0)s+=ln(_mgSnow(r,temp[idx])?'Schnee':'Menge',precip[idx],' mm',1,(_mgSnow(r,temp[idx])?'rgba(150,190,230,0.9)':info),'bar');if(some(hum))s+=ln('Feuchte',hum[idx],' %',0,info,'dash');}

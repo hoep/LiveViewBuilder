@@ -158,7 +158,7 @@
     var kopf=rows[0],leib=rows.slice(1),anz=kopf.length-1;
     var F=_mxFenster(w,anz),spalten=[],ci;
     for(ci=F.von;ci<F.bis;ci++)spalten.push(String(kopf[ci+1]));
-    var jetzt=String(new Date().getFullYear());
+    var jetzt=String(_hzJetzt().getFullYear());
     var spark=(w.mxSpark!==false);
     var gtc='var(--mxlb) repeat('+spalten.length+',1fr)'+(spark?' 92px':'');
     var h='<div class="mx-tab" style="grid-template-columns:'+gtc+'">';

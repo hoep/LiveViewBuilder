@@ -11,8 +11,19 @@
   function toast(m){var t=$('#toast');t.textContent=m;t.classList.add('show');setTimeout(function(){t.classList.remove('show');},1600);}
   function snap(n){return gridOn?Math.round(n/GS)*GS:Math.round(n);}
   // Kollisionssicher: nie eine ID vergeben, die ein Seiten-Widget, Container-Kind oder Leisten-Kind schon hat.
+  // Ist die ID schon vergeben? Prueft ALLE Ansichten, nicht nur die aktuelle.
+  // Frueher war die Pruefung seitenlokal - dadurch trug dasselbe 'w4' auf zwanzig Seiten
+  // zwanzig verschiedene Widgets. Jeder nachlaufende Timer, der sein Element ueber die
+  // Widget-ID sucht, griff dann auf der falschen Seite zu.
   function _idTaken(id){var hit=false;function scan(w){if(!w||hit)return;if(w.id===id){hit=true;return;}if(w.kids)w.kids.forEach(scan);}
-    try{((typeof state!=='undefined'&&state&&state.widgets)||[]).forEach(scan);if(!hit&&typeof chromeAllKids==='function')chromeAllKids().forEach(scan);}catch(e){}return hit;}
+    try{
+      if(typeof store!=='undefined'&&store&&store.views){
+        Object.keys(store.views).forEach(function(vn){ if(hit)return; (store.views[vn].widgets||[]).forEach(scan); });
+      } else {
+        ((typeof state!=='undefined'&&state&&state.widgets)||[]).forEach(scan);
+      }
+      if(!hit&&typeof chromeAllKids==='function')chromeAllKids().forEach(scan);
+    }catch(e){}return hit;}
   function uid(){var id;do{id='w'+(seq++);}while(_idTaken(id));return id;}
 
   function setCanvas(){canvas.style.width=state.page.w+'px';canvas.style.height=state.page.h+'px';canvas.style.setProperty('--gs',GS+'px');var wi=$('#cvW'),hi=$('#cvH');if(wi)wi.value=state.page.w;if(hi)hi.value=state.page.h;var ff=$('#cvFit');if(ff)ff.value=state.page.fit||'letterbox';var pu=$('#cvPopup');if(pu)pu.checked=!!state.page.popup;/* Popup-Kennzeichen der aktuellen Seite anzeigen */var fr=$('#cvFrame');if(fr)fr.checked=!state.page.noframe;applyZoom();}

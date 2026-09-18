@@ -1,3 +1,67 @@
+  /* ===== Hauszeit statt Geraetezeit =========================================
+   * Zeitstempel aus dem Archiv sind absolut. Wer sie mit new Date(ts) in Felder
+   * zerlegt, bekommt die Zeitzone des BETRACHTERS - auf einem Telefon im Urlaub
+   * sind das die falschen Stunden, Tage und Monatsgrenzen. Das Haus steht aber
+   * fest, und die Seite beschreibt das Haus.
+   *
+   * _hzD(ts) liefert ein Date, dessen ORTSGETTER (getHours, getDate, getDay ...)
+   * die Zeit AM STANDORT zeigen: der Zeitpunkt wird um die Differenz Haus minus
+   * Geraet verschoben. Damit bleibt aller Formatier- und Rechencode unveraendert
+   * lesbar - nur new Date(...) wird zu _hzD(...).
+   * ACHTUNG: .getTime() eines solchen Datums ist mitverschoben. Wer aus Feldern
+   * wieder einen echten Zeitstempel baut (Blockgrenzen, Fensteranfang), nimmt
+   * _hzMs() fuer den Rueckweg.
+   *
+   * Der Versatz wird je Zeitpunkt bestimmt, nicht einmal: eine Reihe ueber ein
+   * Jahr laeuft durch die Sommerzeit, ein fester Versatz haette den Winterteil
+   * um eine Stunde verschoben. Quelle ist der Zonenname aus LVCFG.tz ueber Intl;
+   * fehlt der (sehr alte Browser), gilt der mitgelieferte aktuelle Versatz
+   * LVCFG.tzo, und ohne beides bleibt es bei der Geraetezeit.
+   */
+  var _HZ_CACHE={},_HZ_DTF;
+  function _hzZone(){return (typeof LVCFG!=='undefined'&&LVCFG&&LVCFG.tz)?String(LVCFG.tz):'';}
+  function _hzFest(){var o=(typeof LVCFG!=='undefined'&&LVCFG&&LVCFG.tzo!=null&&LVCFG.tzo!=='')?parseInt(LVCFG.tzo,10):NaN;return isNaN(o)?null:o;}
+  function _hzOffAt(ms){                                   // Versatz des Standorts in Minuten oestlich von UTC
+    var zone=_hzZone();
+    if(!zone)return _hzFest();
+    var tag=Math.floor(ms/86400000);                       // je Kalendertag einmal rechnen, nicht je Beschriftung
+    if(_HZ_CACHE[tag]!==undefined)return _HZ_CACHE[tag];
+    var off=_hzFest();
+    if(_HZ_DTF===undefined){
+      try{_HZ_DTF=new Intl.DateTimeFormat('en-US',{timeZone:zone,hour12:false,year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit'});}
+      catch(e){_HZ_DTF=null;}
+    }
+    if(_HZ_DTF){
+      try{
+        var m=String(_HZ_DTF.format(new Date(ms))).match(/(\d+)\D+(\d+)\D+(\d+)\D+(\d+)\D+(\d+)\D+(\d+)/);
+        if(m){var alsUtc=Date.UTC(+m[3],+m[1]-1,+m[2],(+m[4])%24,+m[5],+m[6]);off=Math.round((alsUtc-ms)/60000);}
+      }catch(e){}
+    }
+    _HZ_CACHE[tag]=off;
+    return off;
+  }
+  function _hzVersatz(ms){var h=_hzOffAt(ms);return (h==null)?0:(h+new Date(ms).getTimezoneOffset())*60000;}
+  function _hzD(v){var ms=(v instanceof Date)?v.getTime():(+v);if(isNaN(ms))return new Date(NaN);return new Date(ms+_hzVersatz(ms));}
+  function _hzJetzt(){return _hzD(Date.now());}
+  /* ECharts formatiert und teilt eine Zeitachse in der Zeitzone des BROWSERS ein - die
+   * Stuetzstellen liegen dann auf Geraete-Mitternacht, nicht auf Haus-Mitternacht, und der
+   * Wochentag unter einem Tagesbalken war im Ausland um einen Tag daneben. Es gibt genau
+   * einen Schalter dagegen: option.useUTC. Die Zeitstempel werden deshalb um den
+   * Standort-Versatz vorgeschoben (_hzX) und die Achse auf UTC gestellt - dann zeigt
+   * ECharts die Hauszeit. Alles, was einen Achsenwert ZURUECKliest (Tooltip, Pixelmass),
+   * dreht ihn mit _hzUnX wieder auf den echten Zeitstempel.
+   */
+  function _hzX(ms){var h=_hzOffAt(ms);return (h==null)?ms:ms+h*60000;}
+  function _hzUnX(x){var h=_hzOffAt(x);return (h==null)?x:x-h*60000;}
+  function _hzXData(d){
+    if(!d||!d.length||!Array.isArray(d[0]))return d;
+    return d.map(function(p){return (p&&p.length>1&&typeof p[0]==='number')?[_hzX(p[0])].concat(p.slice(1)):p;});
+  }
+  function _hzMs(d){                                       // Rueckweg: verschobenes Datum -> echter Zeitstempel
+    var s=(d instanceof Date)?d.getTime():(+d);if(isNaN(s))return NaN;
+    var ms=s-_hzVersatz(s);
+    return s-_hzVersatz(ms);                               // zweiter Durchgang faengt die Umstellungstage ab
+  }
   function _wActionKind(w,inPopup){ // Hover-Affordance: Navigation (nav) vs. echte Schaltaktion (tog) vs. Lang-Druck (hold) getrennt
     var t=w.type, hold=!!(w.longPopup||w.longNav);
     // NAVIGATION: oeffnet Popup/Seite/Skript/Menue/Region oder geht zurueck. closePopup ist NUR im Popup sinnvoll.
@@ -163,7 +227,9 @@
     if(w.type==='html'){if(w.htmlSrc==='custom')setHtmlContent(w,w.html||'',root);else fetchHtml(w,root);}
     if(w.type==='weekplan')fetchWeekplan(w,root);
     if(w.type==='suncard')refreshSun(w,root);
-    if(w.type==='calendar')fetchCalEvents(w,root);
+    // calendar bringt seit 13.09.2026 sein eigenes mount mit (Tag/Woche/Monat/Agenda).
+    // Der alte Pfad wuerde die neue Darstellung sofort wieder ueberschreiben.
+    // if(w.type==='calendar')fetchCalEvents(w,root);
     if(w.type==='eventctl')fetchEvent(w,root);
     if(w.type==='objinfo')fetchObjInfo(w,root);
     // Sichtbarkeit per Variable (nicht im Edit). Ist der Wert noch nicht bekannt, wurde
@@ -246,6 +312,7 @@
 
   // ---------- ECharts / Kamera ----------
   var _ec={},_hist={},_lastVals={},_chAnim={};   // _chAnim: Bar-Race-Timer je Widget
+  var _tmCache={},_tmLauf={};                    // Treemap: Profil-Abfrage je Widget
 
   /**
    * Aus ZWEI ZEITREIHEN eine Punktwolke machen. Das ist der ganze Trick am
@@ -328,7 +395,7 @@
   function fmtDelta(n,sign){if(n==null||isNaN(n))return '–';var a=Math.abs(n),s=a>=100?Math.round(n):Math.round(n*10)/10;return (sign&&n>0?'+':'')+String(s).replace('.',',');}
   function _lerpHex(a,b,f){var A=_rgb(a),B=_rgb(b);return '#'+[0,1,2].map(function(i){return ('0'+Math.round(A[i]+(B[i]-A[i])*f).toString(16)).slice(-2);}).join('');}
   function tColor(t,stops){if(!stops||!stops.length)return cssv('--accent');var s=stops.slice().sort(function(a,b){return a.t-b.t;});if(t<=s[0].t)return s[0].color;if(t>=s[s.length-1].t)return s[s.length-1].color;for(var i=0;i<s.length-1;i++){if(t>=s[i].t&&t<=s[i+1].t)return _lerpHex(s[i].color,s[i+1].color,(t-s[i].t)/((s[i+1].t-s[i].t)||1));}return s[s.length-1].color;}
-  function _hhmm(v){var s=String(v==null?'':v),m=s.match(/(\d{1,2}):(\d{2})/);if(m)return (+m[1])*60+(+m[2]);var n=parseFloat(String(v).replace(',','.'));if(!isNaN(n)&&n>100000){var d=new Date(n*1000);return d.getHours()*60+d.getMinutes();}return null;}
+  function _hhmm(v){var s=String(v==null?'':v),m=s.match(/(\d{1,2}):(\d{2})/);if(m)return (+m[1])*60+(+m[2]);var n=parseFloat(String(v).replace(',','.'));if(!isNaN(n)&&n>100000){var d=_hzD(n*1000);return d.getHours()*60+d.getMinutes();}return null;}
   function _hhmmTxt(v){var m=String(v).match(/(\d{1,2}:\d{2})/);return m?m[1]:String(v);}
   function refreshWeatherPro(w){
     var el=$('.w[data-id="'+w.id+'"]',canvas);if(!el)return;var days=w.fc||[];
@@ -343,6 +410,15 @@
       fill.style.background='linear-gradient(90deg,'+tColor(r._l,w.tgrad)+','+tColor(r._h,w.tgrad)+')';
     });
   }
+  // Uhrzeit AM STANDORT, nicht auf dem Geraet. LVCFG.tzo traegt den aktuell gueltigen
+  // Versatz des Hauses in Minuten oestlich von UTC (vom Hook eingesetzt). Steht dort nichts
+  // (alte Huelle), bleibt es bei der Geraeteuhr. Sonnenauf-/untergang kommen aus Symcon und
+  // sind immer Hauszeit - liefe die Sonne nach der Geraeteuhr, staende sie im Ausland falsch.
+  function _ortJetzt(){
+    var o=(typeof LVCFG!=='undefined'&&LVCFG&&LVCFG.tzo!=null&&LVCFG.tzo!=='')?parseInt(LVCFG.tzo,10):NaN;
+    var d=isNaN(o)?new Date():new Date(Date.now()+o*60000);
+    return isNaN(o)?{h:d.getHours(),m:d.getMinutes()}:{h:d.getUTCHours(),m:d.getUTCMinutes()};
+  }
   function refreshSun(w,root){
     var el=$('.w[data-id="'+w.id+'"]',(root||canvas));if(!el)return;
     var sr=_lastVals[w.varId],ss=_lastVals[w.varId2],a=sr?_hhmm(sr.f||sr.v):null,b=ss?_hhmm(ss.f||ss.v):null,sun=$('[data-role=sun]',el);if(sun==null)return;
@@ -352,7 +428,7 @@
     var v1=$('[data-role=val]',el);if(v1&&sr)v1.textContent=_hhmmTxt(sr.f||sr.v);var v2=$('[data-role=val2]',el);if(v2&&ss)v2.textContent=_hhmmTxt(ss.f||ss.v);
     if(a==null||b==null||b<=a)return;   // ohne gültige Zeiten nichts setzen (Klasse bewusst erst danach)
     if(_fresh)_hsc.classList.add('notrans');
-    var now=new Date(),nm=now.getHours()*60+now.getMinutes();
+    var now=_ortJetzt(),nm=now.h*60+now.m;
     var _ss=function(t){t=Math.max(0,Math.min(1,t));return t*t*(3-2*t);};       // Smoothstep
     var TW=45,dayAmt=Math.max(0,Math.min(_ss((nm-(a-TW))/(2*TW)),_ss(((b+TW)-nm)/(2*TW)))); // 1=Tag, 0=Nacht, weiche Dämmerung (±45 min)
     var moon=$('[data-role=moon]',el),fill=$('[data-role=fill]',el),filln=$('[data-role=filln]',el),nw=$('[data-role=now]',el);
@@ -377,14 +453,14 @@
         if(nm>b){nf='M'+xOf(b).toFixed(1)+' '+H+' L'+samp(b,nm,22)+' L'+xOf(nm).toFixed(1)+' '+H+' Z';}
         else if(nm<a){nf='M'+xOf(b).toFixed(1)+' '+H+' L'+samp(b,1440,16)+' L'+xOf(1440).toFixed(1)+' '+H+' Z M'+xOf(0).toFixed(1)+' '+H+' L'+samp(0,nm,16)+' L'+xOf(nm).toFixed(1)+' '+H+' Z';}
         filln.setAttribute('d',nf);filln.style.opacity=((1-dayAmt)*0.55).toFixed(3);}
-      if(w.showTime&&nw){nw.textContent=('0'+now.getHours()).slice(-2)+':'+('0'+now.getMinutes()).slice(-2);nw.style.left=(cx/W*100).toFixed(1)+'%';nw.style.top=(cy/vbH*100).toFixed(1)+'%';}
+      if(w.showTime&&nw){nw.textContent=('0'+now.h).slice(-2)+':'+('0'+now.m).slice(-2);nw.style.left=(cx/W*100).toFixed(1)+'%';nw.style.top=(cy/vbH*100).toFixed(1)+'%';}
     }else{
       // Nur-Tag: einfacher Bogen über die volle Breite (Aufgang links, Untergang rechts)
       var f=Math.max(0,Math.min(1,(nm-a)/(b-a))),mt=1-f,x=mt*mt*12+2*mt*f*100+f*f*188,y=mt*mt*82+2*mt*f*(-6)+f*f*82;
       sun.setAttribute('cx',x.toFixed(1));sun.setAttribute('cy',y.toFixed(1));sun.setAttribute('transform','translate(0,'+(y*(1-kR)).toFixed(2)+') scale(1,'+kR.toFixed(3)+')');sun.style.opacity=((nm>=a&&nm<=b)?1:0.25).toFixed(2);
       var _qp=function(x0,x1,y1,x2,t){var qx=x0+(x1-x0)*t,qy=82+(y1-82)*t,m2=1-t,ex=m2*m2*x0+2*m2*t*x1+t*t*x2,ey=m2*m2*82+2*m2*t*y1+t*t*82;return 'M'+x0+' 82 Q'+qx.toFixed(1)+' '+qy.toFixed(1)+' '+ex.toFixed(1)+' '+ey.toFixed(1)+' L'+ex.toFixed(1)+' 82 Z';};
       if(fill){fill.setAttribute('d',_qp(12,100,-6,188,f));fill.style.opacity=((nm>=a&&nm<=b)?0.30:0).toFixed(3);}
-      if(w.showTime&&nw){nw.textContent=('0'+now.getHours()).slice(-2)+':'+('0'+now.getMinutes()).slice(-2);nw.style.left=(x/200*100).toFixed(1)+'%';nw.style.top=(y/96*100).toFixed(1)+'%';}
+      if(w.showTime&&nw){nw.textContent=('0'+now.h).slice(-2)+':'+('0'+now.m).slice(-2);nw.style.left=(x/200*100).toFixed(1)+'%';nw.style.top=(y/96*100).toFixed(1)+'%';}
     }
     var len=$('[data-role=len]',el);if(len){var dl=b-a;len.textContent=Math.floor(dl/60)+' h '+('0'+(dl%60)).slice(-2)+' min';}
     // Positionen sitzen -> Übergänge wieder zulassen (ab jetzt animiert nur noch die echte Bewegung)
@@ -490,6 +566,7 @@
     else if(w.type==='meteogram'){setMeteogram(w);}
     else if(w.type==='multiring'){setMultiring(w);}
     else if(w.type==='waterfall'||w.ctype==='waterfall'){setWaterfall(w);} // Live-Werte, KEINE Historie
+    else if(w.ctype==='treemap'){renderChartData(w);}   // Momentanwerte, KEINE Historie
     else if(w.ctype==='pie'||w.ctype==='donut'){renderChartData(w);}
     else{
       // ACHTUNG: Dieser Zweig MUSS das Ende der else-Kette bleiben. Stand er als
@@ -553,7 +630,7 @@
     var el=$('.w[data-id="'+w.id+'"]',(root||canvas));if(!el||!j||j.error)return;
     var nm=$('[data-role=evname]',el);if(nm&&!w.label)nm.textContent=j.name||'Ereignis';
     var sw=$('[data-role=evsw]',el);if(sw)sw.classList.toggle('on',!!j.active);
-    var sub=$('[data-role=evsub]',el);if(sub){var parts=[j.active?'aktiv':'inaktiv'];if(j.next>0)parts.push('nächste: '+new Date(j.next*1000).toLocaleString('de-DE',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}));sub.textContent=parts.join(' · ');}
+    var sub=$('[data-role=evsub]',el);if(sub){var parts=[j.active?'aktiv':'inaktiv'];if(j.next>0)parts.push('nächste: '+_hzD(j.next*1000).toLocaleString('de-DE',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}));sub.textContent=parts.join(' · ');}
   }).catch(function(){});}
   /**
    * Zeitstempel nach PHP-Muster formatieren (d.m.Y H:i und Verwandte).
@@ -572,7 +649,7 @@
   function _oi2(n){return (n<10?'0':'')+n;}
   function fmtTs(ts,fmt){
     if(!(ts>0))return '–';
-    var d=new Date(ts*1000);
+    var d=_hzD(ts*1000);
     if(fmt==='rel'){
       var s=Math.round(Date.now()/1000)-ts, v=Math.abs(s), vor=(s>=0);
       var t = v<45?'gerade eben'
@@ -682,7 +759,7 @@
   // "7 Tage", zeigte die Achse weiter Monate und es kam nichts an. Jetzt entscheidet beides
   // ueber dieselbe Funktion.
   function _chCalMode(w){var r=_chRange(w);return !!r.cal && r.unit==='month';}
-  function renderChartData(w){if(w.ctype==='daylight')setDaylight(w);else if(w.ctype==='heatmap')setHeatmap(w);else if(w.ctype==='barrace')setBarRace(w);else if(w.ctype==='spark'||w.type==='spark')setSpark(w);else if(w.ctype==='waterfall'||w.type==='waterfall')setWaterfall(w);else if(w.ctype==='pie'||w.ctype==='donut'||w.ctype==='rose')setPie(w);else if(w.type==='chart'&&_chCalMode(w))setCalBar(w);else setLine(w);}
+  function renderChartData(w){if(w.ctype==='treemap')setTreemap(w);else if(w.ctype==='daylight')setDaylight(w);else if(w.ctype==='heatmap')setHeatmap(w);else if(w.ctype==='barrace')setBarRace(w);else if(w.ctype==='spark'||w.type==='spark')setSpark(w);else if(w.ctype==='waterfall'||w.type==='waterfall')setWaterfall(w);else if(w.ctype==='pie'||w.ctype==='donut'||w.ctype==='rose')setPie(w);else if(w.type==='chart'&&_chCalMode(w))setCalBar(w);else setLine(w);}
   // ---- Bar Race (ctype 'barrace') — animierter Balken-Wettlauf ueber die Zeit ----------
   // Jede konfigurierte Serie ist ein "Laeufer". Frames = Zeit-Buckets der aggregierten
   // Historie (aus fetchHist). ECharts realtimeSort ordnet die Balken je Frame neu und
@@ -691,7 +768,7 @@
   function stopRace(w){if(_chAnim[w.id]){clearInterval(_chAnim[w.id]);delete _chAnim[w.id];}}
   function _raceTimeFmt(times){
     var span=times[times.length-1]-times[0], D=864e5;
-    return function(t){var d=new Date(t);
+    return function(t){var d=_hzD(t);
       if(span>300*D)return d.toLocaleDateString('de-DE',{month:'short',year:'2-digit'});
       if(span>2*D)  return d.toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit'});
       return d.toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'});
@@ -785,6 +862,263 @@
       fi++; if(fi>=times.length){ if(!loop){stopRace(w);return;} fi=0; }
       _ec[w.id].setOption({series:[{data:frame(fi)}],graphic:_raceClock(fmtT(times[fi]))});
     },frameMs);
+  }
+  /* ================= Treemap =====================================================
+   *
+   * Flaeche = Wert, Farbe = DERSELBE Wert. Ersetzt die PHPChart-Treemap #<ID>
+   * (Momentanleistung aller Verbraucher), die als HTML in eine Variable schrieb.
+   *
+   * Zwei Quellen:
+   *   Profil  - ?api=profvars sammelt alle Variablen mit den genannten
+   *             benutzerdefinierten Profilen ein. Ein neuer Zaehler erscheint
+   *             damit von selbst; das war der Hauptgrund fuer die alte Loesung.
+   *   Serien  - die gewohnte Serienliste des Chart-Widgets, fuer handverlesene Werte.
+   *
+   * Die Farbskala haengt an Stuetzstellen in PROZENT der Obergrenze. Die Obergrenze
+   * ist standardmaessig der groesste Wert des Satzes: so bleibt die Spreizung
+   * erhalten, wenn ein Grossverbraucher zuschaltet. Ein fester Wert ist waehlbar.
+   */
+  function _tmStopsOf(w){
+    var a=(w.tmStops&&w.tmStops.length)?w.tmStops:[{p:0,c:'#00cdab'},{p:50,c:'#ffc107'},{p:100,c:'#ee423d'}];
+    return a.slice().sort(function(x,y){return (+x.p)-(+y.p);});
+  }
+  function _tmMisch(a,b,t){
+    function h(c){c=String(c||'').replace('#','');if(c.length===3)c=c[0]+c[0]+c[1]+c[1]+c[2]+c[2];
+      return [parseInt(c.substr(0,2),16)||0,parseInt(c.substr(2,2),16)||0,parseInt(c.substr(4,2),16)||0];}
+    var A=h(a),B=h(b),o='#';
+    for(var i=0;i<3;i++){var v=Math.round(A[i]+(B[i]-A[i])*t);o+=('0'+Math.max(0,Math.min(255,v)).toString(16)).slice(-2);}
+    return o;
+  }
+  /* Schrift auf gefuellter Flaeche: Schwarz oder Weiss nach der relativen Luminanz.
+     Eine feste Farbe geht nicht - die Skala laeuft von hellem Tuerkis ueber Gelb bis
+     Rot, und auf Gelb ist Weiss unlesbar, auf Rot Schwarz. */
+  function _tmInk(hex){
+    function k(c){c/=255;return c<=.03928?c/12.92:Math.pow((c+.055)/1.055,2.4);}
+    var c=String(hex||'').replace('#','');
+    if(c.length===3)c=c[0]+c[0]+c[1]+c[1]+c[2]+c[2];
+    var L=.2126*k(parseInt(c.substr(0,2),16)||0)+.7152*k(parseInt(c.substr(2,2),16)||0)+.0722*k(parseInt(c.substr(4,2),16)||0);
+    return L>0.42?'#08161a':'#ffffff';
+  }
+  /* Anteil eines Wertes an der Skala, 0..100.
+     LINEAR ist die Vorgabe. LOGARITHMISCH spreizt das untere Ende: sobald ein
+     einzelner Grossverbraucher die Obergrenze bestimmt (ein Boiler mit 2 kW
+     neben lauter 4-Watt-Steckdosen), liegt bei linearer Kennlinie alles andere
+     im ersten Prozent und ist farblich nicht mehr zu unterscheiden. */
+  function _tmPct(w,v,max){
+    if(!(max>0))return 0;
+    var v0=Math.max(0,v), k=(w.tmScale||'linear');
+    // Wurzel liegt zwischen beiden: sie hebt das untere Ende spuerbar an, ohne
+    // dass - wie beim Logarithmus - fast der ganze Satz in die Warmtoene rutscht.
+    if(k==='sqrt'){ return Math.sqrt(v0/max)*100; }
+    if(k==='log'){  return Math.log(1+v0)/Math.log(1+max)*100; }
+    return v0/max*100;
+  }
+  function _tmFarbe(w,v,max){
+    var st=_tmStopsOf(w);
+    var pct=_tmPct(w,v,max);
+    if(pct<=(+st[0].p))return st[0].c;
+    for(var i=0;i<st.length-1;i++){
+      var a=+st[i].p,b=+st[i+1].p;
+      if(pct<=b){
+        if((w.tmMode||'verlauf')==='stufen')return st[i].c;
+        var t=(b>a)?((pct-a)/(b-a)):0;
+        return _tmMisch(st[i].c,st[i+1].c,t);
+      }
+    }
+    return st[st.length-1].c;
+  }
+  /* Gruppenname aus dem Profil: erst die eigene Zuordnung ("Leistung_IT=IT"),
+     sonst das Profil ohne den gemeinsamen Vorsatz. */
+  function _tmGrpName(w,prof){
+    // Bei Extra-Variablen kam die Gruppe fertig vom Server (Name des Elternteils),
+    // erkennbar am '@'. Die Zuordnung aus tmNames gilt trotzdem - sonst liesse sich
+    // eine Extra-Variable nicht in eine bestehende Gruppe einsortieren.
+    var roh=String(prof||''), ex=(roh.charAt(0)==='@'), schl=ex?roh.slice(1):roh;
+    var m=String(w.tmNames||'');
+    if(m){
+      var tr=m.split(',');
+      for(var i=0;i<tr.length;i++){
+        var q=tr[i].indexOf('=');
+        if(q>0&&tr[i].slice(0,q).trim()===schl)return tr[i].slice(q+1).trim();
+      }
+    }
+    if(ex)return schl;
+    var u=schl.lastIndexOf('_');
+    return (u>0)?schl.slice(u+1):schl;
+  }
+  /* Die Profil-Abfrage sagt, WELCHE Variablen dazugehoeren - die WERTE liefert danach der
+   * Live-Kanal. Die IDs stehen in der Antwort, sie werden am Widget gemerkt (_tmIds) und
+   * von _collectIds mitgepollt; ab da feuert live() bei jeder Aenderung. Der Serverabruf
+   * dient nur noch dem Bestand (neue Geraete, Mindestwert, Hoechstalter) und laeuft
+   * entsprechend selten. */
+  function _tmLiveWerte(d){
+    if(!d||!d.length)return d;
+    return d.map(function(x){
+      if(!x||!x.id)return x;
+      var lv=_lastVals[x.id]; if(!lv)return x;
+      var v=parseFloat(String(lv.v).replace(',','.'));
+      if(isNaN(v))return x;
+      return {id:x.id,profile:x.profile,name:x.name,group:x.group,value:v};
+    });
+  }
+  function _tmIdsMerken(w,d){
+    var ids=[];(d||[]).forEach(function(x){if(x&&x.id>0)ids.push(x.id);});
+    var sig=ids.join(',');
+    if(w._tmIdSig===sig)return;
+    w._tmIds=ids; w._tmIdSig=sig;
+    // Der Poll fragt genau die Variablen ab, die im Index stehen - der muss also neu gebaut
+    // werden, sonst kaemen fuer die frisch dazugekommenen IDs nie Werte.
+    try{if(typeof invalidateVidx==='function')invalidateVidx();}catch(e){}
+    try{if(typeof invalidateAllIds==='function')invalidateAllIds();}catch(e){}
+  }
+  function _tmDaten(w,fertig){
+    if(w.tmSrc==='serien'){
+      var ids=(w.series||[]).map(function(x){return x&&x.vid;}).filter(function(x){return x;});
+      if(!ids.length&&w.varId)ids=[w.varId];
+      var out=[];
+      ids.forEach(function(id,i){
+        var lv=_lastVals[id]; if(!lv)return;
+        var v=parseFloat(String(lv.v).replace(',','.')); if(isNaN(v))return;
+        var o=(w.series&&w.series[i])||{};
+        out.push({name:o.name||(lv.n||('#'+id)),value:v,profile:''});
+      });
+      fertig(out); return;
+    }
+    var prof=String(w.tmProfiles||'').trim();
+    if(!prof){fertig([]);return;}
+    var sig=prof+'|'+(w.tmExtra||'')+'|'+(w.tmMin||0)+'|'+(w.tmMaxAge||0);
+    var c=_tmCache[w.id];
+    if(c&&c.sig===sig&&(Date.now()-c.t)<300000){fertig(_tmLiveWerte(c.d));return;}
+    if(_tmLauf[w.id]){fertig(c?_tmLiveWerte(c.d):[]);return;}
+    _tmLauf[w.id]=1;
+    // Die Extra-IDs loest der SERVER mit auf: nur er kennt die Namen. Der Live-Kanal
+    // liefert Werte ohne Bezeichner - daraus wurde vorher "#<ID>" auf der Flaeche.
+    fetch('?api=profvars&profiles='+encodeURIComponent(prof)
+         +'&extra='+encodeURIComponent(String(w.tmExtra||''))
+         +'&min='+encodeURIComponent(w.tmMin!=null?w.tmMin:0)
+         +'&maxage='+encodeURIComponent(w.tmMaxAge!=null?w.tmMaxAge:0),{cache:'no-store'})
+      .then(function(r){return r.json();}).then(function(j){
+        var d=(j&&j.vars)?j.vars:[];
+        _tmCache[w.id]={t:Date.now(),sig:sig,d:d}; delete _tmLauf[w.id];
+        _tmIdsMerken(w,d); fertig(d);
+      }).catch(function(){ delete _tmLauf[w.id]; fertig(c?_tmLiveWerte(c.d):[]); });
+  }
+  /* Ebenen-Konfiguration - NUR Rahmen und Abstaende.
+     FALLE: levels[0] ist die WURZEL, nicht die erste sichtbare Ebene. Bei
+     Gruppierung ist also levels[1] die Gruppe und levels[2] das Blatt. Wer die
+     Beschriftung dort hineinschreibt, trifft die Blaetter nie.
+     Deshalb stehen label (Blatt) und upperLabel (Gruppe) am SERIENOBJEKT -
+     ECharts entscheidet selbst, welches von beiden ein Knoten bekommt. */
+  function _tmLevels(grp,grund){
+    var rahmen=function(b){return {itemStyle:{borderColor:grund,borderWidth:b,gapWidth:b}};};
+    return grp ? [rahmen(4),rahmen(2),rahmen(1.5)] : [rahmen(2)];
+  }
+  var _tmTmr={};
+  function tmPushRefresh(w){                       // ein Push je Variable - gebuendelt zeichnen
+    if(_tmTmr[w.id])return;
+    _tmTmr[w.id]=setTimeout(function(){delete _tmTmr[w.id];if(_ec[w.id])renderChartData(w);},700);
+  }
+  function setTreemap(w){
+    var ec=_ec[w.id]; if(!ec)return;
+    _tmDaten(w,function(roh){
+      var ec2=_ec[w.id]; if(!ec2)return;
+      var min=(w.tmMin!=null)?w.tmMin:0;
+      var d=roh.filter(function(x){return x&&x.value>min;});
+      if(!d.length){
+        ec2.setOption({backgroundColor:'transparent',title:{text:'keine Werte',left:'center',top:'middle',
+          textStyle:{color:cssv('--faint'),fontSize:12,fontWeight:'normal'}},series:[]},true);
+        return;
+      }
+      /* Obergrenze der Farbskala.
+         auto     groesster Wert - volle Spreizung, aber ein Ausreisser drueckt
+                  alles andere zusammen.
+         perzentil deckelt beim 90. Perzentil: die oberen zehn Prozent laufen in
+                  die Endfarbe, der Rest behaelt seine Abstufung. Fuer Saetze mit
+                  einzelnen Grossverbrauchern die brauchbarste Wahl.
+         fest     eigener Wert. */
+      var max;
+      if(w.tmMaxMode==='fest'&&w.tmMax>0){ max=+w.tmMax; }
+      else if(w.tmMaxMode==='perzentil'){
+        var sw=d.map(function(x){return x.value;}).sort(function(a,b){return a-b;});
+        var q=Math.max(0,Math.min(100,(w.tmPerz!=null?+w.tmPerz:90)))/100;
+        var pos=(sw.length-1)*q, lo=Math.floor(pos), hi=Math.ceil(pos);
+        max=(lo===hi)?sw[lo]:(sw[lo]+(sw[hi]-sw[lo])*(pos-lo));
+        if(!(max>0))max=sw[sw.length-1]||0;
+      } else {
+        max=d.reduce(function(m,x){return Math.max(m,x.value);},0);
+      }
+      var ink=cssv('--text'), grund=cssv('--bg');
+      var zeigLbl=(w.tmLabels!==false);
+      var grp=(w.tmGroup!==false&&w.tmSrc!=='serien');
+      function blatt(x){
+        var f=_tmFarbe(w,x.value,max);
+        return {name:x.name,value:x.value,itemStyle:{color:f},label:{color:_tmInk(f)}};
+      }
+      var daten;
+      if(grp){
+        var g={};
+        d.forEach(function(x){
+          var k=_tmGrpName(w, x.profile||('@'+(x.group||'Weitere')));
+          (g[k]=g[k]||[]).push(x);
+        });
+        daten=Object.keys(g).sort(function(a,b){
+          function sum(k){return g[k].reduce(function(s,x){return s+x.value;},0);}
+          return sum(b)-sum(a);
+        }).map(function(k){return {name:k,children:g[k].map(blatt)};});
+      } else {
+        daten=d.map(blatt);
+      }
+      // Platz unten fuer die Farblegende reservieren - sie liegt ausserhalb der Flaechen,
+      // sonst frisst sie die kleinste Kachel.
+      /* Die Farblegende sitzt OBEN. Unten ist sie nicht zuverlaessig sichtbar: die
+         Zeichenflaeche reicht dort ueber den sichtbaren Rand der Kachel hinaus,
+         und alles, was von unten her positioniert wird, faellt heraus. Oben
+         schliesst sie zudem an den Titelstreifen an, statt eine zweite Kante
+         aufzumachen. */
+      var legH=(w.tmLegend!==false)?26:0;
+      var tmBr=0,tmGes=0;
+      try{tmBr=ec2.getWidth()||0;tmGes=ec2.getHeight()||0;}catch(e){}
+      var tmTop=(_chStrips(w,false).t||0)+legH;
+      var tmHo=Math.max(40,tmGes-tmTop);
+      // Nur der ERSTE Aufbau wird animiert. Die Kachel zeichnet sich im Takt der
+      // Aktualisierungsrate neu (Momentanwerte); mit notMerge sieht ECharts jedes Mal eine
+      // frische Serie und liesse die Flaechen alle 15 s von Null aufwachsen - unruhig.
+      var _tmErst=!w._tmGez; w._tmGez=1;
+      var opt={backgroundColor:'transparent',animation:(_tmErst&&!!bcfg().chartAnim),
+        tooltip:{trigger:'item',formatter:function(p){
+          return esc(p.name)+'<br><b>'+_chNum(w,p.value)+'</b>';}},
+        title:_titleOpt(w),
+        series:[{type:'treemap',roam:false,nodeClick:false,breadcrumb:{show:false},
+          // FALLE: treemap hat width/height mit Vorgabe '100%'. Die stechen right und
+          // bottom aus - der reservierte Streifen fuer die Legende wurde deshalb
+          // ueberzeichnet, egal was bei bottom stand. Also in Pixeln rechnen.
+          left:0,top:tmTop,width:tmBr,height:tmHo,
+          itemStyle:{borderColor:grund,borderWidth:2,gapWidth:2},
+          label:{show:zeigLbl,fontSize:_ecF(w,'label',10),fontWeight:600,
+            lineHeight:_ecF(w,'label',10)+4,overflow:'truncate',
+            formatter:function(p){return p.name+'\n'+_chNum(w,p.value,true);}},
+          upperLabel:{show:(grp&&w.tmGrpLbl!==false),height:17,color:ink,distance:0,
+            fontSize:_ecF(w,'label',10),fontWeight:650,backgroundColor:'transparent'},
+          levels:_tmLevels(grp,grund),
+          data:daten}]};
+      /* Farblegende ueber ECharts' eigenes visualMap. Der erste Versuch zeichnete
+         einen Verlaufsbalken als graphic-Element - er traf den reservierten
+         Streifen nicht zuverlaessig. visualMap bringt die Legende mit UND faerbt
+         selbst; damit unsere Stuetzstellen (auch ungleich verteilte und der
+         Stufen-Modus) erhalten bleiben, bekommt es keine Stopp-Liste, sondern
+         eine fertig abgetastete Rampe aus derselben Farbfunktion. */
+      if(w.tmLegend!==false&&max>0){
+        var rampe=[];
+        for(var ri=0;ri<=40;ri++)rampe.push(_tmFarbe(w,max*ri/40,max));
+        opt.visualMap={type:'continuous',min:0,max:max,calculable:false,
+          orient:'horizontal',left:'center',top:(_chStrips(w,false).t||0)+4,
+          itemWidth:11,itemHeight:130,
+          text:[_chNum(w,max)+((w.tmMaxMode==='perzentil'||w.tmMaxMode==='fest')?'+':''),_chNum(w,0)],textGap:6,
+          textStyle:{color:cssv('--faint'),fontSize:9,fontFamily:_ecFF(w)||undefined},
+          inRange:{color:rampe}};
+      }
+      ec2.setOption(opt,true);
+    });
   }
   function setPie(w){var ec=_ec[w.id];if(!ec)return;var ids=[w.varId,w.varId2,w.varId3].filter(function(x){return x;});
     var data=ids.map(function(id,i){var o=(w.sopt&&w.sopt[i])||{};var lv=_lastVals[id],v=lv?parseFloat(String(lv.v).replace(',','.')):0;if(isNaN(v))v=0;return {name:o.name||(i===0?(w.label||'Serie 1'):'Serie '+(i+1)),value:Math.max(0,v),itemStyle:{color:o.color||autoColorHex(i)}};});
@@ -919,7 +1253,7 @@
   // ---- Zahlformat fuer Datenlabels und Tooltips ---------------------------------------------
   // Nachkommastellen aus w.dec (leer = automatisch nach Groessenordnung), Einheit aus w.chUnit
   // (Wasserfall faellt auf seine eigene Einheit zurueck). Dezimaltrennzeichen ist das Komma.
-  function _chUnit(w){var u=(w&&w.chUnit!=null&&w.chUnit!=='')?w.chUnit:((w&&(w.ctype==='waterfall'||w.type==='waterfall'))?_wfUnit(w):'');return u||'';}
+  function _chUnit(w){var u=(w&&w.chUnit!=null&&w.chUnit!=='')?w.chUnit:((w&&(w.ctype==='waterfall'||w.type==='waterfall'))?_wfUnit(w):((w&&w.ctype==='treemap'&&w.yunit)?w.yunit:''));return u||'';}
   function _chDec(w,v){
     if(w&&w.dec!=null&&w.dec!=='')return Math.max(0,Math.min(6,parseInt(w.dec)));
     // Automatisch: grosse Zahlen ohne Nachkommastellen, kleine hoechstens eine. Alles
@@ -955,7 +1289,7 @@
   // Zeitmuster in PHP-Schreibweise - dieselbe, die in Symcon-Skripten ohnehin benutzt wird
   // (H:i, d.m., D H:i ...). Ein Backslash schuetzt ein Zeichen vor der Ersetzung.
   function _axTime(pat,ts){
-    var d=new Date(ts),p=function(n){return ('0'+n).slice(-2);},out='';
+    var d=_hzD(ts),p=function(n){return ('0'+n).slice(-2);},out='';
     for(var i=0;i<pat.length;i++){
       var c=pat.charAt(i);
       if(c==='\\'){out+=(pat.charAt(++i)||'');continue;}
@@ -1200,9 +1534,9 @@
   var _BLK_MS={min:300000,hour:3600000,day:86400000,week:604800000};
   function _blkEnde(von,stage){
     if(_BLK_MS[stage])return von+_BLK_MS[stage];
-    var d=new Date(von);
-    if(stage==='month')return new Date(d.getFullYear(),d.getMonth()+1,1).getTime();
-    if(stage==='year') return new Date(d.getFullYear()+1,0,1).getTime();
+    var d=_hzD(von);
+    if(stage==='month')return _hzMs(new Date(d.getFullYear(),d.getMonth()+1,1));
+    if(stage==='year') return _hzMs(new Date(d.getFullYear()+1,0,1));
     return von+86400000;
   }
   // Ein Block-Aggregat traegt den Zeitstempel des BLOCKANFANGS. Zeichnet man es dort, sitzt
@@ -1216,12 +1550,12 @@
   // also z. B. am 10.09.), die Aggregation wurde bisher genau ab da abgefragt - und der
   // September fiel heraus, waehrend der Fuellstand daneben brav am 10.09. anfing.
   function _blkAnfang(t,stage){
-    var d=new Date(t);
-    if(stage==='month')return new Date(d.getFullYear(),d.getMonth(),1).getTime();
-    if(stage==='year') return new Date(d.getFullYear(),0,1).getTime();
-    if(stage==='week'){var x=new Date(d.getFullYear(),d.getMonth(),d.getDate());x.setDate(x.getDate()-((x.getDay()+6)%7));return x.getTime();}
-    if(stage==='day')  return new Date(d.getFullYear(),d.getMonth(),d.getDate()).getTime();
-    if(stage==='hour') return new Date(d.getFullYear(),d.getMonth(),d.getDate(),d.getHours()).getTime();
+    var d=_hzD(t);
+    if(stage==='month')return _hzMs(new Date(d.getFullYear(),d.getMonth(),1));
+    if(stage==='year') return _hzMs(new Date(d.getFullYear(),0,1));
+    if(stage==='week'){var x=new Date(d.getFullYear(),d.getMonth(),d.getDate());x.setDate(x.getDate()-((x.getDay()+6)%7));return _hzMs(x);}
+    if(stage==='day')  return _hzMs(new Date(d.getFullYear(),d.getMonth(),d.getDate()));
+    if(stage==='hour') return _hzMs(new Date(d.getFullYear(),d.getMonth(),d.getDate(),d.getHours()));
     if(stage==='min')  return Math.floor(t/300000)*300000;
     return t;
   }
@@ -1237,7 +1571,7 @@
   }
   var _BLK_M=['Jänner','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
   function _blkName(von,stage){
-    var d=new Date(von),z=function(n){return ('0'+n).slice(-2);};
+    var d=_hzD(von),z=function(n){return ('0'+n).slice(-2);};
     if(stage==='month')return _BLK_M[d.getMonth()]+' '+d.getFullYear();
     if(stage==='year') return String(d.getFullYear());
     if(stage==='week'){var x=new Date(d.getTime());x.setHours(0,0,0,0);x.setDate(x.getDate()+3-((x.getDay()+6)%7));
@@ -1247,7 +1581,7 @@
     return z(d.getHours())+':'+z(d.getMinutes());
   }
   function _tipKopf(t){
-    var d=new Date(t),z=function(n){return ('0'+n).slice(-2);};
+    var d=_hzD(t),z=function(n){return ('0'+n).slice(-2);};
     if(isNaN(d.getTime()))return String(t);
     return z(d.getDate())+'.'+z(d.getMonth()+1)+'.'+d.getFullYear()+'  '+z(d.getHours())+':'+z(d.getMinutes());
   }
@@ -1256,7 +1590,7 @@
       if(!ps)return '';
       if(!Array.isArray(ps))ps=[ps];
       if(!ps.length)return '';
-      var t=ps[0].axisValue,zeilen=[],gezeigt={};
+      var t=_hzUnX(ps[0].axisValue),zeilen=[],gezeigt={};   // Achsenwert -> echter Zeitstempel
       ps.forEach(function(p){
         var v=(p.value&&p.value.length!=null)?p.value[p.value.length-1]:p.value;
         // NUR eine Reihe mit echtem Wert gilt als gezeigt. ECharts reicht bei trigger:'axis'
@@ -1491,7 +1825,7 @@
   // _hbLine: Zeitreihen-Balken — Datenpaare [t,v] -> [v,t], Achsen + Achsindex tauschen; Wertachsen links/rechts -> unten/oben.
   // Beschriftung eines Zeit-Buckets fuer die Kategorie-Achse liegender Balken (Tag/Monat/Jahr/Stunde)
   function _hbCatLabel(ts,w){
-    var ms=(typeof ts==='number'&&ts<1e12)?ts*1000:ts,d=new Date(ms);if(isNaN(d.getTime()))return String(ts);
+    var ms=(typeof ts==='number'&&ts<1e12)?ts*1000:ts,d=_hzD(ms);if(isNaN(d.getTime()))return String(ts);
     var u=(w.range&&w.range.unit)||'day';
     var WD=['So','Mo','Di','Mi','Do','Fr','Sa'],ML=['Jän','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'];
     if(u==='month')return ML[d.getMonth()];
@@ -1507,7 +1841,7 @@
     var vArr=Array.isArray(vax)?vax:[vax], nB=0,nT=0;
     vArr.forEach(function(a){if(a&&a.position==='right')nT++;else nB++;});
     var cats=null;
-    (opt.series||[]).some(function(s){if(s.data&&s.data.length&&Array.isArray(s.data[0])){cats=s.data.map(function(p){return _hbCatLabel(p[0],w);});return true;}return false;});
+    (opt.series||[]).some(function(s){if(s.data&&s.data.length&&Array.isArray(s.data[0])){cats=s.data.map(function(p){return _hbCatLabel(_hzUnX(p[0]),w);});return true;}return false;});
     opt.xAxis=vax;
     opt.yAxis={type:'category',data:cats||[],inverse:true,
       axisLine:{show:false,lineStyle:{color:cssv('--line')}},axisTick:{show:false},
@@ -1572,12 +1906,12 @@
       var mSpan=(mTs.length>1&&mTs[0]!=null&&mTs[1]!=null)?Math.abs(mTs[1]-mTs[0]):3600000;
       var mCol=_skinToCss(w.cmpMarkColor)||cssv('--muted');
       series.push({type:'custom',name:(OFFLBL[w.cmpOff||'1d']||'Vorperiode')+' (Marke)',silent:true,z:5,
-        data:mTs.map(function(t,j){return [t,(mTot[j]==null?0:mTot[j])];}),
+        data:mTs.map(function(t,j){return [_hzX(t),(mTot[j]==null?0:mTot[j])];}),
         renderItem:function(params,api){
           var i=params.dataIndex,v=mTot[i];if(v==null)return;
           if(w.barHoriz){var ch=api.coord([v,i]),hh=api.size([0,1])[1]*0.42;   // liegend -> senkrechter Strich
             return {type:'line',shape:{x1:ch[0],y1:ch[1]-hh,x2:ch[0],y2:ch[1]+hh},style:{stroke:mCol,lineWidth:2}};}
-          var cv=api.coord([mTs[i],v]),hw=api.size([mSpan,0])[0]*0.42;          // stehend -> waagrechter Strich
+          var cv=api.coord([_hzX(mTs[i]),v]),hw=api.size([mSpan,0])[0]*0.42;          // stehend -> waagrechter Strich
           return {type:'line',shape:{x1:cv[0]-hw,y1:cv[1],x2:cv[0]+hw,y2:cv[1]},style:{stroke:mCol,lineWidth:2}};
         }});
     } else if(cmpS){var shade=(w.cmpShade!=null?w.cmpShade:55)/100,olbl=OFFLBL[w.cmpOff||'1d'];
@@ -1600,7 +1934,7 @@
         name:_nm.name,nameLocation:_nm.nameLocation,nameRotate:_nm.nameRotate,nameGap:_nm.nameGap,nameTextStyle:_nm.nameTextStyle,
         scale:(a.min==null||a.min===''),min:(a.min!=null&&a.min!==''?parseFloat(a.min):null),max:(a.max!=null&&a.max!==''?parseFloat(a.max):null),
         axisLine:{show:ax0.line,lineStyle:{color:cssv('--line')}},axisTick:{show:ax0.ticks,lineStyle:{color:cssv('--line')}},axisLabel:_axLabY(w,ax0,a),splitLine:{show:(ax0.yGrid&&ix===0),lineStyle:{color:cssv('--line-soft')}},splitNumber:(w.gridDivs>0?parseInt(w.gridDivs):null)};});
-    var opt={backgroundColor:'transparent',animation:!!bcfg().chartAnim,grid:_chGrid(w,{l:6+Math.max(0,nL-1)*48,r:8+Math.max(0,nR-1)*48,t:6+_annTopSpace(w),b:(w.zoom?34:14)+_navSpace(w)}),tooltip:(_chXY(w)
+    var opt={useUTC:true,backgroundColor:'transparent',animation:!!bcfg().chartAnim,grid:_chGrid(w,{l:6+Math.max(0,nL-1)*48,r:8+Math.max(0,nR-1)*48,t:6+_annTopSpace(w),b:(w.zoom?34:14)+_navSpace(w)}),tooltip:(_chXY(w)
         ? {trigger:'item',formatter:function(p){
             return (p.seriesName?(p.seriesName+'<br>'):'')
               +_lineFmt(p.value[0])+(w.xunit?(' '+w.xunit):'')+' \u2192 '
@@ -1650,7 +1984,7 @@
       // Blocks war der Februar vier Pixel je Seite zu breit.
       var br=[];
       sr.blocks.forEach(function(b){
-        try{var d=ec.convertToPixel({xAxisIndex:0},_blkEnde(b[0],sr.stage))-ec.convertToPixel({xAxisIndex:0},b[0]);
+        try{var d=ec.convertToPixel({xAxisIndex:0},_hzX(_blkEnde(b[0],sr.stage)))-ec.convertToPixel({xAxisIndex:0},_hzX(b[0]));
           if(Math.abs(d)>1)br.push(Math.abs(d));}catch(e){}
       });
       if(!br.length){upd.push({});return;}
@@ -1763,11 +2097,11 @@
     var vid=(_chSeries(w)[0]||{}).vid||w.varId;
     if(!vid){_hist[w.id]={cal:{cur:EMPTY.slice(),prev:EMPTY.slice(),curY:'',prevY:''}};if(_ec[w.id])renderChartData(w);return;}
     var aggF=(w.aggField==='sum')?'sum':'avg';
-    var Y=new Date().getFullYear(),need=w.cmpOn?[Y,Y-1]:[Y],res={},done=0;
+    var Y=_hzJetzt().getFullYear(),need=w.cmpOn?[Y,Y-1]:[Y],res={},done=0;
     need.forEach(function(y){
-      var from=Math.floor(new Date(y,0,1,0,0,0).getTime()/1000),to=Math.floor(new Date(y+1,0,1,0,0,0).getTime()/1000)-1;
+      var from=Math.floor(_hzMs(new Date(y,0,1,0,0,0))/1000),to=Math.floor(_hzMs(new Date(y+1,0,1,0,0,0))/1000)-1;
       fetch('?api=aggregated&id='+encodeURIComponent(vid)+'&level=3&from='+from+'&to='+to,{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
-        var arr=EMPTY.slice();((j&&j.rows)||[]).forEach(function(b){var mo=new Date(b.t*1000).getMonth();if(mo>=0&&mo<12&&b[aggF]!=null)arr[mo]=Math.round(b[aggF]*100)/100;});res[y]=arr;
+        var arr=EMPTY.slice();((j&&j.rows)||[]).forEach(function(b){var mo=_hzD(b.t*1000).getMonth();if(mo>=0&&mo<12&&b[aggF]!=null)arr[mo]=Math.round(b[aggF]*100)/100;});res[y]=arr;
       }).catch(function(){res[y]=EMPTY.slice();}).then(function(){
         done++;if(done>=need.length){_hist[w.id]={cal:{cur:res[Y]||EMPTY.slice(),prev:res[Y-1]||EMPTY.slice(),curY:Y,prevY:Y-1}};if(_ec[w.id])renderChartData(w);}
       });
@@ -1791,14 +2125,14 @@
   // ein Monat ist mal 28, mal 31 Tage lang, und mit einer Durchschnittsdauer landet man nie
   // sauber auf dem Monatsersten.
   function _blkVor(d,u,k){
-    var x=new Date(d);
-    if(u==='year') return new Date(x.getFullYear()-k,0,1).getTime();
-    if(u==='month')return new Date(x.getFullYear(),x.getMonth()-k,1).getTime();
-    if(u==='week'){var y=new Date(x.getFullYear(),x.getMonth(),x.getDate());y.setDate(y.getDate()-((y.getDay()+6)%7)-7*k);return y.getTime();}
-    if(u==='day'){var z=new Date(x.getFullYear(),x.getMonth(),x.getDate());z.setDate(z.getDate()-k);return z.getTime();}
-    if(u==='hour'){var h=new Date(x.getFullYear(),x.getMonth(),x.getDate(),x.getHours());h.setHours(h.getHours()-k);return h.getTime();}
-    if(u==='min') return Math.floor(x.getTime()/300000)*300000-k*300000;
-    return x.getTime()-k*1000;
+    var x=_hzD(d);                                   // Kalendergrenzen liegen in HAUSZEIT
+    if(u==='year') return _hzMs(new Date(x.getFullYear()-k,0,1));
+    if(u==='month')return _hzMs(new Date(x.getFullYear(),x.getMonth()-k,1));
+    if(u==='week'){var y=new Date(x.getFullYear(),x.getMonth(),x.getDate());y.setDate(y.getDate()-((y.getDay()+6)%7)-7*k);return _hzMs(y);}
+    if(u==='day'){var z=new Date(x.getFullYear(),x.getMonth(),x.getDate());z.setDate(z.getDate()-k);return _hzMs(z);}
+    if(u==='hour'){var h=new Date(x.getFullYear(),x.getMonth(),x.getDate(),x.getHours());h.setHours(h.getHours()-k);return _hzMs(h);}
+    if(u==='min') return Math.floor((+d)/300000)*300000-k*300000;
+    return (+d)-k*1000;
   }
   function _chWindow(w){
     var r=_chRange(w),now=Math.floor(Date.now()/1000),poff=(w._pOff||0);
@@ -1824,22 +2158,25 @@
   function _setRange(w,patch){var r=_chRange(w);w.range={n:r.n,unit:r.unit,cal:r.cal,aggF:r.aggF,rawUnit:r.rawUnit,snap:r.snap};for(var k in patch)w.range[k]=patch[k];delete _hist[w.id];fetchHist(w);}
   function _winSec(w){var r=w.range;if(r&&r.unit&&_CHSEC[r.unit])return (r.n||24)*_CHSEC[r.unit];return (w.hours>0?w.hours:24)*3600;} // Fenster (Sek.) fuer statetl/statelog — Anzahl x Einheit, Fallback hours
   // Kalender-ausgerichteter Zeitraum-Anfang (ganze Stunde/Tag/Woche/Monat/Jahr), off = Verschiebung (0=aktuell, -1=vorheriger)
-  function _periodStart(unit,off){var d=new Date();d.setMinutes(0,0,0);
-    if(unit==='hour'){d.setHours(d.getHours()+off);return d;}
+  // Gerechnet wird in HAUSZEIT (verschobenes Datum), zurueckgegeben ein echtes Datum -
+  // sonst begaenne "dieser Monat" auf einem Geraet in einer fremden Zeitzone am falschen
+  // Zeitpunkt.
+  function _periodStart(unit,off){var d=_hzJetzt();d.setMinutes(0,0,0);
+    if(unit==='hour'){d.setHours(d.getHours()+off);return new Date(_hzMs(d));}
     d.setHours(0,0,0,0);
-    if(unit==='day'){d.setDate(d.getDate()+off);return d;}
-    if(unit==='week'){var wd=(d.getDay()+6)%7;d.setDate(d.getDate()-wd+off*7);return d;} // Woche ab Montag
-    if(unit==='month'){d.setDate(1);d.setMonth(d.getMonth()+off);return d;}
-    if(unit==='year'){d.setMonth(0,1);d.setFullYear(d.getFullYear()+off);return d;}
-    return d;}
-  function _periodEnd(unit,s){var d=new Date(s.getTime());
+    if(unit==='day'){d.setDate(d.getDate()+off);return new Date(_hzMs(d));}
+    if(unit==='week'){var wd=(d.getDay()+6)%7;d.setDate(d.getDate()-wd+off*7);return new Date(_hzMs(d));} // Woche ab Montag
+    if(unit==='month'){d.setDate(1);d.setMonth(d.getMonth()+off);return new Date(_hzMs(d));}
+    if(unit==='year'){d.setMonth(0,1);d.setFullYear(d.getFullYear()+off);return new Date(_hzMs(d));}
+    return new Date(_hzMs(d));}
+  function _periodEnd(unit,s){var d=_hzD(s.getTime());
     if(unit==='hour')d.setHours(d.getHours()+1);
     else if(unit==='day')d.setDate(d.getDate()+1);
     else if(unit==='week')d.setDate(d.getDate()+7);
     else if(unit==='month')d.setMonth(d.getMonth()+1);
     else if(unit==='year')d.setFullYear(d.getFullYear()+1);
     else d.setHours(d.getHours()+1);
-    return d;}
+    return new Date(_hzMs(d));}
   // Sichtbares Zeitfenster fuer statetl/statelog: 'period' = kalender-ausgerichtet (voller Zeitraum,
   // Rest der laufenden Einheit bleibt "offen"), sonst rollierend (now-win .. now).
   function _winRange(w){var now=Math.floor(Date.now()/1000),r=w.range||{};
@@ -1864,7 +2201,9 @@
   // die Balken treffen. Eine Leistungslinie auf einen Verbrauchsbalken zu stapeln ergibt
   // keinen Sinn - und bei zwei Linien addierte echarts sie stillschweigend aufeinander, was
   // wie ein Messfehler aussieht. Reine Linien- oder Flaechendiagramme stapeln unveraendert.
-  function _mkSer(rt,data,col,nm,ax,w,stacked,lbl,dashed,mixed,sd){var R=_resolveType(rt),
+  function _mkSer(rt,data,col,nm,ax,w,stacked,lbl,dashed,mixed,sd){
+    if(!_chXY(w))data=_hzXData(data);   // XY-Wolke: x ist eine Messgroesse, keine Zeit
+    var R=_resolveType(rt),
     st=(stacked&&!(mixed&&R.kind!=='bar'))?'total':undefined,br=parseFloat(w.barRadius!=null?w.barRadius:3);
     // Punkte je Serie (Form . Farbe . Groesse); leer = wie das Diagramm.
     sd=sd||{};
@@ -1937,24 +2276,34 @@
   // Ohne Sommerzeit: feste Normalzeit-Verschiebung (Stand 1. Januar) statt der jeweils gueltigen
   // Ortszeit. Ergibt glatte Kurven ohne die Spruenge Ende Maerz / Ende Oktober.
   function _dlHourStd(ts,offMin){var h=(ts+offMin*60)/3600;h=h/24;h=(h-Math.floor(h))*24;return h;} // Ortszeit = UTC + Versatz
-  function _dlStdOff(year){return -new Date(year,0,1,12,0,0).getTimezoneOffset();} // Minuten oestlich von UTC
+  function _dlStdOff(year){return -new Date(year,0,1,12,0,0).getTimezoneOffset();} // Minuten oestlich von UTC (Notnagel)
   function fetchDaylight(w){
-    var y=parseInt(w.dlYear)||new Date().getFullYear();
+    var y=parseInt(w.dlYear)||_hzJetzt().getFullYear();
     var q='?api=daylight&year='+y+(w.dlLoc?('&id='+parseInt(w.dlLoc)):'');
     fetch(q,{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
       if(!j||!j.days){_hist[w.id]={dl:null,err:(j&&j.hint)||'kein Standort'};if(_ec[w.id])setDaylight(w);return;}
       var rise=[],set=[],len=[];
-      var noDst=!!w.dlNoDst,off=_dlStdOff(j.year); // Normalzeit-Versatz nur einmal bestimmen
-      function hOf(ts){return noDst?_dlHourStd(ts,off):_dlHour(ts);}
+      // Umgerechnet wird in die Zeitzone des STANDORTS (j.std / je Tag j.days[i][3]), nicht in
+      // die des Geraets. Sonst zeigt ein Telefon in einer fremden Zeitzone das Haus falsch an -
+      // bei genuegend Versatz rutscht der Untergang ueber Mitternacht und die Kurve klappt um.
+      // Ohne Angabe (alter Hook) bleibt es beim alten Weg ueber die Geraetezeit.
+      var noDst=!!w.dlNoDst,hatTz=(j.std!=null),std=hatTz?j.std:_dlStdOff(j.year);
+      function hOf(ts,tagOff){
+        if(!hatTz)return noDst?_dlHourStd(ts,std):_dlHour(ts);
+        return _dlHourStd(ts,noDst?std:(tagOff!=null?tagOff:std));
+      }
       j.days.forEach(function(d){
         var t=d[0]*1000; // Tagesstempel (Mittag UTC) — nur als x-Position
         if(d[1]==null||d[2]==null){rise.push([t,null]);set.push([t,null]);len.push([t,null]);return;}
-        var hr=hOf(d[1]),hs=hOf(d[2]);
+        var hr=hOf(d[1],d[3]),hs=hOf(d[2],d[3]);
         rise.push([t,Math.round(hr*1000)/1000]);
         set.push([t,Math.round(hs*1000)/1000]);
         len.push([t,Math.round((d[2]-d[1])/36*1)/100]); // Tageslänge in Stunden
       });
-      _hist[w.id]={dl:{rise:rise,set:set,len:len,year:j.year,lat:j.lat,lon:j.lon}};
+      var jetzt=Date.now()/1000,nahOff=null,nahAbst=1e18;
+      j.days.forEach(function(d){var ab=Math.abs(d[0]-jetzt);if(ab<nahAbst){nahAbst=ab;nahOff=(d[3]!=null?d[3]:std);}});
+      _hist[w.id]={dl:{rise:rise,set:set,len:len,year:j.year,lat:j.lat,lon:j.lon,
+                       std:(hatTz?std:null),nowOff:(hatTz?nahOff:null)}};
       if(_ec[w.id])setDaylight(w);
     }).catch(function(){_hist[w.id]={dl:null,err:'Abruf fehlgeschlagen'};if(_ec[w.id])setDaylight(w);});
   }
@@ -1977,18 +2326,25 @@
     ];
     // Markierung „heute" (durchgezogen) — Datumsschild wie in der Vorlage
     if(w.dlToday!==false){
-      var now=new Date(),ty=parseInt(w.dlYear)||now.getFullYear();
-      if(now.getFullYear()===ty){
-        var tx=Date.UTC(ty,now.getMonth(),now.getDate(),12,0,0);
+      // Das "heute" ist der Tag AM STANDORT, nicht auf dem Geraet - sonst steht die
+      // Markierung bei einem Betrachter in einer fremden Zeitzone auf dem falschen Tag.
+      var hOff=(D.nowOff!=null)?D.nowOff:null;
+      var nd=(hOff!=null)?new Date(Date.now()+hOff*60000):new Date();
+      var nJ=(hOff!=null)?nd.getUTCFullYear():nd.getFullYear();
+      var nM=(hOff!=null)?nd.getUTCMonth():nd.getMonth();
+      var nT=(hOff!=null)?nd.getUTCDate():nd.getDate();
+      var ty=parseInt(w.dlYear)||nJ;
+      if(nJ===ty){
+        var tx=Date.UTC(ty,nM,nT,12,0,0);
         series[2].markLine={silent:true,symbol:'none',
           lineStyle:{color:cssv('--text'),width:1.5,type:'solid',opacity:.85},
-          label:{show:true,position:'insideEndTop',formatter:('0'+now.getDate()).slice(-2)+'.'+('0'+(now.getMonth()+1)).slice(-2),
+          label:{show:true,position:'insideEndTop',formatter:('0'+nT).slice(-2)+'.'+('0'+(nM+1)).slice(-2),
                  color:cssv('--text'),backgroundColor:cssv('--surface-2'),borderColor:cssv('--line'),borderWidth:1,
                  padding:[3,6],borderRadius:4,fontSize:_ecF(w,'label',10)},
           data:[{xAxis:tx}]};
       }
     }
-    ec.setOption({backgroundColor:'transparent',animation:!!bcfg().chartAnim,
+    ec.setOption({useUTC:true,backgroundColor:'transparent',animation:!!bcfg().chartAnim,
       grid:_chGrid(w,{l:6,r:8,t:6,b:6}),
       title:_titleOpt(w),legend:_legendOpt(w,w.legend),
       tooltip:{trigger:'axis',axisPointer:{type:'line'},
@@ -2020,7 +2376,7 @@
     var cols=Math.round(1440/res),aggF=(w.aggField==='sum')?'sum':'avg';
     fetch('?api=aggregated&id='+encodeURIComponent(vid)+'&level='+level+'&from='+from+'&to='+now,{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
       var sum=[],cnt=[],d,c;for(d=0;d<7;d++){sum[d]=[];cnt[d]=[];for(c=0;c<cols;c++){sum[d][c]=0;cnt[d][c]=0;}}
-      ((j&&j.rows)||[]).forEach(function(b){if(b[aggF]==null)return;var dt=new Date(b.t*1000),wd=(dt.getDay()+6)%7,slot=Math.floor((dt.getHours()*60+dt.getMinutes())/res);if(slot<0)slot=0;if(slot>=cols)slot=cols-1;sum[wd][slot]+=b[aggF];cnt[wd][slot]++;});
+      ((j&&j.rows)||[]).forEach(function(b){if(b[aggF]==null)return;var dt=_hzD(b.t*1000),wd=(dt.getDay()+6)%7,slot=Math.floor((dt.getHours()*60+dt.getMinutes())/res);if(slot<0)slot=0;if(slot>=cols)slot=cols-1;sum[wd][slot]+=b[aggF];cnt[wd][slot]++;});
       var data=[],mn=Infinity,mx=-Infinity;
       for(d=0;d<7;d++)for(c=0;c<cols;c++){var k=cnt[d][c];if(k>0){var v=(aggF==='sum')?sum[d][c]:(sum[d][c]/k);v=Math.round(v*100)/100;data.push([c,d,v]);if(v<mn)mn=v;if(v>mx)mx=v;}}
       _hist[w.id]={heat:{data:data,min:(mn===Infinity?0:mn),max:(mx===-Infinity?1:mx),cols:cols,res:res}};
@@ -2082,7 +2438,7 @@
         if(zeile)for(var c=1;c<head.length;c++){
           var jahr=parseInt(String(head[c]).replace(/[^0-9]/g,''),10);
           var v=parseFloat(String(zeile[c]==null?'':zeile[c]).replace(',','.'));
-          if(!isNaN(jahr)&&jahr>1900&&!isNaN(v))pts.push([new Date(jahr,0,1).getTime(),Math.round(v*100)/100]);
+          if(!isNaN(jahr)&&jahr>1900&&!isNaN(v))pts.push([_hzMs(new Date(jahr,0,1)),Math.round(v*100)/100]);
         }
         pts.sort(function(a,b){return a[0]-b[0];});
         fertig(pts);
@@ -2384,9 +2740,9 @@
   }
   function calAgenda(evs){
     if(!evs.length)return '<div class="calempty">Keine Termine im Zeitraum</div>';
-    var today=new Date();today.setHours(0,0,0,0);var out='',last='';
+    var today=_hzJetzt();today.setHours(0,0,0,0);var out='',last='';
     evs.forEach(function(e){
-      var d=new Date(e.start),key=d.toDateString();
+      var d=_hzD(new Date(e.start).getTime()),key=d.toDateString();
       if(key!==last){last=key;var dd=new Date(d);dd.setHours(0,0,0,0);var diff=Math.round((dd-today)/86400000);
         var lbl=diff===0?'Heute':diff===1?'Morgen':DOW[d.getDay()]+', '+d.getDate()+'. '+MON[d.getMonth()].slice(0,3);
         out+='<div class="cagd">'+lbl+'</div>';}
@@ -2396,8 +2752,8 @@
     return '<div class="cagenda">'+out+'</div>';
   }
   function calMonth(evs){
-    var now=new Date(),y=now.getFullYear(),m=now.getMonth(),dayset={};
-    evs.forEach(function(e){var d=new Date(e.start);if(d.getFullYear()===y&&d.getMonth()===m)dayset[d.getDate()]=1;});
+    var now=_hzJetzt(),y=now.getFullYear(),m=now.getMonth(),dayset={};
+    evs.forEach(function(e){var d=_hzD(new Date(e.start).getTime());if(d.getFullYear()===y&&d.getMonth()===m)dayset[d.getDate()]=1;});
     var startDow=(new Date(y,m,1).getDay()+6)%7,days=new Date(y,m+1,0).getDate();
     var h='<div class="hcalh">'+MON[m]+' '+y+'</div><div class="hcalg">';
     ['Mo','Di','Mi','Do','Fr','Sa','So'].forEach(function(d){h+='<div class="d hd">'+d+'</div>';});
@@ -2406,7 +2762,7 @@
     return h+'</div>';
   }
   function tick(){
-    var now=new Date();function p(n){return String(n).padStart(2,'0');}
+    var now=_hzJetzt();function p(n){return String(n).padStart(2,'0');}   // Uhr zeigt die Zeit AM HAUS
     function _one(w){
       if(w.type==='suncard'){refreshSun(w);return;}
       if(w.type!=='clock'&&w.type!=='timer')return;
@@ -2918,7 +3274,7 @@
     fetch('?api=weekplan&id='+w.varId,{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
       if(!j||!j.days){el.innerHTML='<div class="hwpempty">kein Wochenplan</div>';return;}
       var dn=['Mo','Di','Mi','Do','Fr','Sa','So'],h='';
-      var _nw=new Date(),_nowPct=(_nw.getHours()*60+_nw.getMinutes())/1440*100,_today=(_nw.getDay()+6)%7;
+      var _nw=_hzJetzt(),_nowPct=(_nw.getHours()*60+_nw.getMinutes())/1440*100,_today=(_nw.getDay()+6)%7;
       var _ov={};(w.colors||[]).forEach(function(c){if(c&&c.name)_ov[String(c.name).toLowerCase().trim()]=(c.color==null?'':String(c.color));}); // Widget-Override je Zustand (Rohwert)
       var _OFFN=/^(aus|off|0|false|zu|geschlossen|inaktiv|standby|nein|no)$/i,_OFFC=/^(off|none|aus|zu|-|transparent|blank|)$/i;
       function _wpOff(name,raw){return (raw!=null)?_OFFC.test(String(raw).trim()):_OFFN.test(String(name||'').trim());} // Aus/0/false = aus (leer). Override-Farbe zwingt An (außer sie ist selbst „off/none/leer")

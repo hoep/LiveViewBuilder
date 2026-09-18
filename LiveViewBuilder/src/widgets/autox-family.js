@@ -459,7 +459,7 @@
     function naechsterTermin(hhmm){
       var t=String(hhmm||'').split(':'), st=parseInt(t[0],10), mi=parseInt(t[1],10);
       if(isNaN(st)||isNaN(mi))return '';
-      var d=new Date(), soll=new Date(d.getFullYear(),d.getMonth(),d.getDate(),st,mi,0);
+      var d=_hzJetzt(), soll=new Date(d.getFullYear(),d.getMonth(),d.getDate(),st,mi,0);
       if(soll<=d)soll=new Date(soll.getTime()+86400000);
       var heute=(soll.toDateString()===d.toDateString());
       var TAG=['So','Mo','Di','Mi','Do','Fr','Sa'];
@@ -735,7 +735,7 @@
       if(woche){
         // Montag zuerst - So ist in JS die 0, steht im Wochenbild aber hinten.
         var KUERZEL=['So','Mo','Di','Mi','Do','Fr','Sa'];
-        var heute=new Date().getDay(), zeilen='';
+        var heute=_hzJetzt().getDay(), zeilen='';
         [1,2,3,4,5,6,0].forEach(function(wd){
           zeilen+='<div class="ax-tlw-row'+(wd===heute?' heute':'')+'">'
             +'<span class="ax-tlw-d">'+KUERZEL[wd]+'</span>'+bahn(wd)+'</div>';
@@ -750,7 +750,7 @@
       }
 
       return '<div class="ax ax-tlwrap"><div class="ax-tl-scroll">'
-        +bahn(new Date().getDay(),'<div class="ax-tl-hours">'+hours+'</div>')
+        +bahn(_hzJetzt().getDay(),'<div class="ax-tl-hours">'+hours+'</div>')
         +'</div>'
         +((nurT||!(A.cfg.rules||[]).some(function(r){return r.type==='circadian';}))?''
           :'<div class="ax-circ"><div class="ax-circ-l">Circadian über den Tag</div><div class="ax-ramp" style="height:clamp(8px,3cqmin,14px)"></div></div>')

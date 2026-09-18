@@ -29,7 +29,7 @@
    */
   function _sbFill(w){
     var st=_sbSched[w.id]; if(!st)return;
-    var el=document.querySelector('.w[data-id="'+w.id+'"] .sb-hint');
+    var el=document.querySelector('.w.t-'+w.type+'[data-id="'+w.id+'"] .sb-hint');
     if(!el)return;
     el.textContent=(st.belegt!=null)
       ? (st.belegt+' von '+(st.plaetze||16)+' Regelplätzen belegt'+(st.warn?(' · '+st.warn):''))

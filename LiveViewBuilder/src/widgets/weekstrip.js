@@ -16,7 +16,7 @@
     if(st.err)return '<div class="wst wst-msg">'+esc(st.err)+'</div>';
     if((!w.eventId&&!(typeof DOKU!=='undefined'&&DOKU))||!st.data)return '<div class="wst wst-msg">Wochenplan im Panel wählen</div>';
     var d=st.data, acts={actions:d.actions};
-    var now=new Date(), today=(now.getDay()+6)%7, nowPct=(now.getHours()*60+now.getMinutes())/1440*100;
+    var now=_hzJetzt(), today=(now.getDay()+6)%7, nowPct=(now.getHours()*60+now.getMinutes())/1440*100;
     var h='<div class="wst">';
     if(w.showTitle!==false)h+='<div class="wst-head"><span class="wst-title">'+escL(w.label||d.name||'Wochenplan')+'</span>'
       +(d.now!=null?'<span class="wst-now">jetzt: <b style="color:'+weAct(acts,d.now).color+'">'+esc(weAct(acts,d.now).name)+'</b></span>':'')+'</div>';
@@ -41,7 +41,7 @@
     }).catch(function(){st.err='Verbindungsfehler';st.loaded=true;wstRepaint(w,el);});
   }
   function wstStartTimer(){if(_wstTimer||(typeof DOKU!=='undefined'&&DOKU))return;_wstTimer=setInterval(wstTick,60000);}
-  function wstTick(){Object.keys(_wstState).forEach(function(id){if(!_wstState[id].loaded)return;var el=document.querySelector('.w[data-id="'+id+'"]');if(!el)return;var w=(typeof widget==='function')?widget(id):null;if(w)wstFetch(w,el);});}
+  function wstTick(){Object.keys(_wstState).forEach(function(id){if(!_wstState[id].loaded)return;var w=(typeof widget==='function')?widget(id):null;if(!w)return;var el=document.querySelector('.w.t-'+w.type+'[data-id="'+id+'"]');if(!el)return;wstFetch(w,el);});}
 
   function wstElOf(w,root){return $('.w[data-id="'+w.id+'"]',root||canvas);}
   function wstRepaint(w,el){if(!el)el=wstElOf(w);if(!el)return;var host=el.querySelector('.winner')||el;host.innerHTML=wstRender(w);}

@@ -82,7 +82,7 @@
         +autoBlk;
     }
     function botPaint(w){
-      var el=document.querySelector('.w[data-id="'+w.id+'"] [data-role=botroot]'); if(!el)return;
+      var el=document.querySelector('.w.t-'+w.type+'[data-id="'+w.id+'"] [data-role=botroot]'); if(!el)return;
       var m=_botM[w.id];
       if(!m){el.innerHTML='<div class="load">'+(w.mowerId?'Mäher nicht gefunden':'Mäher wählen')+'</div>';return;}
       el.innerHTML=botCard(w,m); el._botM=m;

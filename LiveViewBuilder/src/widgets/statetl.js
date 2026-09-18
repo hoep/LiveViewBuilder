@@ -71,8 +71,8 @@
     else if(period==='week'){for(var i=0;i<7;i++)push((i+0.5)/7,_WD[i]);}
     else if(period==='month'){var days=Math.max(1,Math.round(span/86400));[1,8,15,22,days].forEach(function(dd){push((dd-1)/days,String(dd));});}
     else if(period==='year'){for(var m=0;m<12;m++)push((m+0.5)/12,_MN[m]);}
-    else if(period==='hour'){var sh=new Date(from*1000).getHours();[0,15,30,45,60].forEach(function(mm){push(mm/60,(sh<10?'0':'')+sh+':'+(mm===60?'00':(mm<10?'0'+mm:mm)));});}
-    else{function tl(f){var d=new Date((from+span*f)*1000);return ('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2);}push(0,tl(0));push(.5,tl(.5));push(1,tl(1));}
+    else if(period==='hour'){var sh=_hzD(from*1000).getHours();[0,15,30,45,60].forEach(function(mm){push(mm/60,(sh<10?'0':'')+sh+':'+(mm===60?'00':(mm<10?'0'+mm:mm)));});}
+    else{function tl(f){var d=_hzD((from+span*f)*1000);return ('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2);}push(0,tl(0));push(.5,tl(.5));push(1,tl(1));}
     // Achsenhoehe/-schrift aus der Kachel ableiten, sonst frisst die Achse auf flachen Kacheln den Balken.
     // Die Achse gehoert UNTER die Spuren. Sie lag bisher im normalen Fluss, waehrend
     // die Spuren absolut liegen - dadurch stand die Uhrzeit oben IM ersten Balken.
@@ -173,7 +173,7 @@
     box.innerHTML='<div class="stl-lanes'+(vert?' v':'')+'">'+lanes+'</div>'+axis;
     if(w.showLog){var lb=$('[data-role=slog]',el);if(lb){
       var first=items[0],dd=((data[first.vid])||[]).slice().reverse(),mx=(w.logCount>0?w.logCount:20),o2=[];
-      for(var i=0;i<dd.length&&o2.length<mx;i++){var ms=dd[i][0],val=dd[i][1],dt=new Date(ms),col=_stlColor(w,val)||'var(--muted)',lab=_slogLabel(w,val);
+      for(var i=0;i<dd.length&&o2.length<mx;i++){var ms=dd[i][0],val=dd[i][1],dt=_hzD(ms),col=_stlColor(w,val)||'var(--muted)',lab=_slogLabel(w,val);
         var tt=('0'+dt.getHours()).slice(-2)+':'+('0'+dt.getMinutes()).slice(-2)+':'+('0'+dt.getSeconds()).slice(-2);
         o2.push('<div class="slog-row"><span class="slog-dot" style="background:'+col+'"></span><span class="slog-lbl">'+esc(lab)+'</span><span class="slog-t">'+tt+'</span></div>');}
       lb.innerHTML=o2.length?o2.join(''):'<div class="slog-empty">keine Wechsel</div>';
@@ -189,7 +189,7 @@
       // Im Betrieb nur durch die Perioden blaettern (Einheit wird im Editor gewaehlt) -> kein gequetschtes Pill-Menue.
       nav='<span class="stl-nav">'
         +'<button class="stl-arw" data-stlnav="-1" title="zurueck">◀</button>'
-        +'<span class="stl-per">'+esc(_stlPeriodLabel(u,off,start))+'</span>'
+        +'<span class="stl-per">'+esc(_stlPeriodLabel(u,off,_hzD(start.getTime())))+'</span>'
         +'<button class="stl-arw" data-stlnav="1"'+(off>=0?' disabled':'')+' title="vor">▶</button></span>';
     }
     if(!title&&!nav&&!leg)return ''; // alles ausgeblendet -> kein Kopf, Balken fuellen die Kachel

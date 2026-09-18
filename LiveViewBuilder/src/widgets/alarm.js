@@ -78,7 +78,7 @@
     if(w.condMode==='list'&&w.vassoc&&w.vassoc.length){var m=stateHit(w.vassoc, w.listTime?_acRest(w.varId):_acRaw(w.varId));if(m&&m.color){var c2=_cssColorOrEmpty(m.color);if(c2)col=c2;}}
     return col;
   }
-  function _acHHMM(ms){var d=new Date(ms);function p(n){return (n<10?'0':'')+n;}return p(d.getHours())+':'+p(d.getMinutes());}
+  function _acHHMM(ms){var d=_hzD(ms);function p(n){return (n<10?'0':'')+n;}return p(d.getHours())+':'+p(d.getMinutes());}
   function _acStr(s,w){                             // Titel/Unterzeile: Klartext ODER =Formel, dann {seit}
     if(s==null||s==='')return '';
     var out=s;

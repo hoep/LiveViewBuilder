@@ -58,6 +58,12 @@
       _polls[pollId] = {timer: t};
     }
     function stopPoll(pollId){ var p = _polls[pollId]; if(p){ clearInterval(p.timer); delete _polls[pollId]; } }
+    // Alle Polls stoppen. Beim Seitenwechsel noetig: JEDE Poll-ID ist an ein Widget
+    // gebunden ('<name>:<widgetId>'), und jedes Widget meldet seinen Poll im mount()
+    // neu an. Ohne diesen Stopp lief der Poll der VERLASSENEN Seite weiter, holte sich
+    // ueber die Widget-ID das gleichnamige Element der NEUEN Seite und malte sein
+    // fremdes Widget hinein - so wurde aus einem Chart eine Lampe.
+    function stopAllPolls(){ Object.keys(_polls).forEach(stopPoll); }
     // Guard-Helfer: true, solange der Nutzer im Element el interagiert (Fokus/Eingabe).
     function busy(el){ return !!(el && document.activeElement && el.contains && el.contains(document.activeElement)); }
 
@@ -73,7 +79,7 @@
     LVB.panel = {
       fetch: fetchJSON, invalidate: invalidate,
       subscribe: subscribe, publish: publish,
-      startPoll: startPoll, stopPoll: stopPoll, busy: busy,
+      startPoll: startPoll, stopPoll: stopPoll, stopAllPolls: stopAllPolls, busy: busy,
       stateBox: stateBox, canWrite: canWrite
     };
   })();

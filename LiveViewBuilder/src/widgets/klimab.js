@@ -14,7 +14,7 @@
     if (v == null || v === '' || isNaN(v)) { return '—'; }
     return Number(v).toFixed(k == null ? 1 : k).replace('.', ',');
   }
-  function _kbUhr(ts) { var d = new Date(ts * 1000); return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2); }
+  function _kbUhr(ts) { var d = _hzD(ts * 1000); return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2); }
 
   var _KB_SEG = { open: ['s-open', 'offen'], rain: ['s-rain', 'zu wegen Regen'], shut: ['s-shut', 'geschlossen'] };
 
@@ -53,10 +53,10 @@
   }
 
   function _kbAchse(t0, t1) {
-    var sp = Math.max(1, t1 - t0), out = '', t = t0 - (new Date(t0 * 1000).getMinutes() * 60);
+    var sp = Math.max(1, t1 - t0), out = '', t = t0 - (_hzD(t0 * 1000).getMinutes() * 60);
     for (; t <= t1; t += 3600) {
       var f = (t - t0) / sp; if (f < 0 || f > 1) { continue; }
-      var h = new Date(t * 1000).getHours();
+      var h = _hzD(t * 1000).getHours();
       out += '<div class="tick" style="left:' + (f * 100).toFixed(3) + '%"></div>'
            + '<div class="lb" style="left:' + (f * 100).toFixed(3) + '%' + (f < 0.01 ? ';transform:none' : '') + '">'
            + ('0' + h).slice(-2) + '</div>';
@@ -121,7 +121,7 @@
     // Der Titel folgt dem, was tatsaechlich auf der Achse steht. Morgens um
     // halb sieben "Die kommende Nacht" zu schreiben, waehrend der Plan den Tag
     // zeigt, waere eine Ueberschrift, die ihrem Inhalt widerspricht.
-    var hv = new Date(t0 * 1000).getHours(), hb = new Date(t1 * 1000).getHours();
+    var hv = _hzD(t0 * 1000).getHours(), hb = _hzD(t1 * 1000).getHours();
     var titel = (hv >= 17 || hv <= 4) ? 'Die kommende Nacht'
               : (hb <= 12 ? 'Der Vormittag' : 'Der kommende Tag');
     return '<header class="block head">'

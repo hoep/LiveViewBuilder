@@ -63,18 +63,18 @@
   function spanDayTrack(w,id,geo){
     if(!geo||geo.lat==null)return null;
     var fz=spanFacadeAz(w,id);
-    var now=new Date(), mid=new Date(now.getFullYear(),now.getMonth(),now.getDate(),0,0,0,0).getTime()/1000;
+    var now=_hzJetzt(), mid=_hzMs(new Date(now.getFullYear(),now.getMonth(),now.getDate(),0,0,0,0))/1000;
     var acc=spanAcc(w), pts=[];
     for(var m=0;m<=1440;m+=5){var p=spanSunPos(geo.lat,geo.lon,mid+m*60);
       pts.push({m:m,az:p.az,elev:p.elev,hit:(fz!=null&&p.elev>0&&Math.abs(spanAngDiff(p.az,fz))<=acc)});}
     return {mid:mid,fz:fz,pts:pts,nowM:(now.getTime()/1000-mid)/60};
   }
   function spanHHMM(m){var h=(m/60)|0,mm=Math.round(m%60);if(mm==60){h++;mm=0;}return (h<10?'0':'')+h+':'+(mm<10?'0':'')+mm;}
-  function spanNowMin(){var d=new Date();return d.getHours()*60+d.getMinutes();}
+  function spanNowMin(){var d=_hzJetzt();return d.getHours()*60+d.getMinutes();}
   // effektive Sonne: simulierte Uhrzeit (st.simMin) oder live (st.sun)
   function spanEffSun(st){
     if(st.simMin==null||!st.geo||st.geo.lat==null)return st.sun;
-    var n=new Date(), mid=new Date(n.getFullYear(),n.getMonth(),n.getDate(),0,0,0,0).getTime()/1000;
+    var n=_hzJetzt(), mid=_hzMs(new Date(n.getFullYear(),n.getMonth(),n.getDate(),0,0,0,0))/1000;
     var p=spanSunPos(st.geo.lat,st.geo.lon,mid+st.simMin*60);
     return {az:p.az,elev:p.elev,ts:0,sim:true,min:st.simMin};
   }
@@ -359,8 +359,8 @@
   function spanWrite(w,el,vid,val){if(!vid)return;setVar(vid,val);
     setTimeout(function(){spanLoadAll(true,function(){var st=spanSt(w);if(_spanAll)spanApply(st,_spanAll);spanRepaint(w,el);});},500);}
   function spanStartTimer(){if(_spanTimer||(typeof DOKU!=='undefined'&&DOKU))return;_spanTimer=setInterval(spanTick,7000);}
-  function spanTick(){var vis=Object.keys(_spanState).filter(function(id){return _spanState[id].loaded&&document.querySelector('.w[data-id="'+id+'"]');});if(!vis.length)return;
-    spanLoadAll(true,function(){ vis.forEach(function(id){var st=_spanState[id],w=(typeof widget==='function')?widget(id):null;if(!w)return;var el=document.querySelector('.w[data-id="'+id+'"]');if(!el)return;if(st.simMin!=null||st.simTimer)return;if(_spanAll)spanApply(st,_spanAll);if(document.activeElement&&el.contains(document.activeElement))return;spanRepaint(w,el);});});}
+  function spanTick(){var vis=Object.keys(_spanState).filter(function(id){var w0=(typeof widget==='function')?widget(id):null;return _spanState[id].loaded&&w0&&document.querySelector('.w.t-'+w0.type+'[data-id="'+id+'"]');});if(!vis.length)return;
+    spanLoadAll(true,function(){ vis.forEach(function(id){var st=_spanState[id],w=(typeof widget==='function')?widget(id):null;if(!w)return;var el=document.querySelector('.w.t-'+w.type+'[data-id="'+id+'"]');if(!el)return;if(st.simMin!=null||st.simTimer)return;if(_spanAll)spanApply(st,_spanAll);if(document.activeElement&&el.contains(document.activeElement))return;spanRepaint(w,el);});});}
 
   // ============================ PAINT/BIND ============================
   function spanElOf(w,root){return $('.w[data-id="'+w.id+'"]',root||canvas);}

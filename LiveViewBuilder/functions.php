@@ -240,7 +240,7 @@ function LVB_Fetch(string $url, string $user, string $pass): string
         $ch = curl_init($url);
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_TIMEOUT        => 12,
+            CURLOPT_TIMEOUT => 45, CURLOPT_CONNECTTIMEOUT => 8,
             CURLOPT_SSL_VERIFYPEER => false,
             CURLOPT_FOLLOWLOCATION => true,
         ]);
@@ -295,11 +295,18 @@ function LVB_Occurrences(array $ev, int $from, int $to): array
     $count = isset($r['COUNT']) ? (int) $r['COUNT'] : 0;
     $until = isset($r['UNTIL']) ? LVB_ICSTime($r['UNTIL']) : 0;
     $limit = $until > 0 ? min($to, $until) : $to;
+    // EXDATE: gestrichene Einzeltermine einer Serie. Ohne sie erscheint ein
+    // abgesagter Termin weiter - fuer den Betrachter ein Fehler, nicht ein Detail.
+    $aus = [];
+    foreach (($ev['exdate'] ?? []) as $x) {
+        $t = LVB_ICSTime($x);
+        if ($t > 0) { $aus[date('Y-m-d', $t)] = true; }
+    }
     $out = []; $st = $start; $n = 0; $g = 0;
     while ($st <= $limit && $g < 1500) {
         $g++;
         if ($count > 0 && $n >= $count) break;
-        if ($st < $to && $st + $dur >= $from) $out[] = $mk($st);
+        if ($st < $to && $st + $dur >= $from && empty($aus[date('Y-m-d', $st)])) $out[] = $mk($st);
         $n++;
         $Y = (int) date('Y', $st); $M = (int) date('n', $st); $D = (int) date('j', $st);
         $h = (int) date('G', $st); $mi = (int) date('i', $st); $s = (int) date('s', $st);
@@ -310,6 +317,166 @@ function LVB_Occurrences(array $ev, int $from, int $to): array
         else break;
     }
     return $out;
+}
+
+/**
+ * Zugangsdaten zu einer URL, falls hinterlegt.
+ *
+ * Sie stehen EINMALIG in scripts/data/ical/zugang.json (Rechte 0600), damit im
+ * Layout nur Adressen stehen und keine Passwoerter - ein Layout wird gesichert,
+ * kopiert und weitergegeben, eine Zugangsdatei nicht. Der Schluessel ist der
+ * Praefix bis zum Benutzerordner, also etwa
+ * "https://mail.example.org/SOGo/dav/peter@example.org/".
+ */
+function LVB_ICSZugang(string $url): array
+{
+    static $tabelle = null;
+    if ($tabelle === null) {
+        $d = __DIR__ . '/../../../scripts/data/ical/zugang.json';
+        $tabelle = is_file($d) ? (json_decode((string) @file_get_contents($d), true) ?: []) : [];
+    }
+    foreach ($tabelle as $praefix => $z) {
+        if (strncmp($url, (string) $praefix, strlen((string) $praefix)) === 0) {
+            return [(string) ($z['user'] ?? ''), (string) ($z['pass'] ?? '')];
+        }
+    }
+    return ['', ''];
+}
+
+/**
+ * CalDAV: nur das gefragte Zeitfenster holen, statt den ganzen Kalender.
+ *
+ * WARUM: Der berufliche Kalender umfasst 5250 Termine. SOGo serialisiert beim
+ * ICS-Export JEDES MAL die komplette Historie - gemessen 23,2 Sekunden bis zum
+ * ersten Byte, waehrend die Uebertragung der 5,5 MB nur 0,14 s dauert. Es ist
+ * also reine Rechenzeit am Server. Ein REPORT mit time-range laesst ihn nur die
+ * angefragten Wochen serialisieren: 226 KB, 111 Termine, 0,25 s.
+ *
+ * Zusaetzlich loest <C:expand> die Wiederholungen SERVERSEITIG auf - damit sind
+ * auch die Eintraege mit fehlerhaftem "COUNT=0" kein Thema mehr.
+ *
+ * Die Collection-Adresse ergibt sich aus der Export-URL: ".ics" wird zu "/".
+ * Antwortet der Server nicht als CalDAV, liefert die Funktion '' und der
+ * Aufrufer faellt auf den gewohnten ICS-Abruf zurueck.
+ */
+function LVB_CalDAV(string $exportUrl, string $user, string $pass, int $von, int $bis): string
+{
+    if (!preg_match('/\.ics$/i', $exportUrl)) { return ''; }
+    $coll = preg_replace('/\.ics$/i', '/', $exportUrl);
+    $v = gmdate('Ymd\THis\Z', $von);
+    $b = gmdate('Ymd\THis\Z', $bis);
+    $xml = '<?xml version="1.0" encoding="utf-8" ?>'
+         . '<C:calendar-query xmlns:D="DAV:" xmlns:C="urn:ietf:params:xml:ns:caldav">'
+         . '<D:prop><C:calendar-data><C:expand start="' . $v . '" end="' . $b . '"/></C:calendar-data></D:prop>'
+         . '<C:filter><C:comp-filter name="VCALENDAR"><C:comp-filter name="VEVENT">'
+         . '<C:time-range start="' . $v . '" end="' . $b . '"/>'
+         . '</C:comp-filter></C:comp-filter></C:filter></C:calendar-query>';
+    $ch = curl_init($coll);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true, CURLOPT_CUSTOMREQUEST => 'REPORT',
+        CURLOPT_POSTFIELDS => $xml, CURLOPT_TIMEOUT => 30, CURLOPT_CONNECTTIMEOUT => 8,
+        CURLOPT_SSL_VERIFYPEER => false, CURLOPT_SSL_VERIFYHOST => false,
+        CURLOPT_HTTPHEADER => ['Depth: 1', 'Content-Type: application/xml; charset=utf-8'],
+    ]);
+    if ($user !== '') {
+        curl_setopt($ch, CURLOPT_USERPWD, $user . ':' . $pass);
+        curl_setopt($ch, CURLOPT_HTTPAUTH, CURLAUTH_ANY);
+    }
+    $antwort = (string) curl_exec($ch);
+    $code    = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    if ($code !== 207 || $antwort === '') { return ''; }
+
+    // Die Termine stecken als <calendar-data> im Multistatus-XML. Herausloesen,
+    // Entities aufloesen und zu EINEM VCALENDAR zusammensetzen.
+    if (!preg_match_all('#<[A-Za-z]*:?calendar-data[^>]*>(.*?)</[A-Za-z]*:?calendar-data>#si', $antwort, $m)) {
+        return '';
+    }
+    $teile = [];
+    foreach ($m[1] as $stueck) {
+        $stueck = html_entity_decode($stueck, ENT_QUOTES | ENT_XML1, 'UTF-8');
+        if (preg_match_all('#BEGIN:VEVENT.*?END:VEVENT#s', $stueck, $ev)) {
+            foreach ($ev[0] as $e) { $teile[] = $e; }
+        }
+    }
+    if (!$teile) { return ''; }
+    return "BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//LVB//CalDAV//DE\n"
+         . implode("\n", $teile) . "\nEND:VCALENDAR\n";
+}
+
+/**
+ * ICS einer Quelle besorgen. DREI QUELLENARTEN, damit der Kalender nicht am
+ * iCal-Calendar-Reader-Modul haengt:
+ *
+ *   <Zahl>   Instanz des Readers  -> URL + Zugangsdaten aus dessen Konfiguration
+ *   <Zahl>   Symcon-Medienobjekt  -> Inhalt direkt, OHNE Netzzugriff
+ *   http…    URL                  -> direkt geladen
+ *
+ * Instanz und URL werden ZWISCHENGESPEICHERT (data/ical/<hash>.ics). Vorher lud
+ * jeder einzelne Seitenaufruf die ICS erneut vom Server - bei mehreren offenen
+ * Ansichten ein Vielfaches, mit Zugangsdaten bei jedem Mal.
+ */
+function LVB_ICSQuelle(string $spec, int $ttlSek = 1800, int $von = 0, int $bis = 0): string
+{
+    $spec = trim($spec);
+    if ($spec === '') { return ''; }
+
+    $url = ''; $user = ''; $pass = '';
+    if (preg_match('#^https?://#i', $spec)) {
+        $url = $spec;
+        [$user, $pass] = LVB_ICSZugang($url);   // aus der Zugangsdatei, nicht aus dem Layout
+    } elseif (ctype_digit($spec)) {
+        $id = (int) $spec;
+        // Medienobjekt: liegt bereits lokal, also kein Netz und kein Cache noetig
+        if (function_exists('IPS_MediaExists') && IPS_MediaExists($id)) {
+            $roh = @IPS_GetMediaContent($id);
+            return $roh === false ? '' : (string) base64_decode($roh);
+        }
+        if (function_exists('IPS_InstanceExists') && IPS_InstanceExists($id)) {
+            $cfg = json_decode(IPS_GetConfiguration($id), true);
+            if (!is_array($cfg)) { $cfg = []; }
+            $url  = (string) ($cfg['CalendarServerURL'] ?? '');
+            $user = (string) ($cfg['Username'] ?? '');
+            $pass = (string) ($cfg['Password'] ?? '');
+            // Das Modul kennt sein eigenes Abrufintervall - das ist die ehrlichste TTL.
+            $uf = (int) ($cfg['UpdateFrequency'] ?? 0);
+            if ($uf > 0) { $ttlSek = max(300, $uf * 60); }
+        }
+    }
+    if ($url === '') { return ''; }
+
+    // __DIR__ ist .../modules/LiveViewBuilder/LiveViewBuilder - drei Ebenen hoch
+    // liegt /var/lib/symcon, darunter scripts/data.
+    $ordner = __DIR__ . '/../../../scripts/data/ical';
+    if (!is_dir($ordner)) { @mkdir($ordner, 0775, true); }
+    $datei = $ordner . '/' . md5($url) . '.ics';
+    $vorhanden = is_file($datei) ? (string) @file_get_contents($datei) : '';
+    if ($vorhanden !== '' && (time() - filemtime($datei)) < $ttlSek) {
+        return $vorhanden;
+    }
+    // NIEMAND soll im Seitenaufruf auf einen Kalender warten. Ein grosser Kalender
+    // (5,5 MB, 5250 Termine) braucht ueber 20 Sekunden - das darf nicht am Besucher
+    // haengen. Gibt es einen - auch veralteten - Stand, wird DER geliefert; das
+    // Nachladen erledigt der Vorlader (Skript-Ident LVBIcalVorlader) im Hintergrund.
+    // Nur wenn ueberhaupt nichts da ist, wird synchron geladen.
+    if ($vorhanden !== '' && empty($GLOBALS['LVB_ICS_ERZWINGEN'])) {
+        @touch($datei, time() - $ttlSek + 60);   // in einer Minute nochmal ansehen
+        return $vorhanden;
+    }
+    // Erst CalDAV mit Zeitfenster versuchen - das ist um Groessenordnungen
+    // schneller. Nur wenn das nichts liefert, den vollen Export holen.
+    $ics = '';
+    if ($von > 0 && $bis > $von) {
+        $ics = LVB_CalDAV($url, $user, $pass, $von, $bis);
+    }
+    if ($ics === '') { $ics = LVB_Fetch($url, $user, $pass); }
+    if ($ics !== '') {
+        @file_put_contents($datei . '.tmp', $ics);
+        @rename($datei . '.tmp', $datei);       // erst daneben, dann umbenennen
+        return $ics;
+    }
+    // Abruf gescheitert: lieber ein alter Stand als gar keine Termine.
+    return is_file($datei) ? (string) @file_get_contents($datei) : '';
 }
 
 function LVB_ParseICS(string $ics, int $from, int $to): array
@@ -336,6 +503,10 @@ function LVB_ParseICS(string $ics, int $from, int $to): array
         elseif ($name === 'DTSTART') { $cur['start'] = LVB_ICSTime($val); $cur['allday'] = (stripos($key, 'VALUE=DATE') !== false && stripos($key, 'DATE-TIME') === false); }
         elseif ($name === 'DTEND')   $cur['end'] = LVB_ICSTime($val);
         elseif ($name === 'RRULE')   $cur['rrule'] = trim($val);
+        elseif ($name === 'EXDATE')  {
+            // Mehrfach erlaubt und je Zeile kommasepariert: alles sammeln.
+            foreach (explode(',', $val) as $x) { $cur['exdate'][] = trim($x); }
+        }
     }
     return $events;
 }

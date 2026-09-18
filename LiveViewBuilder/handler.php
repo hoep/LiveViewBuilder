@@ -607,6 +607,74 @@ if ($api === 'geo') {
 }
 
 // ---- Live-Objektbaum (lazy + Suche nach Name/Pfad/ID) ----
+// ---- Variablen nach PROFIL einsammeln (Treemap/Auswertungen) ----------------
+// Liefert alle Variablen, deren Profil in der uebergebenen Liste steht, mit ihrem
+// AKTUELLEN Wert. Der Name kommt vom Elternobjekt (die Variable heisst ueberall
+// gleich, das Geraet nicht) - genauso macht es die alte PHPChart-Treemap #<ID>.
+// Nur lesend, kein Token noetig; dieselbe Klasse von Auskunft wie ?api=val.
+if ($api === 'profvars') {
+    header('Content-Type: application/json; charset=utf-8');
+    $roh = trim((string) ($_GET['profiles'] ?? ''));
+    if ($roh === '') { echo json_encode(['ok' => false, 'err' => 'keine Profile']); return; }
+    $wunsch = [];
+    foreach (preg_split('/[;,]/', $roh) as $t) {
+        $t = trim($t);
+        if ($t !== '') { $wunsch[$t] = true; }
+    }
+    $minW = (float) ($_GET['min'] ?? 0);
+    // Hoechstalter in Stunden. Eine Messstelle, die seit Monaten nichts mehr
+    // meldet, steht mit ihrem letzten Wert weiter im Baum und wird von jeder
+    // Summe mitgezaehlt - gemessen 16.09.2026: 16 solcher Stellen mit zusammen
+    // 21,5 W, darunter "Kamin Steuerung" mit 8 W eingefroren seit Oktober 2024.
+    // 0 = kein Limit (bisheriges Verhalten).
+    $maxAlt = (float) ($_GET['maxage'] ?? 0);
+    $grenze = ($maxAlt > 0) ? (time() - (int) round($maxAlt * 3600)) : 0;
+    $out = [];
+    foreach (@IPS_GetVariableList() ?: [] as $vid) {
+        $v = @IPS_GetVariable($vid);
+        if (!$v || !in_array((int) $v['VariableType'], [1, 2], true)) { continue; }  // int/float
+        // NUR das benutzerdefinierte Profil, wie im Altskript: das Standardprofil
+        // traegt bei diesen Zaehlern ~Watt und wuerde halb Symcon einsammeln.
+        $prof = (string) $v['VariableCustomProfile'];
+        if ($prof === '' || !isset($wunsch[$prof])) { continue; }
+        $wert = @GetValue($vid);
+        if (!is_numeric($wert)) { continue; }
+        $wert = (float) $wert;
+        if ($wert <= $minW) { continue; }
+        if ($grenze > 0 && (int) $v['VariableUpdated'] < $grenze) { continue; }
+        $par = (int) @IPS_GetParent($vid);
+        $out[] = ['id' => (int) $vid, 'profile' => $prof,
+                  'name' => $par > 0 ? (string) @IPS_GetName($par) : (string) @IPS_GetName($vid),
+                  'value' => round($wert, 2)];
+    }
+    // Zusaetzlich benannte IDs, die kein passendes Profil tragen (im Altskript war das
+    // der UniFi-Zaehler). Hier statt im Browser, weil nur der Server den NAMEN kennt -
+    // der Live-Kanal liefert Werte, keine Bezeichner.
+    $ex = trim((string) ($_GET['extra'] ?? ''));
+    if ($ex !== '') {
+        foreach (preg_split('/[;,]/', $ex) as $t) {
+            $vid = (int) trim($t);
+            if ($vid <= 0 || !@IPS_VariableExists($vid)) { continue; }
+            foreach ($out as $o) { if ($o['id'] === $vid) { continue 2; } }   // nicht doppelt
+            $wert = @GetValue($vid);
+            if (!is_numeric($wert) || (float) $wert <= $minW) { continue; }
+            $vv = @IPS_GetVariable($vid);
+            if ($grenze > 0 && $vv && (int) $vv['VariableUpdated'] < $grenze) { continue; }
+            // Anders als bei den Profil-Variablen zaehlt hier der EIGENE Name: eine
+            // einzeln benannte Variable ist bewusst gewaehlt ("Unifi"), waehrend der
+            // Elternteil nur die Kategorie ist ("IT"). Die dient als Gruppe.
+            $par = (int) @IPS_GetParent($vid);
+            $out[] = ['id' => $vid, 'profile' => '',
+                      'group' => $par > 0 ? (string) @IPS_GetName($par) : '',
+                      'name' => (string) @IPS_GetName($vid),
+                      'value' => round((float) $wert, 2)];
+        }
+    }
+    usort($out, static function ($a, $b) { return $b['value'] <=> $a['value']; });
+    echo json_encode(['ok' => true, 'count' => count($out), 'vars' => $out]);
+    return;
+}
+
 if ($api === 'tree') {
     header('Content-Type: application/json; charset=utf-8');
     $search = trim((string) ($_GET['search'] ?? ''));
@@ -623,7 +691,10 @@ if ($api === 'tree') {
         // findbar, dann aufklappbar). Doppelte IDs werden uebersprungen.
         // Skripte gehoeren dazu: eine Szene kann eines ausfuehren, und ohne sie in der
         // Suche waere es im Editor nicht auffindbar.
-        $cand = array_merge(IPS_GetVariableList(), IPS_GetInstanceList(), IPS_GetScriptList());
+        // Kategorien gehoeren dazu: manche Bindungen zeigen auf einen ORDNER statt auf
+        // eine einzelne Variable (z. B. ein Vorhersage-Ordner mit TagN_Regen darin).
+        // Ohne sie war so ein Ziel ueber die Suche nicht auffindbar, nur ueber seine ID.
+        $cand = array_merge(IPS_GetVariableList(), IPS_GetInstanceList(), IPS_GetScriptList(), IPS_GetCategoryList());
         $seen = [];
         $rest = [];
         foreach ($cand as $vid) {
@@ -1159,6 +1230,23 @@ if ($api === 'daylight') {
         return;
     }
 
+    // Zeitzone des STANDORTS mitliefern, nicht die des Betrachters.
+    //
+    // Die Zeitstempel sind absolut (UTC). Frueher rechnete allein der Browser sie in
+    // Ortszeit um - das ist genau dann falsch, wenn das Geraet in einer anderen
+    // Zeitzone steht als das Haus: auf einem Telefon in UTC+8 rutschte der Untergang
+    // ueber Mitternacht und klappte im Diagramm nach unten um. Der Hook laeuft selbst
+    // in UTC, deshalb kommt die Hauszeitzone aus /etc/timezone (Systemeinstellung).
+    $tzName = @trim((string) @file_get_contents('/etc/timezone'));
+    if ($tzName === '' || !in_array($tzName, timezone_identifiers_list(), true)) {
+        $tzName = date_default_timezone_get();
+    }
+    try { $tz = new DateTimeZone($tzName); } catch (Throwable $e) { $tz = new DateTimeZone('UTC'); $tzName = 'UTC'; }
+    $versatz = function (int $ts) use ($tz): int {           // Minuten oestlich von UTC
+        return (int) round($tz->getOffset(new DateTime('@' . $ts)) / 60);
+    };
+    $stdOff = $versatz(gmmktime(12, 0, 0, 1, 1, $year));      // Normalzeit (1. Januar)
+
     $days = [];
     $t    = gmmktime(12, 0, 0, 1, 1, $year);          // Mittag UTC, damit der Tag eindeutig ist
     $end  = gmmktime(12, 0, 0, 1, 1, $year + 1);
@@ -1167,10 +1255,11 @@ if ($api === 'daylight') {
         // Polarnacht/Mitternachtssonne: sunrise/sunset sind dann bool statt Zeitstempel
         $r = (isset($i['sunrise']) && is_int($i['sunrise'])) ? $i['sunrise'] : null;
         $s = (isset($i['sunset'])  && is_int($i['sunset']))  ? $i['sunset']  : null;
-        $days[] = [$t, $r, $s];
+        $days[] = [$t, $r, $s, $versatz($t)];         // 4. Feld: gueltiger Versatz an diesem Tag
         $t += 86400;
     }
-    echo json_encode(["year" => $year, "lat" => $lat, "lon" => $lon, "src" => $id, "days" => $days]);
+    echo json_encode(["year" => $year, "lat" => $lat, "lon" => $lon, "src" => $id,
+                      "tz" => $tzName, "std" => $stdOff, "days" => $days]);
     return;
 }
 
@@ -3706,37 +3795,49 @@ if ($api === 'weekplan') {
 // ---- iCal-Kalender ----
 if ($api === 'cal') {
     header('Content-Type: application/json; charset=utf-8');
-    $ids  = array_filter(array_map('intval', explode(',', (string) ($_GET['ids'] ?? ''))));
-    $days = max(1, min(60, (int) ($_GET['days'] ?? 14)));
-    $now  = time();
-    $from = strtotime('today');
-    $to   = $now + $days * 86400;
-    $out  = [];
-    foreach ($ids as $iid) {
-        if (!IPS_InstanceExists($iid)) {
-            continue;
+    // Quellen: Instanz-ID, Medien-ID oder URL - gemischt erlaubt, mit Komma getrennt.
+    // Semikolon statt Komma geht auch, weil URLs selbst Kommas enthalten koennen.
+    $roh = (string) ($_GET['ids'] ?? '');
+    // Trennzeichen: SEMIKOLON hat Vorrang. ICS-URLs enthalten haeufig selbst Kommas
+    // (z. B. .../ical/20146/174529/386808,394082,386810) - wer Komma splittet,
+    // zerschneidet sie. Nur wenn kein Semikolon vorkommt, wird am Komma getrennt.
+    $trenn = (strpos($roh, ';') !== false) ? ';' : ',';
+    $teile = array_filter(array_map('trim', explode($trenn, $roh)), 'strlen');
+    $days  = max(1, min(60, (int) ($_GET['days'] ?? 14)));
+    $rueck = max(0, min(365, (int) ($_GET['back'] ?? 0)));
+    $now   = time();
+    $from  = strtotime('today') - $rueck * 86400;
+    $to    = $now + $days * 86400;
+    $out   = [];
+    // Nicht nur die ICS zwischenspeichern, sondern das ERGEBNIS. Das Parsen von
+    // ein paar hundert KB mit Wiederholungsaufloesung kostet mehr Zeit als der
+    // Abruf selbst - und es faellt bei jedem Seitenaufruf erneut an.
+    $cacheDir = __DIR__ . '/../../../scripts/data/ical';
+    if (!is_dir($cacheDir)) { @mkdir($cacheDir, 0775, true); }
+    foreach ($teile as $spec) {
+        $schluessel = $cacheDir . '/p' . md5($spec . '|' . $from . '|' . $to) . '.json';
+        $fertig = null;
+        if (is_file($schluessel) && (time() - filemtime($schluessel)) < 900) {
+            $fertig = json_decode((string) @file_get_contents($schluessel), true);
         }
-        $inst = IPS_GetInstance($iid);
-        if (($inst['ModuleInfo']['ModuleID'] ?? '') !== '{5127CDDC-2859-4223-A870-4D26AC83622C}') {
-            continue;
+        if (!is_array($fertig)) {
+            $ics = LVB_ICSQuelle($spec, 1800, $from, $to);
+            if ($ics === '') { continue; }
+            $fertig = LVB_ParseICS($ics, $from, $to);
+            @file_put_contents($schluessel . '.tmp', json_encode($fertig));
+            @rename($schluessel . '.tmp', $schluessel);
         }
-        $cfg = json_decode(IPS_GetConfiguration($iid), true);
-        if (!is_array($cfg)) { $cfg = []; }
-        $url = $cfg['CalendarServerURL'] ?? '';
-        if ($url === '') {
-            continue;
-        }
-        $ics = LVB_Fetch($url, $cfg['Username'] ?? '', $cfg['Password'] ?? '');
-        if ($ics === '') {
-            continue;
-        }
-        foreach (LVB_ParseICS($ics, $from, $to) as $ev) {
-            $ev['cal'] = $iid;
+        foreach ($fertig as $ev) {
+            $ev['cal'] = ctype_digit($spec) ? (int) $spec : $spec;
             $out[]     = $ev;
         }
     }
+    // Alte Ergebnisdateien aufraeumen (der Zeitraum wandert taeglich).
+    foreach ((array) glob($cacheDir . '/p*.json') as $alt) {
+        if (time() - filemtime($alt) > 86400) { @unlink($alt); }
+    }
     usort($out, function ($a, $b) { return $a['start'] - $b['start']; });
-    echo json_encode(['events' => array_slice($out, 0, 120)]);
+    echo json_encode(['events' => array_slice($out, 0, 400)]);
     return;
 }
 
@@ -3867,6 +3968,15 @@ $html = str_replace('__LV_TOKEN__', $TOKEN, $html);
 // eigenen und fand nie wieder eine Abweichung. Es konnte sich nicht mehr auffrischen.
 // Dieselbe Quelle wie ?api=build, sonst vergleicht man zwei verschiedene Dinge.
 $html = str_replace('__LV_BUILD__', (string) (int) @filemtime(__DIR__ . '/builder.html'), $html);
+// Zeitzone des HAUSES an den Client. Der Hook laeuft in UTC, das Geraet des Betrachters
+// kann irgendwo stehen - Widgets, die eine Uhrzeit des Hauses zeichnen (Sonnenbogen), sollen
+// nicht der Geraeteuhr folgen. tzo = aktuell gueltiger Versatz in Minuten oestlich von UTC.
+$lvTzName = @trim((string) @file_get_contents('/etc/timezone'));
+if ($lvTzName === '' || !in_array($lvTzName, timezone_identifiers_list(), true)) { $lvTzName = date_default_timezone_get(); }
+try { $lvTzOff = (int) round((new DateTimeZone($lvTzName))->getOffset(new DateTime('now', new DateTimeZone('UTC'))) / 60); }
+catch (Throwable $e) { $lvTzName = 'UTC'; $lvTzOff = 0; }
+$html = str_replace('__LV_TZOFF__', (string) $lvTzOff, $html);
+$html = str_replace('__LV_TZNAME__', $lvTzName, $html);
 $html = str_replace('__LV_WSPORT__', (string) ($WSPORT ?? ''), $html);     // WebSocket-Push optional (Property)
 $html = str_replace('__LV_WSURL__', (string) ($WSURL ?? ''), $html);       // volle wss-Adresse (Reverse Proxy) - schlaegt den Port
 $html = str_replace('__LV_RUN__', ($LV_MODE === 'run' ? '1' : ''), $html); // /hook/run/<site> -> Laufzeit

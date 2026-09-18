@@ -72,13 +72,18 @@
     }
     if(typeof buildPageTree==='function')buildPageTree(); // ... die Treeview aber IMMER bauen (auch ohne Dropdown)
   }
-  function reseq(){seq=1;var all=[];
+  function reseq(){
+    // Zaehler auf das Maximum ueber ALLE Ansichten setzen, nicht nur ueber die aktuelle
+    // Seite: sonst vergibt die naechste Seite wieder w1, w2, ... und die IDs kollidieren
+    // seitenuebergreifend.
+    seq=1;try{if(typeof _maxWid==='function')seq=_maxWid()+1;}catch(e){}
+    var all=[];
     // Container-Kinder MITZÄHLEN – sonst vergibt uid() IDs, die ein Kind (z. B. ein Toggle) schon hat,
     // und beim Selektieren greifen zwei Widgets zugleich. Zusätzlich Duplikate heilen (späteres bekommt neue ID).
     function collect(w){if(!w)return;all.push(w);var n=parseInt(String(w.id||'w0').replace('w',''))||0;if(n>=seq)seq=n+1;if(w.kids)w.kids.forEach(collect);}
     (state.widgets||[]).forEach(collect);
     var seen={};all.forEach(function(w){if(!w.id||seen[w.id]){w.id='w'+(seq++);}seen[w.id]=1;});}
-  function switchView(name){if(!store.views[name])return;store.current=name;state=store.views[name];if(!state.page)state.page={w:1440,h:900};if(!state.widgets)state.widgets=[];selId=null;sel={};reseq();refreshViewSel();setCanvas();invalidateSC();_scMode='';document.body.classList.remove('reflow');restoring=true;render();restoring=false;renderProps();resetHist();chromeUI();} // render() macht bereits Kamera/HTML-Init + Sofort-Poll (kein doppeltes Rendern mehr)
+  function switchView(name){if(!store.views[name])return;try{if(window.LVB&&LVB.panel&&LVB.panel.stopAllPolls)LVB.panel.stopAllPolls();}catch(e){}store.current=name;state=store.views[name];if(!state.page)state.page={w:1440,h:900};if(!state.widgets)state.widgets=[];selId=null;sel={};reseq();refreshViewSel();setCanvas();invalidateSC();_scMode='';document.body.classList.remove('reflow');restoring=true;render();restoring=false;renderProps();resetHist();chromeUI();} // render() macht bereits Kamera/HTML-Init + Sofort-Poll (kein doppeltes Rendern mehr)
   function newView(asPopup){
     var n=prompt(asPopup?'Name des neuen Popups:':'Name der neuen Ansicht:',
                  (asPopup?'Popup ':'Ansicht ')+(Object.keys(store.views).length+1));

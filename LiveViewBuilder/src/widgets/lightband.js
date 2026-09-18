@@ -255,7 +255,9 @@
     mount:function(w){
       // Alle Vorkommen bemalen: dieselbe Widget-ID kann auf Seite UND Popup liegen.
       function alle(){
-        var hs=document.querySelectorAll('.w[data-id="'+w.id+'"] [data-role=lbhost]');
+        // Nur Vorkommen bemalen, die auch ein lightband SIND - Widget-IDs kollidieren
+        // ueber Seiten hinweg, und diese Abo-Liste ueberlebt den Seitenwechsel.
+        var hs=document.querySelectorAll('.w.t-lightband[data-id="'+w.id+'"] [data-role=lbhost]');
         for(var k=0;k<hs.length;k++){hs[k].innerHTML=paint(w);wire(hs[k],w);}
       }
       B.subs.push(alle);

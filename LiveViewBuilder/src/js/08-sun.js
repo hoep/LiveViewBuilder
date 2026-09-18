@@ -41,8 +41,8 @@
 
     /** Tagesbogen: Stuetzpunkte alle stepMin Minuten ab Mitternacht Ortszeit. */
     function dayTrack(lat, lon, atMs, stepMin) {
-      var d = new Date(atMs || Date.now());
-      var mid = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0).getTime() / 1000;
+      var d = _hzD(atMs || Date.now());
+      var mid = _hzMs(new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0)) / 1000;
       var st = stepMin || 5, pts = [];
       for (var m = 0; m <= 1440; m += st) {
         var p = pos(lat, lon, mid + m * 60);

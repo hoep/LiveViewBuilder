@@ -345,7 +345,7 @@
   }
 
   // ---------- jetzt / Soll ----------
-  function hpNowMin(){var d=new Date();return d.getHours()*60+d.getMinutes();}
+  function hpNowMin(){var d=_hzJetzt();return d.getHours()*60+d.getMinutes();}
   function hpSollAt(day,m){var end=day.end||[],val=day.val||[],start=0;for(var i=0;i<end.length;i++){var en=hpH2M(end[i]);if(m<en||i==end.length-1)return +val[i];start=en;}return +val[val.length-1]||0;}
   function hpNowText(st){var day=hpDayObj(st),nowM=hpNowMin(),soll=hpSollAt(day,nowM);
     var s='jetzt '+hpM2H(nowM)+' · Soll '+hpValText(soll);

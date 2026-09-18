@@ -1374,7 +1374,7 @@
         +'<button class="btn" id="pRtBind"'+dis+'>Nur neu binden</button>'
         +'<button class="btn" id="pRtScan"'+dis+'>Vorschau</button></div>';
       if(w.rtSrc&&w.rtSrc.ts){
-        var dt=new Date(w.rtSrc.ts*1000);
+        var dt=_hzD(w.rtSrc.ts*1000);
         h+=_rtHint('Zuletzt eingelesen: '+_rt2(dt.getDate())+'.'+_rt2(dt.getMonth()+1)+'.'+dt.getFullYear()+' '+_rt2(dt.getHours())+':'+_rt2(dt.getMinutes())
           +' &middot; '+rows.length+' Regeln &times; '+cols.length+' Felder &middot; '+(w.items||[]).filter(function(x){return x&&x.r>=0&&x.vid;}).length+' Zellen'
           +((w.rtSrc.prefix)?(' &middot; Pr&auml;fix '+esc(w.rtSrc.prefix)):''));

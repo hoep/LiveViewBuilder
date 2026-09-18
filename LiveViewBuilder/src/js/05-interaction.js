@@ -158,7 +158,7 @@
   // ---------- Live-Werte ----------
   function _fnum(d){return parseFloat(String(d.v).replace(',','.'));}
   function _funit(d){var m=String(d.f==null?'':d.f).match(/^[\s-]*[-\d.,]+\s*(.*)$/);return m&&m[1]?m[1]:'';}
-  function _ftime(d){var s=String(d.f==null?'':d.f);var m=s.match(/(\d{1,2}:\d{2})/);if(m)return m[1];var n=_fnum(d);if(!isNaN(n)&&n>100000){var dt=new Date(n*1000);return ('0'+dt.getHours()).slice(-2)+':'+('0'+dt.getMinutes()).slice(-2);}return s;}
+  function _ftime(d){var s=String(d.f==null?'':d.f);var m=s.match(/(\d{1,2}:\d{2})/);if(m)return m[1];var n=_fnum(d);if(!isNaN(n)&&n>100000){var dt=_hzD(n*1000);return ('0'+dt.getHours()).slice(-2)+':'+('0'+dt.getMinutes()).slice(-2);}return s;}
   function _fdate(d){var s=String(d.f==null?'':d.f);var m=s.match(/(\d{1,2}\.\d{1,2}\.\d{2,4})/);return m?m[1]:s;}
   function _frel(d){var n=_fnum(d);if(isNaN(n)||n<100000)return String(d.f==null?'':d.f);var diff=Date.now()/1000-n,a=Math.abs(diff),s;if(a<45)return 'gerade eben';else if(a<3600)s=Math.round(a/60)+' min';else if(a<86400)s=Math.round(a/3600)+' h';else if(a<2592000)s=Math.round(a/86400)+' Tg';else s=Math.round(a/2592000)+' Mon';return (diff>=0?'vor ':'in ')+s;}
   function fmtVal(w,d,base){

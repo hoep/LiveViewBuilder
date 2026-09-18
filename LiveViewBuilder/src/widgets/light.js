@@ -23,7 +23,7 @@
   function _lgSince(w){                                // "seit HH:MM" der massgeblichen Variable
     var id=w.varId||w.varId2,t=(typeof changedAt==='function')?changedAt(id):0;
     if(!t)return '';
-    var d=new Date(t),p=function(n){return ('0'+n).slice(-2);};
+    var d=_hzD(t),p=function(n){return ('0'+n).slice(-2);};
     return 'seit '+p(d.getHours())+':'+p(d.getMinutes());
   }
   function _lgPaint(w,root){

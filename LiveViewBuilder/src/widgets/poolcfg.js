@@ -55,7 +55,7 @@
           else { n.textContent=txt; }
         });
       },
-      mount:function(w){ var el=document.querySelector('.w[data-id="'+w.id+'"]'); if(!el)return;
+      mount:function(w){ var el=document.querySelector('.w.t-'+w.type+'[data-id="'+w.id+'"]'); if(!el)return;
         el.querySelectorAll('input[data-pcf-vid]').forEach(function(inp){ if(inp._pcf)return; inp._pcf=1;
           var vid=parseInt(inp.getAttribute('data-pcf-vid')), isNum=inp.classList.contains('pcft-in');
           function cm(){ var v=inp.value; if(isNum){var nv=parseFloat(String(v).replace(',','.'));if(!isFinite(nv))return;setVar(vid,nv);} else setVar(vid,v); }

@@ -31,7 +31,7 @@
     live:function(w,el,id,d,base,txt,on){ if(w.varId!==id)return; var v=$('[data-role=val]',el); if(!v)return;
       if(v.tagName==='INPUT'){ if(document.activeElement!==v) v.value=(d.v!=null?d.v:''); } else v.textContent=txt; },
     mount:function(w){ if(!w.typein)return;
-      var el=document.querySelector('.w[data-id="'+w.id+'"]'); if(!el)return;
+      var el=document.querySelector('.w.t-'+w.type+'[data-id="'+w.id+'"]'); if(!el)return;
       var inp=$('[data-role=val]',el); if(!inp||inp.tagName!=='INPUT'||inp._stpWired)return; inp._stpWired=1;
       function commitVal(){
         // Im Bearbeiten-Modus wird NICHT geschrieben. Der zentrale Aenderungspfad

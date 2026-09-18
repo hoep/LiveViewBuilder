@@ -59,7 +59,7 @@
         if(s.on&&!inRun){phases++;inRun=true;if(onset==null)onset=s.t;} else if(!s.on)inRun=false; });
       return {slots:slots,phases:phases,onset:onset,maxAll:maxAll,sh:sh,hours:hours};
     }
-    function riHHMM(t){var d=new Date(t*1000);return (d.getHours()<10?'0':'')+d.getHours()+':'+(d.getMinutes()<10?'0':'')+d.getMinutes();}
+    function riHHMM(t){var d=_hzD(t*1000);return (d.getHours()<10?'0':'')+d.getHours()+':'+(d.getMinutes()<10?'0':'')+d.getMinutes();}
 
     function riRender(w){
       var title=escL(w.title||'Regen 48 h'), b=riBuild(w);

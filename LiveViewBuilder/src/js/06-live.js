@@ -5,7 +5,7 @@
       if(w.vcNoteVid===id||w.vcCapVid===id||w.vcBadgeVid===id||w.vcBadgeStVid===id||w.rngCurVid===id||w.vcTitleVid===id||w.vcAccVid===id)return true;
       if(Array.isArray(w.vcStats)){for(var _s=0;_s<w.vcStats.length;_s++){if(w.vcStats[_s]&&w.vcStats[_s].vid===id)return true;}}
     }
-    if(w.varId===id||w.varId2===id||w.varId3===id||w.dVid===id||w.varIdB===id||w.dVidB===id||w.stufeVid===id||w.cvActId===id||w.cvAzB===id||w.cvAzE===id||w.cvElv===id||w.cvBlockVid===id||w.cmpVid===id||w.ackVid===id||w.condVar===id||w.vTemp===id||w.vCond===id||w.vHum===id||w.vWind===id||w.vGust===id||w.vRain===id||w.ssAz===id||w.ssEl===id||w.ssRad===id||w.ssRainV===id||w.ssSnowV===id||w.ssPtypeV===id||w.ssFogV===id||w.ssFogStateV===id||w.ssWindV===id||w.ssRainSensV===id||w.ssTempV===id||w.ssDewV===id||w.ssHumV===id||w.ssWetV===id||w.ssCloudV===id||w.vStorm===id||w.vStormDist===id||w.vStormAge===id||w.vStormRate===id||w.vRainRate===id||w.vRainDay===id||w.vFog===id||w.vFogFsi===id||w.ssStormV===id||w.ssStormDistV===id||w.wxFogState===id||w.ssWxJson===id||w.thPresVar===id||w.thHeatVar===id||w.thArmVar===id||w.thPowerVar===id||w.urlVid===id||w.stoerVid===id||w.kSubVid===id||w.kToneVid===id)return true;
+    if(w.varId===id||w.varId2===id||w.varId3===id||w.dVid===id||w.varIdB===id||w.dVidB===id||w.stufeVid===id||w.cvActId===id||w.cvAzB===id||w.cvAzE===id||w.cvElv===id||w.cvBlockVid===id||w.cmpVid===id||w.ackVid===id||w.condVar===id||w.vTemp===id||w.vCond===id||w.vHum===id||w.vWind===id||w.vGust===id||w.vRain===id||w.ssAz===id||w.ssEl===id||w.ssRad===id||w.ssRainV===id||w.ssSnowV===id||w.ssPtypeV===id||w.ssFogV===id||w.ssFogStateV===id||w.ssWindV===id||w.ssRainSensV===id||w.ssTempV===id||w.ssDewV===id||w.ssHumV===id||w.ssWetV===id||w.ssCloudV===id||w.vStorm===id||w.vStormDist===id||w.vStormAge===id||w.vStormRate===id||w.vRainRate===id||w.vRainDay===id||w.vFog===id||w.vFogFsi===id||w.ssStormV===id||w.ssStormDistV===id||w.wxFogState===id||w.ssWxJson===id||w.thPresVar===id||w.thHeatVar===id||w.thArmVar===id||w.thPowerVar===id||w.thAcSwingH===id||w.thAcLight===id||w.thAcFire===id||w.thAcPlan===id||w.thAcSched===id||w.thAcNext===id||w.thAcOutdoor===id||w.thAcHum===id||w.thAcPresence===id||w.thAcWindow===id||w.thAcClean===id||w.thAcOnline===id||w.urlVid===id||w.stoerVid===id||w.kSubVid===id||w.kToneVid===id)return true;
     // kSubVid/kToneVid gehoeren dazu: die KPI-Karte holt Unterzeile und Ton aus
     // eigenen Variablen. Ohne sie hier feuerte live() nur bei der HAUPTvariablen -
     // die Unterzeile stimmte dann bloss zufaellig, naemlich wenn ihre ID kleiner
@@ -19,6 +19,13 @@
     if(w.type==='alarm'){var _at=[w.title,w.sub,w.notify];for(i=0;i<_at.length;i++){var _as=_at[i];if(_fIsFormula(_as)&&_fIds(_as).indexOf(id)>=0)return true;}}
     // Alarm-Panel: eine Kind-Karten-Variable aendert sich -> Panel-live() (Leer-Zustand/Quittung nachziehen)
     if(w.type==='alarmpanel'&&w.kids){for(i=0;i<w.kids.length;i++){if(w.kids[i]&&widgetDataId(w.kids[i],id))return true;}}
+    // Treemap: die vom Server gemeldeten Profil-Variablen (w._tmIds).
+    // ZWEI Tore, die man leicht verwechselt: _collectIds() entscheidet, was GEPOLLT
+    // wird - widgetDataId() entscheidet, ob das Widget von der Aenderung ERFAEHRT.
+    // Ohne diesen Eintrag kamen die Werte zwar an, live() wurde aber nie gerufen,
+    // und die Kachel zeichnete sich nur beim Seitenaufbau bzw. beim 5-Minuten-
+    // Bestandsabgleich neu (gemeldet und nachgemessen 18.09.2026).
+    if(w._tmIds){for(i=0;i<w._tmIds.length;i++){if(w._tmIds[i]===id)return true;}}
     return false;
   }
   // C1: Sichtbarkeits-Bedingung auswerten
@@ -150,6 +157,12 @@
     if(w.stages)w.stages.forEach(function(o){if(o){add(o.vid);add(o.subvid);add(o.sv);}}); // Pipeline-Stationen (Wert + Zusatzwert + Status-Var fuer bedingten Fluss)
     if(w.elements)w.elements.forEach(function(o){if(o){add(o.vid);add(o.vid2);add(o.speedVid);add(o.socVid);add(o.sVid);add(o.dayVid);}});  // vid2: Gegenrichtung im Netz-Modus
     if(w.tankVid)add(w.tankVid);
+    // Treemap: zusaetzlich benannte Variablen-IDs (im Altskript der UniFi-Zaehler).
+    // Sie tragen kein passendes Profil und kommen deshalb nicht ueber ?api=profvars.
+    if(w.tmExtra)String(w.tmExtra).split(/[;,]/).forEach(function(x){var n=parseInt(x,10);if(n>0)add(n);});
+    // ... und die IDs, die ?api=profvars zurueckgemeldet hat. Erst damit werden sie gepollt
+    // und loesen live() aus - sonst haette die Treemap nur im eigenen Takt aktualisiert.
+    if(w._tmIds)w._tmIds.forEach(function(n){if(n>0)add(n);});
     add(w.sollVid);add(w.tbWarnVid);add(w.mgThrVid);add(w.kToneVid);add(w.kSubVid);add(w.ttlRightVid);                                  // Saeule: Soll-Marke und Warnschwelle aus Variablen
     if(w.phases)w.phases.forEach(function(o){if(o)add(o.hintVid);});   // Ablaufkette: Unterzeile je Schritt
     add(w.ilhBadgeVid);add(w.ilhSubVid);add(w.ilfVid);   // Info-Liste: Kopf- und Fusszeile
@@ -161,6 +174,13 @@
     // Schaltzustaende dauerhaft leer - sie werden sonst nirgends gepollt.
     add(w.thAcPower);add(w.thAcMode);add(w.thAcFan);add(w.thAcSwing);
     add(w.thAcLevel);add(w.thAcPreset);add(w.thAcIon); // Thermostat-Raumkarte: Heizprofil, Ventil-/Statusquelle, „scharf" - ohne sie wuerden diese IDs nie gepollt
+    // Zweiter Ausbau (15.09.2026): waagrechtes Schwenken, Displaylicht, Kamin,
+    // Zeitplanzeile und die reinen Anzeigen. Wer hier eine ID vergisst, bekommt
+    // ein Bedienelement, das sich nie aktualisiert.
+    add(w.thAcSwingH);add(w.thAcLight);add(w.thAcFire);
+    add(w.thAcPlan);add(w.thAcSched);add(w.thAcNext);
+    add(w.thAcOutdoor);add(w.thAcHum);add(w.thAcPresence);
+    add(w.thAcWindow);add(w.thAcClean);add(w.thAcOnline);
     // Fortschrittsbalken je Zeile - und die Schaltvariable: ohne sie im Kanal
     // wuesste "Wert leer = umschalten" nicht, was gerade an ist.
     if(w.items)w.items.forEach(function(o){if(o){add(o.progVid);add(o.actVid);add(o.act2Vid);add(o.pillVid);add(o.subVid);add(o.labelVid);add(o.planVid);add(o.pctVid);add(o.dayVid);add(o.cmpVid);
@@ -757,7 +777,7 @@
         if(w.type==='html'){if(w.htmlSrc==='custom')setHtmlContent(w,w.html||'');else fetchHtml(w);return;}
         var d=WIDGETS[w.type];
         if(d&&typeof d.skin==='function'){
-          var el=document.querySelector('.w[data-id="'+w.id+'"]');
+          var el=document.querySelector('.w.t-'+w.type+'[data-id="'+w.id+'"]');
           if(el)try{d.skin(w,el);}catch(e2){}
         }
       };

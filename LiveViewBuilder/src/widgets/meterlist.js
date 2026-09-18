@@ -335,7 +335,7 @@
    *   level 0=Stunde 1=Tag 2=Woche 3=Monat 4=Jahr 5=5-Minuten
    */
   function _mlSpFenster(stufe) {
-    var jetzt = new Date(), a, b, lvl;
+    var jetzt = _hzJetzt(), a, b, lvl;   // Periodengrenzen liegen in HAUSZEIT
     function tag0(d) { d.setHours(0, 0, 0, 0); return d; }
     switch (stufe) {
       case 'year':
@@ -358,8 +358,8 @@
         a = tag0(new Date(jetzt));
         b = new Date(a); b.setDate(b.getDate() - 1); lvl = 0; break;
     }
-    var von = Math.floor(a.getTime() / 1000), bis = Math.floor(jetzt.getTime() / 1000);
-    var pvon = Math.floor(b.getTime() / 1000);
+    var von = Math.floor(_hzMs(a) / 1000), bis = Math.floor(_hzMs(jetzt) / 1000);
+    var pvon = Math.floor(_hzMs(b) / 1000);
     // Die Vorperiode laeuft bis zum Anfang der laufenden - also VOLL, nicht nur ueber die
     // bisher verstrichene Spanne. Frueher war sie auf (bis - von) gekuerzt; im Jaenner waren
     // damit beide Reihen einen Monat lang, und aus zwoelf Spalten wurde eine einzige, die die
@@ -385,7 +385,7 @@
    * (?api=cmp), damit Balken und Prozentspalte nicht auseinanderlaufen.
    */
   function _mlEinePeriodeFrueher(sek, stufe) {
-    var d = new Date(sek * 1000);
+    var d = _hzD(sek * 1000);
     switch (stufe) {
       case 'year':  d.setFullYear(d.getFullYear() - 1); break;
       case 'month': d.setMonth(d.getMonth() - 1); break;
@@ -394,17 +394,17 @@
       case 'minute': d.setMinutes(d.getMinutes() - 1); break;
       default:      d.setDate(d.getDate() - 1); break;
     }
-    return Math.floor(d.getTime() / 1000);
+    return Math.floor(_hzMs(d) / 1000);
   }
   /** Beginn der laufenden Periode einer Aggregationsstufe (Sekunden, lokale Zeit). */
   function _mlPeriodeAb(level) {
-    var d = new Date();
+    var d = _hzJetzt();
     if (level === 5) { d.setSeconds(0, 0); d.setMinutes(Math.floor(d.getMinutes() / 5) * 5); }
     else if (level === 0) { d.setMinutes(0, 0, 0); }
     else if (level === 1) { d.setHours(0, 0, 0, 0); }
     else if (level === 3) { d.setDate(1); d.setHours(0, 0, 0, 0); }
     else { return Infinity; }
-    return Math.floor(d.getTime() / 1000);
+    return Math.floor(_hzMs(d) / 1000);
   }
   var _mlSp = {};
   /**
@@ -418,7 +418,7 @@
    * und fehlende Monate bleiben schlicht leer.
    */
   function _mlBucketNr(t, von, lvl) {
-    var a = new Date(von * 1000), b = new Date(t * 1000);
+    var a = _hzD(von * 1000), b = _hzD(t * 1000);
     if (lvl === 3) { return (b.getFullYear() - a.getFullYear()) * 12 + (b.getMonth() - a.getMonth()); }
     if (lvl === 1) {
       // Ueber Mitternacht rechnen, nicht ueber 86400 Sekunden - sonst zaehlt die
@@ -657,7 +657,7 @@
    */
   /** "21.02.2025" aus einem Unix-Zeitstempel - fuer den Hinweis am Vergleich. */
   function _mlDatum(t) {
-    var x = new Date(t * 1000);
+    var x = _hzD(t * 1000);
     function z(n) { return (n < 10 ? '0' : '') + n; }
     return z(x.getDate()) + '.' + z(x.getMonth() + 1) + '.' + x.getFullYear();
   }

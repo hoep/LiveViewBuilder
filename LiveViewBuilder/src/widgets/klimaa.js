@@ -108,11 +108,11 @@
     function Y(v) { return 10 + (hi - v) / Math.max(1, hi - lo) * 98; }
     var out = '', v;
     // Nachtflaechen
-    var d0 = new Date(t0 * 1000);
+    var d0 = _hzD(t0 * 1000);
     for (var tg = -1; tg <= 1; tg++) {
       var na = new Date(d0); na.setHours(20, 0, 0, 0); na.setDate(na.getDate() + tg);
       var ne = new Date(na); ne.setHours(ne.getHours() + 10);
-      var a = na.getTime() / 1000, b = ne.getTime() / 1000;
+      var a = _hzMs(na) / 1000, b = _hzMs(ne) / 1000;
       if (b < t0 || a > t1) { continue; }
       out += '<rect x="' + X(Math.max(a, t0)).toFixed(1) + '" y="10" width="'
            + Math.max(1, X(Math.min(b, t1)) - X(Math.max(a, t0))).toFixed(1) + '" height="98" class="nf"/>';
@@ -142,7 +142,7 @@
     });
     var spanne = (warm != null && L.t != null) ? (warm - L.t) : null;
     var unter = (kalt != null && L.t != null && L.t < kalt);
-    var jetzt = new Date();
+    var jetzt = _hzJetzt();
     return '<header class="blk">'
       + '<div><div class="h1">Kann ich <span>lüften</span>?</div>'
       + '<div class="sub">Haus im Schnitt · ' + R.length + ' Räume · '

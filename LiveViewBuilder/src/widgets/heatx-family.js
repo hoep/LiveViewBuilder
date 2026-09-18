@@ -11,7 +11,7 @@
   function hfKey(w){return w.session||'heat';}
   function hfSess(w){var k=hfKey(w);return _hf[k]||(_hf[k]={loaded:false,loading:false,root:0,roomIdx:0,presence:0,variant:0,variants:null,sun:null,domain:'heating',day:0,slot:1,prof:null,active:-1,ist:null,sollDev:null,hum:null,dirty:false,err:'',name:'',dragging:false});}
   function hfSub(w){var k=hfKey(w),a=_hfSubs[k]||(_hfSubs[k]=[]);if(a.indexOf(w.id)<0)a.push(w.id);}
-  function hfEmit(w){(_hfSubs[hfKey(w)]||[]).forEach(function(id){var el=document.querySelector('.w[data-id="'+id+'"]');if(!el)return;var ww=(typeof widget==='function')?widget(id):null;if(!ww)return;var host=el.querySelector('.winner')||el;var def=WIDGETS[ww.type];if(def&&def.render){host.innerHTML=def.render(ww);if(def._bind)def._bind(ww,el);}});}
+  function hfEmit(w){(_hfSubs[hfKey(w)]||[]).forEach(function(id){var ww=(typeof widget==='function')?widget(id):null;if(!ww)return;var el=document.querySelector('.w.t-'+ww.type+'[data-id="'+id+'"]');if(!el)return;var host=el.querySelector('.winner')||el;var def=WIDGETS[ww.type];if(def&&def.render){host.innerHTML=def.render(ww);if(def._bind)def._bind(ww,el);}});}
   function hfRootP(w){var s=hfSess(w);return s.root?('&root='+encodeURIComponent(s.root)):'';}
 
   function hfLoadRoom(w,idx,cb){var sess=hfSess(w);

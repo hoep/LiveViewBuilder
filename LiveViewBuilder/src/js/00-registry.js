@@ -18,7 +18,7 @@
     if(!(stufe>0))return '';
     if(stufe>=3)return 'Dichter Nebel';
     if(stufe>=2)return 'Nebel';
-    var h=new Date().getHours();
+    var h=_hzJetzt().getHours();
     // Wortlaut und Grenzen absichtlich Zeichen fuer Zeichen wie serverseitig in
     // WeatherStation (module.php $tageszeit, WeatherEngine::wetterlage) - sonst sagt die
     // Kachel etwas anderes als die Wetterlage-Variable daneben. Grenze 10 Uhr, und der

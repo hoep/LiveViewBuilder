@@ -311,8 +311,8 @@
     }
     /** Mitternacht des dargestellten Tages (Ortszeit) in Millisekunden. */
     function ssMidnight(w) {
-      var d = new Date(ssNow(w));
-      return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0).getTime();
+      var d = _hzD(ssNow(w));
+      return _hzMs(new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0));
     }
 
     // ---- Sonnenstand: gebundene IPS-Werte haben Vorrang, sonst NOAA-Rechnung ----
@@ -655,8 +655,8 @@
      * ssArc sie ohne Sonderfall zeichnen kann.
      */
     function ssMoonTrack(lat, lon, atMs, stepMin) {
-      var d = new Date(atMs || Date.now());
-      var mid = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0).getTime() / 1000;
+      var d = _hzD(atMs || Date.now());
+      var mid = _hzMs(new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0)) / 1000;
       var st = stepMin || 6, pts = [];
       for (var m = 0; m <= 1440; m += st) {
         var q = LVSUN.moon(lat, lon, mid + m * 60);

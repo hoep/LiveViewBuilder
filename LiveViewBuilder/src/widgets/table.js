@@ -122,8 +122,8 @@
   // (TT.MM. / TT.MM.JJJJ). Ohne das muesste die Quelle eine Spalte "heute ja/nein" mitliefern,
   // die schon am naechsten Tag falsch waere.
   function _tblIsToday(s){
-    var now=new Date(),d=null,n=parseFloat(s),m;
-    if(/^\d{9,}$/.test(s))d=new Date(n>1e11?n:n*1000);
+    var now=_hzJetzt(),d=null,n=parseFloat(s),m;
+    if(/^\d{9,}$/.test(s))d=_hzD(n>1e11?n:n*1000);
     else{m=String(s).match(/(\d{1,2})\.(\d{1,2})\.(\d{4})?/);if(m)d=new Date(m[3]?+m[3]:now.getFullYear(),+m[2]-1,+m[1]);}
     if(!d||isNaN(d.getTime()))return false;
     return d.getDate()===now.getDate()&&d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear();}

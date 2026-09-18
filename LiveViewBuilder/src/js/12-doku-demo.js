@@ -72,7 +72,7 @@
   // Zeit-bewusstes Tagesprofil (für stündliche/5-Min-Demos, v. a. Heatmap): zwei Spitzen morgens/abends,
   // Wochenende gedämpft — sieht wie ein echtes Verbrauchs-/Lastmuster aus statt einer glatten Sinuswelle.
   function _dokuProfile(base,t){
-    var dt=new Date(t*1000), h=dt.getHours()+dt.getMinutes()/60, wd=dt.getDay(), a=Math.abs(base)||1;
+    var dt=_hzD(t*1000), h=dt.getHours()+dt.getMinutes()/60, wd=dt.getDay(), a=Math.abs(base)||1;
     var day=0.22 + 0.60*Math.exp(-Math.pow((h-7.5)/2.0,2)) + 0.90*Math.exp(-Math.pow((h-19)/2.4,2)) + 0.15*Math.exp(-Math.pow((h-13)/3.5,2));
     var we=(wd===0||wd===6)?0.78:1.0;
     var jit=0.90+0.18*Math.abs(Math.sin(t*0.013));

@@ -58,7 +58,7 @@
       if(v<0.5)return 'Sehr leichter Regen'; if(v<1)return 'Leichter Regen'; if(v<3)return 'Mäßiger Regen';
       if(v<5)return 'Regen'; if(v<10)return 'Intensiver Regen'; if(v<15)return 'Starker Regen';
       if(v<20)return 'Sehr starker Regen'; return 'Extremer Regen'; }
-    function rrHHMM(t){var d=new Date(t*1000);return (d.getHours()<10?'0':'')+d.getHours()+':'+(d.getMinutes()<10?'0':'')+d.getMinutes();}
+    function rrHHMM(t){var d=_hzD(t*1000);return (d.getHours()<10?'0':'')+d.getHours()+':'+(d.getMinutes()<10?'0':'')+d.getMinutes();}
     function rrSummary(w,m){ // Vorhersage-Kurztext aus RadarMeta.forecast
       var fc=(m&&m.forecast)||[]; if(!fc.length)return '';
       fc=fc.slice().sort(function(a,b){return a.t-b.t;});

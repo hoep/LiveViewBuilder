@@ -235,12 +235,28 @@
     { k: 'thAcSwing',  rolle: 'acswing', lab: 'Schwenken',   art: 'knopf', ic: '↕' },
     { k: 'thAcLevel',  rolle: 'aclevel', lab: 'Leistung',    art: 'reihe' },
     { k: 'thAcPreset', rolle: 'acpre',   lab: 'Sonderfunktion', art: 'reihe' },
-    { k: 'thAcIon',    rolle: 'acion',   lab: 'Ionisator',   art: 'knopf', ic: '✧' }
+    { k: 'thAcIon',    rolle: 'acion',   lab: 'Ionisator',   art: 'knopf', ic: '✧' },
+    { k: 'thAcSwingH', rolle: 'acswh',   lab: 'Schwenken waagrecht', art: 'knopf' },
+    { k: 'thAcLight',  rolle: 'aclight', lab: 'Displaylicht', art: 'knopf' },
+    { k: 'thAcFire',   rolle: 'acfire',  lab: 'Kamin',       art: 'reihe' },
+    { k: 'thAcPlan',   rolle: 'acplan',  lab: 'Zeitplan/Manuell', art: 'seg' },
+    { k: 'thAcSched',  rolle: 'acsched', lab: 'Zeitplan-Variante', art: 'seg' }
+  ];
+  /* Reine ANZEIGEN unterhalb der Bedienelemente. Sie tragen kein Profil-Menue,
+     deshalb stehen sie nicht in _THKAC (das laedt Auswahllisten nach). */
+  var _THKCHIP = [
+    { k: 'thAcOutdoor', lab: 'außen',       einheit: ' °C' },
+    { k: 'thAcHum',     lab: 'Feuchte',     einheit: ' %'  },
+    { k: 'thAcPresence',lab: '',            einheit: ''    },
+    { k: 'thAcWindow',  lab: 'Fenster',     bool: ['zu', 'OFFEN'], warnBei: true },
+    { k: 'thAcClean',   lab: 'Selbstreinigung', bool: ['aus', 'läuft'] },
+    { k: 'thAcOnline',  lab: '',            bool: ['nicht erreichbar', 'erreichbar'], warnBei: false }
   ];
   function _thkAcAn(w) {
     if (w.thAcPower) { return true; }
     for (var i = 0; i < _THKAC.length; i++) { if (w[_THKAC[i].k]) { return true; } }
-    return false;
+    for (var j = 0; j < _THKCHIP.length; j++) { if (w[_THKCHIP[j].k]) { return true; } }
+    return !!w.thAcNext;
   }
   /** Profile aller gebundenen Klimavariablen holen, dann neu zeichnen. */
   function _thkAcLaden(w, fertig) {
@@ -263,11 +279,32 @@
     if (w.thAcPower) { h += '<button class="thk-acbtn" data-role="acpower" title="Ein/Aus">' + iconSVG('power') + '</button>'; }
     if (w.thAcFan)   { h += '<div class="thk-acfan" data-role="acfan"></div>'; }
     if (w.thAcSwing) { h += '<button class="thk-acbtn" data-role="acswing" title="Schwenken">' + iconSVG('airvent') + '</button>'; }
+    if (w.thAcSwingH) { h += '<button class="thk-acbtn" data-role="acswh" title="Schwenken waagrecht">' + _THKIC.swh + '</button>'; }
+    if (w.thAcLight) { h += '<button class="thk-acbtn" data-role="aclight" title="Displaylicht">' + _THKIC.licht + '</button>'; }
     h += '</div>';
-    if (w.thAcLevel || w.thAcPreset || w.thAcIon) {
+    if (w.thAcLevel || w.thAcPreset || w.thAcIon || w.thAcFire) {
       h += '<div class="thk-acrow" data-role="acextra"></div>';
     }
+    if (w.thAcPlan || w.thAcSched || w.thAcNext) {
+      h += '<div class="thk-acplan" data-role="acplan"></div>';
+    }
+    if (_thkChipAn(w)) { h += '<div class="thk-acchips" data-role="acchips"></div>'; }
     return h + '</div>';
+  }
+  var _THKIC = {
+    swh:   '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 12h18M7 8l-4 4 4 4M17 8l4 4-4 4"/></svg>',
+    licht: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>'
+  };
+  /** Gehoert die ID zu irgendeiner gebundenen Klimavariablen dieser Kachel? */
+  function _thkAcBetrifft(w, id) {
+    if (w.thAcPower === id || w.thAcNext === id) { return true; }
+    for (var i = 0; i < _THKAC.length; i++) { if (w[_THKAC[i].k] === id) { return true; } }
+    for (var j = 0; j < _THKCHIP.length; j++) { if (w[_THKCHIP[j].k] === id) { return true; } }
+    return false;
+  }
+  function _thkChipAn(w) {
+    for (var i = 0; i < _THKCHIP.length; i++) { if (w[_THKCHIP[i].k]) { return true; } }
+    return false;
   }
   function _thkAcWert(id) {
     var d = (typeof _lastVals !== 'undefined') ? _lastVals[id] : null;
@@ -350,6 +387,24 @@
       sa.forEach(function (o) { if (String(o.v) === String(sv)) { akt = o; } });
       sw.title = 'Schwenken' + (akt ? ' · ' + (akt.name || akt.v) : '');
     }
+    var swh = el.querySelector('[data-role=acswh]');
+    if (swh && w.thAcSwingH) {
+      var ha = _thkAcAssocs(w.thAcSwingH), hv = _thkAcWert(w.thAcSwingH);
+      var h0 = ha.length ? ha[0].v : 0, hn = h0;
+      for (var i3 = 0; i3 < ha.length; i3++) {
+        if (String(ha[i3].v) === String(hv)) { hn = ha[(i3 + 1) % ha.length].v; break; }
+      }
+      swh.classList.toggle('an', ha.length > 0 && String(hv) !== String(h0));
+      swh.setAttribute('data-acset', String(w.thAcSwingH));
+      swh.setAttribute('data-acval', String(hn));
+    }
+    var lt = el.querySelector('[data-role=aclight]');
+    if (lt && w.thAcLight) {
+      var lon = !!_thkAcWert(w.thAcLight);
+      lt.classList.toggle('an', lon);
+      lt.setAttribute('data-acset', String(w.thAcLight));
+      lt.setAttribute('data-acval', lon ? '0' : '1');
+    }
     var ex = el.querySelector('[data-role=acextra]');
     if (ex) {
       var eh = '';
@@ -373,8 +428,86 @@
         eh += '<button class="thk-acbtn wide' + (pAktiv ? ' an' : '') + '" data-role="acpre" title="Sonderfunktion">'
             + escL(pn || 'Sonderfunktion') + '</button>';
       }
+      // Kamin: wie die Sonderfunktion ein weiterschaltender Knopf. Eine eigene
+      // Auswahlliste waere fuer zwei Stufen zu viel Bedienflaeche.
+      if (w.thAcFire) {
+        eh += _thkZyklus(w.thAcFire, 'acfire', 'Kamin');
+      }
       ex.innerHTML = eh;
     }
+    // ---- Zeitplanzeile ----
+    var pl = el.querySelector('[data-role=acplan]');
+    if (pl) {
+      var ph = '';
+      if (w.thAcPlan)  { ph += _thkSegBody(w.thAcPlan); }
+      if (w.thAcSched) { ph += _thkSegBody(w.thAcSched); }
+      if (w.thAcNext) {
+        var nx = _thkAcWert(w.thAcNext), txt = '';
+        var ts = parseInt(nx, 10) || 0;
+        if (ts > 4e10) { ts = Math.floor(ts / 1000); }
+        if (ts > 0) {
+          var d = _hzD(ts * 1000), heute = _hzJetzt();
+          var gl = d.toDateString() === heute.toDateString();
+          var morgen = new Date(heute.getTime() + 86400000).toDateString() === d.toDateString();
+          var uhr = ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2);
+          txt = (gl ? '' : (morgen ? 'morgen ' : (('0' + d.getDate()).slice(-2) + '.' + ('0' + (d.getMonth() + 1)).slice(-2) + '. '))) + uhr;
+        }
+        ph += '<span class="thk-acnext">' + (txt ? ('nächste Änderung <b>' + escL(txt) + '</b>') : 'keine Änderung geplant') + '</span>';
+      }
+      pl.innerHTML = ph;
+    }
+    // ---- Anzeigen ----
+    var ch = el.querySelector('[data-role=acchips]');
+    if (ch) {
+      var chh = '';
+      _THKCHIP.forEach(function (f) {
+        var id = w[f.k];
+        if (!id) { return; }
+        var d = (typeof _lastVals !== 'undefined') ? _lastVals[id] : null;
+        if (!d) { return; }
+        var klasse = '', txt;
+        if (f.bool) {
+          var an = (d.v === true || d.v === 1 || d.v === '1');
+          txt = (f.lab ? f.lab + ' ' : '') + f.bool[an ? 1 : 0];
+          if (f.warnBei !== undefined) { klasse = (an === f.warnBei) ? ' warn' : ' ok'; }
+        } else {
+          var roh = (d.f != null && d.f !== '') ? d.f : d.v;
+          if (roh === '' || roh == null) { return; }
+          // Zahl aus der Formatierung des Kerns nehmen, aber die Einheit selbst setzen:
+          // sonst steht dort je nach Profil "23.0 °C" oder "23" - uneinheitlich.
+          if (f.einheit && typeof d.v === 'number') { roh = (Math.round(d.v * 10) / 10) + f.einheit; }
+          txt = (f.lab ? f.lab + ' ' : '') + '<b>' + escL(String(roh)) + '</b>';
+        }
+        chh += '<span class="thk-acchip' + klasse + '">' + txt + '</span>';
+      });
+      ch.innerHTML = chh;
+    }
+  }
+
+  /** Weiterschaltender Knopf ueber die Auswahlliste einer Variablen. */
+  function _thkZyklus(id, rolle, lab) {
+    var a = _thkAcAssocs(id), v = _thkAcWert(id), nam = '';
+    a.forEach(function (o) { if (String(o.v) === String(v)) { nam = String(o.name || o.v); } });
+    var aus = a.length ? a[0] : null;
+    var aktiv = aus && String(v) !== String(aus.v);
+    var naechst = aus ? aus.v : 0;
+    for (var i = 0; i < a.length; i++) {
+      if (String(a[i].v) === String(v)) { naechst = a[(i + 1) % a.length].v; break; }
+    }
+    return '<button class="thk-acbtn wide' + (aktiv ? ' an' : '') + '" data-acset="' + esc(String(id))
+         + '" data-acval="' + esc(String(naechst)) + '" title="' + esc(lab) + '">'
+         + escL(lab + ': ' + (nam || '—')) + '</button>';
+  }
+  /** Kleine Segmentleiste aus der Auswahlliste einer Variablen. */
+  function _thkSegBody(id) {
+    var a = _thkAcAssocs(id), v = _thkAcWert(id);
+    if (!a.length) { return ''; }
+    var h = '<span class="thk-acseg2">';
+    a.forEach(function (o) {
+      h += '<button class="' + (String(o.v) === String(v) ? 'an' : '') + '" data-acset="' + esc(String(id))
+         + '" data-acval="' + esc(String(o.v)) + '">' + escL(String(o.name || o.v)) + '</button>';
+    });
+    return h + '</span>';
   }
 
   function _thkBody(w){
@@ -467,7 +600,22 @@
       + row('Schwenken', '<input id="pThAcS" type="number" style="width:110px" value="' + (w.thAcSwing || '') + '">')
       + row('Leistungsstufe', '<input id="pThAcL" type="number" style="width:110px" value="' + (w.thAcLevel || '') + '">')
       + row('Sonderfunktion', '<input id="pThAcR" type="number" style="width:110px" value="' + (w.thAcPreset || '') + '">')
-      + row('Ionisator', '<input id="pThAcI" type="number" style="width:110px" value="' + (w.thAcIon || '') + '">');
+      + row('Ionisator', '<input id="pThAcI" type="number" style="width:110px" value="' + (w.thAcIon || '') + '">')
+      + row('Schwenken waagrecht', '<input id="pThAcSH" type="number" style="width:110px" value="' + (w.thAcSwingH || '') + '">')
+      + row('Displaylicht', '<input id="pThAcLI" type="number" style="width:110px" value="' + (w.thAcLight || '') + '">')
+      + row('Kamin', '<input id="pThAcFI" type="number" style="width:110px" value="' + (w.thAcFire || '') + '">')
+      + '<div class="pgh">Zeitplanzeile</div>'
+      + row('Zeitplan / Manuell', '<input id="pThAcPL" type="number" style="width:110px" value="' + (w.thAcPlan || '') + '">')
+      + row('Zeitplan-Variante', '<input id="pThAcSC" type="number" style="width:110px" value="' + (w.thAcSched || '') + '">')
+      + row('Nächste Änderung', '<input id="pThAcNX" type="number" style="width:110px" value="' + (w.thAcNext || '') + '">')
+      + _thkHint('Zeitstempel. Heute zeigt die Kachel nur die Uhrzeit, morgen mit Vorsatz, sonst mit Datum.')
+      + '<div class="pgh">Anzeigen (nur lesen)</div>'
+      + row('Außentemperatur', '<input id="pThAcOU" type="number" style="width:110px" value="' + (w.thAcOutdoor || '') + '">')
+      + row('Luftfeuchte', '<input id="pThAcHU" type="number" style="width:110px" value="' + (w.thAcHum || '') + '">')
+      + row('Anwesenheit', '<input id="pThAcPR" type="number" style="width:110px" value="' + (w.thAcPresence || '') + '">')
+      + row('Fenster offen', '<input id="pThAcWI" type="number" style="width:110px" value="' + (w.thAcWindow || '') + '">')
+      + row('Selbstreinigung', '<input id="pThAcCL" type="number" style="width:110px" value="' + (w.thAcClean || '') + '">')
+      + row('Erreichbar', '<input id="pThAcON" type="number" style="width:110px" value="' + (w.thAcOnline || '') + '">');
     return h;
   }
 
@@ -488,7 +636,11 @@
     chk('#pThPresOn','thPresOn');txt('#pThPresLbl','thPresLbl',1);sel('#pThPresShape','thPresShape');
     // Klimafelder: eine Schleife statt sieben gleichlautender Zeilen.
     [['#pThAcP','thAcPower'],['#pThAcM','thAcMode'],['#pThAcF','thAcFan'],['#pThAcS','thAcSwing'],
-     ['#pThAcL','thAcLevel'],['#pThAcR','thAcPreset'],['#pThAcI','thAcIon']].forEach(function(o){
+     ['#pThAcL','thAcLevel'],['#pThAcR','thAcPreset'],['#pThAcI','thAcIon'],
+     ['#pThAcSH','thAcSwingH'],['#pThAcLI','thAcLight'],['#pThAcFI','thAcFire'],
+     ['#pThAcPL','thAcPlan'],['#pThAcSC','thAcSched'],['#pThAcNX','thAcNext'],
+     ['#pThAcOU','thAcOutdoor'],['#pThAcHU','thAcHum'],['#pThAcPR','thAcPresence'],
+     ['#pThAcWI','thAcWindow'],['#pThAcCL','thAcClean'],['#pThAcON','thAcOnline']].forEach(function(o){
       num(o[0],o[1]);
     });
   }
@@ -597,7 +749,11 @@
       if(_thkOn(w)){
         if(_thkDrag&&_thkDrag.el===el)return;                      // waehrend des Ziehens nichts ueberschreiben
         // varId3 gehoert dazu: bei thMode='auto' entscheidet die Modusvariable ueber den Ton.
-        if(id===w.varId||id===w.varId2||id===w.varId3||id===w.thPresVar||id===w.thHeatVar||id===w.thArmVar)_thkPaint(w,el);
+        // Auch JEDE gebundene Klimavariable muss neu zeichnen. Stand sie nicht in
+        // dieser Liste, blieb der ganze Bedienblock auf dem Stand des Seitenaufbaus
+        // stehen - man druckte einen Knopf und sah nichts.
+        if(id===w.varId||id===w.varId2||id===w.varId3||id===w.thPresVar||id===w.thHeatVar||id===w.thArmVar
+           ||_thkAcBetrifft(w,id))_thkPaint(w,el);
         return;
       }
       if(w.varId===id||w.varId2===id||w.varId3===id)updateTherm(w,rootOfEl(el));

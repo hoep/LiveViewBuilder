@@ -2,8 +2,8 @@
   // EINE String-Variable (JSON) liefert alle Daten. Erkannt werden: OpenWeatherMap (One-Call),
   // Tempest/WeatherFlow (better_forecast) und Open-Meteo (parallele Arrays). Auto-Erkennung oder manuell.
   var WWD=['So','Mo','Di','Mi','Do','Fr','Sa'];
-  function wDayLabel(offset){if(offset===0)return 'Heute';var dt=new Date();dt.setDate(dt.getDate()+offset);return WWD[dt.getDay()];}
-  function wDayLabelTs(ts){var dt=new Date(ts*1000),now=new Date();if(dt.getFullYear()===now.getFullYear()&&dt.getMonth()===now.getMonth()&&dt.getDate()===now.getDate())return 'Heute';return WWD[dt.getDay()];}
+  function wDayLabel(offset){if(offset===0)return 'Heute';var dt=_hzJetzt();dt.setDate(dt.getDate()+offset);return WWD[dt.getDay()];}
+  function wDayLabelTs(ts){var dt=_hzD(ts*1000),now=_hzJetzt();if(dt.getFullYear()===now.getFullYear()&&dt.getMonth()===now.getMonth()&&dt.getDate()===now.getDate())return 'Heute';return WWD[dt.getDay()];}
   // PHP unserialize() -> JS (Tempest/IPS legen Daten oft serialisiert statt als JSON ab). Byte-genau (UTF-8-fest).
   function phpUnser(str){
     if(typeof str!=='string')return null;
@@ -108,8 +108,8 @@
       var hl=(j.forecast&&j.forecast.hourly)||[];hl.forEach(function(h){hours.push({hi:h.air_temperature,lo:h.air_temperature,cond:h.conditions,icon:tempestIcon(h.icon)||wCondIcon(h.conditions),pop:(h.precip_probability!=null)?Math.round(h.precip_probability):null,ts:h.time||null,feels:h.feels_like,hum:h.relative_humidity,wind:windC(h.wind_avg),gust:windC(h.wind_gust),wdir:h.wind_direction,press:h.sea_level_pressure,clouds:null,uv:h.uv,precip:h.precip});});
     } else if(f==='openmeteo'){
       if(j.current)cur={temp:j.current.temperature_2m,cond:wmoText(j.current.weather_code),icon:wmoIcon(j.current.weather_code),humidity:j.current.relative_humidity_2m,wind:j.current.wind_speed_10m,gust:j.current.wind_gusts_10m};
-      var dd=j.daily;if(dd&&dd.time){for(var i=0;i<dd.time.length;i++){var wc=dd.weather_code&&dd.weather_code[i];var dts=dd.time[i]?Math.floor(new Date(dd.time[i]).getTime()/1000):null;days.push({hi:dd.temperature_2m_max&&dd.temperature_2m_max[i],lo:dd.temperature_2m_min&&dd.temperature_2m_min[i],cond:wmoText(wc),icon:wmoIcon(wc),pop:dd.precipitation_probability_max?dd.precipitation_probability_max[i]:null,ts:dts,wind:dd.wind_speed_10m_max?dd.wind_speed_10m_max[i]:null,gust:dd.wind_gusts_10m_max?dd.wind_gusts_10m_max[i]:null,wdir:dd.wind_direction_10m_dominant?dd.wind_direction_10m_dominant[i]:null,uv:dd.uv_index_max?dd.uv_index_max[i]:null,precip:dd.precipitation_sum?dd.precipitation_sum[i]:null});}}
-      var hd=j.hourly;if(hd&&hd.time){for(var hi=0;hi<hd.time.length;hi++){var whc=hd.weather_code&&hd.weather_code[hi];var hts=hd.time[hi]?Math.floor(new Date(hd.time[hi]).getTime()/1000):null;var ht=hd.temperature_2m&&hd.temperature_2m[hi];hours.push({hi:ht,lo:ht,cond:wmoText(whc),icon:wmoIcon(whc),pop:hd.precipitation_probability?hd.precipitation_probability[hi]:null,ts:hts,feels:hd.apparent_temperature?hd.apparent_temperature[hi]:null,hum:hd.relative_humidity_2m?hd.relative_humidity_2m[hi]:null,wind:hd.wind_speed_10m?hd.wind_speed_10m[hi]:null,gust:hd.wind_gusts_10m?hd.wind_gusts_10m[hi]:null,wdir:hd.wind_direction_10m?hd.wind_direction_10m[hi]:null,press:hd.pressure_msl?hd.pressure_msl[hi]:null,clouds:hd.cloud_cover?hd.cloud_cover[hi]:null,uv:hd.uv_index?hd.uv_index[hi]:null,precip:hd.precipitation?hd.precipitation[hi]:null});}}
+      var dd=j.daily;if(dd&&dd.time){for(var i=0;i<dd.time.length;i++){var wc=dd.weather_code&&dd.weather_code[i];var dts=dd.time[i]?Math.floor(_hzMs(new Date(dd.time[i]))/1000):null;days.push({hi:dd.temperature_2m_max&&dd.temperature_2m_max[i],lo:dd.temperature_2m_min&&dd.temperature_2m_min[i],cond:wmoText(wc),icon:wmoIcon(wc),pop:dd.precipitation_probability_max?dd.precipitation_probability_max[i]:null,ts:dts,wind:dd.wind_speed_10m_max?dd.wind_speed_10m_max[i]:null,gust:dd.wind_gusts_10m_max?dd.wind_gusts_10m_max[i]:null,wdir:dd.wind_direction_10m_dominant?dd.wind_direction_10m_dominant[i]:null,uv:dd.uv_index_max?dd.uv_index_max[i]:null,precip:dd.precipitation_sum?dd.precipitation_sum[i]:null});}}
+      var hd=j.hourly;if(hd&&hd.time){for(var hi=0;hi<hd.time.length;hi++){var whc=hd.weather_code&&hd.weather_code[hi];var hts=hd.time[hi]?Math.floor(_hzMs(new Date(hd.time[hi]))/1000):null;var ht=hd.temperature_2m&&hd.temperature_2m[hi];hours.push({hi:ht,lo:ht,cond:wmoText(whc),icon:wmoIcon(whc),pop:hd.precipitation_probability?hd.precipitation_probability[hi]:null,ts:hts,feels:hd.apparent_temperature?hd.apparent_temperature[hi]:null,hum:hd.relative_humidity_2m?hd.relative_humidity_2m[hi]:null,wind:hd.wind_speed_10m?hd.wind_speed_10m[hi]:null,gust:hd.wind_gusts_10m?hd.wind_gusts_10m[hi]:null,wdir:hd.wind_direction_10m?hd.wind_direction_10m[hi]:null,press:hd.pressure_msl?hd.pressure_msl[hi]:null,clouds:hd.cloud_cover?hd.cloud_cover[hi]:null,uv:hd.uv_index?hd.uv_index[hi]:null,precip:hd.precipitation?hd.precipitation[hi]:null});}}
     } else if(f==='flat'){
       var t=(j.temp!=null?j.temp:j.temperature),cnd=(j.condition||j.conditions||j.description);
       cur={temp:t,cond:cnd,icon:(j.icon?(tempestIcon(j.icon)||wCondIcon(j.icon)):wCondIcon(cnd)),humidity:(j.humidity!=null?j.humidity:j.relative_humidity),wind:(j.wind!=null?j.wind:(j.wind_speed!=null?j.wind_speed:j.windspeed)),gust:(j.gust!=null?j.gust:(j.wind_gust!=null?j.wind_gust:j.windgust))};
@@ -255,7 +255,7 @@
     // Stunden ab „jetzt" (Quelle liefert oft alle 24h ab Mitternacht) -> vergangene Stunden überspringen
     if(_hMode){var _now=Date.now()/1000,_si=0;for(var _k=0;_k<days.length;_k++){if(days[_k]&&days[_k].ts&&days[_k].ts>=_now-1800){_si=_k;break;}}start=_si;
       el.querySelectorAll('.hwp2hr').forEach(function(col,i){var d=days[start+i];
-        var hEl=col.querySelector('.h');if(hEl)hEl.textContent=(d&&d.ts)?(('0'+new Date(d.ts*1000).getHours()).slice(-2)+':00'):'';
+        var hEl=col.querySelector('.h');if(hEl)hEl.textContent=(d&&d.ts)?(('0'+_hzD(d.ts*1000).getHours()).slice(-2)+':00'):'';
         var icEl=col.querySelector('.ic');if(icEl)icEl.innerHTML=iconSVG((d&&d.icon)||'cloudsun');
         var tEl=col.querySelector('.t');if(tEl)tEl.textContent=d?(_wtxt(d.hi)+unit):'–';
         col.querySelectorAll('[data-m]').forEach(function(sp){sp.innerHTML=_hmFill(sp.getAttribute('data-m'),d,unit);});});
@@ -268,7 +268,7 @@
       var d=days[start+i];
       var dEl=row.querySelector('.d');
       if(dEl)dEl.textContent=_hMode
-        ? (d&&d.ts ? (('0'+new Date(d.ts*1000).getHours()).slice(-2)+':00') : '')
+        ? (d&&d.ts ? (('0'+_hzD(d.ts*1000).getHours()).slice(-2)+':00') : '')
         : ((d&&d.ts)?wDayLabelTs(d.ts):wDayLabel(start+i));
       var icEl=row.querySelector('.ic');if(icEl)icEl.innerHTML=iconSVG((d&&d.icon)||'cloudsun');
       var loEl=row.querySelector('.lo');if(loEl)loEl.textContent=d?(_wtxt(d.lo)+unit):'–';

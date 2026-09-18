@@ -100,11 +100,11 @@
   // Live-Aktualisierung: EIN Sammelabruf, dann alle sichtbaren Karten neu zeichnen
   function shStartTimer(){ if(_shTimer||(typeof DOKU!=='undefined'&&DOKU))return; _shTimer=setInterval(shTick,7000); }
   function shTick(){
-    var vis=Object.keys(_shState).filter(function(id){return _shState[id].loaded&&document.querySelector('.w[data-id="'+id+'"]');});
+    var vis=Object.keys(_shState).filter(function(id){var w0=(typeof widget==='function')?widget(id):null;return _shState[id].loaded&&w0&&document.querySelector('.w.t-'+w0.type+'[data-id="'+id+'"]');});
     if(!vis.length)return;
     shLoadAll(true,function(){
       vis.forEach(function(id){var st=_shState[id],w=(typeof widget==='function')?widget(id):null;if(!w||!w.deviceId)return;
-        var el=document.querySelector('.w[data-id="'+id+'"]');if(!el)return;
+        var w1=(typeof widget==='function')?widget(id):null;if(!w1)return;var el=document.querySelector('.w.t-'+w1.type+'[data-id="'+id+'"]');if(!el)return;
         if(_shAll&&_shAll[w.deviceId])st.data=_shAll[w.deviceId];
         if(document.activeElement&&el.contains(document.activeElement))return;   // nicht während Bedienung neu zeichnen
         shRepaint(w,el);});

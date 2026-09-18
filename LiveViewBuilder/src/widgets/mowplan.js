@@ -24,8 +24,8 @@
   // haelt aber ungespeicherte Bearbeitungen, deshalb hier ein Cache PRO Maeher statt Neuladen.
   function mpKey(w){return String(w.id)+'#'+String(w.mowerId==null?'':w.mowerId);}
   function mpSt(w){var k=mpKey(w);return _mpState[k]||(_mpState[k]={loaded:false,timers:[],areas:[],sel:0,dirty:false,err:'',name:''});}
-  function mpTodayIdx(){try{return (new Date().getDay()+6)%7;}catch(e){return 0;}}
-  function mpNowMin(){try{var d=new Date();return d.getHours()*60+d.getMinutes();}catch(e){return -1;}}
+  function mpTodayIdx(){try{return (_hzJetzt().getDay()+6)%7;}catch(e){return 0;}}
+  function mpNowMin(){try{var d=_hzJetzt();return d.getHours()*60+d.getMinutes();}catch(e){return -1;}}
   function mpDaysArr(t){var a=[];for(var i=0;i<7;i++){if(t.days&&t.days[MP_DKEY[i]])a.push(i);}return a;}
   function mpDaysLabel(t){var a=mpDaysArr(t);return a.length?a.map(function(i){return MP_DAYS[i];}).join('/'):'—';}
   function mpAreaIdx(st,mid){mid=String(mid==null?'':mid);for(var i=0;i<(st.areas||[]).length;i++){if(String(st.areas[i].id)===mid)return i;}return -1;}

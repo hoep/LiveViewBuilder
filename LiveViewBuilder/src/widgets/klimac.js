@@ -135,7 +135,7 @@
 
   /** Lueftungsfenster 452x52 wie im Entwurf. */
   function _kcFenster(d) {
-    var L = d.lage || {}, jetzt = new Date();
+    var L = d.lage || {}, jetzt = _hzJetzt();
     var h0 = 18, h1 = 33;                        // 18:00 heute bis 09:00 morgen
     function X(hh) { return 8 + Math.max(0, Math.min(1, (hh - h0) / (h1 - h0))) * 436; }
     var nh = jetzt.getHours() + jetzt.getMinutes() / 60; if (nh < h0) { nh += 24; }
@@ -172,7 +172,7 @@
     var tunAnz = R.filter(function (r) { return [1, 2, 3, 5, 7, 8].indexOf(r.lz) >= 0; }).length;
     var ruhig = R.length - tunAnz;
     var WT = ['Sonntag','Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag'];
-    var jetzt = new Date();
+    var jetzt = _hzJetzt();
     var titel = reihe.length
       ? (reihe.length === 1 ? 'Ein Bereich <em>jetzt</em> lüften'
                             : reihe.length + ' Bereiche <em>jetzt</em> lüften')

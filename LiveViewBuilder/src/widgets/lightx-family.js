@@ -373,7 +373,15 @@
       return h;
     }
 
-    function lxEl(w){return $('.w[data-id="'+w.id+'"]',canvas)||$('.w[data-id="'+w.id+'"]',$('#ovcanvas'));}
+    // Element zu w suchen - aber NUR, wenn es auch wirklich zu diesem Widget gehoert.
+    // Widget-IDs (w4, w7, ...) werden je Seite vergeben und kollidieren seitenuebergreifend:
+    // ohne die Typpruefung fand ein nachlaufender Poll das gleichnamige Element einer
+    // ANDEREN Seite und ueberschrieb es (Chart wurde zur Lampe).
+    function lxPass(el,w){ return !!(el && w && el.classList && el.classList.contains('t-'+w.type)); }
+    function lxEl(w){
+      var el=$('.w[data-id="'+w.id+'"]',canvas); if(lxPass(el,w))return el;
+      el=$('.w[data-id="'+w.id+'"]',$('#ovcanvas')); return lxPass(el,w)?el:null;
+    }
     function lxPaint(w){var el=lxEl(w);if(!el)return;var host=el.querySelector('.winner')||el;host.innerHTML=lxRender(w);lxWire(w,host);}
 
     // WebSocket-Push: die Power/Brightness-Variablen der angezeigten Lampen im Live-Index

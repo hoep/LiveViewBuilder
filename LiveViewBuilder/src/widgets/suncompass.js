@@ -46,7 +46,7 @@
       return {az:az,elev:el};
     }
     function scDayTrack(geo){
-      var now=new Date(), mid=new Date(now.getFullYear(),now.getMonth(),now.getDate(),0,0,0,0).getTime()/1000, pts=[];
+      var now=_hzJetzt(), mid=_hzMs(new Date(now.getFullYear(),now.getMonth(),now.getDate(),0,0,0,0))/1000, pts=[];
       for(var m=0;m<=1440;m+=5){var p=scSunPos(geo.lat,geo.lon,mid+m*60);pts.push({az:p.az,elev:p.elev});}
       return {pts:pts};
     }

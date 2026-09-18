@@ -141,7 +141,73 @@
       +'.irxc-lbl{width:clamp(58px,22cqi,96px);flex:none;font-size:clamp(10px,4.2cqi,13px);color:var(--muted)}'
       +'.irxc-rng{flex:1;height:clamp(5px,2cqi,8px);border-radius:6px}'
       +'.irxc-val{min-width:clamp(38px,15cqi,60px);text-align:right;font-family:var(--fm);font-size:clamp(10px,4cqi,13px)}'
-      +'.irxc-sel{flex:1;height:clamp(28px,11cqi,40px);border:1px solid var(--line,rgba(128,128,128,.35));border-radius:8px;background:var(--tile);color:var(--text);font-size:clamp(11px,4.4cqi,14px);padding:0 clamp(4px,2cqi,9px)}';
+      +'.irxc-sel{flex:1;height:clamp(28px,11cqi,40px);border:1px solid var(--line,rgba(128,128,128,.35));border-radius:8px;background:var(--tile);color:var(--text);font-size:clamp(11px,4.4cqi,14px);padding:0 clamp(4px,2cqi,9px)}'
+      +'.irk-cog{border:0;background:transparent;color:var(--faint);cursor:pointer;padding:2px;margin-left:2px;display:inline-flex;align-items:center;flex:none;border-radius:6px}'
+      +'.irk-cog:hover{color:var(--accent);background:color-mix(in oklab,var(--accent) 12%,transparent)}'
+      // ---- Feineinstellung (irxStil='einstellungen') ----------------------------
+      // Eigener Groessen-Container auf .irs, damit alle Masse gegen die POPUP-Breite
+      // rechnen (cqi) und nicht gegen die Kachel der Uebersicht.
+      +'.irs{position:absolute;inset:0;display:flex;flex-direction:column;background:var(--surface);container-type:inline-size;overflow:hidden}'
+      +'.irs-h{display:flex;align-items:center;gap:clamp(7px,2cqi,12px);padding:clamp(8px,2.2cqi,13px) clamp(10px,2.6cqi,17px);background:linear-gradient(180deg,var(--surface-2),var(--surface));border-bottom:1px solid var(--line);flex:none}'
+      +'.irs-dot{width:9px;height:9px;border-radius:50%;background:var(--accent);flex:none;box-shadow:0 0 0 4px color-mix(in oklab,var(--accent) 18%,transparent)}'
+      +'.irs-ht h2{margin:0;font-size:clamp(13px,1.9cqi,17px);font-weight:680;letter-spacing:-.01em}'
+      +'.irs-sub{font-size:clamp(9.5px,1.3cqi,12px);color:var(--faint);margin-top:1px}'
+      +'.irs-b{flex:1;min-height:0;overflow:auto;padding:clamp(8px,1.8cqi,14px) clamp(10px,2.2cqi,17px) clamp(4px,1cqi,6px);display:grid;grid-template-columns:repeat(auto-fit,minmax(clamp(230px,44cqi,460px),1fr));gap:clamp(7px,1.4cqi,12px) clamp(9px,1.8cqi,16px);align-content:start;align-items:start}'
+      +'.irs-c{background:var(--tile);border:1px solid var(--line-soft,var(--line));border-radius:var(--r-s,9px);padding:clamp(7px,1.4cqi,11px) clamp(8px,1.6cqi,13px) clamp(8px,1.5cqi,12px)}'
+      +'.irs-c>h3{margin:0 0 clamp(4px,.9cqi,8px);font-size:clamp(8.5px,1.1cqi,10.5px);font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--faint);display:flex;align-items:center;gap:7px}'
+      +'.irs-ic{color:var(--accent);display:inline-flex;align-items:center}'
+      +'.irs-sp{flex:1}'
+      +'.irs-r{display:flex;align-items:center;gap:clamp(6px,1.1cqi,10px);padding:clamp(3px,.6cqi,5px) 0;border-top:1px solid var(--line-soft,var(--line))}'
+      +'.irs-c>.irs-r:first-of-type{border-top:0}'
+      +'.irs-l{font-size:clamp(10.5px,1.3cqi,13px);flex:1;min-width:0;line-height:1.3}'
+      +'.irs-l em{display:block;font-style:normal;font-size:clamp(8.5px,1.05cqi,10.5px);color:var(--faint);margin-top:1px}'
+      +'.irs-pf{color:var(--faint);flex:none;font-size:12px}'
+      // Schalter: gefuellte Aktivflaeche in accent-2 (nie Akzent mit dunkler Schrift).
+      +'.irs-sw{width:34px;height:19px;border-radius:11px;background:var(--line);position:relative;flex:none;border:0;padding:0;cursor:pointer}'
+      +'.irs-sw i{position:absolute;top:2px;left:2px;width:15px;height:15px;border-radius:50%;background:var(--faint);transition:left .12s,background .12s}'
+      +'.irs-sw.on{background:var(--accent-2)}.irs-sw.on i{left:17px;background:#fff}'
+      +'.irs-num{display:inline-flex;align-items:center;gap:4px;flex:none}'
+      +'.irs-num input{width:clamp(44px,7cqi,74px);padding:4px 6px;border-radius:7px;border:1px solid var(--line);background:var(--bg);color:var(--text);font-size:clamp(10.5px,1.25cqi,12.5px);font-family:var(--fm);text-align:right}'
+      +'.irs-num input:focus{outline:0;border-color:var(--accent);box-shadow:var(--ring)}'
+      +'.irs-u{color:var(--faint);font-size:clamp(9px,1.05cqi,11px);font-family:var(--fm);min-width:2.2em}'
+      +'.irs-src{display:inline-flex;align-items:center;gap:6px;max-width:clamp(120px,24cqi,240px);padding:4px 8px;border-radius:7px;border:1px solid var(--line);background:var(--bg);color:var(--text);font-size:clamp(9.5px,1.15cqi,12px);cursor:pointer;flex:none}'
+      +'.irs-src-t{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}'
+      +'.irs-src.leer{color:var(--faint)}'
+      +'.irs-src:hover{border-color:color-mix(in oklab,var(--accent) 45%,var(--line))}'
+      +'.irs-seg{display:flex;border:1px solid var(--line);border-radius:7px;overflow:hidden;flex:none}'
+      +'.irs-seg button{padding:4px clamp(6px,1.1cqi,11px);font-size:clamp(9.5px,1.15cqi,12px);color:var(--muted);border:0;border-left:1px solid var(--line);background:transparent;cursor:pointer}'
+      +'.irs-seg button:first-child{border-left:0}'
+      +'.irs-seg button.on{background:var(--accent-2);color:#fff;font-weight:650}'
+      +'.irs-hint{font-size:clamp(8.5px,1.05cqi,10.5px);color:var(--faint);margin-top:clamp(4px,.8cqi,7px);line-height:1.4;padding-top:clamp(4px,.8cqi,7px);border-top:1px dashed var(--line-soft,var(--line))}'
+      +'.irs-hint b{color:var(--muted);font-weight:600}'
+      +'.irs-warn{display:flex;align-items:center;gap:7px;font-size:clamp(8.5px,1.05cqi,10.5px);color:var(--warn);background:color-mix(in oklab,var(--warn) 10%,transparent);border:1px solid color-mix(in oklab,var(--warn) 30%,transparent);border-radius:7px;padding:5px 8px;margin-top:6px}'
+      +'.irs-prev{flex:none;margin:0 clamp(10px,2.2cqi,17px) clamp(6px,1.2cqi,10px);background:linear-gradient(180deg,color-mix(in oklab,var(--accent) 7%,var(--tile)),var(--tile));border:1px solid color-mix(in oklab,var(--accent) 24%,var(--line));border-radius:var(--r-s,9px);padding:clamp(6px,1.1cqi,10px) clamp(8px,1.5cqi,14px);display:flex;align-items:center;gap:clamp(8px,1.6cqi,16px);flex-wrap:wrap}'
+      +'.irs-pt{font-size:clamp(8px,1cqi,10px);font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--accent);flex:none}'
+      +'.irs-chips{display:flex;gap:6px;flex-wrap:wrap;flex:1;min-width:0}'
+      +'.irs-chip{font-size:clamp(9px,1.1cqi,11.5px);color:var(--muted);background:var(--surface-2);border:1px solid var(--line);border-radius:20px;padding:2px 9px;font-family:var(--fm);white-space:nowrap}'
+      +'.irs-chip b{color:var(--text);font-weight:600}'
+      +'.irs-verd{font-size:clamp(10.5px,1.3cqi,13px);font-weight:680;flex:none;display:flex;align-items:center;gap:6px}'
+      +'.irs-verd.block{color:var(--warn)}.irs-verd.frei{color:var(--ok)}'
+      +'.irs-bul{width:8px;height:8px;border-radius:50%;background:currentColor}'
+      +'.irs-f{display:flex;align-items:center;gap:8px;padding:clamp(7px,1.4cqi,12px) clamp(10px,2.2cqi,17px);border-top:1px solid var(--line);background:linear-gradient(0deg,var(--surface-2),var(--surface));flex:none}'
+      +'.irs-note{font-size:clamp(8.5px,1.05cqi,11px);color:var(--faint);flex:1;min-width:0}'
+      +'.irs-btn{padding:6px clamp(9px,1.7cqi,15px);border-radius:9px;border:1px solid var(--line);background:var(--surface-2);color:var(--text);font-size:clamp(10.5px,1.25cqi,12.5px);cursor:pointer}'
+      +'.irs-btn.pri{background:var(--accent-2);color:#fff;border-color:transparent;font-weight:650}'
+      +'.irs-btn:disabled{opacity:.42;cursor:default}'
+      // ---- Quellen-Waehler ----
+      +'.irs-pk-h{position:absolute;inset:0;background:rgba(4,8,9,.62);display:flex;align-items:center;justify-content:center;z-index:9}'
+      +'.irs-pk{width:min(84%,440px);max-height:78%;display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--line);border-radius:var(--r,12px);box-shadow:0 24px 60px -24px #000;overflow:hidden}'
+      +'.irs-pk-k{display:flex;align-items:center;justify-content:space-between;padding:9px 12px;border-bottom:1px solid var(--line);font-size:12px;font-weight:650}'
+      +'.irs-pk-x{border:0;background:transparent;color:var(--muted);cursor:pointer;display:inline-flex;padding:2px}'
+      +'.irs-pk-s{margin:9px 12px 6px;padding:6px 9px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--text);font-size:12px}'
+      +'.irs-pk-s:focus{outline:0;border-color:var(--accent);box-shadow:var(--ring)}'
+      +'.irs-pk-l{flex:1;min-height:0;overflow:auto;padding:0 8px 6px}'
+      +'.irs-pk-r{display:block;width:100%;text-align:left;border:0;background:transparent;color:var(--text);padding:5px 7px;border-radius:7px;cursor:pointer}'
+      +'.irs-pk-r:hover{background:var(--surface-2)}'
+      +'.irs-pk-r b{display:block;font-size:11.5px;font-weight:600}'
+      +'.irs-pk-r span{display:block;font-size:9.5px;color:var(--faint);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}'
+      +'.irs-pk-leer{padding:10px 8px;font-size:11px;color:var(--faint)}'
+      +'.irs-pk-clr{margin:0 12px 10px;padding:5px 9px;border-radius:8px;border:1px solid var(--line);background:var(--surface-2);color:var(--muted);font-size:11px;cursor:pointer}';
       document.head.appendChild(_s);}
 
     var _irData=null, _irErr='', _irLoading=false;
@@ -255,6 +321,9 @@
       if(leer)return '';
       if(gleich){ var f0=irFenster(c.week[0]);
         if(f0.length===1)return 'täglich '+irHM(f0[0].von)+'–'+irHM(f0[0].bis);
+        // Zwei Fenster sind der Normalfall (frueh und abends) - dann die ZEITEN nennen.
+        // "taeglich - 2 Fenster" verschweigt genau das, was man wissen will.
+        if(f0.length===2)return 'täglich '+irHM(f0[0].von)+' + '+irHM(f0[1].von);
         return 'täglich · '+f0.length+' Fenster';
       }
       return 'Wochenplan hinterlegt';
@@ -262,7 +331,7 @@
     /** Naechstes An-Fenster ab jetzt, bis zu sieben Tage voraus. */
     function irNaechster(c){
       if(!c.week)return '';
-      var jetzt=new Date(), heute=(jetzt.getDay()+6)%7, min=jetzt.getHours()*60+jetzt.getMinutes();
+      var jetzt=_hzJetzt(), heute=(jetzt.getDay()+6)%7, min=jetzt.getHours()*60+jetzt.getMinutes();
       var tage=['Mo','Di','Mi','Do','Fr','Sa','So'];
       for(var i=0;i<8;i++){
         var d=(heute+i)%7, f=irFenster(c.week[d]);
@@ -406,7 +475,14 @@
           +'<div class="irk-pl'+(plan?'':' ')+'" style="'+(plan?'':'color:var(--warn)')+'">'+esc(plan||'kein Zeitplan hinterlegt')+'</div>'
         +'</div>'
         +(c.armed===false?'<span class="irk-sch">Schatten</span>':'')
-        +'<span class="irk-st '+stat[1]+'">'+esc(stat[0])+'</span></div>'
+        +'<span class="irk-st '+stat[1]+'">'+esc(stat[0])+'</span>'
+        // Zahnrad nur, wenn eine Einstellungsansicht hinterlegt ist - sonst waere es
+        // ein Knopf, der nichts tut.
+        +(w&&w.irxPopupCfg?'<button class="irk-cog" data-ircfg="'+c.iid+'" title="Feineinstellung">'
+          +'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">'
+          +'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9c.2.63.78 1.07 1.44 1.09H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>'
+          +'</button>':'')
+        +'</div>'
         +'<div class="irk-big"><b>'+(Math.round(eff*10)/10)+'</b><i>min</i>'
         + (Math.abs(eff-basis)>0.05 ? '<s style="text-decoration:line-through">'+(Math.round(basis*10)/10)+' min</s>'
                                      : '<s style="text-decoration:none">Basis '+(Math.round(basis*10)/10)+' min</s>')+'</div>';
@@ -430,6 +506,12 @@
       return h;
     }
     var _irOffen={};
+    // Welcher Kreis gehoert ins Popup? Ein echtes LVB-Popup ist eine eigene ANSICHT -
+    // sie kennt den angetippten Kreis nicht. Der Alias-Mechanismus von openPopup ersetzt
+    // nur Variablen-IDs; circuitId ist aber eine INSTANZ. Deshalb dieser Uebergabepunkt:
+    // die Uebersicht legt den Kreis ab, das irrigcircuit im Popup liest ihn, solange es
+    // selbst keinen festen Kreis eingestellt hat.
+    var _irPopCid=0;
 
     // ---- Aufteilung nach gemessener Flaeche ---------------------------------
     // Eine feste Spaltenzahl ist nur solange richtig, wie die Kachel breit genug ist.
@@ -484,7 +566,12 @@
 
     function irCircuitsFor(w){
       var all=_irData||[];
-      if(w._kind==='circuit'){ var cid=parseInt(w.circuitId||0)||0; return cid?all.filter(function(c){return c.iid===cid;}):(all.length?[all[0]]:[]); }
+      if(w._kind==='circuit'){
+        // Reihenfolge: fest eingestellter Kreis > der aus der Uebersicht angetippte > der erste.
+        var cid=parseInt(w.circuitId||0)||0;
+        if(!cid&&_irPopCid)cid=_irPopCid;
+        return cid?all.filter(function(c){return c.iid===cid;}):(all.length?[all[0]]:[]);
+      }
       // Standort-Filter: eine Ansicht je Haus. Ohne ihn stuenden beide Gaerten
       // untereinander, und die Gruppentitel hiessen beide "Garten".
       var aus=all.filter(function(c){return irImStandort(c,w.irxRoot);});
@@ -500,11 +587,291 @@
       }
       return aus;
     }
+
+    // =================== Feineinstellung je Kreis (irxStil='einstellungen') ===================
+    //
+    //  EIN Kreis, seine Automatikregeln. Die Werte liegen NICHT als Variablen vor,
+    //  sondern im Modul-Store - gelesen mit getConfig, geschrieben mit
+    //  configureAutomation ueber denselben Weg wie alles andere hier (?api=mod).
+    //  Bewusst mit Zwischenstand: wer an Schwellen dreht, will das Ergebnis erst
+    //  sehen (Vorschauzeile) und dann festschreiben, nicht bei jedem Tastendruck
+    //  eine Regel scharf stellen. Dauer, Saisonfaktor und Automatik sind Variablen
+    //  und werden beim Speichern mitgeschrieben.
+    var _irCfg={}, _irEntw={}, _irNamen={}, _irPick=null, _irSuche=[];
+
+    function irCfgLaden(iid,cb){
+      irManagePromise(iid,{op:'getConfig'}).then(function(j){
+        _irCfg[iid]=(j&&j.config)?j.config:(j||{}); if(cb)cb();
+      }).catch(function(){ _irCfg[iid]={}; if(cb)cb(); });
+    }
+    // Objektnamen fuer gebundene IDs nachschlagen (?api=tree&search=<id> loest JEDE
+    // Objekt-ID auf, auch Kategorien). Ohne das stuende im Feld nur eine nackte Zahl.
+    function irNameLaden(id,cb){
+      id=parseInt(id)||0; if(!id){if(cb)cb();return;}
+      if(_irNamen[id]!==undefined){if(cb)cb();return;}
+      _irNamen[id]=null;
+      fetch('?api=tree&search='+id,{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
+        var n=(j.nodes||[]).filter(function(x){return +x.id===id;})[0];
+        _irNamen[id]=n?{name:n.name||('#'+id),pfad:n.path||''}:{name:'#'+id+' (fehlt)',pfad:''};
+        if(cb)cb();
+      }).catch(function(){ _irNamen[id]={name:'#'+id,pfad:''}; if(cb)cb(); });
+    }
+    function irNameVon(id){ id=parseInt(id)||0; if(!id)return null; var n=_irNamen[id]; return (n&&n.name)?n:null; }
+
+    function irZahl(v,d){ var n=parseFloat(String(v).replace(',','.')); return isFinite(n)?n:d; }
+    function irAn(v){ return v===true||v===1||v==='1'; }
+
+    /** Arbeitskopie aus Modul-Config + Zustandsvariablen. */
+    function irEntwurfVon(c){
+      var g=_irCfg[c.iid]||{}, t=g.temp||{}, r=g.rain||{}, f=g.rainFc||{}, e=g.evap||{}, s=c.st||{};
+      return {
+        base:  Math.round(irZahl(s.Duration, c.runMin||15)),
+        adj:   Math.round(irZahl(s.SeasonalAdjust,100)),
+        sensorId: parseInt(g.sensorId)||0,
+        rainOn:  r.enabled!==false, rainMm: irZahl(r.thresholdMm,2),
+        fcOn:   !!f.enabled, fcSrc: parseInt(f.srcId)||0,
+        fcHor:  (f.horizonDays==null?1:parseInt(f.horizonDays)||0),
+        fcMm:   irZahl(f.thresholdMm,3), fcProb: irZahl(f.minProbPct,60),
+        tOn:    t.enabled!==false, tVar: parseInt(t.tempVarId)||0,
+        tBlock: irZahl(t.blockBelowC,10), tCold: irZahl(t.coldBelowC,20), tColdP: irZahl(t.coldPct,80),
+        tHot:   irZahl(t.hotAboveC,28),  tHotP: irZahl(t.hotPct,120),
+        eOn:   !!e.enabled, eVar: parseInt(e.et0VarId)||0, eRef: irZahl(e.et0RefMmPerDay,4),
+        auto:  irAn(s.Automatic), armed: c.armed===true
+      };
+    }
+    function irEntw(c){ if(!_irEntw[c.iid])_irEntw[c.iid]=irEntwurfVon(c); return _irEntw[c.iid]; }
+    function irSchmutzig(c){
+      var a=_irEntw[c.iid]; if(!a)return false;
+      var b=irEntwurfVon(c);
+      return Object.keys(b).some(function(k){return String(a[k])!==String(b[k]);});
+    }
+
+    function irSpeichern(w,c,fertig){
+      var d=irEntw(c), alt=irEntwurfVon(c);
+      var args={
+        sensorId:d.sensorId,
+        rain:{enabled:d.rainOn, thresholdMm:d.rainMm},
+        rainFc:{enabled:d.fcOn, srcId:d.fcSrc, horizonDays:d.fcHor, thresholdMm:d.fcMm, minProbPct:d.fcProb},
+        temp:{enabled:d.tOn, tempVarId:d.tVar, blockBelowC:d.tBlock, coldBelowC:d.tCold, coldPct:d.tColdP,
+              hotAboveC:d.tHot, hotPct:d.tHotP},
+        evap:{enabled:d.eOn, et0VarId:d.eVar, et0RefMmPerDay:d.eRef}
+      };
+      // Variablen nur anfassen, wenn sie sich wirklich geaendert haben - jedes
+      // RequestAction ist ein echter Schreibvorgang mit Protokolleintrag.
+      if(d.base!==alt.base) irSetVar(c,'Duration',d.base);
+      if(d.adj!==alt.adj)   irSetVar(c,'SeasonalAdjust',d.adj);
+      if(d.auto!==alt.auto) irSetVar(c,'Automatic',d.auto?1:0);
+      var kette=irManagePromise(c.iid,{op:'configureAutomation',args:args});
+      if(d.armed!==alt.armed) kette=kette.then(function(){return irManagePromise(c.iid,{op:'setArmed',args:{armed:d.armed}});});
+      kette.then(function(){
+        c.armed=d.armed;
+        delete _irEntw[c.iid];
+        irCfgLaden(c.iid,function(){ irRefresh(function(){ if(fertig)fertig(); irPaint(w); }); });
+        if(typeof toast==='function')toast('Gespeichert');
+      }).catch(function(){ if(typeof toast==='function')toast('Speichern fehlgeschlagen'); });
+    }
+
+    // ---- Bausteine ----
+    function irsSchalter(pfad,an){ return '<button type="button" class="irs-sw'+(an?' on':'')+'" data-irset="'+pfad+'" data-irtyp="bool"><i></i></button>'; }
+    function irsZahl(pfad,wert,einheit,schritt){
+      return '<span class="irs-num"><input inputmode="decimal" data-irset="'+pfad+'" data-irtyp="num"'
+        +(schritt?' data-irstep="'+schritt+'"':'')+' value="'+esc(String(wert).replace('.',','))+'">'
+        +(einheit?'<span class="irs-u">'+esc(einheit)+'</span>':'')+'</span>';
+    }
+    function irsQuelle(pfad,id,platzhalter){
+      var n=irNameVon(id);
+      return '<button type="button" class="irs-src'+(id?'':' leer')+'" data-irpick="'+pfad+'" data-irid="'+(id||0)+'">'
+        +'<span class="irs-src-t">'+esc(n?n.name:(id?('#'+id):(platzhalter||'nicht gebunden')))+'</span>'
+        +'<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg></button>';
+    }
+    function irsSeg(pfad,wert,opt){
+      return '<span class="irs-seg">'+opt.map(function(o){
+        return '<button type="button" data-irset="'+pfad+'" data-irtyp="num" data-irval="'+o.v+'"'
+          +(String(o.v)===String(wert)?' class="on"':'')+'>'+esc(o.t)+'</button>';}).join('')+'</span>';
+    }
+    function irsZeile(label,unter,rechts){
+      return '<div class="irs-r"><div class="irs-l">'+escL(label)
+        +(unter?'<em>'+escL(unter)+'</em>':'')+'</div>'+rechts+'</div>';
+    }
+    function irsKarte(titel,ikone,kopfrechts,inhalt,fuss){
+      return '<div class="irs-c"><h3><span class="irs-ic">'+ikone+'</span>'+escL(titel)
+        +'<span class="irs-sp"></span>'+(kopfrechts||'')+'</h3>'+inhalt
+        +(fuss?'<div class="irs-hint">'+fuss+'</div>':'')+'</div>';
+    }
+    var IRS_IC={
+      dauer:'<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9 1h6"/></svg>',
+      temp: '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 14.8V4a2 2 0 1 0-4 0v10.8a4 4 0 1 0 4 0z"/></svg>',
+      regen:'<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17.5 17a4.5 4.5 0 0 0-1-8.9A6 6 0 0 0 5 9.5 3.75 3.75 0 0 0 5.5 17"/><path d="M8 19.5v2M12 19v3M16 19.5v2"/></svg>',
+      vor:  '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17.5 15.5a4.5 4.5 0 0 0-1-8.9A6 6 0 0 0 5 8 3.75 3.75 0 0 0 5.5 15.5"/><path d="M9 18.5l-1 2.5M13 18.5l-1 2.5M17 18.5l-1 2.5"/><path d="M20.5 3.5 22 2M21 7h2"/></svg>',
+      verd: '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2.7S5.5 9.6 5.5 14a6.5 6.5 0 0 0 13 0c0-4.4-6.5-11.3-6.5-11.3z"/></svg>',
+      betr: '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3v18M7 7l-4 7h8zM17 7l-4 7h8zM6 21h12"/></svg>'
+    };
+
+    function irsVorschau(c){
+      var p=c.probe||{}, ch=[];
+      function chip(l,v){ ch.push('<span class="irs-chip">'+escL(l)+' <b>'+escL(v)+'</b></span>'); }
+      if(p.tempNow!=null)  chip('Temperatur', String(Math.round(p.tempNow*10)/10).replace('.',',')+' °C');
+      if(p.rainNow!=null)  chip('Regen heute', String(Math.round(p.rainNow*10)/10).replace('.',',')+' mm');
+      if(p.rainFc&&p.rainFc.mm!=null){
+        var tg=p.rainFc.tagIdx===0?'heute':(p.rainFc.tagIdx===1?'morgen':('in '+p.rainFc.tagIdx+' Tagen'));
+        chip('Vorhersage '+tg, String(Math.round(p.rainFc.mm*10)/10).replace('.',',')+' mm'
+          +(p.rainFc.prob!=null?' / '+Math.round(p.rainFc.prob)+' %':''));
+      }
+      if(p.effectiveMin!=null) chip('Dauer', Math.round(irZahl(p.baseMin,0))+' → '+String(p.effectiveMin).replace('.',',')+' min');
+      var gesperrt=!!(p.gate&&p.gate.blocked);
+      var urteil=gesperrt
+        ? '<div class="irs-verd block"><span class="irs-bul"></span>'+escL('Gesperrt — '+(p.gate.reason||''))+'</div>'
+        : '<div class="irs-verd frei"><span class="irs-bul"></span>Bereit</div>';
+      return '<div class="irs-prev"><span class="irs-pt">Jetzt</span><div class="irs-chips">'+ch.join('')+'</div>'+urteil+'</div>';
+    }
+
+    function irsPicker(){
+      if(!_irPick) return '';
+      var zeilen=_irSuche.length
+        ? _irSuche.map(function(n){return '<button type="button" class="irs-pk-r" data-irpickid="'+n.id+'">'
+            +'<b>'+escL(n.name||('#'+n.id))+'</b><span>'+escL(n.path||'')+'</span></button>';}).join('')
+        : '<div class="irs-pk-leer">Suchbegriff eingeben (Name oder Pfad), oder eine Objekt-ID.</div>';
+      return '<div class="irs-pk-h" data-irpickzu="1"><div class="irs-pk" data-irpickbox="1">'
+        +'<div class="irs-pk-k">Quelle wählen<button type="button" class="irs-pk-x" data-irpickzu="1">'
+        +'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button></div>'
+        +'<input class="irs-pk-s" data-irpicksuche="1" placeholder="suchen …" autocomplete="off">'
+        +'<div class="irs-pk-l">'+zeilen+'</div>'
+        +'<button type="button" class="irs-pk-clr" data-irpickid="0">Bindung entfernen</button></div></div>';
+    }
+
+    function irEinstRender(c,w){
+      if(!_irCfg[c.iid]) return '<div class="irxwrap"><div class="irx-msg">Einstellungen laden …</div></div>';
+      var d=irEntw(c), dirty=irSchmutzig(c);
+      var h='<div class="irs"><div class="irs-h"><span class="irs-dot"></span><div class="irs-ht">'
+        +'<h2>'+escL(irName(c.name))+' — Feineinstellung</h2>'
+        +'<div class="irs-sub">'+escL([c.house||'',c.room||''].filter(Boolean).join(' · '))+'</div></div></div>';
+      h+='<div class="irs-b">';
+
+      h+=irsKarte('Dauer',IRS_IC.dauer,'',
+        irsZeile('Grunddauer','Wert je Schaltfenster im Zeitplan',irsZahl('base',d.base,'min',1))
+       +irsZeile('Saisonfaktor','skaliert jeden Lauf, 100 % = unverändert',irsZahl('adj',d.adj,'%',5)),
+        '<b>Rechenweg:</b> Grunddauer × Saisonfaktor × Temperaturfaktor × Verdunstungsfaktor.');
+
+      h+=irsKarte('Temperatur',IRS_IC.temp,irsSchalter('tOn',d.tOn),
+        irsZeile('Messwert','',irsQuelle('tVar',d.tVar,'nicht gebunden'))
+       +irsZeile('Keine Bewässerung unter','',irsZahl('tBlock',d.tBlock,'°C',1))
+       +irsZeile('Kühler als','',irsZahl('tCold',d.tCold,'°C',1)+'<span class="irs-pf">→</span>'+irsZahl('tColdP',d.tColdP,'%',5))
+       +irsZeile('Wärmer als','',irsZahl('tHot',d.tHot,'°C',1)+'<span class="irs-pf">→</span>'+irsZahl('tHotP',d.tHotP,'%',5)));
+
+      h+=irsKarte('Regen — gemessen',IRS_IC.regen,irsSchalter('rainOn',d.rainOn),
+        irsZeile('Messwert','',irsQuelle('sensorId',d.sensorId,'nicht gebunden'))
+       +irsZeile('Sperren ab','Niederschlag seit Mitternacht',irsZahl('rainMm',d.rainMm,'mm',0.5)),
+        '<b>Je Standort eigen.</b> Ein gemeinsamer Regenmesser für beide Gärten wäre falsch.');
+
+      h+=irsKarte('Regen — Vorhersage',IRS_IC.vor,irsSchalter('fcOn',d.fcOn),
+        irsZeile('Quelle','Ordner mit TagN_Regen oder Vorhersage-JSON',irsQuelle('fcSrc',d.fcSrc,'nicht gebunden'))
+       +irsZeile('Vorausschau','',irsSeg('fcHor',d.fcHor,[{v:0,t:'heute'},{v:1,t:'+1 Tag'},{v:2,t:'+2 Tage'}]))
+       +irsZeile('Sperren ab','',irsZahl('fcMm',d.fcMm,'mm',0.5))
+       +irsZeile('nur ab Wahrscheinlichkeit','',irsZahl('fcProb',d.fcProb,'%',5)),
+        'Beide Schranken müssen fallen. Meldet die Quelle keine Wahrscheinlichkeit, zählt nur die Menge.');
+
+      h+=irsKarte('Verdunstung (ET₀)',IRS_IC.verd,irsSchalter('eOn',d.eOn),
+        irsZeile('Messwert','',irsQuelle('eVar',d.eVar,'nicht gebunden'))
+       +irsZeile('Referenz','bei diesem Wert Faktor 100 %',irsZahl('eRef',d.eRef,'mm/d',0.5)),
+        'Ausgeschaltet bleibt der Faktor bei 100 %.');
+
+      var warn=d.armed?'':'<div class="irs-warn"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3.5 1.8 20.5h20.4zM12 9.5v5M12 17.8v.2"/></svg>'
+        +'<span>Schattenbetrieb: dieser Kreis würde schalten, tut es aber nicht.</span></div>';
+      h+=irsKarte('Betrieb',IRS_IC.betr,'',
+        irsZeile('Automatik','Zeitplan darf schalten',irsSchalter('auto',d.auto))
+       +irsZeile('Scharf','aus = Schattenbetrieb, nur Protokoll',irsSchalter('armed',d.armed))+warn);
+
+      h+='</div>';
+      // Vorschau bewusst AUSSERHALB des Scrollbereichs: das Urteil ("gesperrt/bereit")
+      // ist die Antwort auf jede Aenderung darueber. Innerhalb rutschte es unter die
+      // Kante, sobald die Karten hoeher wurden - und dann sieht es keiner mehr.
+      h+=irsVorschau(c);
+      h+='<div class="irs-f"><span class="irs-note">Gilt nur für diesen Kreis. Zeitplan bearbeitest du im Wochenplan.</span>'
+        +'<button type="button" class="irs-btn" data-irabbr="1"'+(dirty?'':' disabled')+'>Abbrechen</button>'
+        +'<button type="button" class="irs-btn pri" data-irsave="1"'+(dirty?'':' disabled')+'>Speichern</button></div>';
+      h+=irsPicker();
+      return h+'</div>';
+    }
+
+    /** Ereignisse der Einstellungsansicht. Aendert NUR die Arbeitskopie. */
+    function irsWire(w,c,host){
+      function neu(){ irPaint(w); }
+      host.querySelectorAll('[data-irtyp="bool"]').forEach(function(b){
+        b.addEventListener('click',function(){ var d=irEntw(c), k=b.getAttribute('data-irset'); d[k]=!d[k]; neu(); });
+      });
+      host.querySelectorAll('button[data-irval]').forEach(function(b){
+        b.addEventListener('click',function(){ var d=irEntw(c); d[b.getAttribute('data-irset')]=parseFloat(b.getAttribute('data-irval')); neu(); });
+      });
+      host.querySelectorAll('input[data-irtyp="num"]').forEach(function(inp){
+        inp.addEventListener('change',function(){
+          var d=irEntw(c), k=inp.getAttribute('data-irset');
+          var v=irZahl(inp.value,d[k]); d[k]=v; neu();
+        });
+        inp.addEventListener('keydown',function(e){
+          if(e.key==='Enter'){e.preventDefault();inp.blur();return;}
+          var st=parseFloat(inp.getAttribute('data-irstep'))||1;
+          if(e.key==='ArrowUp'||e.key==='ArrowDown'){
+            e.preventDefault();
+            var d=irEntw(c), k=inp.getAttribute('data-irset');
+            d[k]=Math.round((irZahl(inp.value,d[k])+(e.key==='ArrowUp'?st:-st))*1000)/1000; neu();
+          }
+        });
+      });
+      // ---- Quellen-Waehler ----
+      host.querySelectorAll('[data-irpick]').forEach(function(b){
+        b.addEventListener('click',function(){ _irPick={iid:c.iid,feld:b.getAttribute('data-irpick')}; _irSuche=[]; neu();
+          var s=irEl(w)&&irEl(w).querySelector('[data-irpicksuche]'); if(s)s.focus(); });
+      });
+      host.querySelectorAll('[data-irpickzu]').forEach(function(x){
+        x.addEventListener('click',function(e){
+          // Nur der Klick NEBEN den Kasten schliesst - sonst faengt die Huelle jeden Treffer ab.
+          if(x.hasAttribute('data-irpickbox'))return;
+          if(e.target!==x&&!e.target.closest('.irs-pk-x'))return;
+          _irPick=null; _irSuche=[]; neu();
+        });
+      });
+      var su=host.querySelector('[data-irpicksuche]');
+      if(su){
+        var t=null;
+        su.addEventListener('input',function(){
+          clearTimeout(t); var q=su.value.trim();
+          if(q.length<2){ _irSuche=[]; return; }
+          t=setTimeout(function(){
+            fetch('?api=tree&search='+encodeURIComponent(q),{cache:'no-store'})
+              .then(function(r){return r.json();}).then(function(j){
+                _irSuche=(j.nodes||[]).slice(0,60);
+                var pos=su.selectionStart; irPaint(w);
+                var s2=irEl(w)&&irEl(w).querySelector('[data-irpicksuche]');
+                if(s2){ s2.value=q; s2.focus(); try{s2.setSelectionRange(pos,pos);}catch(e){} }
+              }).catch(function(){});
+          },260);
+        });
+      }
+      host.querySelectorAll('[data-irpickid]').forEach(function(r){
+        r.addEventListener('click',function(e){
+          e.stopPropagation();
+          if(!_irPick)return;
+          var id=parseInt(r.getAttribute('data-irpickid'))||0;
+          var d=irEntw(c); d[_irPick.feld]=id;
+          _irPick=null; _irSuche=[];
+          if(id) irNameLaden(id,function(){irPaint(w);}); else irPaint(w);
+        });
+      });
+      // ---- Fuss ----
+      var sv=host.querySelector('[data-irsave]');
+      if(sv)sv.addEventListener('click',function(){ if(sv.disabled)return; sv.disabled=true; sv.textContent='Speichert …'; irSpeichern(w,c); });
+      var ab=host.querySelector('[data-irabbr]');
+      if(ab)ab.addEventListener('click',function(){ if(ab.disabled)return; delete _irEntw[c.iid]; neu(); });
+    }
+
     function irRender(w){
       var list=irCircuitsFor(w);
       if(_irErr) return '<div class="irxwrap"><div class="irx-msg">Bewässerung nicht erreichbar</div></div>';
       if(!_irData) return '<div class="irxwrap"><div class="irx-msg">Bewässerung lädt …</div></div>';
       if(!list.length) return '<div class="irxwrap"><div class="irx-msg">Keine Bewässerungskreise</div></div>';
+      // Feineinstellung: eine eigene Ansicht auf EINEN Kreis - vor allem anderen,
+      // weil sie weder Raster noch Schatten-Hinweis der Uebersicht braucht.
+      if(w._kind==='circuit'&&w.irxStil==='einstellungen') return irEinstRender(list[0],w);
       var shadow=list.some(function(c){return c.armed===false;});
       var stil=(w.irxStil==='karte')?'karte':'voll';
       var h='<div class="irxwrap'+(stil==='karte'?' karte':'')+'">';
@@ -562,6 +929,10 @@
     function irById(id){return (_irData||[]).find(function(c){return c.iid===id;});}
 
     function irWire(w,host){
+      if(w._kind==='circuit'&&w.irxStil==='einstellungen'){
+        var lc=irCircuitsFor(w)[0]; if(lc)irsWire(w,lc,host);
+        return;
+      }
       host.querySelectorAll('[data-irarm]').forEach(function(b){b.addEventListener('click',function(){var c=irById(+b.getAttribute('data-irarm'));if(!c)return;irSetArmed(c,!c.armed);irPaint(w);});});
       host.querySelectorAll('[data-irrun]').forEach(function(b){b.addEventListener('click',function(e){
         var c=irById(+b.getAttribute('data-irrun'));if(!c)return;
@@ -574,7 +945,15 @@
         irRunNow(c,min);irPaint(w);});});
       host.querySelectorAll('[data-irkarte]').forEach(function(k){k.addEventListener('click',function(e){
         if(e.target.closest('button,input,select'))return;
-        var id=+k.getAttribute('data-irkarte');_irOffen[id]=!_irOffen[id];irPaint(w);});});
+        var id=+k.getAttribute('data-irkarte');
+        if(w.irxPopup&&typeof openPopup==='function'){ _irPopCid=id; openPopup(w.irxPopup); return; }
+        _irOffen[id]=!_irOffen[id];irPaint(w);});});
+      host.querySelectorAll('[data-ircfg]').forEach(function(b){b.addEventListener('click',function(e){
+        e.stopPropagation();                       // nicht zugleich die Kreis-Ansicht oeffnen
+        if(!w.irxPopupCfg||typeof openPopup!=='function')return;
+        _irPopCid=+b.getAttribute('data-ircfg');   // derselbe Uebergabepunkt wie beim Kartenklick
+        openPopup(w.irxPopupCfg);
+      });});
       host.querySelectorAll('[data-irzu]').forEach(function(b){b.addEventListener('click',function(e){
         e.stopPropagation();delete _irOffen[+b.getAttribute('data-irzu')];irPaint(w);});});
       host.querySelectorAll('[data-irblatt]').forEach(function(bl){bl.addEventListener('click',function(e){
@@ -600,6 +979,21 @@
         render:function(w){w._kind=(kind==='irrigcircuit')?'circuit':'grid';return irRender(w);},
         mount:function(w){w._kind=(kind==='irrigcircuit')?'circuit':'grid';var el=irEl(w);if(!el)return;
           irBeobachten(w);
+          if(w._kind==='circuit'&&w.irxStil==='einstellungen'){
+            // Erst Kreise, dann dessen Modul-Config, dann die Namen der gebundenen
+            // Objekte - jede Stufe zeichnet neu, damit nichts auf die langsamste wartet.
+            var nachCfg=function(){
+              var c=irCircuitsFor(w)[0]; if(!c)return;
+              irCfgLaden(c.iid,function(){
+                irPaint(w);
+                var d=irEntw(c), off=0;
+                [d.tVar,d.sensorId,d.fcSrc,d.eVar].forEach(function(id){
+                  if(!id)return; off++; irNameLaden(id,function(){ if(--off<=0)irPaint(w); });
+                });
+              });
+            };
+            if(_irData)nachCfg(); else irLoad(nachCfg);
+          }
           if(_irData){irWacheLaden(w.irxWache,function(){irPaint(w);});}
           else{irLoad(function(){irWacheLaden(w.irxWache,function(){irPaint(w);});});}
           LVB.panel.startPoll('irrigx:'+w.id,30000,function(){
@@ -617,21 +1011,37 @@
           }
           h+='<div class="pgh">Darstellung</div>';
           h+=row('Stil','<select id="irStil"><option value="voll"'+((w.irxStil||'voll')==='voll'?' selected':'')+'>Regler (alle Bedienelemente)</option>'
-            +'<option value="karte"'+(w.irxStil==='karte'?' selected':'')+'>Karte (Entwurf: Dauer, Sperre, Batterie)</option></select>');
+            +'<option value="karte"'+(w.irxStil==='karte'?' selected':'')+'>Karte (Entwurf: Dauer, Sperre, Batterie)</option>'
+            +((kind==='irrigcircuit')?'<option value="einstellungen"'+(w.irxStil==='einstellungen'?' selected':'')+'>Feineinstellung (Regeln bearbeiten)</option>':'')
+            +'</select>');
           h+=row('Spalten (höchstens)','<input id="irCols" type="number" min="0" max="12" value="'+(w.irxCols||'')+'" placeholder="0 = so viele wie passen">');
           h+='<div style="font-size:11px;color:var(--muted);padding:2px 2px 6px">Wie viele Karten nebeneinander stehen dürfen. Wie viele es WIRKLICH werden, rechnet das Widget aus der Breite – es fällt nie unter '+IRK_MIN+' px je Karte.</div>';
           h+=row('Standort','<input id="irRoot" type="number" value="'+(w.irxRoot||'')+'" placeholder="Haus/Bereich-Instanz-ID">');
           h+='<div style="font-size:11px;color:var(--muted);padding:2px 2px 6px">Leer = alle. Mit einer Haus-ID zeigt die Ansicht nur diesen Standort.</div>';
+          if(kind==='irriggrid'){
+            h+=row('Kreis öffnet Popup','<select id="irPopup"><option value="">— eingebautes Blatt —</option>'
+              +Object.keys(store.views).filter(function(n){return !!(store.views[n].page&&store.views[n].page.popup);})
+                .map(function(n){return '<option value="'+esc(n)+'"'+(w.irxPopup===n?' selected':'')+'>'+esc(n)+'</option>';}).join('')
+              +'</select>');
+            h+=row('Zahnrad öffnet','<select id="irPopCfg"><option value="">— kein Zahnrad —</option>'
+              +Object.keys(store.views).filter(function(n){return !!(store.views[n].page&&store.views[n].page.popup);})
+                .map(function(n){return '<option value="'+esc(n)+'"'+(w.irxPopupCfg===n?' selected':'')+'>'+esc(n)+'</option>';}).join('')
+              +'</select>');
+            h+='<div style="font-size:11px;color:var(--muted);padding:2px 2px 6px">Eine Popup-Ansicht mit einem Widget „Bewässerung · Kreis" im Stil <b>Feineinstellung</b>. Ohne Auswahl trägt die Kachel kein Zahnrad.</div>';
+            h+='<div style="font-size:11px;color:var(--muted);padding:2px 2px 6px">Ohne Auswahl öffnet sich das eingebaute Blatt INNERHALB der Kachel - es kann nie größer als die Kachel werden und muss deshalb gescrollt werden. Eine Popup-Ansicht (mit einem Widget „Bewässerung · Kreis" darin) legt sich über die ganze Seite. Der angetippte Kreis wird an das Popup übergeben, solange dort kein fester Kreis eingestellt ist.</div>';
+          }
           h+=row('Wache (JSON)','<input id="irWache" type="number" value="'+(w.irxWache||'')+'" placeholder="VentileJson der Bewässerungs-Wache">');
           h+='<div style="font-size:11px;color:var(--muted);padding:2px 2px 6px">Liefert Batterie und Funkzustand je Kreis. Ohne sie bleibt die Batteriezeile leer.</div>';
           return h;
         },
         wire:function(w){
           if($('#irCid'))$('#irCid').onchange=function(){w.circuitId=parseInt(this.value)||undefined;commit();irPaint(w);};
-          if($('#irStil'))$('#irStil').onchange=function(){w.irxStil=(this.value==='karte')?'karte':undefined;commit();irPaint(w);};
+          if($('#irStil'))$('#irStil').onchange=function(){w.irxStil=(this.value==='voll')?undefined:this.value;commit();irPaint(w);};
           if($('#irCols'))$('#irCols').onchange=function(){w.irxCols=parseInt(this.value)||undefined;commit();irPaint(w);};
           if($('#irRoot'))$('#irRoot').onchange=function(){w.irxRoot=parseInt(this.value)||undefined;commit();irPaint(w);};
           if($('#irWache'))$('#irWache').onchange=function(){w.irxWache=parseInt(this.value)||undefined;commit();irPaint(w);};
+          if($('#irPopup'))$('#irPopup').onchange=function(){w.irxPopup=this.value||undefined;commit();irPaint(w);};
+          if($('#irPopCfg'))$('#irPopCfg').onchange=function(){w.irxPopupCfg=this.value||undefined;commit();irPaint(w);};
         }
       });
     }

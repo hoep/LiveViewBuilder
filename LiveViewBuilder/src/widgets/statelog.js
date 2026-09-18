@@ -14,7 +14,7 @@
     if(!w.varId){box.innerHTML='<div class="slog-empty">Variable wählen</div>';return;}
     var rows=(w._slogData||[]).slice().reverse(),max=(w.count>0?w.count:20),out=[];
     for(var i=0;i<rows.length&&out.length<max;i++){
-      var ms=rows[i][0],val=rows[i][1],dt=new Date(ms);
+      var ms=rows[i][0],val=rows[i][1],dt=_hzD(ms);
       var col=_stlColor(w,val)||'var(--muted)',lab=_slogLabel(w,val);
       var t=('0'+dt.getHours()).slice(-2)+':'+('0'+dt.getMinutes()).slice(-2)+':'+('0'+dt.getSeconds()).slice(-2);
       out.push('<div class="slog-row"><span class="slog-dot" style="background:'+col+'"></span><span class="slog-lbl">'+esc(lab)+'</span><span class="slog-t">'+t+'</span></div>');

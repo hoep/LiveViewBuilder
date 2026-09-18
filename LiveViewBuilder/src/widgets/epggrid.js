@@ -102,7 +102,7 @@
   }
   /** Uhrzeit am TAG DES AKTUELLEN FENSTERS - "20:15" meint den gezeigten Tag. */
   function _epgTagesZeit(w,std,min){
-    var d=new Date(_epgVon(w)*1000);
+    var d=_hzD(_epgVon(w)*1000);
     d.setHours(std,min||0,0,0);
     return Math.floor(d.getTime()/1000);
   }
@@ -182,7 +182,7 @@
     var ax='',t0=Math.ceil(d.von/raster)*raster;
     for(var t=t0;t<d.bis;t+=raster){
       var lx=Math.round((t-d.von)/span*breite);
-      var dt=new Date(t*1000),hh=('0'+dt.getHours()).slice(-2)+':'+('0'+dt.getMinutes()).slice(-2);
+      var dt=_hzD(t*1000),hh=('0'+dt.getHours()).slice(-2)+':'+('0'+dt.getMinutes()).slice(-2);
       ax+='<div class="epgaxl" style="left:'+lx+'px;font-size:'+fsZ+'px;line-height:'+axH+'px;height:'+axH+'px">'+hh+'</div>';
     }
 
@@ -305,13 +305,13 @@
     if(sc&&nm)sc.onscroll=function(){nm.scrollTop=sc.scrollTop;};
     _epgKopf(w,host);
   }
-  function _epgUhr(ts){var d=new Date(ts*1000);return ('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2);}
+  function _epgUhr(ts){var d=_hzD(ts*1000);return ('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2);}
 
   function _epgKopf(w,host){
     var d=_EPGD[w.id];if(!d)return;
     var tg=$('[data-role=epgtag]',host);
     if(tg){
-      var v=new Date(d.von*1000),heute=new Date();
+      var v=_hzD(d.von*1000),heute=_hzJetzt();
       var wt=['So','Mo','Di','Mi','Do','Fr','Sa'][v.getDay()];
       var gleich=v.toDateString()===heute.toDateString();
       var mor=new Date(heute.getTime()+86400000).toDateString()===v.toDateString();
@@ -366,7 +366,7 @@
       ($('.epgw',host)||host).appendChild(el);}
     var zeile=[s.folge,s.kurz,s.cat].filter(function(x){return !!x;}).join(' · ');
     var mehr=_epgMehrHtml(w,s);
-    var dat=new Date(s.start*1000),wt=['So','Mo','Di','Mi','Do','Fr','Sa'][dat.getDay()];
+    var dat=_hzD(s.start*1000),wt=['So','Mo','Di','Mi','Do','Fr','Sa'][dat.getDay()];
     el.innerHTML='<div class="epgovc">'
       +'<div class="epgovh">'+(s.picon?'<img src="'+esc(s.picon)+'" alt="">':'')
         +'<b>'+esc(s.sender)+'</b><span>'+wt+' '+dat.getDate()+'.'+(dat.getMonth()+1)+'. · '

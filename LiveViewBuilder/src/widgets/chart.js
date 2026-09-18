@@ -4,7 +4,7 @@
   //   Ohne Zeit : pie | donut | rose | waterfall   (waterfall frueher eigenes Widget 'waterfall')
   // Vorbelegte Größe je Chart-Typ (Standard = 'area'); beim Umschalten nur übernehmen, solange
   // die Größe noch der vorherigen Standardgröße entspricht (analog colorpick.js/slider.js).
-  var CT_SIZE={spark:[150,50],waterfall:[360,220],daylight:[420,190],pie:[260,220],donut:[260,220],rose:[260,220],heatmap:[380,240],barrace:[380,280]};
+  var CT_SIZE={spark:[150,50],waterfall:[360,220],daylight:[420,190],pie:[260,220],donut:[260,220],rose:[260,220],heatmap:[380,240],barrace:[380,280],treemap:[520,360]};
   function _ctSize(ct){return CT_SIZE[ct]||[340,190];}
   // ---- Anordnungsblock: Anker 3x3 + Feinversatz + Streifen/Ueberlagerung --------------
   // Dieselben drei Zeilen fuer Titel und Legende. Der Anker ist ein Knopfraster statt einer
@@ -41,24 +41,72 @@
   // Trennung mit yunit angelegt wurden; geschrieben wird ab jetzt ausschliesslich wfUnit.
   function _wfUnit(w){return (w.wfUnit!=null)?w.wfUnit:(w.yunit||'');}
   // Sichtbarkeit der Optionen zentral in _chartVis() — bitte dort pflegen und NICHT in verschachtelten if-Ketten.
+  // Farbstuetzstellen der Treemap. Prozent der Obergrenze + Farbe, beliebig viele.
+  // Prozent statt absoluter Werte, weil die Obergrenze mitwachsen soll - sonst muesste
+  // man bei jedem neuen Grossverbraucher alle Stuetzstellen nachziehen.
+  var TM_STOPS=[{p:0,c:'#00cdab'},{p:50,c:'#ffc107'},{p:100,c:'#ee423d'}];
+  function _tmStops(w){
+    var a=(w.tmStops&&w.tmStops.length)?w.tmStops:TM_STOPS;
+    return a.slice().sort(function(x,y){return (+x.p)-(+y.p);});
+  }
+  /* Profil-Daten der Treemap muessen neu geholt werden, wenn sich Profile, Extra-IDs
+     oder die Untergrenze aendern - eine blosse Neuzeichnung zeigte sonst den alten Satz. */
+  /* Die Treemap zeigt MOMENTANWERTE, kennt aber keinen Live-Kanal: bei der Quelle
+   * "Profil" sammelt der Server die Variablen (?api=profvars), das Widget ist auf keine
+   * einzelne ID abonniert - sie stand also still, solange die Seite offen blieb. Die alte
+   * PHPChart-Treemap hing an einem Ausloeser auf der Peakleistung und zeichnete sich bei
+   * JEDER Messung neu.
+   * Die WERTE kommen inzwischen ueber den Live-Kanal: ?api=profvars meldet die IDs zurueck,
+   * _collectIds pollt sie mit, live() zeichnet entprellt neu. Dieser Takt hier gleicht nur
+   * noch den BESTAND ab - neue Geraete, Mindestwert, Hoechstalter - und darf deshalb selten
+   * laufen (tmSyncSec, Vorgabe 300 s, Untergrenze 60 s). */
+  setInterval(function(){
+    if(typeof state==='undefined'||!state.widgets)return;
+    var now=Date.now(),gdef=((typeof bcfg==='function'&&bcfg().refreshSec)||15);
+    function tick(w){
+      if(!w||w.type!=='chart'||w.ctype!=='treemap')return;
+      if(!_ec[w.id])return;                                   // nicht gezeichnet -> nichts zu tun
+      if(now-(w._tmLetzt||0)<Math.max(60,(w.tmSyncSec||300))*1000)return;
+      w._tmLetzt=now;
+      try{ delete _tmCache[w.id]; }catch(e){}
+      if(typeof renderChartData==='function')renderChartData(w);
+    }
+    allWidgets().forEach(tick);
+    if(typeof _tickKids!=='undefined'&&_tickKids)_tickKids.forEach(tick);
+    if(typeof _popup!=='undefined'&&_popup&&_popup.widgets)_popup.widgets.forEach(tick);
+  },1000);
+  function _tmNeu(w){ try{ delete _tmCache[w.id]; }catch(e){} if(typeof renderChartData==='function'&&_ec[w.id])renderChartData(w); commit(); }
+  function _tmStopsBlock(w){
+    var a=(w.tmStops&&w.tmStops.length)?w.tmStops:TM_STOPS;
+    var h='<div style="font-size:11px;color:var(--muted);margin:2px 2px 4px">Stützstellen</div>';
+    a.forEach(function(st,i){
+      h+='<div class="prow" style="gap:6px;align-items:center">'
+        +'<input type="color" data-tmc="'+i+'" value="'+esc(st.c||'#00cdab')+'" style="width:34px;height:26px;padding:0;border:1px solid var(--line);border-radius:6px;background:transparent">'
+        +'<input type="number" data-tmp="'+i+'" min="0" max="100" value="'+(+st.p)+'" style="width:64px"><span style="font-size:11px;color:var(--muted)">%</span>'
+        +'<span style="flex:1;font-size:11px;color:var(--faint);font-family:var(--fm)">'+esc(st.c||'')+'</span>'
+        +(a.length>2?'<button data-tmdel="'+i+'" class="btn" style="padding:2px 7px">&times;</button>':'')
+        +'</div>';
+    });
+    return h+'<div class="prow"><button data-tmadd="1" class="btn" style="flex:1;padding:4px">+ Stützstelle</button></div>';
+  }
   function _chartVis(ct){
     // ACHTUNG: 'dl' ist unten die Datenlabel-Sichtbarkeit — der Tageslaengen-Typ heisst deshalb 'dayl'.
     var part=['pie','donut','rose'].indexOf(ct)>=0, wf=(ct==='waterfall'), sp=(ct==='spark'), dayl=(ct==='daylight'), hm=(ct==='heatmap');
-    var bar=(ct==='bar'||ct==='barstack'), scat=(ct==='scatter'), race=(ct==='barrace');
-    var line=!part&&!bar&&!scat&&!wf&&!sp&&!dayl&&!hm&&!race;
+    var bar=(ct==='bar'||ct==='barstack'), scat=(ct==='scatter'), race=(ct==='barrace'), tm=(ct==='treemap');
+    var line=!part&&!bar&&!scat&&!wf&&!sp&&!dayl&&!hm&&!race&&!tm;
     return {
-      part:part, wf:wf, spark:sp, bar:bar, scat:scat, line:line, dayl:dayl, hm:hm, race:race,
+      part:part, wf:wf, spark:sp, bar:bar, scat:scat, line:line, dayl:dayl, hm:hm, race:race, tm:tm,
       lineOpt:line,                    // Glaetten / Punkte / Linienbreite / Flaechen-Verlauf
       symOpt:scat,                     // Punkte-Groesse
       br:(bar||wf||race),              // Balken-Rundung (w.barRadius)
-      leg:(!wf&&!sp&&!hm&&!race),      // Legende + Position (Bar-Race sortiert selbst, keine Legende)
-      dl:(!wf&&!sp&&!dayl&&!hm&&!race), // Datenlabels generisch (Bar-Race hat eigene Wertlabels)
+      leg:(!wf&&!sp&&!hm&&!race&&!tm),      // Legende + Position (Bar-Race sortiert selbst, keine Legende)
+      dl:(!wf&&!sp&&!dayl&&!hm&&!race&&!tm), // Datenlabels generisch (Bar-Race hat eigene Wertlabels)
       title:(!sp),                     // Titelblock (auch Bar-Race: Titel oben, Zeit-Uhr/Live-Badge unten)
-      ax:(!part&&!sp&&!hm&&!race),     // Achsen & Raster (Bar-Race: feste Kategorie/Wert-Achsen)
-      axPlus:(!part&&!sp&&!wf&&!dayl&&!hm&&!race), // Raster-Teilung, Stapeln, Zoom, Extrema, Perioden-Navigation
-      cmp:(!part&&!sp&&!wf&&!dayl&&!hm&&!race),    // Vergleich (Zeitversatz)
-      ser:(!wf&&!dayl),                // Serien-Editor (Wasserfall + Tageslaenge haben eigene Datenquelle); Heatmap nutzt 1 Serie
-      yax:(!part&&!sp&&!wf&&!dayl&&!hm&&!race)     // Y-Achsen-Editor (Tageslaenge/Heatmap/Bar-Race haben feste Achsen)
+      ax:(!part&&!sp&&!hm&&!race&&!tm),     // Achsen & Raster (Bar-Race: feste Kategorie/Wert-Achsen)
+      axPlus:(!part&&!sp&&!wf&&!dayl&&!hm&&!race&&!tm), // Raster-Teilung, Stapeln, Zoom, Extrema, Perioden-Navigation
+      cmp:(!part&&!sp&&!wf&&!dayl&&!hm&&!race&&!tm),    // Vergleich (Zeitversatz)
+      ser:(!wf&&!dayl&&!tm),                // Serien-Editor (Wasserfall + Tageslaenge haben eigene Datenquelle); Heatmap nutzt 1 Serie
+      yax:(!part&&!sp&&!wf&&!dayl&&!hm&&!race&&!tm)     // Y-Achsen-Editor (Tageslaenge/Heatmap/Bar-Race haben feste Achsen)
     };
   }
   defWidget('chart',{
@@ -80,7 +128,7 @@
     props:function(w){
       if(w.type!=='chart')return '';
       var ct=w.ctype||'area',V=_chartVis(ct);
-      var h=row('Chart-Typ','<select id="pCType"><optgroup label="Zeitreihe"><option value="area"'+(ct==='area'?' selected':'')+'>Fläche</option><option value="areaspline"'+(ct==='areaspline'?' selected':'')+'>Fläche glatt (Spline)</option><option value="line"'+(ct==='line'?' selected':'')+'>Linie</option><option value="spline"'+(ct==='spline'?' selected':'')+'>Linie glatt (Spline)</option><option value="step"'+(ct==='step'?' selected':'')+'>Stufen</option><option value="steparea"'+(ct==='steparea'?' selected':'')+'>Stufenfläche</option><option value="bar"'+(ct==='bar'?' selected':'')+'>Balken</option><option value="barstack"'+(ct==='barstack'?' selected':'')+'>Balken gestapelt</option><option value="scatter"'+(ct==='scatter'?' selected':'')+'>Punkte</option></optgroup><optgroup label="Animiert"><option value="barrace"'+(ct==='barrace'?' selected':'')+'>Bar Race (Balken-Wettlauf)</option></optgroup><optgroup label="Kompakt"><option value="spark"'+(ct==='spark'?' selected':'')+'>Sparkline (kompakt)</option></optgroup><optgroup label="Anteile (ohne Zeit)"><option value="pie"'+(ct==='pie'?' selected':'')+'>Kreis (Pie)</option><option value="donut"'+(ct==='donut'?' selected':'')+'>Donut</option><option value="rose"'+(ct==='rose'?' selected':'')+'>Rose (Nightingale)</option></optgroup><optgroup label="Ohne Zeit"><option value="waterfall"'+(ct==='waterfall'?' selected':'')+'>Wasserfall</option></optgroup><optgroup label="Matrix"><option value="heatmap"'+(ct==='heatmap'?' selected':'')+'>Heatmap (Wochentag × Stunde)</option></optgroup><optgroup label="Astronomie"><option value="daylight"'+(ct==='daylight'?' selected':'')+'>Tageslänge (ganzes Jahr)</option></optgroup></select>');
+      var h=row('Chart-Typ','<select id="pCType"><optgroup label="Zeitreihe"><option value="area"'+(ct==='area'?' selected':'')+'>Fläche</option><option value="areaspline"'+(ct==='areaspline'?' selected':'')+'>Fläche glatt (Spline)</option><option value="line"'+(ct==='line'?' selected':'')+'>Linie</option><option value="spline"'+(ct==='spline'?' selected':'')+'>Linie glatt (Spline)</option><option value="step"'+(ct==='step'?' selected':'')+'>Stufen</option><option value="steparea"'+(ct==='steparea'?' selected':'')+'>Stufenfläche</option><option value="bar"'+(ct==='bar'?' selected':'')+'>Balken</option><option value="barstack"'+(ct==='barstack'?' selected':'')+'>Balken gestapelt</option><option value="scatter"'+(ct==='scatter'?' selected':'')+'>Punkte</option></optgroup><optgroup label="Animiert"><option value="barrace"'+(ct==='barrace'?' selected':'')+'>Bar Race (Balken-Wettlauf)</option></optgroup><optgroup label="Kompakt"><option value="spark"'+(ct==='spark'?' selected':'')+'>Sparkline (kompakt)</option></optgroup><optgroup label="Anteile (ohne Zeit)"><option value="pie"'+(ct==='pie'?' selected':'')+'>Kreis (Pie)</option><option value="donut"'+(ct==='donut'?' selected':'')+'>Donut</option><option value="rose"'+(ct==='rose'?' selected':'')+'>Rose (Nightingale)</option></optgroup><optgroup label="Ohne Zeit"><option value="waterfall"'+(ct==='waterfall'?' selected':'')+'>Wasserfall</option></optgroup><optgroup label="Matrix"><option value="heatmap"'+(ct==='heatmap'?' selected':'')+'>Heatmap (Wochentag × Stunde)</option><option value="treemap"'+(ct==='treemap'?' selected':'')+'>Treemap (Fläche = Wert)</option></optgroup><optgroup label="Astronomie"><option value="daylight"'+(ct==='daylight'?' selected':'')+'>Tageslänge (ganzes Jahr)</option></optgroup></select>');
       // ---- Tabellen-Quelle: Balken aus einer Kennzahlen-Tabelle statt aus dem Archiv ----
       // Gedacht fuer Jahresreihen, die ein Skript ohnehin schon rechnet (Statistik-Tabellen).
       // Mit der Kopplung folgt das Diagramm dem Umschalter einer Kennzahlen-Matrix.
@@ -116,6 +164,39 @@
         +row('Aggregation','<select id="pHmAgg"><option value="avg"'+((w.aggField!=='sum')?' selected':'')+'>Mittelwert</option><option value="sum"'+(w.aggField==='sum'?' selected':'')+'>Summe</option></select>')
         +row('Farbschema','<select id="pHmSch"><option value="heat"'+((w.hmScheme||'heat')==='heat'?' selected':'')+'>Heat (blau→rot)</option><option value="cool"'+(w.hmScheme==='cool'?' selected':'')+'>Kühl→Warm</option><option value="accent"'+(w.hmScheme==='accent'?' selected':'')+'>Akzent</option></select>')
         +row('Werte einblenden','<input type="checkbox" id="pHmLbl"'+(w.labels?' checked':'')+'>');
+      // ---- Treemap ----
+      // Flaeche = Wert, Farbe = derselbe Wert ueber frei gesetzte Stuetzstellen.
+      // Vorbild ist die abgeloeste PHPChart-Treemap #<ID> (Momentanleistung aller
+      // Verbraucher); die Profil-Quelle sammelt selbst ein, damit ein neuer Zaehler
+      // nicht von Hand nachgetragen werden muss.
+      if(V.tm){
+        var tq=(w.tmSrc==='serien')?'serien':'profil';
+        h+='<div style="font-size:11px;color:var(--muted);margin:2px 2px 6px">Fläche = Wert, Farbe = derselbe Wert. <b>Keine Historie nötig</b> – es zählt der Momentanwert.</div>'
+          +row('Quelle','<select id="pTmSrc"><option value="profil"'+(tq==='profil'?' selected':'')+'>Variablenprofil (sammelt selbst ein)</option><option value="serien"'+(tq==='serien'?' selected':'')+'>Serienliste (unten)</option></select>');
+        if(tq==='profil'){
+          h+=row('Profile','<input id="pTmProf" value="'+esc(w.tmProfiles||'')+'" placeholder="Leistung_H, Leistung_IT, …" style="flex:1">')
+            +'<div style="font-size:11px;color:var(--muted);margin:0 2px 6px">Mehrere mit Komma. Es zählt das <b>benutzerdefinierte</b> Profil der Variablen; der Name kommt vom übergeordneten Objekt.</div>'
+            +row('Zusätzliche Variablen','<input id="pTmExtra" value="'+esc(w.tmExtra||'')+'" placeholder="IDs, z. B. 14356" style="flex:1">')
+            +row('Nach Profil gruppieren','<input type="checkbox" id="pTmGrp"'+(w.tmGroup!==false?' checked':'')+'>')
+            +((w.tmGroup!==false)?row('Gruppen beschriften','<input type="checkbox" id="pTmGrpLbl"'+(w.tmGrpLbl!==false?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">Kopfzeile je Gruppe (IT, Haushalt …)</span>'):'')
+            +row('Gruppennamen','<input id="pTmNames" value="'+esc(w.tmNames||'')+'" placeholder="Leistung_IT=IT, Leistung_MM=Multimedia" style="flex:1">');
+        }
+        h+=row('Kleinste Fläche ab','<input id="pTmMin" type="number" step="0.1" style="width:80px" value="'+(w.tmMin!=null?w.tmMin:0)+'"> <span style="font-size:11px;color:var(--muted)">darunter wird nicht gezeigt</span>')
+          +row('Höchstalter','<input id="pTmAge" type="number" step="1" min="0" style="width:80px" value="'+(w.tmMaxAge!=null?w.tmMaxAge:'')+'" placeholder="0 = aus"> <span style="font-size:11px;color:var(--muted)">Stunden</span>')
+          +'<div style="font-size:11px;color:var(--muted);margin:0 2px 6px">Messstellen, die länger nichts gemeldet haben, bleiben draußen. Eine tote Steckdose steht sonst mit ihrem letzten Wert für immer in der Summe.</div>'
+          +'<div class="pgh">Farbe</div>'
+          +row('Obergrenze','<select id="pTmMaxMode"><option value="auto"'+((w.tmMaxMode||'auto')==='auto'?' selected':'')+'>automatisch (größter Wert)</option><option value="perzentil"'+(w.tmMaxMode==='perzentil'?' selected':'')+'>Perzentil (Ausreißer deckeln)</option><option value="fest"'+(w.tmMaxMode==='fest'?' selected':'')+'>fester Wert</option></select>')
+          +((w.tmMaxMode==='fest')?row('Wert','<input id="pTmMax" type="number" step="1" style="width:90px" value="'+(w.tmMax!=null?w.tmMax:250)+'">'):'')
+          +((w.tmMaxMode==='perzentil')?(row('Perzentil','<input id="pTmPerz" type="number" min="50" max="100" step="1" style="width:74px" value="'+(w.tmPerz!=null?w.tmPerz:90)+'"> <span style="font-size:11px;color:var(--muted)">%</span>')
+             +'<div style="font-size:11px;color:var(--muted);margin:0 2px 6px">Alles darüber läuft in die Endfarbe. Gut, wenn einzelne Großverbraucher sonst alles andere zusammendrücken.</div>'):'')
+          +row('Kennlinie','<select id="pTmScale"><option value="linear"'+((w.tmScale||'linear')==='linear'?' selected':'')+'>linear</option><option value="sqrt"'+(w.tmScale==='sqrt'?' selected':'')+'>Wurzel (sanft gespreizt)</option><option value="log"'+(w.tmScale==='log'?' selected':'')+'>logarithmisch (stark)</option></select>')
+          +'<div style="font-size:11px;color:var(--muted);margin:0 2px 6px">Hebt das untere Ende an, damit kleine Verbraucher unterscheidbar bleiben, wenn ein Gerät die Skala bestimmt. <b>Logarithmisch</b> wirkt kräftig – mit einer Ampel-Rampe rutscht dabei fast alles ins Warme; <b>Wurzel</b> ist meist die bessere Wahl.</div>'
+          +'<div style="font-size:11px;color:var(--muted);margin:0 2px 6px">Die Stützstellen unten sind <b>Prozent der Obergrenze</b>, damit die Skala mitwächst.</div>'
+          +_tmStopsBlock(w)
+          +row('Übergang','<select id="pTmMode"><option value="verlauf"'+((w.tmMode||'verlauf')==='verlauf'?' selected':'')+'>Verlauf (linear mischen)</option><option value="stufen"'+(w.tmMode==='stufen'?' selected':'')+'>Stufen (feste Klassen)</option></select>')
+          +row('Farblegende','<input type="checkbox" id="pTmLeg"'+(w.tmLegend!==false?' checked':'')+'>')
+          +row('Werte auf den Flächen','<input type="checkbox" id="pTmLbl"'+(w.tmLabels!==false?' checked':'')+'>');
+      }
       // ---- Bar Race ----
       if(V.race){
         h+='<div style="font-size:11px;color:var(--muted);margin:2px 2px 6px">Balken-Wettlauf: jede <b>Serie</b> unten ist ein Läufer.'
@@ -291,6 +372,34 @@ if(V.cmp)h+='<div class="pgh">Vergleich (Zeitversatz)</div>'+row('Aktiv','<input
       if($('#pBrLoop'))$('#pBrLoop').onchange=function(){w.brLoop=this.checked?undefined:false;reChart();};
       if($('#pHmSch'))$('#pHmSch').onchange=function(){w.hmScheme=this.value;reChart();};
       if($('#pHmLbl'))$('#pHmLbl').onchange=function(){w.labels=this.checked;reChart();};
+      // ---- Treemap ----
+      if($('#pTmSrc'))$('#pTmSrc').onchange=function(){w.tmSrc=(this.value==='serien')?'serien':undefined;renderProps();reChart();};
+      if($('#pTmProf'))$('#pTmProf').oninput=function(){w.tmProfiles=this.value||undefined;_tmNeu(w);};
+      if($('#pTmExtra'))$('#pTmExtra').oninput=function(){w.tmExtra=this.value||undefined;_tmNeu(w);};
+      if($('#pTmNames'))$('#pTmNames').oninput=function(){w.tmNames=this.value||undefined;reChart();};
+      if($('#pTmGrp'))$('#pTmGrp').onchange=function(){w.tmGroup=this.checked?undefined:false;renderProps();reChart();};
+      if($('#pTmGrpLbl'))$('#pTmGrpLbl').onchange=function(){w.tmGrpLbl=this.checked?undefined:false;reChart();};
+      if($('#pTmScale'))$('#pTmScale').onchange=function(){w.tmScale=(this.value==='linear')?undefined:this.value;reChart();};
+      if($('#pTmPerz'))$('#pTmPerz').oninput=function(){w.tmPerz=(this.value===''?undefined:parseFloat(this.value));reChart();};
+      if($('#pTmMin'))$('#pTmMin').oninput=function(){w.tmMin=(this.value===''?undefined:parseFloat(this.value));_tmNeu(w);};
+      if($('#pTmAge'))$('#pTmAge').oninput=function(){w.tmMaxAge=(this.value===''?undefined:parseFloat(this.value));_tmNeu(w);};
+      if($('#pTmMaxMode'))$('#pTmMaxMode').onchange=function(){w.tmMaxMode=(this.value==='auto')?undefined:this.value;renderProps();reChart();};
+      if($('#pTmMax'))$('#pTmMax').oninput=function(){w.tmMax=(this.value===''?undefined:parseFloat(this.value));reChart();};
+      if($('#pTmMode'))$('#pTmMode').onchange=function(){w.tmMode=(this.value==='stufen')?'stufen':undefined;reChart();};
+      if($('#pTmLeg'))$('#pTmLeg').onchange=function(){w.tmLegend=this.checked?undefined:false;reChart();};
+      if($('#pTmLbl'))$('#pTmLbl').onchange=function(){w.tmLabels=this.checked?undefined:false;reChart();};
+      // Stuetzstellen: beim ersten Anfassen die Vorgabe uebernehmen, sonst
+      // veraendert man eine Liste, die gar nicht am Widget haengt.
+      function _tmFest(){ if(!w.tmStops||!w.tmStops.length)w.tmStops=_tmStops(w).map(function(x){return {p:+x.p,c:x.c};}); return w.tmStops; }
+      $$('#props [data-tmc]').forEach(function(el){el.oninput=function(){
+        var a=_tmFest(),i=+el.getAttribute('data-tmc'); if(a[i]){a[i].c=this.value;renderProps();reChart();}};});
+      $$('#props [data-tmp]').forEach(function(el){el.onchange=function(){
+        var a=_tmFest(),i=+el.getAttribute('data-tmp'); if(a[i]){a[i].p=Math.max(0,Math.min(100,parseFloat(this.value)||0));renderProps();reChart();}};});
+      $$('#props [data-tmdel]').forEach(function(el){el.onclick=function(){
+        var a=_tmFest(),i=+el.getAttribute('data-tmdel'); if(a.length>2){a.splice(i,1);renderProps();reChart();}};});
+      if($('#props [data-tmadd]'))$('#props [data-tmadd]').onclick=function(){
+        var a=_tmFest(),letzt=a[a.length-1]||{p:0,c:'#00cdab'};
+        a.push({p:Math.min(100,(+letzt.p)+25),c:letzt.c}); renderProps(); reChart();};
       // --- gemeinsam ---
       if($('#pSmooth'))$('#pSmooth').onchange=function(){w.smooth=this.checked;reChart();};
       if($('#pSym'))$('#pSym').onchange=function(){w.symbols=this.checked;reChart();};
@@ -368,6 +477,7 @@ if(V.cmp)h+='<div class="pgh">Vergleich (Zeitversatz)</div>'+row('Aktiv','<input
     live:function(w,el,id,d,base,txt,on){var ct=w.ctype||'area';
       if(ct==='barrace'){ if(w.brLive&&_ec[w.id]&&(_chSeries(w)||[]).some(function(s){return s&&s.vid===id;}))_raceLiveTick(w); return; } // Live-Modus: Balken in Echtzeit umsortieren
       if(ct==='heatmap')return; // historische Aggregation, kein Live-Nachzug
+      if(ct==='treemap'){tmPushRefresh(w);return;} // Momentanwerte aus dem Live-Kanal, gebuendelt gezeichnet
       if(ct==='pie'||ct==='donut'||ct==='rose'){if(_ec[w.id])setPie(w);}
       else if(ct==='waterfall'){if((w.steps||[]).some(function(s){return s.vid===id;}))setWaterfall(w);}
       else if(_ec[w.id])chartPushRefresh(w);}

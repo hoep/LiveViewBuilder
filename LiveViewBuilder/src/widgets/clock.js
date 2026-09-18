@@ -4,9 +4,9 @@
   function _clkFmt(w,now){function p(n){return String(n).padStart(2,'0');}var h=now.getHours(),suf='';
     if(w.h12){suf=(h<12?' AM':' PM');h=h%12;if(h===0)h=12;}
     return (w.h12?h:p(h))+':'+p(now.getMinutes())+(w.showSec?':'+p(now.getSeconds()):'')+suf;}
-  function _clkUpd(w,now){var el=$('.w[data-id="'+w.id+'"]',canvas);if(!el)return;var t=$('[data-role=ctime]',el);if(t)t.textContent=_clkFmt(w,now||new Date());}
+  function _clkUpd(w,now){var el=$('.w[data-id="'+w.id+'"]',canvas);if(!el)return;var t=$('[data-role=ctime]',el);if(t)t.textContent=_clkFmt(w,now||_hzJetzt());}
   if(!window._clkTimer){window._clkTimer=setInterval(function(){ // aktualisiert nur „erweiterte" Uhren (Sekunden/12h)
-    if(typeof state==='undefined'||!state.widgets)return;var now=new Date();
+    if(typeof state==='undefined'||!state.widgets)return;var now=_hzJetzt();
     allWidgets().forEach(function(w){if(w.type==='clock'&&(w.showSec||w.h12))_clkUpd(w,now);});},1000);}
   defWidget('clock',{
     label:'Uhr', cat:'Wetter & Zeit', paletteIcon:'clock', size:[170,84],
@@ -18,5 +18,5 @@
     wire:function(w){if($('#pClk'))$('#pClk').onchange=function(){w.clkShow=this.value;render();commit();};
       if($('#pClkH12'))$('#pClkH12').onchange=function(){w.h12=(this.value==='12')||undefined;render();commit();};
       if($('#pClkSec'))$('#pClkSec').onchange=function(){w.showSec=this.checked||undefined;render();commit();};},
-    mount:function(w){if(w.showSec||w.h12)_clkUpd(w,new Date());} // Erst-Anzeige ohne auf den nächsten Sekunden-Tick zu warten
+    mount:function(w){if(w.showSec||w.h12)_clkUpd(w,_hzJetzt());} // Erst-Anzeige ohne auf den nächsten Sekunden-Tick zu warten
   });

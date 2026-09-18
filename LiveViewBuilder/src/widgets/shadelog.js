@@ -7,7 +7,7 @@
   function _shlRoom(r){ return (r||'').replace(/\s*\(Beschattung\)\s*$/,'').trim() || (r||''); }
   function _shlTime(t){
     if(!t) return '';
-    var d=new Date(t*1000), n=new Date(), p=function(x){return (x<10?'0':'')+x;};
+    var d=_hzD(t*1000), n=_hzJetzt(), p=function(x){return (x<10?'0':'')+x;};
     var hm=p(d.getHours())+':'+p(d.getMinutes())+':'+p(d.getSeconds());
     var sameDay=(d.getFullYear()===n.getFullYear()&&d.getMonth()===n.getMonth()&&d.getDate()===n.getDate());
     return sameDay ? hm : (p(d.getDate())+'.'+p(d.getMonth()+1)+'. '+hm);
