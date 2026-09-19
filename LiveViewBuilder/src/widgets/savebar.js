@@ -78,6 +78,7 @@
           +'<span class="sb-lbl">'+esc(w.label||'Änderungen')+'</span>'
           +'<span class="sb-cnt" data-role="savecount">'+n+'</span>'
           +'<span class="sb-hint">'+esc(w.sbHint||'')+'</span>'
+          +'<span class="sb-hint" data-role="savesrc"></span>'
         +'</div>'
         +'<div class="sb-r">'
           +'<button class="sb-b" data-sb="drop">Verwerfen</button>'
@@ -119,28 +120,44 @@
       }
       if(was==='drop'){
         if(typeof deferDrop==='function')deferDrop();
+        if(typeof tabDrop==='function')tabDrop();          // auch die Regeltabellen
         toast('Änderungen verworfen');
         return true;
       }
+      // ZWEI Puffer: Einzelwerte (Geraete) und ganze Regeltabellen (Modul-
+      // Eigenschaften). Die Leiste zaehlt beide zusammen und speichert beide -
+      // sonst muesste der Anwender zweimal speichern und wuesste nicht, wofuer.
       var inst=parseInt(w.sbInst)||0;
-      if(!inst){toast('Keine Instanz hinterlegt');return true;}
-      if(typeof deferCount==='function'&&deferCount()===0){toast('Nichts zu speichern');return true;}
+      var nW=(typeof deferCount==='function')?deferCount():0;
+      var nT=(typeof tabCount==='function')?tabCount():0;
+      if(!nW&&!nT){toast('Nichts zu speichern');return true;}
+      // Die Tabellen tragen ihre Instanz im Puffer; nur der Wertepuffer braucht
+      // die hinterlegte.
+      if(nW&&!inst){toast('Keine Instanz hinterlegt');return true;}
       b.disabled=true;b.textContent='…';
-      deferFlush(inst,function(j){
+      function fertig(txt,gut){
         b.disabled=false;b.textContent='Speichern';
-        if(j&&j.ok){
-          toast(j.werte+' Werte in '+j.zugriffe+' Gerätezugriff'+(j.zugriffe===1?'':'en')+' geschrieben');
-        }else{
+        toast(txt);
+        if(gut&&typeof window.plNachladen==='function')window.plNachladen();
+      }
+      function werte(){
+        if(!nW){fertig(nT+' Tabelle'+(nT===1?'':'n')+' gespeichert',true);return;}
+        deferFlush(inst,function(j){
+          if(j&&j.ok){fertig((nT?(nT+' Tabellen und '):'')+j.werte+' Werte geschrieben',true);}
           // Nicht stillschweigend verwerfen: der Puffer bleibt stehen, damit
           // der Anwender es erneut versuchen kann.
-          toast('Nicht gespeichert: '+((j&&(j.fehler||(j.fehler_liste||[]).join(', ')))||'unbekannt'));
-        }
-      });
+          else{fertig('Nicht gespeichert: '+((j&&(j.fehler||(j.fehler_liste||[]).join(', ')))||'unbekannt'),false);}
+        });
+      }
+      if(nT){ tabFlush(function(t){
+        if(!t.ok){fertig('Nicht gespeichert: '+((t.fehler||[]).join(' · ')||'unbekannt'),false);return;}
+        werte();
+      }); } else { werte(); }
       return true;
     },
     props:function(w){
       return row('Betriebsart','<select id="pSbMode"><option value="werte"'+((w.sbMode||'werte')==='werte'?' selected':'')+'>Werte sammeln</option><option value="zeitplan"'+(w.sbMode==='zeitplan'?' selected':'')+'>Zeitpläne senden</option></select>')
-        +row('Instanz','<input id="pSbInst" value="'+esc(String(w.sbInst||''))+'" placeholder="PoolController-Instanz"> <button class="btn" id="pSbPick" style="padding:6px 8px">wählen</button>')
+        +row('Instanz','<input id="pSbInst" value="'+esc(String(w.sbInst||''))+'" placeholder="nur für Werte nötig"> <button class="btn" id="pSbPick" style="padding:6px 8px">wählen</button>')
         +row('Hinweis','<input id="pSbHint" value="'+esc(w.sbHint||'')+'">')
         +'<div style="font-size:11px;color:var(--muted);line-height:1.45;padding:2px 4px 6px">Solange diese Leiste auf der Ansicht liegt, werden Änderungen <b>gesammelt</b> und erst auf Knopfdruck geschrieben. Geänderte Kacheln sind markiert.</div>';
     },

@@ -1552,6 +1552,231 @@ if ($api === 'wxroi') {
     return;
 }
 
+/* ---- Listen-Eigenschaften eines beliebigen Moduls lesen und schreiben -------------
+ *
+ * Viele Module halten Regeln als JSON-Liste in einer Eigenschaft (Serienrecorder,
+ * PoolController, HomeSuite). Weder ?api=val noch das Archiv kommen daran - das
+ * sind keine Variablen.
+ *
+ * GESCHRIEBEN WIRD NIE DIREKT. Der Endpunkt ruft die Setzfunktion des besitzenden
+ * Moduls, gefunden ueber dessen Praefix: <PREFIX>_TabelleSetzen($id,$name,$json).
+ * Ein IPS_SetProperty von hier aus waere bequemer und falsch - die Pruefung des
+ * Schemas gehoert dem Modul, sonst schreibt die Visualisierung Zeilen, mit denen
+ * das Formular nichts anfangen kann. Bietet ein Modul die Funktion nicht an, wird
+ * es hier nicht beschrieben; lesen darf man es trotzdem.
+ *
+ * Das Spaltenschema kommt, wenn vorhanden, aus <PREFIX>_TabelleSchema(). Damit
+ * beschreibt sich ein Modul selbst und die Oberflaeche muss nichts nachhalten.
+ */
+if ($api === 'proplist') {
+    header('Content-Type: application/json; charset=utf-8');
+    $inst = (int) ($_GET['inst'] ?? 0);
+    $prop = (string) ($_GET['prop'] ?? '');
+    if ($inst <= 0 || !@IPS_InstanceExists($inst)) {
+        echo json_encode(['ok' => false, 'grund' => 'Instanz unbekannt']);
+        return;
+    }
+    $guid = (string) (IPS_GetInstance($inst)['ModuleInfo']['ModuleID'] ?? '');
+    $pref = '';
+    if ($guid !== '') {
+        $mi = @IPS_GetModule($guid);
+        $pref = (string) ($mi['Prefix'] ?? '');
+    }
+    $fSetzen = $pref !== '' ? $pref . '_TabelleSetzen' : '';
+    $fSchema = $pref !== '' ? $pref . '_TabelleSchema' : '';
+    $op = (string) ($_GET['op'] ?? 'get');
+
+    if ($op === 'get') {
+        $schema = null;
+        if ($fSchema !== '' && function_exists($fSchema)) {
+            $schema = json_decode((string) @$fSchema($inst), true);
+        }
+        $aus = ['ok' => true, 'inst' => $inst, 'prefix' => $pref,
+                'schreibbar' => ($fSetzen !== '' && function_exists($fSetzen)),
+                'schema' => $schema];
+        if ($prop !== '') {
+            $d = json_decode((string) @IPS_GetProperty($inst, $prop), true);
+            $aus['prop']   = $prop;
+            $aus['zeilen'] = is_array($d) ? $d : [];
+            $aus['spalten'] = ($schema && isset($schema[$prop])) ? $schema[$prop] : null;
+        } elseif ($schema) {
+            // Ohne Angabe: alle Tabellen, die das Schema nennt - ein Abruf fuer eine
+            // ganze Seite statt sechs.
+            foreach (array_keys($schema) as $n) {
+                $d = json_decode((string) @IPS_GetProperty($inst, $n), true);
+                $aus['tabellen'][$n] = is_array($d) ? $d : [];
+            }
+        }
+        echo json_encode($aus, JSON_UNESCAPED_UNICODE);
+        return;
+    }
+
+    if (!hash_equals($TOKEN, (string) ($_GET['key'] ?? ''))) {
+        http_response_code(403);
+        echo json_encode(['ok' => false, 'grund' => 'forbidden']);
+        return;
+    }
+    if ($op === 'save') {
+        if ($fSetzen === '' || !function_exists($fSetzen)) {
+            echo json_encode(['ok' => false, 'grund' => 'Modul bietet kein ' . ($pref ?: '?') . '_TabelleSetzen']);
+            return;
+        }
+        // Der Rumpf traegt die Zeilen; 152 Serien passen in keine URL.
+        $roh = (string) ($_POST['zeilen'] ?? '');
+        if ($roh === '') {
+            $body = (string) @file_get_contents('php://input');
+            if ($body !== '' && $body[0] === '{') {
+                $j = json_decode($body, true);
+                if (is_array($j)) {
+                    $roh  = (string) json_encode($j['zeilen'] ?? [], JSON_UNESCAPED_UNICODE);
+                    if ($prop === '' && isset($j['prop'])) { $prop = (string) $j['prop']; }
+                }
+            } elseif ($body !== '') {
+                $f = [];
+                parse_str($body, $f);
+                $roh = (string) ($f['zeilen'] ?? '');
+            }
+        }
+        if ($prop === '') { echo json_encode(['ok' => false, 'grund' => 'prop fehlt']); return; }
+        echo (string) @$fSetzen($inst, $prop, $roh);
+        return;
+    }
+    echo json_encode(['ok' => false, 'grund' => 'unbekannte Aktion', 'op' => $op]);
+    return;
+}
+
+/* ---- Serienrecorder: die sechs Regeltabellen lesen, pruefen, schreiben ------------
+ *
+ * Die Tabellen sind Modul-EIGENSCHAFTEN (JSON-Listen), keine Variablen - deshalb
+ * kommen sie weder ueber ?api=val noch ueber das Archiv. Gelesen wird frei,
+ * geschrieben nur mit Token; die Schemapruefung liegt im Modul
+ * (SR_TabelleSetzen), nicht hier: das Schema gehoert dem Modul, und zwei
+ * Pruefungen derselben Regel laufen frueher oder spaeter auseinander.
+ *
+ * Die Instanz wird NICHT geraten. Gibt es genau eine, nimmt der Endpunkt sie;
+ * gibt es mehrere und der Aufrufer nennt keine, sagt er das mit der Liste - eine
+ * zweite Anlage waere sonst genau der Fall, in dem "nimm die erste" still das
+ * Falsche schreibt.
+ */
+if ($api === 'srcfg') {
+    header('Content-Type: application/json; charset=utf-8');
+    $TABELLEN = ['Serienliste', 'Titeltabelle', 'Kanaltabelle', 'Bedingungen', 'Staffeltabelle', 'Katalogtabelle'];
+    $alle = IPS_GetInstanceListByModuleID('{F7F9F89F-82ED-4478-970F-C3C749912A0A}');
+    $inst = (int) ($_GET['inst'] ?? 0);
+    if ($inst <= 0) {
+        if (count($alle) === 1) {
+            $inst = (int) $alle[0];
+        } else {
+            echo json_encode(['ok' => false, 'grund' => (count($alle) ? 'mehrere Serienrecorder - inst angeben' : 'kein Serienrecorder'),
+                              'instanzen' => array_map('intval', $alle)]);
+            return;
+        }
+    }
+    if (!in_array((string) $inst, array_map('strval', $alle), true)) {
+        echo json_encode(['ok' => false, 'grund' => 'keine Serienrecorder-Instanz']);
+        return;
+    }
+    $op = (string) ($_GET['op'] ?? 'get');
+
+    if ($op === 'get') {
+        $aus = ['ok' => true, 'inst' => $inst, 'tabellen' => [], 'zeilen' => []];
+        foreach ($TABELLEN as $t) {
+            $d = json_decode((string) @IPS_GetProperty($inst, $t), true);
+            $aus['tabellen'][$t] = is_array($d) ? $d : [];
+            $aus['zeilen'][$t]   = count($aus['tabellen'][$t]);
+        }
+        // Die Spalte "Ablage" ist nicht gespeichert, sondern gerechnet - sie ist das
+        // ERGEBNIS der Titeltabelle. Als Sammelaufruf, nicht je Zeile einzeln:
+        // gemessen 0,47 ms je Serie, 152 Serien also rund 70 ms.
+        if (function_exists('SR_TitelProbe')) {
+            foreach ($aus['tabellen']['Serienliste'] as $z) {
+                $n = (string) ($z['serie'] ?? '');
+                if ($n === '') { continue; }
+                $p = json_decode((string) @SR_TitelProbe($inst, $n), true);
+                $aus['ablagen'][$n] = (string) ($p['ablage'] ?? '');
+            }
+        }
+        $v = static function (string $ident) use ($inst) {
+            $id = @IPS_GetObjectIDByIdent($ident, $inst);
+            return ($id > 0) ? GetValue($id) : null;
+        };
+        $aus['stand'] = ['status' => $v('Status'), 'letzterLauf' => $v('LetzterLauf'),
+                         'dauerMs' => $v('Dauer'), 'programmiert' => $v('Programmiert')];
+        echo json_encode($aus, JSON_UNESCAPED_UNICODE);
+        return;
+    }
+
+    if ($op === 'probe') {
+        $art = (string) ($_GET['art'] ?? '');
+        $a   = trim((string) ($_GET['a'] ?? ''));
+        $b   = trim((string) ($_GET['b'] ?? ''));
+        $c   = (int) ($_GET['c'] ?? 0);
+        $d   = (int) ($_GET['d'] ?? 0);
+        $r   = null;
+        if ($art === 'kanal'   && function_exists('SR_KanalProbe'))   { $r = @SR_KanalProbe($inst, $a); }
+        if ($art === 'titel'   && function_exists('SR_TitelProbe'))   { $r = @SR_TitelProbe($inst, $a); }
+        if ($art === 'regel'   && function_exists('SR_RegelProbe'))   { $r = @SR_RegelProbe($inst, $a, $c, $d); }
+        if ($art === 'katalog' && function_exists('SR_KatalogProbe')) { $r = @SR_KatalogProbe($inst, $a, $b); }
+        if ($r === null) { echo json_encode(['ok' => false, 'grund' => 'unbekannte Probe']); return; }
+        echo json_encode(['ok' => true, 'art' => $art, 'ergebnis' => json_decode((string) $r, true)],
+                         JSON_UNESCAPED_UNICODE);
+        return;
+    }
+
+    // ---- ab hier schreibend ----
+    if (!hash_equals($TOKEN, (string) ($_GET['key'] ?? ''))) {
+        http_response_code(403);
+        echo json_encode(['ok' => false, 'grund' => 'forbidden']);
+        return;
+    }
+
+    if ($op === 'save') {
+        // Der Rumpf traegt die Zeilen: 152 Serien passen in keine URL.
+        $roh = (string) ($_POST['zeilen'] ?? '');
+        if ($roh === '') {
+            $body = (string) @file_get_contents('php://input');
+            if ($body !== '' && $body[0] === '{') {
+                $j   = json_decode($body, true);
+                $roh = is_array($j) ? (string) json_encode($j['zeilen'] ?? [], JSON_UNESCAPED_UNICODE) : '';
+                if (!isset($_GET['t']) && isset($j['tabelle'])) { $_GET['t'] = (string) $j['tabelle']; }
+            } elseif ($body !== '') {
+                $f = [];
+                parse_str($body, $f);
+                $roh = (string) ($f['zeilen'] ?? '');
+            }
+        }
+        $t = (string) ($_GET['t'] ?? '');
+        if (!in_array($t, $TABELLEN, true)) {
+            echo json_encode(['ok' => false, 'grund' => 'unbekannte Tabelle', 'tabelle' => $t]);
+            return;
+        }
+        if (!function_exists('SR_TabelleSetzen')) {
+            echo json_encode(['ok' => false, 'grund' => 'SR_TabelleSetzen fehlt - Modul neu laden']);
+            return;
+        }
+        echo (string) @SR_TabelleSetzen($inst, $t, $roh);
+        return;
+    }
+
+    // Neu rechnen ist BEWUSST getrennt vom Speichern: ApplyChanges rechnet nichts,
+    // und eine Neuberechnung dauert rund 2,6 s. Wer fuenf Zeilen aendert, will
+    // einmal warten, nicht fuenfmal. Programmiert nichts am Receiver.
+    if ($op === 'analyse') {
+        if (!function_exists('SR_Analyse')) {
+            echo json_encode(['ok' => false, 'grund' => 'SR_Analyse fehlt']);
+            return;
+        }
+        $t0 = microtime(true);
+        $a  = json_decode((string) @SR_Analyse($inst), true);
+        echo json_encode(['ok' => true, 'dauerMs' => (int) round((microtime(true) - $t0) * 1000),
+                          'ergebnis' => $a], JSON_UNESCAPED_UNICODE);
+        return;
+    }
+
+    echo json_encode(['ok' => false, 'grund' => 'unbekannte Aktion', 'op' => $op]);
+    return;
+}
+
 if ($api === 'srkat') {
     header('Content-Type: application/json; charset=utf-8');
     if (!hash_equals($TOKEN, (string) ($_GET['key'] ?? ''))) {

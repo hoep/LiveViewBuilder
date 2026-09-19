@@ -15,15 +15,34 @@
     var reg=(typeof _regions!=='undefined'&&_regions)?_regions[w.slot]:null;
     return reg || w.default || ((w.tabs&&w.tabs[0])?w.tabs[0].view:'');
   }
+  /** Gilt dieser Reiter als aktiv?
+   *
+   *  Nicht nur bei Gleichheit: eine Ansicht darf UNTERANSICHTEN haben, benannt als
+   *  "<Reiter> · <Unterpunkt>". Die TV-Nabe zeigt so "Einstellungen" weiterhin
+   *  hervorgehoben, waehrend darin zwischen "Einstellungen · Sender" und
+   *  "Einstellungen · Sonderfaelle" umgeschaltet wird. Ohne das erlischt die obere
+   *  Leiste, sobald man in der unteren einen Reiter waehlt - und es sieht aus, als
+   *  haette man den Bereich verlassen.
+   */
+  function _rtAktiv(view,cur,exakt){
+    if(!view||!cur)return false;
+    if(view===cur)return true;
+    // Der Praefix gilt NUR als Rueckfall. Sonst leuchtet in der unteren Leiste auch
+    // "Titel" mit, sobald "Sender" gewaehlt ist - dessen Ansicht heisst
+    // "… Einstellungen · Sender" und beginnt nun einmal mit "… Einstellungen".
+    // Trifft in derselben Leiste ein Reiter genau, hat der allein recht.
+    return !exakt && cur.indexOf(view + ' · ') === 0;
+  }
   defWidget('regiontabs',{
     label:'Region-Tabs', cat:'Leisten (alle Seiten)', paletteIcon:'wselect', size:[900,48],
     defaults:function(w){w.tabs=[];w.style='pills';w.slot='inhalt';},
     render:function(w){
       var cur=_rtabCur(w), st=(w.style==='buttons'||w.style==='underline')?w.style:'pills';
       var h='<div class="hssel hssel-'+st+'">';
+      var exakt=(w.tabs||[]).some(function(t){return t&&t.view===cur;});
       (w.tabs||[]).forEach(function(t){
         if(!t||!t.view)return;
-        h+='<button class="hsroom'+(t.view===cur?' on':'')+'" data-rtv="'+esc(t.view)+'">'+escL(t.label||t.view)+'</button>';
+        h+='<button class="hsroom'+(_rtAktiv(t.view,cur,exakt)?' on':'')+'" data-rtv="'+esc(t.view)+'">'+escL(t.label||t.view)+'</button>';
       });
       return h+'</div>';
     },

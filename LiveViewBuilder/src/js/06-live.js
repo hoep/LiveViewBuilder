@@ -583,14 +583,68 @@
         ids.forEach(function(i){if(deferHas(i))dirty=true;});
         el.classList.toggle('w-dirty',dirty);
       });
-      $$('[data-role=savecount]').forEach(function(n){n.textContent=String(deferCount());});
+      $$('[data-role=savecount]').forEach(function(n){n.textContent=String(deferCount()+tabCount());});
+      // Herkunft der offenen Aenderungen benennen - siehe tabNamen().
+      $$('[data-role=savesrc]').forEach(function(n){
+        var t=tabNamen(), v=deferCount(), teile=[];
+        if(v>0)teile.push(v+' Wert'+(v===1?'':'e'));
+        if(t.length)teile.push(t.join(', '));
+        n.textContent=teile.length?('· '+teile.join(' · ')):'';
+      });
       // Die Reiter der Regeltabellen tragen die Zahl der ungespeicherten Aenderungen der
       // gerade NICHT sichtbaren Gruppe. Ohne diesen Anstoss bliebe das Abzeichen nach
       // Speichern oder Verwerfen stehen.
       if(typeof rtBadgesRefresh==='function')rtBadgesRefresh();
-      $$('[data-role=savewrap]').forEach(function(n){n.classList.toggle('has',deferCount()>0);});
+      $$('[data-role=savewrap]').forEach(function(n){n.classList.toggle('has',(deferCount()+tabCount())>0);});
     }catch(e){}
   }
+  // ---- Zweiter Puffer: GANZE Tabellen aus Modul-Eigenschaften ------------------------
+  //
+  // Der Puffer oben ist auf Variablen-IDs gebaut (eine ID, ein Wert). Eine
+  // Regeltabelle ist beides nicht: sie hat keine Variablen-ID, und ihr "Wert" ist
+  // eine Liste von Zeilen. Deshalb ein eigener Topf statt einer Verrenkung im
+  // bestehenden - beide zaehlt die Speicherleiste zusammen, gespeichert wird in
+  // einem Zug.
+  //
+  // Schluessel ist "Instanz|Eigenschaft". Mehrere proplist-Kacheln derselben
+  // Tabelle auf einer Seite teilen sich damit denselben Eintrag, und die zuletzt
+  // bearbeitete gewinnt - was richtig ist, es ist dieselbe Tabelle.
+  var _tabBuf = {};
+  function tabKey(inst, prop) { return String(inst) + '|' + String(prop); }
+  function tabPut(inst, prop, zeilen) { _tabBuf[tabKey(inst, prop)] = {inst: inst, prop: prop, zeilen: zeilen}; _defPaint(); }
+  function tabGet(inst, prop) { var e = _tabBuf[tabKey(inst, prop)]; return e ? e.zeilen : null; }
+  function tabCount() { var n = 0, k; for (k in _tabBuf) { n++; } return n; }
+  /** Namen der gepufferten Tabellen - fuer die Speicherleiste.
+   *  Der Puffer ueberlebt den Seitenwechsel (er haengt am Client, nicht an der Seite).
+   *  Auf einer Seite kann die Leiste also Aenderungen zaehlen, die man dort gar nicht
+   *  sieht - ohne Herkunft wirkt die Zahl wie ein Fehler. */
+  function tabNamen() { var a = [], k; for (k in _tabBuf) { a.push(String(_tabBuf[k].prop || '?')); } return a.sort(); }
+  function tabDrop() { _tabBuf = {}; _defPaint(); }
+  /** Jede gepufferte Tabelle einmal an ihr Modul geben. */
+  function tabFlush(cb) {
+    var keys = Object.keys(_tabBuf);
+    if (!keys.length) { if (cb) { cb({ok: true, tabellen: 0}); } return; }
+    var fertig = 0, fehler = [];
+    keys.forEach(function (k) {
+      var e = _tabBuf[k];
+      fetch('?api=proplist&op=save&inst=' + encodeURIComponent(e.inst) + '&prop=' + encodeURIComponent(e.prop)
+            + '&key=' + encodeURIComponent(TOKEN),
+        {method: 'POST', cache: 'no-store', headers: {'Content-Type': 'application/json'},
+         body: JSON.stringify({zeilen: e.zeilen})})
+        .then(function (r) { return r.json(); })
+        .then(function (j) {
+          if (!j || !j.ok) { fehler.push(e.prop + ': ' + ((j && j.grund) || 'Fehler')); }
+          else if (j.meldungen && j.meldungen.length) { fehler.push(e.prop + ': ' + j.meldungen.join(' / ')); }
+          else { delete _tabBuf[k]; }
+          if (++fertig === keys.length) { _defPaint(); if (cb) { cb({ok: !fehler.length, tabellen: keys.length, fehler: fehler}); } }
+        })
+        .catch(function (x) {
+          fehler.push(e.prop + ': ' + x);
+          if (++fertig === keys.length) { _defPaint(); if (cb) { cb({ok: false, tabellen: keys.length, fehler: fehler}); } }
+        });
+    });
+  }
+
   /** Puffer an das Modul geben - ein Auftrag, egal wie viele Werte. */
   function deferFlush(inst,cb){
     var n=deferCount();
