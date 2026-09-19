@@ -235,6 +235,7 @@
     if(_tickKids&&_tickKids.length)_tickKids.forEach(function(w){_vidxOne(w,canvas);});
     if(_popup&&_popup.widgets){var _ov=$('#ovcanvas');if(_ov)_popup.widgets.forEach(function(w){_vidxOne(w,_ov);});}
     if(typeof _hover!=='undefined'&&_hover&&_hover.widgets){var _hv=$('#hovcanvas');if(_hv)_hover.widgets.forEach(function(w){_vidxOne(w,_hv);});}
+    if(typeof wsAbo==='function')wsAbo();   // neue Seite -> neues Abo
   }
   function invalidateVidx(){_vidx=null;deferReset();} // bei render()/Popup-Wechsel aufrufen — nächster poll/apply baut neu
   // Live-Feed (für WS-Monitor-Widget): jeder eingehende Wert wird protokolliert, mit Quelle (poll/ws)
@@ -485,6 +486,35 @@
   // einer ueber HTTPS geladenen Seite verweigern Browser jedes unverschluesselte ws:// - der
   // Konstruktor wirft dann sofort, ohne dass ein Paket fliegt. Beides sieht von aussen gleich
   // aus, darum wird durchgetauscht statt geraten.
+  // ---- Abonnement: dem Server sagen, was diese SEITE ueberhaupt anzeigt ----------
+  //
+  // Ohne das schickt der Push jede Aenderung an jeden Browser. Gemessen am 19.09.2026
+  // brauchte die Lichtseite 0,3 % der Nachrichten, die sie bekam - der Rest wurde
+  // empfangen, entpackt und weggeworfen. Auf einem Tablet ist das der Unterschied
+  // zwischen fluessig und zaeh.
+  //
+  // Geschickt wird nur, wenn sich die Menge WIRKLICH geaendert hat (Seitenwechsel,
+  // Popup, Container-Kinder). Ein Server, der das Abo nicht kennt, sendet weiter alles -
+  // die Neuerung ist also in beide Richtungen vertraeglich.
+  var _aboSig='';
+  function wsAbo(){
+    try{
+      if(!_ws||_ws.readyState!==1||!_vidx)return;
+      var ids=Object.keys(_vidx).filter(function(k){return /^[0-9]+$/.test(k);});
+      var sig=ids.join(',');
+      if(sig===_aboSig)return;
+      _aboSig=sig;
+      _ws.send(JSON.stringify({ids:ids.map(Number)}));
+    }catch(e){}
+  }
+  /** Einzelne Werte gezielt nachholen - Antwort auf eine 'changed'-Meldung. */
+  function holeWerte(ids){
+    if(!ids||!ids.length)return;
+    fetch('?api=val&ids='+ids.join(','),{cache:'no-store'}).then(function(r){return r.json();})
+      .then(function(j){if(!j||!j.values)return;_liveSrc='ws';
+        for(var id in j.values){applyVal(parseInt(id),j.values[id]);}_recalcFormulas();})
+      .catch(function(){});
+  }
   function wsCandidates(){
     var out=[],sec=(location.protocol==='https:'),port=(WS_PORT&&WS_PORT.indexOf('__LV_')!==0)?WS_PORT:'';
     if(WS_URL&&WS_URL.indexOf('__LV_')!==0)out.push(WS_URL);
@@ -516,8 +546,13 @@
       _wsWhy='WebSocket abgelehnt ('+u+'): '+(e&&e.message?e.message:e);
       _wsGood='';_wsIdx++;_wsTries++;setTimeout(wsConnect,Math.min(30000,2000*_wsTries));return;}
     _ws.onopen=function(){_wsLast=Date.now();try{_ws.send('hello');}catch(e){}};
-    _ws.onmessage=function(ev){_wsOK=true;_wsTries=0;_wsLast=Date.now();_wsGood=u;_wsWhy='';if(bcfg().noSafetyPoll)stopPV();else startPV(5000);try{var j=JSON.parse(ev.data);if(j&&j.reload&&RUN){location.reload();return;}if(j&&j.values){_liveSrc='ws';for(var k in j.values){var d=j.values[k];if(d&&d.id)applyVal(d.id,d);}}if(j&&j.media&&j.media.length)j.media.forEach(function(mid){refreshMedia(mid);});}catch(e){}}; // Werte + Kamera-Medien-Push
-    _ws.onclose=function(){_wsOK=false;startPV(1200);_wsTries++;
+    _ws.onmessage=function(ev){_wsOK=true;_wsTries=0;_wsLast=Date.now();_wsGood=u;_wsWhy='';if(bcfg().noSafetyPoll)stopPV();else startPV(5000);try{var j=JSON.parse(ev.data);if(j&&j.reload&&RUN){location.reload();return;}if(j&&j.values){_liveSrc='ws';for(var k in j.values){var d=j.values[k];if(d&&d.id)applyVal(d.id,d);}}
+      // Grosse Werte kommen nicht mehr mit, nur die Nachricht, dass sie sich geaendert
+      // haben. Geholt wird ausschliesslich, was diese Seite auch zeigt.
+      if(j&&j.changed&&j.changed.length){if(!_vidx)buildVidx();
+        var _n=j.changed.filter(function(i){return _vidx&&_vidx[i];});if(_n.length)holeWerte(_n);}if(j&&j.media&&j.media.length)j.media.forEach(function(mid){refreshMedia(mid);});}catch(e){}}; // Werte + Kamera-Medien-Push
+    _ws.onopen=function(){_aboSig='';wsAbo();};   // frische Verbindung -> Abo neu melden
+    _ws.onclose=function(){_wsOK=false;_aboSig='';startPV(1200);_wsTries++;
       if(!_wsGood){_wsIdx++;_wsWhy='WebSocket ohne Antwort ueber '+u+', versuche naechste Adresse.';} // nie etwas empfangen -> naechster Kandidat
       setTimeout(wsConnect,Math.min(30000,2000*_wsTries));}; // Backoff 2s,4s,6s... gedeckelt auf 30s, ohne Obergrenze der Versuche
     _ws.onerror=function(){try{_ws.close();}catch(e){}};

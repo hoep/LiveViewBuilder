@@ -118,6 +118,34 @@ Nicht mehr benötigte Abos werden abbestellt (Abgleich Ist/Soll über `GetMessag
 Der Merged Store macht View-Namen je Ordner eindeutig (`<name>@<dir>`), um Kollisionen
 über mehrere View-Ordner zu vermeiden.
 
+## Was NICHT hinausgeht
+
+Ein Push, der jede Aenderung an jeden Browser schickt, wird mit der Anlage groesser, nicht
+mit der Seite. Gemessen am 19.09.2026 an einem mitlesenden Client: **29 Nachrichten/s,
+24,7 KB/s** - davon brauchte die Lichtseite **0,3 % der Nachrichten und praktisch 0 % der
+Bytes**. Drei Filter, von innen nach aussen:
+
+**1. Nur echte Aenderungen.** Viele Module schreiben ihre Variablen bei jedem Abruf neu,
+auch wenn sich nichts geaendert hat (`VariableUpdated` wandert, `VariableChanged` nicht).
+Eine einzige Protokolltabelle von 97 kB machte so ueber die Haelfte des gesamten Verkehrs
+aus. Der Client verliert dabei nichts: er haelt ohnehin nur den letzten Wert und vermerkt
+den Aenderungszeitpunkt erst, wenn der Wert sich unterscheidet.
+
+**2. Grosse Werte nur ankuendigen.** Ueberschreitet ein Rahmen `MAX_NUTZLAST` (8 kB), geht
+statt des Wertes nur `{ts, changed:[id]}` hinaus. Wer die Variable anzeigt, holt sie ueber
+den gewoehnlichen Wertabruf nach - wer nicht, hat nichts zu tun. Tabellen- und
+Protokollvariablen gehoeren fast immer auf genau eine Seite.
+
+**3. Je Client nur, was seine Seite bindet.** Der Client meldet nach dem Verbinden
+`{"ids":[...]}`; der Server merkt sich die Menge und ueberspringt beim Senden jeden
+Client, den die Aenderung nicht betrifft. Das Abo wird bei jedem Seitenwechsel
+nachgezogen. **Ein Client, der nichts meldet, bekommt weiterhin alles** - aeltere Clients
+verhalten sich also unveraendert.
+
+Messung danach, derselbe Aufbau: ohne Abo **11,6 Nachrichten/s und 2,0 KB/s**, mit dem Abo
+einer echten Seite **4,2 Nachrichten/s und 0,37 KB/s** - und davon betraf jede einzelne
+Nachricht das Abo.
+
 ## Besondere Hinweise
 
 - **Gleiche-Instanz-Prinzip:** Clientliste-Pflege (`ReceiveData`) und Broadcast

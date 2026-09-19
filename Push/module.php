@@ -18,6 +18,9 @@ class LiveViewBuilderPush extends IPSModule
 {
     private const IO = '{C8792760-65CF-4C53-B5C7-A30FCC84FEFE}'; // Server-Socket-Datenschnittstelle (Parent)
 
+    /** Ab dieser Rahmengroesse wird ein Wert nur noch ANGEKUENDIGT statt mitgeschickt. */
+    private const MAX_NUTZLAST = 8192;
+
     public function Create()
     {
         parent::Create();
@@ -62,26 +65,35 @@ class LiveViewBuilderPush extends IPSModule
         }
         if ($Message === VM_UPDATE) {
             $id = (int) $SenderID;
-            // Die Geraetemodule schreiben ihre Variablen bei JEDEM Abruf neu, auch wenn sich
-            // nichts geaendert hat (VariableUpdated wandert, VariableChanged nicht). Ungefiltert
-            // waeren das bei elf Audiozonen im 5-Sekunden-Takt rund zwanzig Meldungen je Sekunde
-            // ueber den WebSocket - fuer Werte, die gleich geblieben sind. Fuer die abonnierten
-            // Geraetevariablen zaehlt deshalb nur die echte Aenderung; alle uebrigen Bindungen
-            // verhalten sich unveraendert.
-            if ($this->istEntityVar($id)) {
-                $v = @IPS_GetVariable($id);
-                if (is_array($v) && (int) $v['VariableUpdated'] !== (int) $v['VariableChanged']) {
-                    return;
-                }
+            // NUR ECHTE AENDERUNGEN. Viele Module schreiben ihre Variablen bei jedem Abruf neu,
+            // auch wenn sich nichts geaendert hat (VariableUpdated wandert, VariableChanged
+            // nicht). Der Filter galt zuerst nur fuer Geraetevariablen; gemessen am 19.09.2026
+            // lag der Grund dafuer aber woanders: EINE Tabellenvariable von 97 kB wurde
+            // mehrmals je Minute unveraendert neu geschrieben und machte damit ueber die
+            // Haelfte des gesamten Push-Verkehrs aus - an jeden Browser, auf jeder Seite.
+            // Der Client verliert dabei nichts: er haelt ohnehin nur den letzten Wert und
+            // vermerkt den Aenderungszeitpunkt erst, wenn der Wert sich unterscheidet.
+            $v = @IPS_GetVariable($id);
+            if (is_array($v) && (int) $v['VariableUpdated'] !== (int) $v['VariableChanged']) {
+                return;
             }
-            $this->broadcast(json_encode([
-                'ts'     => time(),
-                'values' => [(string) $id => ['v' => GetValue($id), 'f' => @GetValueFormatted($id), 'id' => $id]],
-            ]));
+            $wert = GetValue($id);
+            $satz = ['v' => $wert, 'f' => @GetValueFormatted($id), 'id' => $id];
+            $nutz = json_encode(['ts' => time(), 'values' => [(string) $id => $satz]]);
+            // GROSSE WERTE NICHT VERTEILEN. Eine Protokolltabelle als JSON-String gehoert auf
+            // genau eine Seite, wird aber an jeden Client geschickt, der gerade irgendetwas
+            // anschaut - samt Empfang und JSON.parse auf einem Tablet. Ab der Grenze geht
+            // deshalb nur die NACHRICHT hinaus, dass sich die Variable geaendert hat; wer sie
+            // anzeigt, holt sie sich ueber den gewoehnlichen Wertabruf.
+            if (strlen($nutz) > self::MAX_NUTZLAST) {
+                $this->broadcast(json_encode(['ts' => time(), 'changed' => [$id]]), [$id]);
+                return;
+            }
+            $this->broadcast($nutz, [$id]);
             return;
         }
         if (defined('MM_UPDATE') && $Message === MM_UPDATE) {
-            $this->broadcast(json_encode(['ts' => time(), 'media' => [(int) $SenderID]]));
+            $this->broadcast(json_encode(['ts' => time(), 'media' => [(int) $SenderID]]));  // Medien ohne ID-Filter
             return;
         }
     }
@@ -125,14 +137,86 @@ class LiveViewBuilderPush extends IPSModule
             $this->SetBuffer('clients', json_encode($clients));
             return '';
         }
-        // WS-Frame vom Client -> nur Close-Frame beachten (Rest ignorieren, z. B. 'hello')
-        if ((ord($buf[0]) & 0x0F) === 0x8) {
-            if (isset($clients[$key])) {
-                unset($clients[$key]);
-                $this->SetBuffer('clients', json_encode($clients));
+        // WS-Rahmen vom Client. Bisher wurde alles ausser dem Close-Frame verworfen; seit
+        // der Client seine Seiten-IDs meldet, muessen Textrahmen wirklich gelesen werden.
+        // Der Server-Socket liefert keine Rahmengrenzen, sondern Bytes: angefallenes wird
+        // je Client zwischengelagert, bis ein vollstaendiger Rahmen darin steht.
+        if (!isset($clients[$key])) {
+            return '';                      // Daten ohne Handschlag - nicht unser Client
+        }
+        $rest = base64_decode((string) ($clients[$key]['rx'] ?? '')) . $buf;
+        $zu   = false;
+        while (($r = $this->wsDecode($rest)) !== null) {
+            if ($r['op'] === 0x8) { $zu = true; break; }
+            if ($r['op'] === 0x1 || $r['op'] === 0x2) {
+                $j = json_decode($r['nutz'], true);
+                if (is_array($j) && isset($j['ids']) && is_array($j['ids'])) {
+                    // Als Schluessel ablegen: der Vergleich im Broadcast ist dann ein
+                    // isset() statt einer Suche ueber mehrere hundert Eintraege.
+                    $m = [];
+                    foreach ($j['ids'] as $i) {
+                        $i = (int) $i;
+                        if ($i > 0) { $m[(string) $i] = 1; }
+                    }
+                    $clients[$key]['ids'] = $m;
+                }
             }
         }
+        if ($zu) {
+            unset($clients[$key]);
+        } else {
+            // Angebrochenen Rest aufheben, aber nicht unbegrenzt: ein Client, der Unsinn
+            // schickt, darf den Puffer nicht volllaufen lassen.
+            $clients[$key]['rx'] = (strlen($rest) > 65536) ? '' : base64_encode($rest);
+        }
+        $this->SetBuffer('clients', json_encode($clients));
         return '';
+    }
+
+    /**
+     * Einen vollstaendigen WS-Rahmen vom Anfang des Puffers nehmen.
+     *
+     * Client-Rahmen sind IMMER maskiert (RFC 6455). Steht noch kein vollstaendiger
+     * Rahmen im Puffer, bleibt der Puffer unangetastet und es kommt null zurueck.
+     *
+     * @return array{op:int,nutz:string}|null
+     */
+    private function wsDecode(string &$puffer): ?array
+    {
+        $n = strlen($puffer);
+        if ($n < 2) {
+            return null;
+        }
+        $op   = ord($puffer[0]) & 0x0F;
+        $mask = (ord($puffer[1]) & 0x80) !== 0;
+        $len  = ord($puffer[1]) & 0x7F;
+        $k    = 2;
+        if ($len === 126) {
+            if ($n < 4) { return null; }
+            $len = unpack('n', substr($puffer, 2, 2))[1];
+            $k   = 4;
+        } elseif ($len === 127) {
+            if ($n < 10) { return null; }
+            $len = unpack('J', substr($puffer, 2, 8))[1];
+            $k   = 10;
+        }
+        $mk = '';
+        if ($mask) {
+            if ($n < $k + 4) { return null; }
+            $mk = substr($puffer, $k, 4);
+            $k += 4;
+        }
+        if ($n < $k + $len) {
+            return null;
+        }
+        $nutz = substr($puffer, $k, $len);
+        if ($mask) {
+            for ($i = 0; $i < $len; $i++) {
+                $nutz[$i] = chr(ord($nutz[$i]) ^ ord($mk[$i % 4]));
+            }
+        }
+        $puffer = substr($puffer, $k + $len);
+        return ['op' => $op, 'nutz' => $nutz];
     }
 
     // Registrierungen aus layouts.json neu ziehen (Timer + manuell: LVBP_Sync(<id>)).
@@ -151,7 +235,20 @@ class LiveViewBuilderPush extends IPSModule
     }
 
     // ===== intern =====
-    private function broadcast(string $payload): void
+    /**
+     * An alle Clients senden - oder nur an die, die diese IDs ueberhaupt anzeigen.
+     *
+     * Ein Client meldet nach dem Verbinden, welche Variablen seine SEITE bindet
+     * (siehe ReceiveData). Gemessen am 19.09.2026 brauchte die Lichtseite 0,3 % der
+     * Nachrichten und praktisch 0 % der Bytes, die sie bekam - alles uebrige hat sie
+     * empfangen, entpackt und weggeworfen.
+     *
+     * Wer nichts gemeldet hat, bekommt weiterhin alles: aeltere Clients und die
+     * Medien-Meldung sollen sich unveraendert verhalten.
+     *
+     * @param list<int>|null $ids Variablen, um die es geht; null = nicht filterbar
+     */
+    private function broadcast(string $payload, ?array $ids = null): void
     {
         $clients = json_decode($this->GetBuffer('clients'), true);
         if (!is_array($clients) || !$clients) {
@@ -159,6 +256,15 @@ class LiveViewBuilderPush extends IPSModule
         }
         $frame = $this->wsEncode($payload);
         foreach ($clients as $c) {
+            if ($ids !== null && !empty($c['ids']) && is_array($c['ids'])) {
+                $treffer = false;
+                foreach ($ids as $i) {
+                    if (isset($c['ids'][(string) $i])) { $treffer = true; break; }
+                }
+                if (!$treffer) {
+                    continue;
+                }
+            }
             $this->sendRaw((string) $c['ip'], (int) $c['port'], $frame);
         }
     }
