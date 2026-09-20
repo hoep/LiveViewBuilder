@@ -780,6 +780,31 @@ if ($api === 'hmmsg') {
     header('Content-Type: application/json; charset=utf-8');
     $ip = (string) ($_GET['ip'] ?? '');
     if (!LVB_HmPrivateIp($ip)) { echo json_encode(['error' => 'ip', 'messages' => []]); return; }
+
+    // Seit 19.09.2026 ist HomeSuite DeviceHealth die Quelle: es fragt die CCU ohnehin im
+    // Takt ab und legt das Ergebnis in einer Variablen ab. Vorher schickte JEDER Poll
+    // dieses Widgets zwei XML-RPC-Aufrufe an die CCU - bei mehreren offenen Ansichten
+    // summiert sich das. Der eigene Weg unten bleibt als Rueckfall stehen, falls das Modul
+    // fehlt oder laenger nichts geliefert hat.
+    $hsdh = @IPS_GetInstanceListByModuleID('{76B650A1-98ED-4B9D-8C86-ED3D6C2C95A7}');
+    if (is_array($hsdh) && $hsdh) {
+        $vid = @IPS_GetObjectIDByIdent('CcuMessages', $hsdh[0]);
+        $j = ($vid !== false) ? json_decode((string) @GetValue($vid), true) : null;
+        // Aelter als zwei Scan-Takte heisst: dort laeuft etwas nicht - dann lieber selbst fragen.
+        if (is_array($j) && isset($j['messages'], $j['ts']) && (time() - (int) $j['ts']) < 2400) {
+            $sel = strtolower((string) ($_GET['if'] ?? ''));
+            $msgs = $j['messages'];
+            if ($sel !== '' && $sel !== 'bidcos,hmip' && $sel !== 'hmip,bidcos') {
+                $msgs = array_values(array_filter($msgs, function ($m) use ($sel) {
+                    $i = strtolower((string) ($m['iface'] ?? ''));
+                    return (strpos($sel, 'bidcos') !== false && strpos($i, 'bidcos') !== false)
+                        || (strpos($sel, 'hmip') !== false && strpos($i, 'hmip') !== false);
+                }));
+            }
+            echo json_encode(['messages' => $msgs, 'count' => count($msgs), 'src' => 'devicehealth']);
+            return;
+        }
+    }
     // Typ -> Severity-Chip des bestehenden Widgets (gleiche Farben/Filter)
     $sevMap = ['ERROR' => 'ERROR', 'FAULT_REPORTING' => 'ERROR', 'SABOTAGE' => 'ERROR',
         'UNREACH' => 'WARNING', 'STICKY_UNREACH' => 'WARNING', 'LOWBAT' => 'WARNING', 'LOW_BAT' => 'WARNING',
@@ -820,6 +845,14 @@ if ($api === 'hmack') {
     $addr = preg_replace('/[^A-Za-z0-9:_-]/', '', (string) ($_GET['addr'] ?? ''));
     $type = preg_replace('/[^A-Z_]/', '', (string) ($_GET['type'] ?? ''));
     if ($addr === '' || $type === '') { echo json_encode(['error' => 'param']); return; }
+    // Ueber DeviceHealth quittieren, wenn es da ist: dort steht dieselbe ReGaHss-Logik, und
+    // das Modul zieht anschliessend gleich seine Anzeige nach (sonst haengt die Kachel bis
+    // zum naechsten Scan auf der eben bestaetigten Meldung).
+    $hsdh = @IPS_GetInstanceListByModuleID('{76B650A1-98ED-4B9D-8C86-ED3D6C2C95A7}');
+    if (is_array($hsdh) && $hsdh && function_exists('HSDH_Bestaetigen')) {
+        echo json_encode(['ok' => (bool) @HSDH_Bestaetigen($hsdh[0], $addr, $type), 'src' => 'devicehealth']);
+        return;
+    }
     $r = LVB_HmRega($ip, 'var o=dom.GetObject("AL-' . $addr . '.' . $type . '");if(o){o.AlReceipt();WriteLine("ok");}else{WriteLine("no");}');
     echo json_encode(['ok' => ($r !== null && strpos($r, 'ok') !== false)]);
     return;
