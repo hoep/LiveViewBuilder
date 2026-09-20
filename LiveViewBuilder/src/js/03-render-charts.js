@@ -1817,10 +1817,17 @@
         if(seite==='u')s.b+=Math.max(0,gap-16)+fs+4;else s.t+=fs+6;
       }
     }
+    // Liegende Balken drehen die WERTachse nach unten/oben (_hbLine). Wer sie hier weiter
+    // als senkrechte Achse behandelt, reserviert den Titelstreifen OBEN, waehrend der Titel
+    // unten gezeichnet wird - gemessen 25 px toter Streifen zwischen Kacheltitel und erstem
+    // Balken, und unten fehlte der Platz, den _hbLine dann pauschal nachlegen musste.
+    var liegend=!!(w.barHoriz&&((w.ctype||'')==='bar'||(w.ctype||'')==='barstack'));
     // Alte Kacheln ohne yAxes-Liste tragen ihre Einheit in yunit/unit - die steht oben.
     var yl=(w.yAxes&&w.yAxes.length)?w.yAxes:null;
-    if(yl)yl.forEach(function(a){eintragen(a,true,(a&&a.side==='R'));});
-    else if(((w.yunit||'')!=='')||((w.unit||'')!==''))s.t+=fs+6;
+    if(yl)yl.forEach(function(a){
+      if(liegend)eintragen({name:a&&a.name,nLoc:'middle',nGap:(a&&a.nGap),nSide:((a&&a.side==='R')?'o':'u')},false,false);
+      else eintragen(a,true,(a&&a.side==='R'));});
+    else if(((w.yunit||'')!=='')||((w.unit||'')!==''))s[liegend?'b':'t']+=fs+6;
     eintragen({name:w.xname,nLoc:w.xnLoc,nRot:w.xnRot,nGap:w.xnGap,nSide:w.xnSide},false,false);
     return s;
   }
@@ -1864,6 +1871,18 @@
   }
   // Perioden-Navigation (‹ jetzt ›) liegt als HTML UEBER dem Diagramm, unten links.
   // Masse gespiegelt aus widgets/chart.js: Knopf clamp(20px,8cqmin,30px), Abstand clamp(4px,2cqmin,10px).
+  // Waagrechter Platzbedarf der Perioden-Navigation. Die Masse stammen aus widgets/chart.js
+  // (zwei Knoepfe mit clamp-Breite, dazwischen die Marke mit min-width) - dieselben clamps,
+  // damit beide Seiten bei jeder Kachelgroesse dasselbe meinen.
+  function _navBreite(w){
+    if(_navSpace(w)<=0)return 0;
+    var cq=Math.min((w&&w.w)||300,(w&&w.h)||180)/100;
+    var kn=Math.max(20,Math.min(30,8*cq)),                    // Knopfbreite ~ Knopfhoehe
+        mk=Math.max(30,Math.min(48,12*cq)),                   // Marke "jetzt"
+        lk=Math.max(6,Math.min(12,2.5*cq)),                   // linker Abstand
+        gp=Math.max(4,Math.min(8,2*cq));                      // Luecken
+    return Math.round(lk+kn+gp+mk+gp+kn+8);
+  }
   function _navSpace(w){
     var ct=(w&&w.ctype)||'area';
     if(!w||!w.pnav||ct==='spark'||ct==='waterfall'||ct==='barrace')return 0;
@@ -1909,9 +1928,25 @@
     // Liegende Balken: die WERT-Achse liegt unten (x). Ihre rechteste Beschriftung (groesster Wert,
     // z. B. „1.234") sitzt am rechten Rand und wird von containLabel horizontal nicht abgedeckt ->
     // ohne Legende rechts hier 28px Luft reservieren, sonst uebernimmt die Legende den Rand.
+    // Unterer Rand: frueher ein fester Sockel (16 px) PLUS 16 px Achsentitel PLUS der
+    // Navigationsstreifen PLUS - ueber _chStrips - der Legendenstreifen. Vier Summanden fuer
+    // EINE Kante, obwohl containLabel die Skalenwerte schon abdeckt, _axNameStrips den
+    // Achsentitel jetzt selbst unten fuehrt und Navigation und Legende nebeneinander in
+    // derselben Zeile sitzen (Knoepfe links, Legende mittig). Gemessen waren dadurch 55 von
+    // 294 px der Kachel leer. Jetzt: schmaler Sockel, und Navigation/Legende teilen sich die
+    // Zeile ueber max() statt sie zu summieren.
+    var _legU=_legBox(w,!!w.legend),
+        _legUnten=(_legU.on&&!w.legFloat&&!_legU.vert&&_ancV(_legAnc(w))==='u'),
+        _legH=_legUnten?(_legU.h+4):0,
+        _navH=_navSpace(w),
+        _unten=(w.zoom?34:4)+Math.max(0,nB-1)*34+Math.max(_legH,_navH);
+    // legOn=false: der Legendenstreifen steckt bereits in _unten, sonst zaehlte er doppelt.
     opt.grid=_chGrid(w,{l:6,r:28,
       t:6+Math.max(0,nT-1)*34+_annTopSpace(w),
-      b:(w.zoom?34:16)+Math.max(0,nB-1)*34+(_hbName?16:0)+_navSpace(w)});
+      b:_unten},_legUnten?false:null);
+    // Stehen Knoepfe UND Legende in derselben Zeile, darf die mittig gesetzte Legende nicht
+    // unter die Knoepfe rutschen - sie beginnt deshalb rechts von ihnen.
+    if(_legUnten&&_navH>0&&opt.legend&&!opt.legend.left)opt.legend.left=_navBreite(w);
     (opt.series||[]).forEach(function(s){
       if(s.data&&s.data.length&&Array.isArray(s.data[0]))s.data=s.data.map(function(p){return p[1];}); // Kategorie = Index -> nur Wert
       if(s.yAxisIndex!=null){s.xAxisIndex=s.yAxisIndex;delete s.yAxisIndex;}
