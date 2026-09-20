@@ -2463,6 +2463,13 @@ if ($api === 'mower') {
                 'recMow' => ($recVid > 0 ? (bool) @GetValue($recVid) : false),
                 'recText' => ($recVid > 0 ? (string) @GetValueFormatted($recVid) : ''),
                 'mission' => (string) $val($iid, 'Mission'),
+                // Fortschritt des gerade bearbeiteten Bereichs. -1 = keine Aussage (Variable
+                // fehlt oder der Maeher nennt gerade keinen Bereich) - 0 waere eine Luege,
+                // denn 0 % heisst "noch nicht angefangen".
+                'missionProgress' => (function () use ($iid) {
+                    $vid = @IPS_GetObjectIDByIdent('MissionProgress', $iid);
+                    return $vid ? (int) @GetValue($vid) : -1;
+                })(),
                 'chargingCycles' => (int) $val($iid, 'ChargingCycles'),
                 'bladeHours' => (int) $val($iid, 'BladeHours'),
                 'searchHours' => (int) $val($iid, 'SearchHours'),

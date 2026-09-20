@@ -22,6 +22,8 @@
     // Aktivitätscode -> Zustands-Icon (0 unbek,2 mäht,3 fährt heim,4 lädt,5 verlässt,6 in Ladestation,7 gestoppt)
     function stIcon(a){ if(a===4||a===6)return ICHG; if(a===7)return IWARNM; return IMOWER; }
     var HLLBL=['Immer an','Immer aus','Nur abends','Abends & nachts'];
+    // Arbeitsbereich (Flaeche mit Schnittbahn) - fuer den Fortschritt in der Infozeile.
+    var IAREA='<svg viewBox="0 0 24 24"><path d="M3 6.5l6-2.5 6 2.5 6-2.5v13l-6 2.5-6-2.5-6 2.5z"/><path d="M9 4v13"/><path d="M15 6.5v13"/></svg>';
 
     var _botM={}, _botPoll={}, _botMowers=null;
 
@@ -31,6 +33,18 @@
       var info='<span class="ii"><span class="ondot"'+(m.online?'':' style="background:var(--faint)"')+'></span>'+(m.online?'Online':'Offline')+'</span>';
       if(m.inChargingStation)info+='<span class="sep">·</span><span class="ii">'+IBOLT+'Geladen</span>';
       if(m.nextStartText&&+m.nextStart>0)info+='<span class="sep">·</span><span class="ii">'+ICLK+'Nächster Start <b>'+esc(m.nextStartText)+'</b></span>';
+      // Fortschritt des gerade bearbeiteten Arbeitsbereichs - dieselbe Zahl wie in der
+      // Husqvarna-App. Gezeigt nur, wenn wirklich ein BEREICH erkannt wurde: solange der
+      // Maeher keinen nennt, traegt 'mission' den Modus, und "Bereich: Mähen nach Plan 0 %"
+      // waere eine Aussage ueber nichts. -1 heisst ausdruecklich "keine Angabe".
+      var mpg=(m.missionProgress==null)?-1:+m.missionProgress, mar=String(m.mission||'');
+      if(mpg>=0&&mar&&mar!==String(m.mode||'')){
+        var mpc=Math.max(0,Math.min(100,mpg));
+        info+='<span class="sep">·</span><span class="ii">'+IAREA+esc(mar)
+            +'<span style="display:inline-block;width:2.6em;height:.45em;border-radius:.25em;background:var(--line);overflow:hidden;vertical-align:middle;margin:0 .15em">'
+            +'<i style="display:block;height:100%;width:'+mpc+'%;background:var(--acc);border-radius:.25em"></i></span>'
+            +'<b>'+mpc+' %</b></span>';
+      }
       // Der Akzent bedeutet auf dieser Karte ZUSTAND - das Automatik-Segment darunter faerbt
       // damit seine gewaehlte Stufe (.autoseg button.on, gleiche Farbe). Frueher trug 'Mähen'
       // das pri-Flag FEST VERDRAHTET und sah dadurch aus wie eine Auswahl: bei geparktem
