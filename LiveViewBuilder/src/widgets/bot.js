@@ -41,8 +41,8 @@
       if(mpg>=0&&mar&&mar!==String(m.mode||'')){
         var mpc=Math.max(0,Math.min(100,mpg));
         info+='<span class="sep">·</span><span class="ii">'+IAREA+esc(mar)
-            +'<span style="display:inline-block;width:2.6em;height:.45em;border-radius:.25em;background:var(--line);overflow:hidden;vertical-align:middle;margin:0 .15em">'
-            +'<i style="display:block;height:100%;width:'+mpc+'%;background:var(--acc);border-radius:.25em"></i></span>'
+            +'<span style="flex:0 0 auto;display:inline-block;width:2.6em;height:.45em;border-radius:.25em;background:var(--line);overflow:hidden;vertical-align:middle;margin:0 .15em">'
+            +'<i style="display:block;height:100%;width:'+mpc+'%;min-width:'+(mpc>0?'2px':'0')+';background:var(--accent);border-radius:.25em"></i></span>'
             +'<b>'+mpc+' %</b></span>';
       }
       // Der Akzent bedeutet auf dieser Karte ZUSTAND - das Automatik-Segment darunter faerbt
