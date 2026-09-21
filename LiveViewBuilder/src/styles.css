@@ -2884,6 +2884,7 @@
   .shl-st{font-size:clamp(8.5px,2.8cqmin,13px);font-weight:650;font-style:normal;padding:clamp(1px,.8cqmin,4px) clamp(5px,2.4cqmin,11px);border-radius:999px;white-space:nowrap}
   .shl-st.on{background:color-mix(in oklab,var(--ok) 18%,transparent);color:var(--ok)}
   .shl-st.sh{background:color-mix(in oklab,var(--faint) 20%,transparent);color:var(--faint)}
+  .shl-st.no{background:color-mix(in oklab,var(--crit) 18%,transparent);color:var(--crit)}
   /* Gesamtansicht (alle Domaenen): fuenf Spalten. "Modus" und "Ist->Ziel" sind
      Beschattungsbegriffe und entfallen; dafuer bekommt die Entscheidung im Klartext
      Platz, denn dort steht der eigentliche Inhalt ("Kein Lauf", "Sollwert 12 C"). */
@@ -2898,11 +2899,22 @@
          background:var(--tile);color:var(--text);font-size:clamp(9.5px,3.1cqmin,14px);
          padding:clamp(3px,1.6cqmin,7px) clamp(6px,2.6cqmin,12px)}
   .shl-q::placeholder{color:var(--faint)}
-  /* Sortierbarer Spaltenkopf. Der Pfeil zeigt die aktive Spalte und die Richtung; ohne ihn
-     raet man nach dem ersten Klick, wonach gerade sortiert ist. */
-  .shl-sh{cursor:pointer;user-select:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .shl-sh:hover{color:var(--text)}
-  .shl-sh.on{color:var(--accent)}
+  /* Sortierbarer Spaltenkopf - Optik und Verhalten woertlich wie im table-Widget, damit
+     sich das Log wie eine normale Tabelle anfuehlt und nicht wie ein Sonderfall.
+     Die .tbl-chev-Regeln liegen unter .t-table und greifen hier nicht, deshalb wiederholt. */
+  .shl .tbl-sort{display:inline-flex;align-items:center;gap:clamp(4px,2cqmin,8px);background:none;border:0;
+                 padding:0;margin:0;font:inherit;letter-spacing:inherit;text-transform:inherit;color:inherit;cursor:pointer;
+                 max-width:100%;overflow:hidden}
+  .shl .tbl-chev{display:inline-flex;color:var(--faint);flex:none}
+  .shl .tbl-chev.idle{visibility:hidden}
+  .shl .tbl-sort:hover .tbl-chev{color:var(--muted)}
+  .shl .tbl-sort:hover .tbl-chev.idle{visibility:visible}
+  .shl .tbl-chev.on{color:var(--accent)}
+  /* Kopfzeile und Zeilen wie im table-Widget: Kopf getrennt durch eine volle Linie,
+     Zeilen mit Trennlinie und Hover-Toenung, letzte Zeile ohne Linie. */
+  .shl-all .shl-h{border-top:0;border-bottom:1px solid var(--line)}
+  .shl-all .shl-r:hover:not(.shl-h){background:rgba(127,140,150,.06)}
+  .shl-all .shl-r:last-child{border-bottom:0}
   /* Klassenkollision: der Raumfilter im Kopf ist ein <select class="shl-room"> und traegt
      Rahmen und Kachelgrund - die Raum-ZELLE der Zeile heisst genauso und erbt beides,
      wodurch sie wie ein Eingabefeld aussieht. Sauber waere, die Kopfregel auf

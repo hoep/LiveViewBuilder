@@ -6,7 +6,13 @@
   //  ueber HSSH getLog-Ringpuffer je Rollo). Nur echte Fahrten; Schatten-Modus markiert.
   var _SHL_WHY = {'Sturm':'crit','Sonne':'warm','Zeitplan':'info','Automatik':'muted','Manuell':'accent','Manuell (Stopp)':'accent','Tür blockiert':'warn'};
   function _shlPos(v){ return (v===null||v===undefined||v<0) ? '·' : (v+'%'); }
-  function _shlRoom(r){ return (r||'').replace(/\s*\(Beschattung\)\s*$/,'').trim() || (r||''); }
+  // Nachgestellte Klammergruppen weg: aus "Automower Righty (HSMW) (Maeher)" wird
+  // "Automower Righty". Die Domaene steht ohnehin in ihrer eigenen Spalte, und die
+  // Modulkuerzel sagen dem Leser nichts.
+  function _shlRoom(r){
+    var t=(r||'').replace(/(\s*\([^()]*\))+\s*$/,'').trim();
+    return t || (r||'');
+  }
   function _shlTime(t){
     if(!t) return '';
     var d=_hzD(t*1000), n=_hzJetzt(), p=function(x){return (x<10?'0':'')+x;};
@@ -43,7 +49,8 @@
           var rows=(j&&j.ok&&j.rows)||[];
           w._log=rows.map(function(e){
             return {t:e.t, room:(e.raum||e.geraet||''), was:e.was||'', why:e.warum||'',
-                    dom:e.domaene||'', armed:e.real?1:0, werte:e.werte||null};
+                    dom:e.domaene||'', armed:e.real?1:0,
+                    ok:(e.ok===null||e.ok===undefined)?null:(e.ok?1:0), werte:e.werte||null};
           });
           w._err=(j&&j.ok)?'':'log'; cb&&cb();
         })
@@ -81,9 +88,27 @@
   // Kopfzelle mit Sortierpfeil. Nicht sortierbare Spalten (Ist->Ziel im Beschattungs-Modus
   // gibt es als Zahl, aber "Modus" ist ein Chip) bekommen trotzdem einen Schluessel - die
   // Sortierung nach dem Rohwert ist dort brauchbarer als gar keine.
+  // Chevron-Optik WOERTLICH vom table-Widget uebernommen (.tbl-sort/.tbl-chev): im
+  // Ruhezustand unsichtbar, beim Ueberfahren angedeutet, in Akzentfarbe wenn aktiv. Mein
+  // erster Versuch haengte ▲/▼ an den Text - das wurde von der Ellipsis abgeschnitten und
+  // war im Ruhezustand ueberhaupt nicht zu sehen, man musste also raten, ob die Spalte
+  // sortierbar ist.
+  function _shlChev(st){
+    if(st==='asc') return '<span class="tbl-chev on"><svg style="width:1em;height:1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M18 15l-6-6-6 6"/></svg></span>';
+    if(st==='desc')return '<span class="tbl-chev on"><svg style="width:1em;height:1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span>';
+    return '<span class="tbl-chev idle"><svg style="width:1em;height:1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 9l4-4 4 4"/><path d="M8 15l4 4 4-4"/></svg></span>';
+  }
+  // Drei Zustaende, nicht zwei: "ausgefuehrt" und "geklappt" sind zweierlei. Ein an das
+  // Geraet geschickter Befehl kann abgelehnt werden - stand vorher als "ausgefuehrt" neben
+  // dem Grund "Befehl vom Geraet abgelehnt", ein Widerspruch in derselben Zeile.
+  function _shlStatus(e){
+    if(!e.armed) return '<i class="shl-st sh">Schatten</i>';
+    if(e.ok===0)  return '<i class="shl-st no">fehlgeschlagen</i>';
+    return '<i class="shl-st on">ausgeführt</i>';
+  }
   function _shlKopf(w, titel, k){
-    var akt=(w._sortK===k), pf=akt?(w._sortD===1?' ▲':' ▼'):'';
-    return '<span class="shl-sh'+(akt?' on':'')+'" data-shlsort="'+esc(k)+'">'+escL(titel)+pf+'</span>';
+    var st=(w._sortK===k)?((w._sortD===1)?'asc':'desc'):'idle';
+    return '<span><button class="tbl-sort" data-shlsort="'+esc(k)+'">'+escL(titel)+_shlChev(st)+'</button></span>';
   }
   function _shlPaint(w, el){
     var body=$('[data-role=shl]',el), sel=$('[data-role=shlroom]',el); if(!body)return;
@@ -127,7 +152,7 @@
               + '<span class="shl-room">'+escL(_shlRoom(e.room||''))+'</span>'
               + '<span class="shl-was">'+escL(e.was||'')+'</span>'
               + '<span><i class="shl-why" style="--wc:var(--'+wc+')" title="'+esc(why)+'">'+escL(why)+'</i></span>'
-              + '<span><i class="shl-st '+(e.armed?'on':'sh')+'">'+(e.armed?'ausgeführt':'Schatten')+'</i></span>'
+              + '<span>'+_shlStatus(e)+'</span>'
               + '</div>';
           }).join('') + '</div>';
       return;
