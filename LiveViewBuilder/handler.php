@@ -2152,6 +2152,15 @@ if ($api === 'mold') {
     return;
 }
 
+// ---- Entscheidungsprotokoll aller HomeSuite-Domaenen (frei lesbar) ----
+if ($api === 'decisions') {
+    header('Content-Type: application/json; charset=utf-8');
+    $hub = (int) (@IPS_GetInstanceListByModuleID('{A0C082B4-9E74-430E-BD97-F9CEBB364257}')[0] ?? 0);
+    if ($hub <= 0 || !function_exists('HSH_Manage')) { echo json_encode(['ok' => false, 'err' => 'hub']); return; }
+    echo HSH_Manage($hub, json_encode(['op' => 'decisionLog', 'args' => ['limit' => (int) ($_GET['limit'] ?? 300)]]));
+    return;
+}
+
 if ($api === 'shading') {
     header('Content-Type: application/json; charset=utf-8');
     // Rollo-Kalibrierung adressiert das Rollo ueber seine POSITIONS-Variable (posVid aus op=list),
