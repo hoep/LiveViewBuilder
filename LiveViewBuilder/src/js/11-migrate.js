@@ -29,7 +29,8 @@
     waterfall  : {type:'chart', key:'ctype', val:'waterfall'},
     // --- Altlast frueherer Versionen ---
     powerflow  : {type:'flow'},
-    vacuum     : {type:'bot'}   // umbenannt: Saug-/Maehroboter -> generischer Roboter
+    vacuum     : {type:'bot'},  // umbenannt: Saug-/Maehroboter -> generischer Roboter
+    shadelog   : {type:'log'}   // umbenannt: konnte erst nur Beschattung, jetzt alle Domaenen
   };
   var MIG_MAXD=12; // Sicherheitsnetz gegen zu tiefe/zyklische Strukturen
 

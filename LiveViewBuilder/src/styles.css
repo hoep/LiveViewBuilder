@@ -2893,6 +2893,16 @@
      genau verkehrt herum. Jetzt ist der Grund die breiteste Spalte. */
   .shl-all .shl-r{grid-template-columns:var(--shl-c1) clamp(84px,15cqi,170px) minmax(0,1fr) minmax(0,2.2fr) clamp(76px,15cqi,124px)}
   .shl-was{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
+  /* Suchfeld im Kopf - gleiche Anmutung wie der Raumfilter daneben. */
+  .shl-q{flex:0 1 auto;min-width:0;width:clamp(90px,22cqi,200px);border:1px solid var(--line);border-radius:8px;
+         background:var(--tile);color:var(--text);font-size:clamp(9.5px,3.1cqmin,14px);
+         padding:clamp(3px,1.6cqmin,7px) clamp(6px,2.6cqmin,12px)}
+  .shl-q::placeholder{color:var(--faint)}
+  /* Sortierbarer Spaltenkopf. Der Pfeil zeigt die aktive Spalte und die Richtung; ohne ihn
+     raet man nach dem ersten Klick, wonach gerade sortiert ist. */
+  .shl-sh{cursor:pointer;user-select:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .shl-sh:hover{color:var(--text)}
+  .shl-sh.on{color:var(--accent)}
   /* Klassenkollision: der Raumfilter im Kopf ist ein <select class="shl-room"> und traegt
      Rahmen und Kachelgrund - die Raum-ZELLE der Zeile heisst genauso und erbt beides,
      wodurch sie wie ein Eingabefeld aussieht. Sauber waere, die Kopfregel auf
