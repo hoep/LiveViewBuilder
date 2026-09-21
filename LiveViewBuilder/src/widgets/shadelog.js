@@ -19,8 +19,35 @@
     {t:now-1800, room:'Wohnzimmer Süd', from:-1, to:0,  why:'Sturm',    armed:1, src:'auto'},
     {t:now-3600, room:'Bad',            from:50, to:0,  why:'Zeitplan', armed:0, src:'auto'}
   ];}
+  function _shlAlle(w){ return (w.shlSrc||'shading')==='all'; }
+  // Demo fuer die Doku-Ansicht der Gesamtquelle - dieselben Felder, die ?api=decisions liefert.
+  function _shlDemoAll(){var now=Math.floor(Date.now()/1000);return [
+    {t:now-120,  room:'Buchshecke',   was:'Kein Lauf',        why:'Zeitplan - gesperrt: Regen 5.8 mm (>= 2)', armed:1},
+    {t:now-900,  room:'Esszimmer',    was:'Sollwert 12 C',    why:'Fenster offen (Geräteabsenkung)',          armed:1},
+    {t:now-1800, room:'Wohnzimmer',   was:'Leuchte ein',      why:'Regel "Bewegung Gang"',                    armed:1},
+    {t:now-5400, room:'Blumeninseln', was:'10 min bewässern', why:'Zeitplan',                                 armed:1},
+    {t:now-9000, room:'Schlafzimmer', was:'kühlen auf 22 C',  why:'Zeitplan',                                 armed:0}
+  ];}
   function _shlFetch(w, cb){
-    if(typeof DOKU!=='undefined'&&DOKU){ w._log=_shlDemo(); cb&&cb(); return; }
+    var alle=_shlAlle(w);
+    if(typeof DOKU!=='undefined'&&DOKU){ w._log=alle?_shlDemoAll():_shlDemo(); cb&&cb(); return; }
+    if(alle){
+      // Gesamtquelle: die Ringpuffer ALLER HomeSuite-Instanzen ueber den Hub.
+      // Felder auf das Beschattungs-Schema abbilden, damit Filter und Zeichnen
+      // eine einzige Fassung bleiben.
+      fetch('?api=decisions&limit='+(w.max||300),{cache:'no-store'})
+        .then(function(r){return r.json();})
+        .then(function(j){
+          var rows=(j&&j.ok&&j.rows)||[];
+          w._log=rows.map(function(e){
+            return {t:e.t, room:(e.raum||e.geraet||''), was:e.was||'', why:e.warum||'',
+                    armed:e.real?1:0, werte:e.werte||null};
+          });
+          w._err=(j&&j.ok)?'':'log'; cb&&cb();
+        })
+        .catch(function(){ w._log=w._log||[]; w._err='net'; cb&&cb(); });
+      return;
+    }
     fetch('?api=shading&op=log&limit='+(w.max||300),{cache:'no-store'})
       .then(function(r){return r.json();})
       .then(function(j){ w._log=(j&&j.ok&&j.entries)||[]; w._err=(j&&j.ok)?'':'log'; cb&&cb(); })
@@ -42,6 +69,24 @@
     // .shl-body gescrollt (das hat schon overflow:auto) statt die Spalten zu zerquetschen -
     // die Kachel selbst scrollt dadurch nie waagrecht. Bewusst KEIN zusaetzlicher Behaelter
     // drumherum: der wuerde den klebenden Kopf (.shl-h, position:sticky) vom Scrollport loesen.
+    if(_shlAlle(w)){
+      // Vier Spalten statt sechs: Modus und Ist→Ziel sind Beschattungsbegriffe. Was eine
+      // Heizzone oder ein Bewaesserungskreis entschieden hat, steht im Klartext in "Was".
+      body.innerHTML='<div class="shl-tbl shl-tblmin shl-all"><div class="shl-r shl-h"><span>Zeit</span><span>Raum</span><span>Entscheidung</span><span>Grund</span><span>Status</span></div>'
+        + rows.map(function(e){
+            var why=e.why||'', wc=_SHL_WHY[why.split(' ')[0]]||'muted';
+            // Gesperrt ist keine Fahrt, sondern eine Verhinderung - das soll man sehen.
+            if(/gesperrt|Fenster offen/i.test(why)) wc='warn';
+            return '<div class="shl-r">'
+              + '<span class="shl-t">'+esc(_shlTime(e.t))+'</span>'
+              + '<span class="shl-room">'+escL(_shlRoom(e.room||''))+'</span>'
+              + '<span class="shl-was">'+escL(e.was||'')+'</span>'
+              + '<span><i class="shl-why" style="--wc:var(--'+wc+')" title="'+esc(why)+'">'+escL(why)+'</i></span>'
+              + '<span><i class="shl-st '+(e.armed?'on':'sh')+'">'+(e.armed?'ausgeführt':'Schatten')+'</i></span>'
+              + '</div>';
+          }).join('') + '</div>';
+      return;
+    }
     body.innerHTML='<div class="shl-tbl shl-tblmin"><div class="shl-r shl-h"><span>Zeit</span><span>Raum</span><span>Modus</span><span>Ist→Ziel</span><span>Grund</span><span>Status</span></div>'
       + rows.map(function(e){
           var why=e.why||'', wc=_SHL_WHY[why]||'muted', manual=(e.src==='manuell');
@@ -61,7 +106,8 @@
     defaults:function(w){w.max=300;},
     render:function(w){
       return '<div class="shl">'
-        + '<div class="shl-head"><div class="shl-ttl">Beschattung · Entscheidungen & Befehle</div>'
+        + '<div class="shl-head"><div class="shl-ttl">'
+        + (_shlAlle(w) ? 'Entscheidungen · alle Domänen' : 'Beschattung · Entscheidungen &amp; Befehle') + '</div>'
         + '<select class="shl-room" data-role="shlroom"><option value="">Alle Räume</option></select>'
         + '<button class="shl-ref" data-role="shlref" title="Aktualisieren">↻</button></div>'
         + '<div class="shl-body" data-role="shl"><div class="shl-empty">lädt …</div></div></div>';
@@ -72,10 +118,14 @@
       var rf=$('[data-role=shlref]',el); if(rf)rf.onclick=function(){var b=$('[data-role=shl]',el);if(b)b.innerHTML='<div class="shl-empty">lädt …</div>';_shlLoad(w,el);};
     },
     props:function(w){if(w.type!=='shadelog')return '';
-      return row('Max. Einträge','<input id="pShlMax" type="number" min="20" max="1000" step="20" value="'+(w.max||300)+'">')
-        +'<div style="font-size:11px;color:var(--muted);margin:4px 2px">Gesamtlog aller Rollos (Automatik-Entscheidungen + manuelle Befehle) über den Hub. Nur echte Fahrten; Schatten-Modus wird markiert.</div>';
+      return row('Quelle','<select id="pShlSrc">'
+          +'<option value="shading"'+((w.shlSrc||'shading')==='shading'?' selected':'')+'>nur Beschattung</option>'
+          +'<option value="all"'+(w.shlSrc==='all'?' selected':'')+'>alle Domänen</option></select>')
+        + row('Max. Einträge','<input id="pShlMax" type="number" min="20" max="1000" step="20" value="'+(w.max||300)+'">')
+        +'<div style="font-size:11px;color:var(--muted);margin:4px 2px">Mit \u201ealle Dom\u00e4nen\u201c stehen hier die Entscheidungen von Heizung, Bew\u00e4sserung, Klima und Lichtautomatik nebeneinander \u2013 jeweils mit Grund und der Markierung, ob ausgef\u00fchrt oder nur berechnet (Schatten). Sonst: Gesamtlog aller Rollos (Automatik-Entscheidungen + manuelle Befehle) über den Hub. Nur echte Fahrten; Schatten-Modus wird markiert.</div>';
     },
-    wire:function(w){ if($('#pShlMax'))$('#pShlMax').oninput=function(){w.max=Math.max(20,Math.min(1000,parseInt(this.value)||300));commit();}; }
+    wire:function(w){ if($('#pShlMax'))$('#pShlMax').oninput=function(){w.max=Math.max(20,Math.min(1000,parseInt(this.value)||300));commit();};
+      if($('#pShlSrc'))$('#pShlSrc').onchange=function(){w.shlSrc=(this.value==='all')?'all':undefined;w._log=null;w._room='';commit();}; }
   });
   // Periodischer Refresh (wie msglog): alle laufenden shadelog-Widgets neu laden.
   setInterval(function(){
