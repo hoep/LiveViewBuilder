@@ -2890,6 +2890,11 @@
   /* Pager in der Kopfzeile. Die .tbl-*-Regeln liegen unter .t-table und greifen hier
      nicht, deshalb wiederholt - bewusst mit denselben Massen, damit sich das Blaettern
      ueberall gleich anfuehlt. */
+  /* Domaenen-Pills: dieselbe Optik wie der Symcon/HM-Umschalter (.hmsgsw), aber mit
+     beliebig vielen Eintraegen - deshalb umbruchfaehig statt flex:none, sonst schiebt
+     die zehnte Domaene den Rest aus der Kopfzeile. */
+  .shl .shl-dom{flex:0 1 auto;flex-wrap:wrap;border-radius:8px;max-width:58%}
+  .shl .shl-dom span{white-space:nowrap}
   .shl .tbl-pager{display:inline-flex;align-items:center;gap:clamp(4px,2cqmin,9px)}
   .shl .tbl-pager:empty{display:none}
   .shl .tbl-pgtxt{font-family:var(--fm);font-size:clamp(9px,2.6cqmin,13px);color:var(--muted);white-space:nowrap}

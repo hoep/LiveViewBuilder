@@ -130,13 +130,17 @@
       sel.innerHTML='<option value="">Alle Räume ('+log.length+')</option>'+rooms.map(function(r){return '<option value="'+esc(r)+'"'+(r===cur?' selected':'')+'>'+escL(_shlRoom(r))+'</option>';}).join('');
     }
     // Domaenen-Auswahl aus den Daten fuellen (wie der Raumfilter), Auswahl erhalten.
+    // Domaenen als Pill-Leiste (Optik wie der Symcon/HM-Umschalter im Meldungs-Widget):
+    // eine Klappliste verbirgt, WELCHE Domaenen ueberhaupt etwas entschieden haben - die
+    // Pills zeigen es samt Anzahl auf einen Blick, und ein Tipp filtert.
     var dsel=$('[data-role=shldom]',el);
     if(dsel){
       var doms=[]; log.forEach(function(e){ if(e.dom&&doms.indexOf(e.dom)<0)doms.push(e.dom); }); doms.sort();
       var dcur=w._dom||'';
-      dsel.innerHTML='<option value="">Alle Domänen ('+log.length+')</option>'
+      dsel.innerHTML='<span class="'+(dcur===''?'on':'')+'" data-dom="">Alle '+log.length+'</span>'
         + doms.map(function(x){ var n=log.filter(function(e){return e.dom===x;}).length;
-            return '<option value="'+esc(x)+'"'+(x===dcur?' selected':'')+'>'+escL(x)+' ('+n+')</option>'; }).join('');
+            return '<span class="'+(x===dcur?'on':'')+'" data-dom="'+esc(x)+'" title="'+esc(x)+'">'
+                 + escL(x)+' '+n+'</span>'; }).join('');
     }
     var rows=_shlSort(w, _shlSuche(w, log.filter(function(e){
       return (!w._room || e.room===w._room) && (!w._dom || e.dom===w._dom);
@@ -197,9 +201,17 @@
         }).join('') + '</div>';
   }
   function _shlWire(w, el){
+      // Vorgewaehlte Domaene aus dem Editor EINMAL uebernehmen. Danach gewinnt, was der
+      // Nutzer im Betrieb antippt - sonst spraenge die Auswahl bei jedem Neuzeichnen
+      // zurueck auf die Vorgabe.
+      if(w._dom===undefined) w._dom=(w.domDef||'');
       var sel=$('[data-role=shlroom]',el); if(sel)sel.onchange=function(){w._room=this.value||'';w._page=0;_shlPaint(w,el);};
       var ds=$('[data-role=shldom]',el);
-      if(ds)ds.onchange=function(){ w._dom=this.value||''; w._page=0; _shlPaint(w,el); };
+      // Die Pills entstehen bei jedem Zeichnen neu -> am Behaelter delegieren.
+      if(ds)ds.onclick=function(ev){
+        var p=ev.target.closest('[data-dom]'); if(!p)return;
+        w._dom=p.getAttribute('data-dom')||''; w._page=0; _shlPaint(w,el);
+      };
       var q=$('[data-role=shlq]',el);
       if(q){ q.value=w._q||''; q.oninput=function(){ w._q=this.value||''; w._page=0; _shlPaint(w,el); }; }
       // Blaettern. Die Knoepfe entstehen bei jedem Zeichnen neu, deshalb am Kopf delegieren.
@@ -229,7 +241,7 @@
       return '<div class="shl">'
         + '<div class="shl-head"><div class="shl-ttl">'
         + (_shlAlle(w) ? 'Entscheidungen · alle Domänen' : 'Beschattung · Entscheidungen &amp; Befehle') + '</div>'
-        + (_shlAlle(w) ? '<select class="shl-room" data-role="shldom"><option value="">Alle Domänen</option></select>' : '')
+        + (_shlAlle(w) ? '<span class="hmsgsw shl-dom" data-role="shldom"></span>' : '')
         + '<input class="shl-q" data-role="shlq" type="search" placeholder="suchen …">'
         + '<select class="shl-room" data-role="shlroom"><option value="">Alle Räume</option></select>'
         + '<span class="tbl-pager" data-role="shlpg"></span>'
@@ -246,7 +258,8 @@
     mount:function(w){var el=$('.w[data-id="'+w.id+'"]',canvas); if(el){_shlWire(w,el);_shlLoad(w,el);}},
     _bind:function(w,el){_shlWire(w,el);},
     props:function(w){if(w.type!=='log')return '';
-      return row('Zeilen/Seite','<input id="pShlPS" type="number" min="0" max="500" value="'+(+w.pageSize>0?+w.pageSize:0)+'" title="0 = keine Paginierung">')
+      return row('Domäne (Vorgabe)','<input id="pShlDom" type="text" value="'+esc(w.domDef||'')+'" placeholder="leer = alle" title="Name der Domäne, z. B. Heizung — im Betrieb per Pill umschaltbar">')
+        + row('Zeilen/Seite','<input id="pShlPS" type="number" min="0" max="500" value="'+(+w.pageSize>0?+w.pageSize:0)+'" title="0 = keine Paginierung">')
         + row('Quelle','<select id="pShlSrc">'
           +'<option value="shading"'+((w.shlSrc||'shading')==='shading'?' selected':'')+'>nur Beschattung</option>'
           +'<option value="all"'+(w.shlSrc==='all'?' selected':'')+'>alle Domänen</option></select>')
@@ -254,6 +267,7 @@
         +'<div style="font-size:11px;color:var(--muted);margin:4px 2px">Mit \u201ealle Dom\u00e4nen\u201c stehen hier die Entscheidungen von Heizung, Bew\u00e4sserung, Klima und Lichtautomatik nebeneinander \u2013 jeweils mit Grund und der Markierung, ob ausgef\u00fchrt oder nur berechnet (Schatten). Sonst: Gesamtlog aller Rollos (Automatik-Entscheidungen + manuelle Befehle) über den Hub. Nur echte Fahrten; Schatten-Modus wird markiert.</div>';
     },
     wire:function(w){
+      if($('#pShlDom'))$('#pShlDom').oninput=function(){w.domDef=this.value.trim()||undefined;w._dom=(w.domDef||'');w._page=0;commit();};
       if($('#pShlPS'))$('#pShlPS').oninput=function(){w.pageSize=Math.max(0,Math.min(500,parseInt(this.value)||0));w._page=0;commit();};
       if($('#pShlMax'))$('#pShlMax').oninput=function(){w.max=Math.max(20,Math.min(1000,parseInt(this.value)||300));commit();};
       if($('#pShlSrc'))$('#pShlSrc').onchange=function(){w.shlSrc=(this.value==='all')?'all':undefined;w._log=null;w._room='';commit();}; }
