@@ -1,9 +1,11 @@
   // ===== Widget: log — Entscheidungs-Log =====
   //  Hiess bis v0.32.14 'shadelog' und konnte nur die Beschattung. Der alte Typ lebt als
   //  Alias in 11-migrate.js weiter, damit bestehende Seiten nicht brechen.
-  //  Zeigt die aggregierten Entscheidungen (Automatik) UND manuellen Befehle aller
-  //  ShadingDevice-Instanzen chronologisch. Quelle: ?api=shading&op=log (Hub-Aggregat
-  //  ueber HSSH getLog-Ringpuffer je Rollo). Nur echte Fahrten; Schatten-Modus markiert.
+  //  Zeigt die Entscheidungen ALLER HomeSuite-Domaenen chronologisch - Heizung,
+  //  Bewaesserung, Klima, Licht, Beschattung, Maeher, Pool, Audio. Quelle:
+  //  ?api=decisions (Hub-Aggregat ueber die Ringpuffer je Instanz; die Beschattung
+  //  bringt ihr eigenes, aelteres Format mit und wird dort zusammengefuehrt).
+  //  Schatten-Modus und fehlgeschlagene Befehle werden markiert.
   var _SHL_WHY = {'Sturm':'crit','Sonne':'warm','Zeitplan':'info','Automatik':'muted','Manuell':'accent','Manuell (Stopp)':'accent','Tür blockiert':'warn'};
   function _shlPos(v){ return (v===null||v===undefined||v<0) ? '·' : (v+'%'); }
   // Nachgestellte Klammergruppen weg: aus "Automower Righty (HSMW) (Maeher)" wird
@@ -27,7 +29,13 @@
     {t:now-1800, room:'Wohnzimmer Süd', from:-1, to:0,  why:'Sturm',    armed:1, src:'auto'},
     {t:now-3600, room:'Bad',            from:50, to:0,  why:'Zeitplan', armed:0, src:'auto'}
   ];}
-  function _shlAlle(w){ return (w.shlSrc||'shading')==='all'; }
+  // Es gibt nur noch EINE Quelle. Bis v0.32.23 liess sich zwischen "nur Beschattung"
+  // (?api=shading&op=log) und "alle Domaenen" (?api=decisions) waehlen - seit die
+  // Beschattung im Hub ins Aggregat zusammengefuehrt wird, liefert die zweite Quelle die
+  // erste MIT. Die Einstellung war damit nur noch eine Moeglichkeit, weniger zu sehen, und
+  // was sie eigentlich leisten sollte - nach Domaene filtern - machen die Pills.
+  // Das Flag bleibt als Funktion stehen, damit der Rest des Widgets unveraendert liest.
+  function _shlAlle(w){ return true; }
   // Demo fuer die Doku-Ansicht der Gesamtquelle - dieselben Felder, die ?api=decisions liefert.
   function _shlDemoAll(){var now=Math.floor(Date.now()/1000);return [
     {t:now-120,  room:'Buchshecke',   was:'Kein Lauf',        why:'Zeitplan - gesperrt: Regen 5.8 mm (>= 2)', armed:1},
@@ -57,10 +65,6 @@
         .catch(function(){ w._log=w._log||[]; w._err='net'; cb&&cb(); });
       return;
     }
-    fetch('?api=shading&op=log&limit='+(w.max||300),{cache:'no-store'})
-      .then(function(r){return r.json();})
-      .then(function(j){ w._log=(j&&j.ok&&j.entries)||[]; w._err=(j&&j.ok)?'':'log'; cb&&cb(); })
-      .catch(function(){ w._log=w._log||[]; w._err='net'; cb&&cb(); });
   }
   // Sortierung: Spaltenkopf klicken. Schluessel je Spalte, damit nach dem ANGEZEIGTEN
   // Inhalt sortiert wird und nicht nach dem Rohsatz - "Zeitplan - gesperrt: ..." soll bei
@@ -260,9 +264,6 @@
     props:function(w){if(w.type!=='log')return '';
       return row('Domäne (Vorgabe)','<input id="pShlDom" type="text" value="'+esc(w.domDef||'')+'" placeholder="leer = alle" title="Name der Domäne, z. B. Heizung — im Betrieb per Pill umschaltbar">')
         + row('Zeilen/Seite','<input id="pShlPS" type="number" min="0" max="500" value="'+(+w.pageSize>0?+w.pageSize:0)+'" title="0 = keine Paginierung">')
-        + row('Quelle','<select id="pShlSrc">'
-          +'<option value="shading"'+((w.shlSrc||'shading')==='shading'?' selected':'')+'>nur Beschattung</option>'
-          +'<option value="all"'+(w.shlSrc==='all'?' selected':'')+'>alle Domänen</option></select>')
         + row('Max. Einträge','<input id="pShlMax" type="number" min="20" max="1000" step="20" value="'+(w.max||300)+'">')
         +'<div style="font-size:11px;color:var(--muted);margin:4px 2px">Mit \u201ealle Dom\u00e4nen\u201c stehen hier die Entscheidungen von Heizung, Bew\u00e4sserung, Klima und Lichtautomatik nebeneinander \u2013 jeweils mit Grund und der Markierung, ob ausgef\u00fchrt oder nur berechnet (Schatten). Sonst: Gesamtlog aller Rollos (Automatik-Entscheidungen + manuelle Befehle) über den Hub. Nur echte Fahrten; Schatten-Modus wird markiert.</div>';
     },
@@ -270,7 +271,7 @@
       if($('#pShlDom'))$('#pShlDom').oninput=function(){w.domDef=this.value.trim()||undefined;w._dom=(w.domDef||'');w._page=0;commit();};
       if($('#pShlPS'))$('#pShlPS').oninput=function(){w.pageSize=Math.max(0,Math.min(500,parseInt(this.value)||0));w._page=0;commit();};
       if($('#pShlMax'))$('#pShlMax').oninput=function(){w.max=Math.max(20,Math.min(1000,parseInt(this.value)||300));commit();};
-      if($('#pShlSrc'))$('#pShlSrc').onchange=function(){w.shlSrc=(this.value==='all')?'all':undefined;w._log=null;w._room='';commit();}; }
+      }
   });
   // Periodischer Refresh (wie msglog): alle laufenden log-Widgets neu laden.
   setInterval(function(){
