@@ -49,7 +49,7 @@
           var rows=(j&&j.ok&&j.rows)||[];
           w._log=rows.map(function(e){
             return {t:e.t, room:(e.raum||e.geraet||''), was:e.was||'', why:e.warum||'',
-                    dom:e.domaene||'', armed:e.real?1:0, n:+e.n||1, seit:+e.seit||0,
+                    ort:e.ort||'', dom:e.domaene||'', armed:e.real?1:0, n:+e.n||1, seit:+e.seit||0,
                     ok:(e.ok===null||e.ok===undefined)?null:(e.ok?1:0), werte:e.werte||null};
           });
           w._err=(j&&j.ok)?'':'log'; cb&&cb();
@@ -65,7 +65,7 @@
   // Sortierung: Spaltenkopf klicken. Schluessel je Spalte, damit nach dem ANGEZEIGTEN
   // Inhalt sortiert wird und nicht nach dem Rohsatz - "Zeitplan - gesperrt: ..." soll bei
   // Z stehen, nicht bei dem, was zufaellig im Objekt zuerst kommt.
-  var _SHL_KEYS_ALL = ['t','room','was','why','armed'];
+  var _SHL_KEYS_ALL = ['t','ort','room','was','why','armed'];
   var _SHL_KEYS_SHD = ['t','room','src','to','why','armed'];
   function _shlSortKeys(w){ return _shlAlle(w) ? _SHL_KEYS_ALL : _SHL_KEYS_SHD; }
   function _shlCmp(a,b,k){
@@ -82,7 +82,7 @@
   function _shlSuche(w, rows){
     var q=(w._q||'').trim().toLowerCase(); if(!q) return rows;
     return rows.filter(function(e){
-      return ((e.room||'')+' '+(e.was||'')+' '+(e.why||'')).toLowerCase().indexOf(q)>=0;
+      return ((e.ort||'')+' '+(e.room||'')+' '+(e.was||'')+' '+(e.why||'')).toLowerCase().indexOf(q)>=0;
     });
   }
   // Kopfzelle mit Sortierpfeil. Nicht sortierbare Spalten (Ist->Ziel im Beschattungs-Modus
@@ -105,6 +105,16 @@
     if(!e.armed) return '<i class="shl-st sh">Schatten</i>';
     if(e.ok===0)  return '<i class="shl-st no">fehlgeschlagen</i>';
     return '<i class="shl-st on">ausgeführt</i>';
+  }
+  // Pager in der Kopfzeile, Optik woertlich vom table-Widget (.tbl-pager/.tbl-pg).
+  // Er sitzt NICHT unter der Tabelle: der Koerper scrollt, ein Fuss darin waere
+  // weggescrollt, sobald man blaettert.
+  function _shlPager(w, el, von, bis, ges, seiten, seite){
+    var p=$('[data-role=shlpg]',el); if(!p)return;
+    if(!(+w.pageSize>0) || ges<=+w.pageSize){ p.innerHTML=''; return; }
+    p.innerHTML='<button class="tbl-pg" data-shlpage="prev"'+(seite<=0?' disabled':'')+'>&#8249;</button>'
+      +'<span class="tbl-pgtxt">'+von+'&ndash;'+bis+' von '+ges+'</span>'
+      +'<button class="tbl-pg" data-shlpage="next"'+(seite>=seiten-1?' disabled':'')+'>&#8250;</button>';
   }
   function _shlKopf(w, titel, k){
     var st=(w._sortK===k)?((w._sortD===1)?'asc':'desc'):'idle';
@@ -132,7 +142,17 @@
       return (!w._room || e.room===w._room) && (!w._dom || e.dom===w._dom);
     })));
     if(w._err){ body.innerHTML='<div class="shl-empty" style="color:var(--crit)">Log nicht lesbar</div>'; return; }
-    if(!rows.length){ body.innerHTML='<div class="shl-empty">Keine Einträge</div>'; return; }
+    if(!rows.length){ body.innerHTML='<div class="shl-empty">Keine Einträge</div>'; _shlPager(w,el,0,0,0,1,0); return; }
+    // Seitenaufteilung NACH Filter und Sortierung: die Seitenzahl bezieht sich auf das,
+    // was man sieht, nicht auf den Rohbestand. 0 = keine Paginierung (wie im table-Widget).
+    var ges=rows.length, ps=(+w.pageSize>0?+w.pageSize:0), von=1, bis=ges, seite=0, seiten=1;
+    if(ps>0&&ges>ps){
+      seiten=Math.ceil(ges/ps);
+      seite=Math.max(0,Math.min(w._page||0,seiten-1)); w._page=seite;
+      von=seite*ps+1; bis=Math.min((seite+1)*ps,ges);
+      rows=rows.slice(seite*ps,seite*ps+ps);
+    }
+    _shlPager(w,el,von,bis,ges,seiten,seite);
     // Mindestbreite fuer das Raster (shl-tblmin): darunter wird waagrecht im BESTEHENDEN
     // .shl-body gescrollt (das hat schon overflow:auto) statt die Spalten zu zerquetschen -
     // die Kachel selbst scrollt dadurch nie waagrecht. Bewusst KEIN zusaetzlicher Behaelter
@@ -141,7 +161,8 @@
       // Vier Spalten statt sechs: Modus und Ist→Ziel sind Beschattungsbegriffe. Was eine
       // Heizzone oder ein Bewaesserungskreis entschieden hat, steht im Klartext in "Was".
       body.innerHTML='<div class="shl-tbl shl-tblmin shl-all"><div class="shl-r shl-h">'
-        + _shlKopf(w,'Zeit','t') + _shlKopf(w,'Raum','room') + _shlKopf(w,'Entscheidung','was')
+        + _shlKopf(w,'Zeit','t') + _shlKopf(w,'Ort','ort') + _shlKopf(w,'Raum','room')
+        + _shlKopf(w,'Entscheidung','was')
         + _shlKopf(w,'Grund','why') + _shlKopf(w,'Status','armed') + '</div>'
         + rows.map(function(e){
             var why=e.why||'', wc=_SHL_WHY[why.split(' ')[0]]||'muted';
@@ -149,6 +170,7 @@
             if(/gesperrt|Fenster offen/i.test(why)) wc='warn';
             return '<div class="shl-r">'
               + '<span class="shl-t">'+esc(_shlTime(e.t))+'</span>'
+              + '<span class="shl-ort">'+escL(e.ort||'')+'</span>'
               + '<span class="shl-room">'+escL(_shlRoom(e.room||''))+'</span>'
               + '<span class="shl-was">'+escL(e.was||'')
                 + ((e.n>1) ? '<i class="shl-n" title="'+esc((e.seit? _shlTime(e.seit)+' bis ' : '')+_shlTime(e.t))+'">'+e.n+'×</i>' : '')
@@ -175,11 +197,18 @@
         }).join('') + '</div>';
   }
   function _shlWire(w, el){
-      var sel=$('[data-role=shlroom]',el); if(sel)sel.onchange=function(){w._room=this.value||'';_shlPaint(w,el);};
+      var sel=$('[data-role=shlroom]',el); if(sel)sel.onchange=function(){w._room=this.value||'';w._page=0;_shlPaint(w,el);};
       var ds=$('[data-role=shldom]',el);
-      if(ds)ds.onchange=function(){ w._dom=this.value||''; _shlPaint(w,el); };
+      if(ds)ds.onchange=function(){ w._dom=this.value||''; w._page=0; _shlPaint(w,el); };
       var q=$('[data-role=shlq]',el);
-      if(q){ q.value=w._q||''; q.oninput=function(){ w._q=this.value||''; _shlPaint(w,el); }; }
+      if(q){ q.value=w._q||''; q.oninput=function(){ w._q=this.value||''; w._page=0; _shlPaint(w,el); }; }
+      // Blaettern. Die Knoepfe entstehen bei jedem Zeichnen neu, deshalb am Kopf delegieren.
+      var pg=$('[data-role=shlpg]',el);
+      if(pg)pg.onclick=function(ev){
+        var b=ev.target.closest('[data-shlpage]'); if(!b||b.hasAttribute('disabled'))return;
+        w._page=Math.max(0,(w._page||0)+(b.getAttribute('data-shlpage')==='next'?1:-1));
+        _shlPaint(w,el);
+      };
       // Sortierung liegt auf dem Kopf der Tabelle, die bei jedem Zeichnen neu entsteht -
       // deshalb am Koerper delegieren statt an den Zellen zu haengen.
       var bd=$('[data-role=shl]',el);
@@ -187,6 +216,7 @@
         var h=ev.target.closest('[data-shlsort]'); if(!h)return;
         var k=h.getAttribute('data-shlsort');
         if(w._sortK===k){ w._sortD=(w._sortD===1)?-1:1; } else { w._sortK=k; w._sortD=(k==='t')?-1:1; }
+        w._page=0;   // andere Sortierung = andere erste Seite
         _shlPaint(w,el);
       };
       var rf=$('[data-role=shlref]',el); if(rf)rf.onclick=function(){var b=$('[data-role=shl]',el);if(b)b.innerHTML='<div class="shl-empty">lädt …</div>';_shlLoad(w,el);};
@@ -194,7 +224,7 @@
   function _shlLoad(w, el){ _shlFetch(w, function(){ _shlPaint(w, el); }); }
   defWidget('log',{
     label:'Log · Entscheidungen', cat:'HomeSuite', paletteIcon:'wlist', size:[1040,720],
-    defaults:function(w){w.max=300;},
+    defaults:function(w){w.max=300;w.pageSize=25;},
     render:function(w){
       return '<div class="shl">'
         + '<div class="shl-head"><div class="shl-ttl">'
@@ -202,6 +232,7 @@
         + (_shlAlle(w) ? '<select class="shl-room" data-role="shldom"><option value="">Alle Domänen</option></select>' : '')
         + '<input class="shl-q" data-role="shlq" type="search" placeholder="suchen …">'
         + '<select class="shl-room" data-role="shlroom"><option value="">Alle Räume</option></select>'
+        + '<span class="tbl-pager" data-role="shlpg"></span>'
         + '<button class="shl-ref" data-role="shlref" title="Aktualisieren">↻</button></div>'
         + '<div class="shl-body" data-role="shl"><div class="shl-empty">lädt …</div></div></div>';
     },
@@ -215,13 +246,16 @@
     mount:function(w){var el=$('.w[data-id="'+w.id+'"]',canvas); if(el){_shlWire(w,el);_shlLoad(w,el);}},
     _bind:function(w,el){_shlWire(w,el);},
     props:function(w){if(w.type!=='log')return '';
-      return row('Quelle','<select id="pShlSrc">'
+      return row('Zeilen/Seite','<input id="pShlPS" type="number" min="0" max="500" value="'+(+w.pageSize>0?+w.pageSize:0)+'" title="0 = keine Paginierung">')
+        + row('Quelle','<select id="pShlSrc">'
           +'<option value="shading"'+((w.shlSrc||'shading')==='shading'?' selected':'')+'>nur Beschattung</option>'
           +'<option value="all"'+(w.shlSrc==='all'?' selected':'')+'>alle Domänen</option></select>')
         + row('Max. Einträge','<input id="pShlMax" type="number" min="20" max="1000" step="20" value="'+(w.max||300)+'">')
         +'<div style="font-size:11px;color:var(--muted);margin:4px 2px">Mit \u201ealle Dom\u00e4nen\u201c stehen hier die Entscheidungen von Heizung, Bew\u00e4sserung, Klima und Lichtautomatik nebeneinander \u2013 jeweils mit Grund und der Markierung, ob ausgef\u00fchrt oder nur berechnet (Schatten). Sonst: Gesamtlog aller Rollos (Automatik-Entscheidungen + manuelle Befehle) über den Hub. Nur echte Fahrten; Schatten-Modus wird markiert.</div>';
     },
-    wire:function(w){ if($('#pShlMax'))$('#pShlMax').oninput=function(){w.max=Math.max(20,Math.min(1000,parseInt(this.value)||300));commit();};
+    wire:function(w){
+      if($('#pShlPS'))$('#pShlPS').oninput=function(){w.pageSize=Math.max(0,Math.min(500,parseInt(this.value)||0));w._page=0;commit();};
+      if($('#pShlMax'))$('#pShlMax').oninput=function(){w.max=Math.max(20,Math.min(1000,parseInt(this.value)||300));commit();};
       if($('#pShlSrc'))$('#pShlSrc').onchange=function(){w.shlSrc=(this.value==='all')?'all':undefined;w._log=null;w._room='';commit();}; }
   });
   // Periodischer Refresh (wie msglog): alle laufenden log-Widgets neu laden.
