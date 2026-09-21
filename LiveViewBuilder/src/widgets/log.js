@@ -49,7 +49,7 @@
           var rows=(j&&j.ok&&j.rows)||[];
           w._log=rows.map(function(e){
             return {t:e.t, room:(e.raum||e.geraet||''), was:e.was||'', why:e.warum||'',
-                    dom:e.domaene||'', armed:e.real?1:0,
+                    dom:e.domaene||'', armed:e.real?1:0, n:+e.n||1, seit:+e.seit||0,
                     ok:(e.ok===null||e.ok===undefined)?null:(e.ok?1:0), werte:e.werte||null};
           });
           w._err=(j&&j.ok)?'':'log'; cb&&cb();
@@ -150,7 +150,9 @@
             return '<div class="shl-r">'
               + '<span class="shl-t">'+esc(_shlTime(e.t))+'</span>'
               + '<span class="shl-room">'+escL(_shlRoom(e.room||''))+'</span>'
-              + '<span class="shl-was">'+escL(e.was||'')+'</span>'
+              + '<span class="shl-was">'+escL(e.was||'')
+                + ((e.n>1) ? '<i class="shl-n" title="'+esc((e.seit? _shlTime(e.seit)+' bis ' : '')+_shlTime(e.t))+'">'+e.n+'×</i>' : '')
+                + '</span>'
               + '<span><i class="shl-why" style="--wc:var(--'+wc+')" title="'+esc(why)+'">'+escL(why)+'</i></span>'
               + '<span>'+_shlStatus(e)+'</span>'
               + '</div>';

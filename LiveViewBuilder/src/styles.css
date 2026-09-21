@@ -2885,6 +2885,10 @@
   .shl-st.on{background:color-mix(in oklab,var(--ok) 18%,transparent);color:var(--ok)}
   .shl-st.sh{background:color-mix(in oklab,var(--faint) 20%,transparent);color:var(--faint)}
   .shl-st.no{background:color-mix(in oklab,var(--crit) 18%,transparent);color:var(--crit)}
+  /* Wiederholungszaehler: "8x" hinter der Entscheidung. Ruhig gehalten - die Zahl ist
+     Zusatz, nicht Hauptsache; der Hinweistext nennt den Zeitraum. */
+  .shl-n{font-style:normal;font-weight:650;margin-left:.5em;padding:0 .4em;border-radius:6px;
+         font-size:.85em;color:var(--muted);background:color-mix(in oklab,var(--muted) 16%,transparent)}
   /* Gesamtansicht (alle Domaenen): fuenf Spalten. "Modus" und "Ist->Ziel" sind
      Beschattungsbegriffe und entfallen; dafuer bekommt die Entscheidung im Klartext
      Platz, denn dort steht der eigentliche Inhalt ("Kein Lauf", "Sollwert 12 C"). */
