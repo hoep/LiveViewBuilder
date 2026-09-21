@@ -147,22 +147,7 @@
             + '</div>';
         }).join('') + '</div>';
   }
-  function _shlLoad(w, el){ _shlFetch(w, function(){ _shlPaint(w, el); }); }
-  defWidget('log',{
-    label:'Log · Entscheidungen', cat:'HomeSuite', paletteIcon:'wlist', size:[1040,720],
-    defaults:function(w){w.max=300;},
-    render:function(w){
-      return '<div class="shl">'
-        + '<div class="shl-head"><div class="shl-ttl">'
-        + (_shlAlle(w) ? 'Entscheidungen · alle Domänen' : 'Beschattung · Entscheidungen &amp; Befehle') + '</div>'
-        + (_shlAlle(w) ? '<select class="shl-room" data-role="shldom"><option value="">Alle Domänen</option></select>' : '')
-        + '<input class="shl-q" data-role="shlq" type="search" placeholder="suchen …">'
-        + '<select class="shl-room" data-role="shlroom"><option value="">Alle Räume</option></select>'
-        + '<button class="shl-ref" data-role="shlref" title="Aktualisieren">↻</button></div>'
-        + '<div class="shl-body" data-role="shl"><div class="shl-empty">lädt …</div></div></div>';
-    },
-    mount:function(w){var el=$('.w[data-id="'+w.id+'"]',canvas); if(el)_shlLoad(w,el);},
-    _bind:function(w,el){
+  function _shlWire(w, el){
       var sel=$('[data-role=shlroom]',el); if(sel)sel.onchange=function(){w._room=this.value||'';_shlPaint(w,el);};
       var ds=$('[data-role=shldom]',el);
       if(ds)ds.onchange=function(){ w._dom=this.value||''; _shlPaint(w,el); };
@@ -178,7 +163,30 @@
         _shlPaint(w,el);
       };
       var rf=$('[data-role=shlref]',el); if(rf)rf.onclick=function(){var b=$('[data-role=shl]',el);if(b)b.innerHTML='<div class="shl-empty">lädt …</div>';_shlLoad(w,el);};
+    }
+  function _shlLoad(w, el){ _shlFetch(w, function(){ _shlPaint(w, el); }); }
+  defWidget('log',{
+    label:'Log · Entscheidungen', cat:'HomeSuite', paletteIcon:'wlist', size:[1040,720],
+    defaults:function(w){w.max=300;},
+    render:function(w){
+      return '<div class="shl">'
+        + '<div class="shl-head"><div class="shl-ttl">'
+        + (_shlAlle(w) ? 'Entscheidungen · alle Domänen' : 'Beschattung · Entscheidungen &amp; Befehle') + '</div>'
+        + (_shlAlle(w) ? '<select class="shl-room" data-role="shldom"><option value="">Alle Domänen</option></select>' : '')
+        + '<input class="shl-q" data-role="shlq" type="search" placeholder="suchen …">'
+        + '<select class="shl-room" data-role="shlroom"><option value="">Alle Räume</option></select>'
+        + '<button class="shl-ref" data-role="shlref" title="Aktualisieren">↻</button></div>'
+        + '<div class="shl-body" data-role="shl"><div class="shl-empty">lädt …</div></div></div>';
     },
+    // Bedienung MUSS aus mount heraus verdrahtet werden. '_bind' ist kein
+    // Lebenszyklus-Hook des Widget-Vertrags, sondern wird nur von der
+    // Familien-Mechanik (hfEmit) gerufen - fuer dieses Widget also von niemandem.
+    // Deshalb waren Raumfilter und Auffrisch-Knopf seit jeher ohne Wirkung; aufgefallen
+    // ist es erst, als Suche, Sortierung und Domaenenfilter dazukamen und ebenfalls
+    // nichts taten. Die Kopfelemente ueberleben das Neuzeichnen (nur der Koerper wird
+    // ersetzt), einmal beim Einhaengen genuegt.
+    mount:function(w){var el=$('.w[data-id="'+w.id+'"]',canvas); if(el){_shlWire(w,el);_shlLoad(w,el);}},
+    _bind:function(w,el){_shlWire(w,el);},
     props:function(w){if(w.type!=='log')return '';
       return row('Quelle','<select id="pShlSrc">'
           +'<option value="shading"'+((w.shlSrc||'shading')==='shading'?' selected':'')+'>nur Beschattung</option>'
