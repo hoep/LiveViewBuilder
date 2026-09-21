@@ -2887,8 +2887,18 @@
   /* Gesamtansicht (alle Domaenen): fuenf Spalten. "Modus" und "Ist->Ziel" sind
      Beschattungsbegriffe und entfallen; dafuer bekommt die Entscheidung im Klartext
      Platz, denn dort steht der eigentliche Inhalt ("Kein Lauf", "Sollwert 12 C"). */
-  .shl-all .shl-r{grid-template-columns:var(--shl-c1) minmax(0,1fr) minmax(0,1.5fr) minmax(clamp(96px,20cqi,190px),clamp(130px,26cqi,240px)) clamp(76px,15cqi,124px)}
+  /* Gewichtung nach INHALT, nicht nach Spaltenzahl: "Kein Lauf" oder "Sollwert 12 C"
+     sind kurz, der Grund ist ein ganzer Satz ("Zeitplan - gesperrt: Regen 5.84 mm").
+     Erster Entwurf gab der Entscheidung das Anderthalbfache und dem Grund eine Deckelung -
+     genau verkehrt herum. Jetzt ist der Grund die breiteste Spalte. */
+  .shl-all .shl-r{grid-template-columns:var(--shl-c1) clamp(84px,15cqi,170px) minmax(0,1fr) minmax(0,2.2fr) clamp(76px,15cqi,124px)}
   .shl-was{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
+  /* Klassenkollision: der Raumfilter im Kopf ist ein <select class="shl-room"> und traegt
+     Rahmen und Kachelgrund - die Raum-ZELLE der Zeile heisst genauso und erbt beides,
+     wodurch sie wie ein Eingabefeld aussieht. Sauber waere, die Kopfregel auf
+     select.shl-room zu verengen; das wuerde aber auch das bestehende Beschattungs-Log
+     umgestalten. Deshalb hier nur fuer die Gesamtansicht zurueckgenommen. */
+  .shl-all span.shl-room{border:0;background:none;padding-left:0;padding-right:0;max-width:100%}
   /* Gruende sind hier ganze Saetze ("Zeitplan - gesperrt: Regen 5.84 mm (>= 2)") und nicht
      mehr Einwortbegriffe wie bei der Beschattung. Ohne Begrenzung schiebt sich der Pill
      ueber die Status-Spalte - gemessen am ersten Render der Gesamtansicht. Die Zelle
