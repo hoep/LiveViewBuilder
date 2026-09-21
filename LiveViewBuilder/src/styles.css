@@ -2919,7 +2919,13 @@
      Elemente durchschlaegt) auch auf den Abstand. Die Basis entspricht der bisherigen
      Zellengroesse, damit sich ohne eigene Schriftgroesse nichts aendert. */
   .shl-all{font-size:clamp(9.5px,3.1cqmin,14px)}
-  .shl-all .shl-r{padding:.62em .42em;gap:.5em .6em}
+  /* Zeilenhoehe: gemessen waren 36 px bei 7-10 px Text - fast drei Viertel Luft. Die kam
+     aus DREI Quellen, nicht nur der Zeilenpolsterung: die Grund- und Status-Chips bringen
+     ihre eigene mit, und die Zeilenhoehe stand auf dem Vorgabewert. Alle drei zusammen
+     gezogen; die Chips behalten ihre Form, verlieren aber die ueberfluessige Hoehe. */
+  .shl-all .shl-r{padding:.28em .42em;gap:.3em .6em;line-height:1.25}
+  .shl-all .shl-why,.shl-all .shl-st{padding-top:.1em;padding-bottom:.1em;line-height:1.3}
+  .shl-all .shl-n{padding-top:0;padding-bottom:0}
   .shl-was{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
   /* Suchfeld im Kopf - gleiche Anmutung wie der Raumfilter daneben. */
   .shl-q{flex:0 1 auto;min-width:0;width:clamp(90px,22cqi,200px);border:1px solid var(--line);border-radius:8px;
