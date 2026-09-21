@@ -2911,7 +2911,8 @@
      sind kurz, der Grund ist ein ganzer Satz ("Zeitplan - gesperrt: Regen 5.84 mm").
      Erster Entwurf gab der Entscheidung das Anderthalbfache und dem Grund eine Deckelung -
      genau verkehrt herum. Jetzt ist der Grund die breiteste Spalte. */
-  .shl-all .shl-r{grid-template-columns:var(--shl-c1) clamp(74px,13cqi,150px) clamp(84px,15cqi,170px) minmax(0,1fr) minmax(0,2.2fr) clamp(76px,15cqi,124px)}
+  .shl-all .shl-r{grid-template-columns:var(--shl-c1) clamp(70px,12cqi,140px) clamp(78px,13cqi,150px) minmax(0,.9fr) minmax(0,1fr) minmax(0,1.9fr) clamp(76px,15cqi,124px)}
+  .shl-dev{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted)}
   .shl-ort{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted)}
   /* Zeilenhoehe folgt der SCHRIFT, nicht der Kachelgroesse. Vorher war die Polsterung an
      cqmin gehaengt - stellt man die Schriftgroesse hoch, blieben die Zeilen eng und der

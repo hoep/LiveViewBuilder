@@ -56,7 +56,10 @@
         .then(function(j){
           var rows=(j&&j.ok&&j.rows)||[];
           w._log=rows.map(function(e){
-            return {t:e.t, room:(e.raum||e.geraet||''), was:e.was||'', why:e.warum||'',
+            // Raum und Geraet bleiben GETRENNT. Frueher fiel der Raum auf den Geraetenamen
+            // zurueck, wenn keiner da war - dann stand "Beschattung Sued" unter "Raum",
+            // und das ist schlicht falsch.
+            return {t:e.t, room:e.raum||'', dev:e.geraet||'', was:e.was||'', why:e.warum||'',
                     ort:e.ort||'', dom:e.domaene||'', armed:e.real?1:0, n:+e.n||1, seit:+e.seit||0,
                     ok:(e.ok===null||e.ok===undefined)?null:(e.ok?1:0), werte:e.werte||null};
           });
@@ -69,7 +72,7 @@
   // Sortierung: Spaltenkopf klicken. Schluessel je Spalte, damit nach dem ANGEZEIGTEN
   // Inhalt sortiert wird und nicht nach dem Rohsatz - "Zeitplan - gesperrt: ..." soll bei
   // Z stehen, nicht bei dem, was zufaellig im Objekt zuerst kommt.
-  var _SHL_KEYS_ALL = ['t','ort','room','was','why','armed'];
+  var _SHL_KEYS_ALL = ['t','ort','room','dev','was','why','armed'];
   var _SHL_KEYS_SHD = ['t','room','src','to','why','armed'];
   function _shlSortKeys(w){ return _shlAlle(w) ? _SHL_KEYS_ALL : _SHL_KEYS_SHD; }
   function _shlCmp(a,b,k){
@@ -86,7 +89,7 @@
   function _shlSuche(w, rows){
     var q=(w._q||'').trim().toLowerCase(); if(!q) return rows;
     return rows.filter(function(e){
-      return ((e.ort||'')+' '+(e.room||'')+' '+(e.was||'')+' '+(e.why||'')).toLowerCase().indexOf(q)>=0;
+      return ((e.ort||'')+' '+(e.room||'')+' '+(e.dev||'')+' '+(e.was||'')+' '+(e.why||'')).toLowerCase().indexOf(q)>=0;
     });
   }
   // Kopfzelle mit Sortierpfeil. Nicht sortierbare Spalten (Ist->Ziel im Beschattungs-Modus
@@ -170,7 +173,7 @@
       // Heizzone oder ein Bewaesserungskreis entschieden hat, steht im Klartext in "Was".
       body.innerHTML='<div class="shl-tbl shl-tblmin shl-all"><div class="shl-r shl-h">'
         + _shlKopf(w,'Zeit','t') + _shlKopf(w,'Ort','ort') + _shlKopf(w,'Raum','room')
-        + _shlKopf(w,'Entscheidung','was')
+        + _shlKopf(w,'Gerät','dev') + _shlKopf(w,'Entscheidung','was')
         + _shlKopf(w,'Grund','why') + _shlKopf(w,'Status','armed') + '</div>'
         + rows.map(function(e){
             var why=e.why||'', wc=_SHL_WHY[why.split(' ')[0]]||'muted';
@@ -179,7 +182,8 @@
             return '<div class="shl-r">'
               + '<span class="shl-t">'+esc(_shlTime(e.t))+'</span>'
               + '<span class="shl-ort">'+escL(e.ort||'')+'</span>'
-              + '<span class="shl-room">'+escL(_shlRoom(e.room||''))+'</span>'
+              + '<span class="shl-room">'+escL(e.room||'—')+'</span>'
+              + '<span class="shl-dev" title="'+esc(e.dev||'')+'">'+escL(_shlRoom(e.dev||''))+'</span>'
               + '<span class="shl-was">'+escL(e.was||'')
                 + ((e.n>1) ? '<i class="shl-n" title="'+esc((e.seit? _shlTime(e.seit)+' bis ' : '')+_shlTime(e.t))+'">'+e.n+'×</i>' : '')
                 + '</span>'
