@@ -66,6 +66,11 @@
     if(/leer|schwach|kritisch|critical|empty|entladen|fehler|defekt/.test(t))return 'crit';
     if(/bald|mittel|\bwarn|niedrig|\blow\b|offen|unklar|fehlt|pr(ue|ü)fen/.test(t))return 'warn';
     if(/\bok\b|voll|gut|normal|hoch|full|geladen|fertig/.test(t))return 'ok';
+    // Kostensemantik: in einer Preistabelle ist "guenstiger" das Gute und "teurer"
+    // das Schlechte. Ohne diese beiden Woerter blieb die Statusspalte farblos -
+    // und gerade dort traegt die Farbe die Aussage.
+    if(/g(ue|ü)nstiger|billiger|spart/.test(t))return 'ok';
+    if(/teurer|mehrkosten|draufzahl/.test(t))return 'crit';
     // Feststellung statt Bewertung: etwas ist eingestellt oder ruht - das ist
     // weder gut noch schlecht, soll aber nicht farblos untergehen.
     if(/aktiv|regel|hinweis|\binfo\b/.test(t))return 'info';
@@ -291,7 +296,7 @@
       // Balken: neben den Prozentspalten auch Zaehlspalten, die eine Menge
       // beschreiben. Ohne sie steht in der Spalte eine nackte Zahl, deren
       // Groessenverhaeltnis man Zeile fuer Zeile selbst ausrechnen muesste.
-      if(barIdx<0&&/wert|ladung|prozent|ladest|%|anzahl|ausstrahlung|folgen|aufnahmen/.test(hs))barIdx=hi;}}
+      if(barIdx<0&&/wert|ladung|prozent|ladest|%|anteil|anzahl|ausstrahlung|folgen|aufnahmen/.test(hs))barIdx=hi;}}
     if(w.sevStyle&&barIdx>=0){
       for(var bm=0;bm<all.length;bm++){
         var _bv=parseFloat(String(all[bm][barIdx]!=null?all[bm][barIdx]:'').replace(',','.'));
