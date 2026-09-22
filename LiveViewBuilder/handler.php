@@ -2161,6 +2161,43 @@ if ($api === 'decisions') {
     return;
 }
 
+/*
+ * Strompreis-Simulation.
+ *
+ * Reicht die Rechnung des EnergyManagers durch. Bewusst EIN Endpunkt fuer beide Fragen:
+ * die Seite zeigt Tarifvergleich und Verschiebe-Rechnung nebeneinander, und zwei getrennte
+ * Abrufe wuerden bei jedem Schieberegler-Zug die Tarifliste sinnlos neu holen.
+ *
+ * ?api=energysim                      -> Tarifvergleich
+ * ?api=energysim&shift=1500           -> zusaetzlich: was braechte das Verschieben
+ * ?api=energysim&von=Day&nach=Sun     -> andere Zonen
+ */
+if ($api === 'energysim') {
+    header('Content-Type: application/json; charset=utf-8');
+    $en = (int) (@IPS_GetInstanceListByModuleID('{9536CCA2-1C32-1B76-763E-6B72B7D14554}')[0] ?? 0);
+    if ($en <= 0 || !function_exists('HSEN_Manage')) {
+        echo json_encode(['ok' => false, 'err' => 'EnergyManager nicht vorhanden']);
+        return;
+    }
+    $ruf = function (string $op, array $args) use ($en) {
+        $r = json_decode(HSEN_Manage($en, json_encode(['op' => $op, 'args' => $args])), true);
+        // Manage verpackt das Ergebnis je nach Op unterschiedlich - beides zulassen.
+        return is_array($r) ? (isset($r['result']) && is_array($r['result']) ? $r['result'] : $r) : [];
+    };
+    $tage = max(7, (int) ($_GET['tage'] ?? 365));
+    $out  = ['ok' => true, 'tarife' => $ruf('simTarife', ['tage' => $tage])];
+    $kwh  = (float) ($_GET['shift'] ?? 0);
+    if ($kwh > 0) {
+        $out['verschiebung'] = $ruf('simVerschiebung', [
+            'tage' => $tage, 'kwh' => $kwh,
+            'von'  => (string) ($_GET['von'] ?? 'Day'),
+            'nach' => (string) ($_GET['nach'] ?? 'Sun'),
+        ]);
+    }
+    echo json_encode($out);
+    return;
+}
+
 if ($api === 'shading') {
     header('Content-Type: application/json; charset=utf-8');
     // Rollo-Kalibrierung adressiert das Rollo ueber seine POSITIONS-Variable (posVid aus op=list),
