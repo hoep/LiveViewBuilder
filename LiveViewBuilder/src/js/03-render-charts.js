@@ -759,7 +759,7 @@
   // "7 Tage", zeigte die Achse weiter Monate und es kam nichts an. Jetzt entscheidet beides
   // ueber dieselbe Funktion.
   function _chCalMode(w){var r=_chRange(w);return !!r.cal && r.unit==='month';}
-  function renderChartData(w){if(w.ctype==='treemap')setTreemap(w);else if(w.ctype==='daylight')setDaylight(w);else if(w.ctype==='heatmap')setHeatmap(w);else if(w.ctype==='barrace')setBarRace(w);else if(w.ctype==='spark'||w.type==='spark')setSpark(w);else if(w.ctype==='waterfall'||w.type==='waterfall')setWaterfall(w);else if(w.ctype==='pie'||w.ctype==='donut'||w.ctype==='rose')setPie(w);else if(w.type==='chart'&&_chCalMode(w))setCalBar(w);else setLine(w);}
+  function renderChartData(w){if(w.chJsonVid&&_hist[w.id]&&_hist[w.id].json){setJsonBars(w);return;}if(w.ctype==='treemap')setTreemap(w);else if(w.ctype==='daylight')setDaylight(w);else if(w.ctype==='heatmap')setHeatmap(w);else if(w.ctype==='barrace')setBarRace(w);else if(w.ctype==='spark'||w.type==='spark')setSpark(w);else if(w.ctype==='waterfall'||w.type==='waterfall')setWaterfall(w);else if(w.ctype==='pie'||w.ctype==='donut'||w.ctype==='rose')setPie(w);else if(w.type==='chart'&&_chCalMode(w))setCalBar(w);else setLine(w);}
   // ---- Bar Race (ctype 'barrace') — animierter Balken-Wettlauf ueber die Zeit ----------
   // Jede konfigurierte Serie ist ein "Laeufer". Frames = Zeit-Buckets der aggregierten
   // Historie (aus fetchHist). ECharts realtimeSort ordnet die Balken je Frame neu und
@@ -2141,6 +2141,58 @@
     }
   }
   // Kalenderjahr-Modus (Balken, Monatlich): x = Jän–Dez, exaktes Jahr (+ Vorjahr bei Vergleich), via generische ?api=aggregated
+  /**
+   * Balken oder Linie aus Wertepaaren (Kategorienachse).
+   *
+   * Gegenstueck zu setLine, das eine Zeitachse braucht. Hier steht auf der einen Achse
+   * eine BESCHRIFTUNG, kein Zeitpunkt - Tarifnamen, Zonen, Geraete. Liegende Balken
+   * (barHoriz) sind bei langen Beschriftungen die bessere Wahl; die Achsen tauscht
+   * derselbe Helfer, den die uebrigen Diagramme dafuer schon nutzen.
+   */
+  function setJsonBars(w){
+    var ec=_ec[w.id];if(!ec)return;
+    var H=_hist[w.id]||{},cats=H.cats||[],vals=(H.series&&H.series[0]&&H.series[0].data)||[];
+    var acc=_chColor((_chSeries(w)[0]||{}).color,0);
+    var unit=(w.yunit||''),br=parseFloat(w.barRadius!=null?w.barRadius:3);
+    var liniig=(w.ctype==='line'||w.ctype==='area');
+    var showLeg=(w.legend===true);           // eine Serie braucht keine Legende
+    var lbl=w.labels?{show:true,fontSize:_ecF(w,'label',8),color:cssv('--muted'),
+      position:(w.barHoriz?'right':'top'),formatter:function(p){return (p.value==null)?'':_chNum(w,p.value);}}:{show:false};
+    var reihe = liniig
+      ? {type:'line',name:H.series[0].name,data:vals,smooth:!!w.smooth,symbol:(w.symbols?'circle':'none'),
+         lineStyle:{width:(w.lw>0?+w.lw:2),color:acc},itemStyle:{color:acc},
+         areaStyle:(w.ctype==='area'?{opacity:0.18,color:acc}:null),label:lbl}
+      : {type:'bar',name:H.series[0].name,data:vals,itemStyle:{color:acc,borderRadius:br},label:lbl};
+    var axc=_axShow(w),series=[reihe];
+    _annApply(w,series);
+    // Liegende Balken mit Wertbeschriftung brauchen rechts Luft, sonst wird die Zahl
+    // am Rand abgeschnitten - derselbe Fehler, den die uebrigen hbar-Diagramme schon
+    // einmal hatten. Und die Werteachse darunter ist dann entbehrlich: die Zahl steht
+    // ohnehin am Balken, zwei Beschriftungen fuer dieselbe Groesse sind eine zuviel.
+    var quer=(w.barHoriz&&!liniig), rechts=(quer&&w.labels)?54:10;
+    var opt={backgroundColor:'transparent',animation:!!bcfg().chartAnim,
+      grid:_chGrid(w,{l:8,r:rechts,t:6+_annTopSpace(w),b:4+_navSpace(w)},showLeg),
+      tooltip:{trigger:'axis',valueFormatter:function(v){return _chNum(w,v);}},
+      legend:_legendOpt(w,showLeg),
+      title:_titleOpt(w),
+      xAxis:{type:'category',data:cats,
+        axisTick:{show:axc.ticks},axisLine:{show:axc.line,lineStyle:{color:cssv('--line')}},
+        axisLabel:_axLabX(w,axc,true),
+        splitLine:{show:axc.xGrid,lineStyle:{color:cssv('--line-soft')}}},
+      yAxis:{type:'value',name:unit,nameTextStyle:{color:cssv('--muted'),fontSize:_ecF(w,'axname',9)},nameGap:7,
+        min:(w.ymin!=null&&w.ymin!==''?parseFloat(w.ymin):null),
+        max:(w.ymax!=null&&w.ymax!==''?parseFloat(w.ymax):null),
+        axisLine:{show:axc.line,lineStyle:{color:cssv('--line')}},axisTick:{show:axc.ticks},
+        axisLabel:_axLabY(w,axc),
+        splitLine:{show:axc.yGrid,lineStyle:{color:cssv('--line-soft')}},
+        splitNumber:(w.gridDivs>0?parseInt(w.gridDivs):(quer?3:null))},
+      series:series};
+    if(quer&&typeof _hbCat==='function'){
+      _hbCat(opt);
+      if(w.labels&&opt.xAxis&&opt.xAxis.axisLabel)opt.xAxis.axisLabel.show=false;
+    }
+    ec.setOption(opt,true);
+  }
   function setCalBar(w){
     var ec=_ec[w.id];if(!ec)return;
     var m=(_hist[w.id]&&_hist[w.id].cal)||{cur:[],prev:[],curY:'',prevY:''};
@@ -2503,6 +2555,82 @@
    * die bestehende Balken-Darstellung samt Farbstufen, Mittellinie und
    * Beschriftung unveraendert - es ist kein zweiter Renderer noetig.
    */
+  /**
+   * Wertepaare aus einer JSON-Variablen.
+   *
+   * Bis hierher konnte ein Diagramm nur Zeitreihen aus dem Archiv. Damit blieb alles
+   * aussen vor, was KATEGORIEN vergleicht statt Zeitpunkte - eine Tarifrangliste, eine
+   * Verbrauchsaufteilung, das Ergebnis einer Rechnung. Genau das leistet dieser Weg.
+   *
+   * Gelesen wird ueber ?api=tabledata, weil dieser Endpunkt jede Form einer Variablen
+   * bereits zu Zeilen normalisiert - JSON, serialisiert, verschachtelt oder flach. Ein
+   * zweiter Parser daneben waere eine zweite Fehlerquelle.
+   *
+   * Akzeptierte Formen:
+   *   [["Sun",905],["Day",5870]]     Paare: Spalte 0 beschriftet, Spalte 1 zaehlt
+   *   [905,5870,2785]                nur Werte: der Index wird fortlaufend vergeben
+   *   [["Tarif","Gesamt"],[...]]     mit Kopfzeile - sie wird erkannt und uebersprungen
+   *
+   * chJsonIdx / chJsonVal waehlen die Spalten ausdruecklich (0-basiert). Leer bedeutet:
+   * Beschriftung aus Spalte 0, Wert aus der ERSTEN Spalte, die sich als Zahl lesen laesst.
+   * Automatisch statt Pflichtangabe, weil eine Tabelle ihre Bedeutung meist schon traegt.
+   */
+  function _chZahl(v){
+    if(v==null)return NaN;
+    // Zahlen aus gesetzten Texten holen: "1.727 EUR" -> 1727, "22,33" -> 22.33, "61 %" -> 61
+    var t=String(v).replace(/−/g,'-').replace(/[^0-9,.\-]/g,'');
+    if(t===''||t==='-')return NaN;
+    if(t.indexOf(',')>=0&&t.indexOf('.')>=0) t=t.replace(/\./g,'').replace(',','.');
+    else if(t.indexOf(',')>=0)               t=t.replace(',','.');
+    else if(/\.\d{3}(\D|$)/.test(t))         t=t.replace(/\./g,'');   // 1.727 ist tausend, nicht Komma
+    var n=parseFloat(t);return isNaN(n)?NaN:n;
+  }
+  function fetchJsonPairs(w){
+    var s0=_chSeries(w)[0]||{},col=_chColor(s0.color,0),nm=s0.name||w.label||'';
+    function fertig(cats,vals){
+      _hist[w.id]={series:[{data:vals,color:col,name:nm}],cats:cats,json:true};
+      if(_ec[w.id])renderChartData(w);
+    }
+    fetch('?api=tabledata&id='+encodeURIComponent(w.chJsonVid),{cache:'no-store'})
+      .then(function(r){return r.json();})
+      .then(function(j){
+        var rows=(j&&j.rows)||[];
+        if(!rows.length){fertig([],[]);return;}
+        var iIdx=(w.chJsonIdx!=null&&w.chJsonIdx!=='')?parseInt(w.chJsonIdx,10):null;
+        var iVal=(w.chJsonVal!=null&&w.chJsonVal!=='')?parseInt(w.chJsonVal,10):null;
+        // Kopfzeile: erkannt, wenn in der ersten Zeile keine Zelle als Zahl taugt, in der
+        // zweiten aber schon. Ohne diese Pruefung wanderte "Gesamt" als Kategorie in die
+        // Grafik und die erste echte Zeile fiele heraus.
+        var ab=0,c;
+        if(rows.length>1){
+          var z0=false,z1=false;
+          for(c=0;c<rows[0].length;c++) if(!isNaN(_chZahl(rows[0][c])))z0=true;
+          for(c=0;c<rows[1].length;c++) if(!isNaN(_chZahl(rows[1][c])))z1=true;
+          if(!z0&&z1)ab=1;
+        }
+        var cats=[],vals=[];
+        for(var i=ab;i<rows.length;i++){
+          var row=rows[i]||[],v=NaN,lab;
+          if(iVal!=null) v=_chZahl(row[iVal]);
+          else for(var c2=(row.length>1?1:0);c2<row.length;c2++){ v=_chZahl(row[c2]); if(!isNaN(v))break; }
+          if(isNaN(v))continue;
+          if(iIdx!=null)        lab=String(row[iIdx]==null?'':row[iIdx]);
+          else if(row.length>1) lab=String(row[0]==null?'':row[0]);
+          else                  lab=String(cats.length+1);     // nur Werte: Index fortlaufend
+          cats.push(lab);vals.push(Math.round(v*100)/100);
+        }
+        // Sortieren und kuerzen - eine Rangliste will geordnet sein, und 22 Balken auf
+        // einer halben Kachel sind keine Aussage mehr.
+        if(w.chJsonSort==='desc'||w.chJsonSort==='asc'){
+          var ord=cats.map(function(x,k){return k;});
+          ord.sort(function(x,y){return w.chJsonSort==='desc'?(vals[y]-vals[x]):(vals[x]-vals[y]);});
+          cats=ord.map(function(k){return cats[k];});vals=ord.map(function(k){return vals[k];});
+        }
+        var mx=parseInt(w.chJsonMax,10);
+        if(mx>0&&cats.length>mx){cats=cats.slice(0,mx);vals=vals.slice(0,mx);}
+        fertig(cats,vals);
+      }).catch(function(){fertig([],[]);});
+  }
   function fetchTblRow(w){
     var b=(w.chSession&&typeof mxSrcOf==='function'&&mxSrcOf(w.chSession)===1);
     var vid=b?(w.chTblB||w.chTblA):w.chTblA;
@@ -2537,6 +2665,7 @@
     if(w.ctype==='daylight')  {fetchDaylight(w);return;} // eigener Datenweg (Jahresberechnung, keine Historie)
     if(w.ctype==='waterfall'||w.type==='waterfall')return; // Wasserfall liest ausschliesslich Live-Werte (_lastVals)
     if(w.ctype==='barrace'&&w.brLive){if(_ec[w.id])setBarRaceLive(w);return;} // Live-Bar-Race: keine Historie, nur _lastVals
+    if(w.chJsonVid){fetchJsonPairs(w);return;}           // Wertepaare aus einer JSON-Variablen
     if(w.chTblA){fetchTblRow(w);return;}                 // Balken aus einer Kennzahlen-Tabelle (eigener Datenweg)
     var W=_chWindow(w);
     if(w.type==='chart'&&_chCalMode(w)){fetchCalYear(w);return;}

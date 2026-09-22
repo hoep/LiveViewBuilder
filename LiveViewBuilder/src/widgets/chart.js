@@ -132,6 +132,15 @@
       // ---- Tabellen-Quelle: Balken aus einer Kennzahlen-Tabelle statt aus dem Archiv ----
       // Gedacht fuer Jahresreihen, die ein Skript ohnehin schon rechnet (Statistik-Tabellen).
       // Mit der Kopplung folgt das Diagramm dem Umschalter einer Kennzahlen-Matrix.
+      // ---- Wertepaare aus einer JSON-Variablen (Kategorien statt Zeitachse) ----
+      h+='<div class="pgh">Wertepaare (JSON)</div>'
+        +row('Variable (ID)','<input id="pChJsonVid" type="number" value="'+(w.chJsonVid||'')+'" style="width:90px" placeholder="aus"> <span style="font-size:11px;color:var(--muted)">gesetzt = Kategorien statt Zeitachse; liest jede Tabellen- oder Listenvariable</span>');
+      if(w.chJsonVid){
+        h+=row('Spalte Beschriftung','<input id="pChJsonIdx" type="number" min="0" value="'+(w.chJsonIdx!=null?w.chJsonIdx:'')+'" style="width:70px" placeholder="auto"> <span style="font-size:11px;color:var(--muted)">leer = Spalte 0, bei reinen Wertelisten fortlaufend</span>')
+          +row('Spalte Wert','<input id="pChJsonVal" type="number" min="0" value="'+(w.chJsonVal!=null?w.chJsonVal:'')+'" style="width:70px" placeholder="auto"> <span style="font-size:11px;color:var(--muted)">leer = erste Spalte, die sich als Zahl lesen lässt</span>')
+          +row('Sortierung','<select id="pChJsonSort"><option value="">wie geliefert</option><option value="desc"'+(w.chJsonSort==='desc'?' selected':'')+'>größter zuerst</option><option value="asc"'+(w.chJsonSort==='asc'?' selected':'')+'>kleinster zuerst</option></select>')
+          +row('Höchstzahl','<input id="pChJsonMax" type="number" min="1" max="60" value="'+(w.chJsonMax||'')+'" style="width:70px" placeholder="alle"> <span style="font-size:11px;color:var(--muted)">22 Balken auf einer halben Kachel sind keine Aussage mehr</span>');
+      }
       h+=row('Tabelle A (ID)','<input id="pChTblA" type="number" value="'+(w.chTblA||'')+'" style="width:90px" placeholder="aus"> <span style="font-size:11px;color:var(--muted)">gesetzt = Balken kommen aus der Tabelle, nicht aus dem Archiv</span>');
       if(w.chTblA)h+=row('Zeile','<input id="pChTblRow" value="'+esc(w.chTblRow||'')+'" placeholder="z. B. T Avg" style="flex:1"> <span style="font-size:11px;color:var(--muted)">Anfang des Bezeichners genügt</span>')
         +row('Tabelle B (ID)','<input id="pChTblB" type="number" value="'+(w.chTblB||'')+'" style="width:90px" placeholder="ohne"> <span style="font-size:11px;color:var(--muted)">zweite Ansicht, z. B. bis heute</span>')
@@ -359,6 +368,11 @@ if(V.cmp)h+='<div class="pgh">Vergleich (Zeitversatz)</div>'+row('Aktiv','<input
       if($('#pHmAgg'))$('#pHmAgg').onchange=function(){w.aggField=(this.value==='sum')?'sum':undefined;delete _hist[w.id];fetchHist(w);commit();};
       // --- Bar Race ---
       function _chTblNeu(){delete _hist[w.id];fetchHist(w);commit();}
+      if($('#pChJsonVid'))$('#pChJsonVid').onchange=function(){w.chJsonVid=parseInt(this.value)||undefined;renderProps();_chTblNeu();};
+      if($('#pChJsonIdx'))$('#pChJsonIdx').onchange=function(){w.chJsonIdx=(this.value===''?undefined:parseInt(this.value));_chTblNeu();};
+      if($('#pChJsonVal'))$('#pChJsonVal').onchange=function(){w.chJsonVal=(this.value===''?undefined:parseInt(this.value));_chTblNeu();};
+      if($('#pChJsonSort'))$('#pChJsonSort').onchange=function(){w.chJsonSort=this.value||undefined;_chTblNeu();};
+      if($('#pChJsonMax'))$('#pChJsonMax').onchange=function(){w.chJsonMax=parseInt(this.value)||undefined;_chTblNeu();};
       if($('#pChTblA'))$('#pChTblA').onchange=function(){w.chTblA=parseInt(this.value)||undefined;renderProps();_chTblNeu();};
       if($('#pChTblB'))$('#pChTblB').onchange=function(){w.chTblB=parseInt(this.value)||undefined;_chTblNeu();};
       if($('#pChTblRow'))$('#pChTblRow').onchange=function(){w.chTblRow=this.value||undefined;_chTblNeu();};
