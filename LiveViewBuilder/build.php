@@ -132,6 +132,13 @@ if (!$pruefen($lauf)) {
     $lauf = $voll;
 }
 
+// Der Cache-Brecher der Doku-Daten steht in den Buendeln, nicht nur in der Huelle:
+// der Handler liefert dokudata mit sieben Tagen max-age aus, und ohne Ersetzung
+// bliebe die URL bei jedem Bau dieselbe - geaenderte Doku-Texte kaemen nie an.
+$dokuver = substr(md5((string) @file_get_contents("$d/js/12-doku-data.js")), 0, 10);
+$voll = str_replace("{{DOKUVER}}", $dokuver, $voll);
+$lauf = str_replace("{{DOKUVER}}", $dokuver, $lauf);
+
 file_put_contents(__DIR__ . "/assets/app.js", $voll);
 file_put_contents(__DIR__ . "/assets/run.js", $lauf);
 $hv = substr(md5($voll), 0, 12);
@@ -180,7 +187,6 @@ $css = preg_replace('#\n{2,}#', "\n", $css);
 
 $shell = file_get_contents("$d/shell.html");
 $out = str_replace("{{STYLES}}\n", $css, $shell);
-$dokuver = substr(md5((string) @file_get_contents("$d/js/12-doku-data.js")), 0, 10);
 $out = str_replace("{{DOKUVER}}", $dokuver, $out);
 file_put_contents(__DIR__ . "/builder.html", $out);
 
