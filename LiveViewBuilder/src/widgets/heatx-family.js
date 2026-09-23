@@ -33,7 +33,7 @@
       sess.variants=vs; sess.sun=(j0&&j0.sunEvents)||null;
       var jobs=vs.map(function(v){return hpHSManage(idx,{op:'getSchedule',args:{variant:v}}).then(function(j){return (j&&j.week)?j.week:null;}).catch(function(){return null;});});
       jobs.push(fetch('?api=mod&op=state&id='+idx,{cache:'no-store'}).then(function(r){return r.json();}).catch(function(){return {};}));
-      Promise.all(jobs).then(function(res){hpSetVC(dom);var prof={};vs.forEach(function(v,i){prof[v]=res[i]?hsWeekToProf(res[i]):hpEmptyWeek();});var st=res[vs.length]||{};
+      Promise.all(jobs).then(function(res){hpSetVC(dom);var prof={};vs.forEach(function(v,i){prof[v]=res[i]?hsWeekToProf(res[i],sess.sun):hpEmptyWeek();});var st=res[vs.length]||{};
         sess.prof=prof;sess.roomIdx=idx;sess.name=hpRoomName(idx);sess.type='';
         if(dom==='shading'){ sess.ist=(st.ActualPosition==null?null:+st.ActualPosition); sess.sollDev=(st.Position==null?null:+st.Position); sess.hum=null;
           sess.active=(st.Plan!=null&&st.Season!=null)?((+st.Plan)*2+(+st.Season)):-1; }
@@ -65,7 +65,7 @@
     // die Variante nicht und "Woche uebernehmen von" tat schlicht nichts.
     if(hfHS(w)){ var vname=hpVars(sess)[pres]; if(vname==null)vname=pres;
       hpHSManage(idx,{op:'getSchedule',args:{variant:vname}}).then(function(j){
-      if(j&&j.week){var prof={};prof[vname]=hsWeekToProf(j.week);if(!hpApplyWeek(sess,prof,pres))toast('Quelle leer');else toast('Woche übernommen');}else toast('Quelle nicht lesbar');cb&&cb();
+      if(j&&j.week){var prof={};prof[vname]=hsWeekToProf(j.week,j.sunEvents||sess.sun);if(!hpApplyWeek(sess,prof,pres))toast('Quelle leer');else toast('Woche übernommen');}else toast('Quelle nicht lesbar');cb&&cb();
     }).catch(function(){toast('Übernehmen: Verbindungsfehler');cb&&cb();}); return; }
     fetch('?api=heat&op=get&room='+idx+hfRootP(w),{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
       if(j&&j.ok){if(!hpApplyWeek(sess,j.profiles,pres))toast('Quelle leer');}else toast('Quelle nicht lesbar');cb&&cb();

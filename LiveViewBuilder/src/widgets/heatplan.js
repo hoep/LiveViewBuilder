@@ -409,9 +409,12 @@
       .then(function(r){return r.json();});
   }
   function hpEmptyWeek(){ var wk=[]; for(var d=0;d<7;d++)wk.push({end:['24:00'],val:[_hpVC.def],anch:[null],mode:['']}); return wk; }
-  function hsWeekToProf(week){ // 7×[{end:Min,val,anchor?,offset?}] -> 7×{end:[HH:MM],val:[],anch:[]}
+  // Sonnengebundene Grenzen: "end" ist nur die beim Speichern aufgeloeste Ersatzzeit
+  // (z. B. 20:29 im Juli). Angezeigt wird Ereignis + Versatz von heute, sonst stand im
+  // Editor 20:29, gefahren wurde um 19:10.
+  function hsWeekToProf(week,sun){ // 7×[{end:Min,val,anchor?,offset?}] -> 7×{end:[HH:MM],val:[],anch:[]}
     var out=[]; for(var d=0;d<7;d++){ var day=week[d]||[],end=[],val=[],anch=[],mode=[];
-      day.forEach(function(s){ end.push(hpM2H(s.end)); val.push(Number(s.val)); anch.push(s.anchor?{anchor:s.anchor,offset:(s.offset||0)}:null); mode.push(s.mode||''); });
+      day.forEach(function(s){ var m=(s.anchor&&sun&&sun[s.anchor]!=null)?Math.max(0,Math.min(1439,sun[s.anchor]+(s.offset||0))):s.end; end.push(hpM2H(m)); val.push(Number(s.val)); anch.push(s.anchor?{anchor:s.anchor,offset:(s.offset||0)}:null); mode.push(s.mode||''); });
       if(!end.length){ end=['24:00']; val=[_hpVC.def]; anch=[null]; mode=['']; } out.push({end:end,val:val,anch:anch,mode:mode}); }
     return out;
   }
