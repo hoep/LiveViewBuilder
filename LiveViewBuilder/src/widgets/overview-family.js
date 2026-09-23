@@ -14,7 +14,7 @@
   // Loesungsknoepfe je Eintrag; runstrip/statetl sind Verlaeufe, kein Fahrplan. Keines
   // liest einen zusammengesetzten Zustand mit Aktionen je Eintrag.
 
-  var _ovData = {}, _ovAt = {}, _ovBusy = {}, _ovFilter = null;
+  var _ovData = {}, _ovAt = {}, _ovBusy = {}, _ovFilter = null, _ovTech = false;
   var _OV_OCC = {0: ['Leer', 'none'], 1: ['Bewohner', 'acc'], 2: ['Gäste', 'info'], 3: ['Bewohner + Gäste', 'both'], 4: ['Unbekannt', 'warn']};
   var _OV_SEV = {1: 'info', 2: 'warn', 3: 'crit'};
 
@@ -121,8 +121,16 @@
     var el = _ovEl(w); if (!el) { return; }
     var d = _ovData[_ovKey(w)];
     if (!d) { el.innerHTML = '<div class="ov-empty">' + (w.ovId || _ovDoku() ? 'Lade …' : 'Lage-Instanz wählen') + '</div>'; return; }
+    var liste = el.querySelector('.ovp-l'), alt = liste ? liste.scrollTop : null;
     el.innerHTML = w.type === 'ovsites' ? _ovSites(w, d) : (w.type === 'ovhints' ? _ovHints(w, d) : _ovPlan(w, d));
     _ovWire(w, el);
+    // Fahrplan: beim ersten Zeichnen die Jetzt-Linie ins obere Drittel holen, danach die
+    // Scrollposition des Nutzers behalten.
+    var neu = el.querySelector('.ovp-l');
+    if (neu) {
+      if (alt !== null && w._ovScrolled) { neu.scrollTop = alt; }
+      else { var now = neu.querySelector('.ovp-now'); if (now) { neu.scrollTop = Math.max(0, now.offsetTop - neu.offsetTop - neu.clientHeight / 3); w._ovScrolled = true; } }
+    }
   }
   function _ovHm(t) { var x = new Date(t * 1000); return ('0' + x.getHours()).slice(-2) + ':' + ('0' + x.getMinutes()).slice(-2); }
   function _ovShort(n) { return String(n || '').length > 9 ? String(n).slice(0, 7) + '.' : String(n || ''); }
@@ -170,12 +178,16 @@
 
   function _ovPlan(w, d) {
     var now = Math.floor(Date.now() / 1000);
-    var list = (d.timeline || []).filter(function (x) { return _ovFilter === null || x.site === _ovFilter; });
+    var all = (d.timeline || []).filter(function (x) { return _ovFilter === null || x.site === _ovFilter; });
+    var nTech = all.filter(function (x) { return x.area === 'Technik'; }).length;
+    // Technik (Zaehler nullen, Staende rechnen ...) schaltet nichts im Haus - standardmaessig aus.
+    var list = _ovTech ? all : all.filter(function (x) { return x.area !== 'Technik'; });
     var sites = d.sites || [];
     var h = '<div class="ov-hd ovp-hd"><span class="ov-tt">' + esc(w.label || 'Fahrplan') + '</span><span class="ov-fl"></span>';
     if (w.ovChips !== false && sites.length > 1) {
       h += '<span class="ovp-f"><button type="button" class="' + (_ovFilter === null ? 'on' : '') + '" data-ovclear="1">Alle</button>'
         + sites.map(function (s) { return '<button type="button" class="' + (_ovFilter === s.id ? 'on' : '') + '" data-ovsite="' + s.id + '">' + esc(s.abbr || _ovShort(s.name)) + '</button>'; }).join('')
+        + (nTech ? '<button type="button" class="' + (_ovTech ? 'on' : '') + '" data-ovtech="1" style="margin-left:auto">Technik ' + nTech + '</button>' : '')
         + '</span>';
     }
     h += '</div><div class="ovp-l">';
@@ -200,6 +212,9 @@
         _ovFilter = (_ovFilter === id) ? null : id;
         _ovRepaintAll();
       };
+    });
+    el.querySelectorAll('[data-ovtech]').forEach(function (b) {
+      b.onclick = function (e) { e.stopPropagation(); _ovTech = !_ovTech; _ovRepaintAll(); };
     });
     el.querySelectorAll('[data-ovclear]').forEach(function (b) {
       b.onclick = function (e) { e.stopPropagation(); _ovFilter = null; _ovRepaintAll(); };
