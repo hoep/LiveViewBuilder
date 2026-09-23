@@ -180,10 +180,21 @@
   // findet den Schluessel nicht und laesst die Zeile an ihrem Platz, hsLabel faellt auf den
   // echten Namen zurueck. Es geht also nichts kaputt, die Reihenfolge ist einmal neu zu setzen.
   function afRoomKey(r,i){ return String((r && r.id) ? r.id : ('#' + i)); }
+  // STANDORT-REITER (23.09.2026): liegen die Zonen an mehreren Standorten, stehen links die
+  // Standorte (voller Name + Zahl der Raeume), daneben nur deren Raeume in EINER wischbaren
+  // Zeile. Der Standort folgt dem gewaehlten Raum und wird je Geraet gemerkt.
+  function afSites(s){var m={},l=[];(s.rooms||[]).forEach(function(r){var k=r.site||0;if(!m[k]){m[k]={id:k,name:r.siteName||'Weitere',pos:(r.sitePos!=null?r.sitePos:999),n:0};l.push(m[k]);}m[k].n++;});
+    l.sort(function(a,b){return a.pos-b.pos||String(a.name).localeCompare(String(b.name));});return l;}
+  function afSiteCur(s){var c=afCur(s);if(s.site==null){var mem=null;try{mem=localStorage.getItem('lvb.audio.site');}catch(e){}
+      s.site=(c&&c.site!=null)?c.site:(mem!=null?+mem:0);}
+    return s.site;}
   function afRoomBar(w,s){
+    var sites=afSites(s),multi=sites.length>1,site=multi?afSiteCur(s):null;
     var items=hsOrderHideBy(w,'r',(s.rooms||[]).map(function(r,i){return {idx:i,key:afRoomKey(r,i),r:r};}),function(x){return x.key;});
+    if(multi)items=items.filter(function(it){return (it.r.site||0)===site;});
     var btn=hsLvlBtn(w,'r');
-    return '<div class="'+hsLvlClass(w,'r')+'"'+hsFontStyle(w,'r')+'>'+items.map(function(it){var r=it.r,i=it.idx;
+    var tabs=multi?('<div class="afst">'+sites.map(function(x){return '<button class="afstb'+(x.id===site?' on':'')+'" data-afsite="'+x.id+'">'+esc(x.name)+'<small>'+x.n+'</small></button>';}).join('')+'</div><span class="afsts"></span>'):'';
+    return tabs+'<div class="'+hsLvlClass(w,'r')+(multi?' afrow':'')+'"'+hsFontStyle(w,'r')+'>'+items.map(function(it){var r=it.r,i=it.idx;
       var dot=r.role==='member'?'var(--info)':(r.playing?'var(--accent)':'var(--faint)');
       return '<button class="'+btn+(i===s.roomIdx?' on':'')+'" data-afroom="'+i+'">'+
         '<span style="width:.55em;height:.55em;border-radius:50%;background:'+dot+';flex:none"></span>'+
@@ -193,9 +204,13 @@
     label:'Audio · Räume', cat:'HomeSuite · Audio', paletteIcon:'wselect', size:[720,52],
     defaults:function(w){w.session='audio';},
     render:function(w){var r=afReady(w);if(r.err)return afMsg(r.err);if(r.loading)return afMsg('Audio lädt …');
-      return '<div class="afw afrooms">'+afRoomBar(w,r.s)+'</div>';},
+      return '<div class="afw afrooms'+(afSites(r.s).length>1?' afsites':'')+'">'+afRoomBar(w,r.s)+'</div>';},
     mount:afMount,
-    _bind:function(w,el){var s=afSess(w);$$('[data-afroom]',el).forEach(function(b){b.onclick=function(){s.roomIdx=+b.getAttribute('data-afroom');s.radio=null;afEmit(w);afLoadRadio(w);};});},
+    _bind:function(w,el){var s=afSess(w);
+      $$('[data-afroom]',el).forEach(function(b){b.onclick=function(){s.roomIdx=+b.getAttribute('data-afroom');var c=afCur(s);if(c&&c.site!=null){s.site=c.site;try{localStorage.setItem('lvb.audio.site',String(c.site));}catch(e){}}s.radio=null;afEmit(w);afLoadRadio(w);};});
+      $$('[data-afsite]',el).forEach(function(b){b.onclick=function(){var id=+b.getAttribute('data-afsite');s.site=id;try{localStorage.setItem('lvb.audio.site',String(id));}catch(e){}
+        var c=afCur(s);if(!c||(c.site||0)!==id){var i=(s.rooms||[]).findIndex(function(r){return (r.site||0)===id;});if(i>=0){s.roomIdx=i;s.radio=null;afLoadRadio(w);}}
+        afEmit(w);};});},
     props:function(w){var s=afSess(w);
       var items=((s&&s.rooms)||[]).map(function(r,i){return {key:afRoomKey(r,i),name:hsStripDomain(r.name)};});
       return afSessRow(w)+hsLevelBlock(w,'r','Räume',items);},
@@ -884,9 +899,12 @@
           +'</div>';
       }
       // VERBUNDEN zuerst (Master an der Spitze), danach die uebrigen Raeume.
+      // Nur Raeume DESSELBEN Standorts anbieten: andere Haeuser haben ein eigenes Sonos-/HEOS-
+      // System, ein Beitreten waere dort ohnehin nicht moeglich.
+      if(cur.site!=null)free=free.filter(function(rr){return (rr.site||0)===(cur.site||0);});
       var rows='<div class="sec">'+(hasGrp?('Verbunden · '+(members.length+1)+' Räume'):'Dieser Raum')+'</div>'
         +mrRow(cur,true,true)+members.map(function(rr){return mrRow(rr,true,false);}).join('')
-        +(free.length?('<div class="sec">Weitere Räume</div>'
+        +(free.length?('<div class="sec">Weitere Räume'+(cur.siteName?(' · '+esc(cur.siteName)):'')+'</div>'
           +free.map(function(rr){return mrRow(rr,false,false);}).join('')):'');
       return '<div class="afw afmr">'+head+gvol+'<div class="rows">'+rows+'</div></div>';},
     mount:afMount,

@@ -2677,11 +2677,31 @@ if ($api === 'audio') {
         return $cache[$iid] = (string) ($d['config']['rincon'] ?? $d['config']['uid'] ?? '');
     };
 
+    // STANDORT einer Zone: naechster "HomeSuite Bereich" mit Ebene Haus ueber ihr. Die
+    // Raumleiste gruppiert damit nach Standort, Multiroom bietet nur Raeume desselben
+    // Standorts an - Zonen verschiedener Haeuser liegen in getrennten Sonos-/HEOS-Systemen
+    // und lassen sich ohnehin nicht zusammenschalten.
+    $siteOf = function ($iid) {
+        static $cache = [];
+        if (isset($cache[$iid])) return $cache[$iid];
+        $x = (int) $iid;
+        for ($n = 0; $x > 0 && $n < 16; $n++) {
+            if (@IPS_InstanceExists($x) && (string) (IPS_GetInstance($x)['ModuleInfo']['ModuleID'] ?? '') === '{5598F752-886D-475F-91CE-5813A3C581E5}') {
+                $cfg = json_decode((string) @IPS_GetConfiguration($x), true);
+                if (is_array($cfg) && (string) ($cfg['Kind'] ?? '') === 'Haus') {
+                    return $cache[$iid] = ['site' => $x, 'siteName' => IPS_GetName($x), 'sitePos' => (int) IPS_GetObject($x)['ObjectPosition']];
+                }
+            }
+            $x = (int) @IPS_GetParent($x);
+        }
+        return $cache[$iid] = ['site' => 0, 'siteName' => '', 'sitePos' => 999];
+    };
+
     if ($op === 'list') {
         $out = [];
         foreach ($list as $iid) {
             $st = $stateOf($iid);
-            $out[] = ['id' => $iid, 'name' => IPS_GetName($iid),
+            $out[] = ['id' => $iid, 'name' => IPS_GetName($iid)] + $siteOf($iid) + [
                 'uid' => $uidOf($iid),
                 'role' => (string) ($st['GroupRole'] ?? 'standalone'),
                 'coordinator' => (string) ($st['GroupCoordinator'] ?? '')];
@@ -2695,7 +2715,7 @@ if ($api === 'audio') {
         foreach ($list as $iid) {
             $st = $stateOf($iid);
             $out[] = [
-                'id' => $iid, 'name' => IPS_GetName($iid),
+                'id' => $iid, 'name' => IPS_GetName($iid)] + $siteOf($iid) + [
                 'title' => (string) ($st['Title'] ?? ''), 'artist' => (string) ($st['Artist'] ?? ''),
                 'album' => (string) ($st['Album'] ?? ''), 'albumArtist' => (string) ($st['AlbumArtist'] ?? ''),
                 'coverUrl' => $coverUrl($st['CoverUri'] ?? ''),
