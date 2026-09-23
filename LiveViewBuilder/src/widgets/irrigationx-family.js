@@ -210,7 +210,15 @@
       +'.irs-pk-clr{margin:0 12px 10px;padding:5px 9px;border-radius:8px;border:1px solid var(--line);background:var(--surface-2);color:var(--muted);font-size:11px;cursor:pointer}';
       document.head.appendChild(_s);}
 
-    var _irData=null, _irErr='', _irLoading=false;
+    var _irData=null, _irErr='', _irLoading=false, _irRetry=0;
+    // Leere Antwort oder Netzfehler NICHT als Endzustand behalten. Waehrend die HomeSuite-
+    // Library neu laedt (rund 30 s), liefert die Topologie keine Kreise; wer genau dann die
+    // Seite oeffnete, sah bis zum naechsten Neuladen leere Karten (23.09.2026). Jetzt wird
+    // nachgefragt: 15 s, 30 s, 60 s ... hoechstens 5 min Abstand.
+    function irNochmal(cb){
+      var ms=Math.min(300000,15000*Math.pow(2,Math.min(_irRetry,5))); _irRetry++;
+      setTimeout(function(){ _irData=null; irLoad(cb); }, ms);
+    }
 
     function irDemo(){return [
       {iid:1,name:'Rasen Nord',room:'Garten',group:'Garten',armed:false,
@@ -237,7 +245,8 @@
       if(_irLoading)return; _irLoading=true;
       fetch('?api=mod&op=topology',{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
         var list=irCircuitsFromTopo(j);
-        if(!list.length){_irData=[];_irErr='';_irLoading=false;cb&&cb();return;}
+        if(!list.length){_irData=[];_irErr='';_irLoading=false;cb&&cb();irNochmal(cb);return;}
+        _irRetry=0;
         var jobs=list.map(function(c){
           return fetch('?api=mod&op=manifest&id='+c.iid,{cache:'no-store'}).then(function(r){return r.json();})
             .then(function(m){irApplyManifest(c,m);}).catch(function(){});
@@ -249,7 +258,7 @@
         list.forEach(function(c){ jobs.push(irProbe(c)); jobs.push(irPlan(c)); });
         Promise.all(jobs).then(function(){_irData=list;_irErr='';_irLoading=false;cb&&cb();})
           .catch(function(){_irData=list;_irErr='';_irLoading=false;cb&&cb();});
-      }).catch(function(){_irErr='net';_irLoading=false;cb&&cb();});
+      }).catch(function(){_irErr='net';_irLoading=false;cb&&cb();irNochmal(cb);});
     }
     // Kreis-Liste aus der Topologie ziehen (gleiche Baumform wie heatx: Haus->Bereich->Raum->entities).
     function irCircuitsFromTopo(j){
