@@ -15,7 +15,7 @@
   // liest einen zusammengesetzten Zustand mit Aktionen je Eintrag.
 
   var _ovData = {}, _ovAt = {}, _ovBusy = {}, _ovFilter = null, _ovTech = false;
-  var _OV_OCC = {0: ['Leer', 'none'], 1: ['Bewohner', 'acc'], 2: ['Gäste', 'info'], 3: ['Bewohner + Gäste', 'both'], 4: ['Unbekannt', 'warn']};
+  var _OV_OCC = {0: ['Leer', 'none'], 1: ['Bewohner', 'acc'], 2: ['Gäste', 'info'], 3: ['Bewohner + Gäste', 'both'], 4: ['Unbekannt', 'warn'], 5: ['Familie', 'fam']};
   var _OV_SEV = {1: 'info', 2: 'warn', 3: 'crit'};
 
   if (!document.getElementById('ovCss')) {
@@ -37,7 +37,7 @@
       + '.ovs-n{font-weight:700;font-size:clamp(12px,2.2cqmin,15px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'
       + '.ovs-p{display:inline-flex;align-items:center;gap:6px;border-radius:99px;padding:3px 9px;font-size:11.5px;font-weight:600;background:var(--tile2,color-mix(in oklab,var(--surface) 70%,var(--line)));border:1px solid var(--line);white-space:nowrap}'
       + '.ovd{width:8px;height:8px;border-radius:50%;display:inline-block;flex:none;background:var(--muted)}'
-      + '.ovd.acc{background:var(--accent)}.ovd.info{background:var(--info,#5aa9ff)}.ovd.both{background:#9b7bff}.ovd.warn{background:var(--warn)}.ovd.crit{background:var(--crit)}.ovd.ok{background:var(--ok,#39d08a)}.ovd.none{background:var(--muted)}'
+      + '.ovd.acc{background:var(--accent)}.ovd.info{background:var(--info,#5aa9ff)}.ovd.both{background:#9b7bff}.ovd.warn{background:var(--warn)}.ovd.crit{background:var(--crit)}.ovd.ok{background:var(--ok,#39d08a)}.ovd.none{background:var(--muted)}.ovd.fam{background:#7fd4c1}'
       + '.ovs-s{display:flex;align-items:center;gap:7px;font-size:12.5px}'
       + '.ovs-v{margin-left:auto;color:var(--muted);font-size:11.5px;font-family:ui-monospace,Menlo,monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}'
       // Hinweise
