@@ -66,6 +66,8 @@
       + '.ovp-tag{font-size:10.5px;color:var(--muted);border:1px solid var(--line);border-radius:5px;padding:0 5px;margin-left:6px;white-space:nowrap}'
       + '.ovp-e.past .ovp-t,.ovp-e.past .ovp-x{color:var(--muted)}.ovp-e.past .ovp-d i{background:var(--muted)}'
       + '.ovp-e.skip .ovp-x{color:var(--muted)}.ovp-e.skip .ovp-x b{text-decoration:line-through;font-weight:500}.ovp-e.skip .ovp-d i{background:var(--surface);border:2px solid var(--muted)}'
+      + '.ovp-e.done .ovp-d i{background:var(--ok,#39d08a);width:12px;height:12px;margin-top:3px}'
+      + '.ovp-e.done .ovp-d i:after{content:"";position:absolute;left:3.5px;top:1.5px;width:3px;height:6px;border:solid #04201b;border-width:0 1.6px 1.6px 0;transform:rotate(45deg)}'
       + '.ovp-now{display:grid;grid-template-columns:48px 1fr;gap:10px;align-items:center;margin:3px 0}'
       + '.ovp-now b{font:600 11px ui-monospace,Menlo,monospace;background:var(--warn);color:#2a1a05;border-radius:5px;padding:2px 4px;text-align:center}'
       + '.ovp-now i{height:2px;background:var(--warn)}';
@@ -194,7 +196,7 @@
     var nowDone = false, multi = _ovFilter === null && sites.length > 1;
     list.forEach(function (x) {
       if (!nowDone && x.t >= now) { h += '<div class="ovp-now"><b>' + _ovHm(now) + '</b><i></i></div>'; nowDone = true; }
-      h += '<div class="ovp-e' + (x.t < now ? ' past' : '') + (x.kind === 'skip' ? ' skip' : '') + '">'
+      h += '<div class="ovp-e' + (x.t < now ? ' past' : '') + (x.kind === 'skip' ? ' skip' : '') + (x.kind === 'done' ? ' done' : '') + '">'
         + '<span class="ovp-t">' + _ovHm(x.t) + '</span><span class="ovp-d"><i></i></span>'
         + '<span class="ovp-x"><b>' + esc(x.title) + '</b>' + (multi ? '<span class="ovp-tag">' + esc(x.siteAbbr || _ovShort(x.siteName)) + '</span>' : '')
         + (x.detail ? '<small>' + esc(x.detail) + '</small>' : '') + '</span></div>';
