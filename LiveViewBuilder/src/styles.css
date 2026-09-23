@@ -3963,6 +3963,17 @@
 .rs-tab.solid .rs-c{border-radius:0}
 .rs-tab.solid .rs-c:first-child{border-radius:3px 0 0 3px}
 .rs-tab.solid .rs-c:last-child{border-radius:0 3px 3px 0}
+/* Kalender-Erweiterung (Belegung): feste Nebenlabel-Spalte, damit die Kopfzeile mit den
+   Spaltennummern ueber den Zellen steht; Luecken fuer kurze Monate; hervorgehobene Zelle
+   (heute) mit Rahmen statt eigener Farbe - der Zustand bleibt lesbar. */
+.rs-tab.fixsub .rs-zl{grid-template-columns:var(--rslb) var(--rssub) 1fr var(--rsval)}
+.rs-str{height:var(--rsch,clamp(9px,2.2cqmin,17px))}
+.rs-hd .rs-hs{height:auto}
+.rs-hn{flex:1 1 0;min-width:0;font:500 clamp(8px,1.2cqmin,10px)/1 ui-monospace,Menlo,monospace;
+       color:var(--faint,var(--muted));text-align:center;font-style:normal}
+.rs-c.gap{background:transparent}
+.rs-c.hl{outline:2px solid var(--text);outline-offset:1px;position:relative;z-index:1}
+.rs-p.hl{background:transparent;outline:2px solid var(--text);outline-offset:-2px}
 
 /* ---- sunscene: Knopf "Ansicht zurücksetzen" --------------------------- */
 .ssc{position:relative}
