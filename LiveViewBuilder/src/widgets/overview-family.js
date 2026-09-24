@@ -63,6 +63,7 @@
       + '.ovp-d:before{content:"";position:absolute;top:0;bottom:-12px;width:2px;background:var(--line)}'
       + '.ovp-d i{position:relative;width:10px;height:10px;border-radius:50%;background:var(--accent);margin-top:4px;box-shadow:0 0 0 3px var(--surface)}'
       + '.ovp-x{font-size:13px;min-width:0}.ovp-x small{display:block;color:var(--muted);font-size:11.5px}'
+      + '.ovp-badge{font:600 10px Inter,system-ui,sans-serif;letter-spacing:.04em;text-transform:uppercase;color:var(--warn);border:1px solid var(--warn);border-radius:5px;padding:0 5px;margin-left:6px;white-space:nowrap;vertical-align:1px}'
       + '.ovp-tag{font-size:10.5px;color:var(--muted);border:1px solid var(--line);border-radius:5px;padding:0 5px;margin-left:6px;white-space:nowrap}'
       + '.ovp-e.past .ovp-t,.ovp-e.past .ovp-x{color:var(--muted)}.ovp-e.past .ovp-d i{background:var(--muted)}'
       + '.ovp-e.skip .ovp-x{color:var(--muted)}.ovp-e.skip .ovp-x b{text-decoration:line-through;font-weight:500}.ovp-e.skip .ovp-d i{background:var(--surface);border:2px solid var(--muted)}'
@@ -92,7 +93,8 @@
         {id: 'a', t: n - 2 * h, site: 1, siteName: 'Wohnhaus', area: 'Bewässerung', title: 'Blumeninseln gewässert', detail: '18 min', kind: '', past: true},
         {id: 'b', t: n + h, site: 1, siteName: 'Wohnhaus', area: 'Beschattung', title: 'Rollos auf', detail: '9 Rollos · Esszimmer, Küche und 7 weitere', kind: '', past: false},
         {id: 'c', t: n + 5 * h, site: 2, siteName: 'Ferienhaus', area: 'Bewässerung', title: 'Hecke bewässern', detail: 'entfällt · Regen', kind: 'skip', past: false},
-        {id: 'd', t: n + 8 * h, site: 3, siteName: 'Wohnung', area: 'Klima', title: 'Klima · 2 Räume', detail: 'Planwechsel', kind: '', past: false}]};
+        {id: 'd', t: n + 8 * h, site: 3, siteName: 'Wohnung', area: 'Klima', title: 'Klima · 2 Räume', detail: 'Planwechsel', kind: '', past: false},
+        {id: 'e', t: n + 10 * h, site: 1, siteName: 'Wohnhaus', area: 'Sicherheit', title: 'Alarmanlage ausschalten', detail: '', kind: '', badge: 'unscharf', past: false}]};
   }
 
   /** Zustand holen (geteilter Cache je Instanz, hoechstens alle 5 s). */
@@ -198,7 +200,7 @@
       if (!nowDone && x.t >= now) { h += '<div class="ovp-now"><b>' + _ovHm(now) + '</b><i></i></div>'; nowDone = true; }
       h += '<div class="ovp-e' + (x.t < now ? ' past' : '') + (x.kind === 'skip' ? ' skip' : '') + (x.kind === 'done' ? ' done' : '') + '">'
         + '<span class="ovp-t">' + _ovHm(x.t) + '</span><span class="ovp-d"><i></i></span>'
-        + '<span class="ovp-x"><b>' + esc(x.title) + '</b>' + (multi ? '<span class="ovp-tag">' + esc(x.siteAbbr || _ovShort(x.siteName)) + '</span>' : '')
+        + '<span class="ovp-x"><b>' + esc(x.title) + '</b>' + (x.badge ? '<span class="ovp-badge">' + esc(x.badge) + '</span>' : '') + (multi ? '<span class="ovp-tag">' + esc(x.siteAbbr || _ovShort(x.siteName)) + '</span>' : '')
         + (x.detail ? '<small>' + esc(x.detail) + '</small>' : '') + '</span></div>';
     });
     if (!nowDone) { h += '<div class="ovp-now"><b>' + _ovHm(now) + '</b><i></i></div>'; }
