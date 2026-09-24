@@ -177,6 +177,7 @@
     // und loesen live() aus - sonst haette die Treemap nur im eigenen Takt aktualisiert.
     if(w._tmIds)w._tmIds.forEach(function(n){if(n>0)add(n);});
     add(w.gRefVid);   // Gauge: Referenzstrich (Variable oder Formel)
+    add(w.chJsonVid); // Diagramm aus JSON: bei jeder Aenderung neu laden (live -> chartPushRefresh)
     add(w.sollVid);add(w.tbWarnVid);add(w.mgThrVid);add(w.kToneVid);add(w.kSubVid);add(w.ttlRightVid);                                  // Saeule: Soll-Marke und Warnschwelle aus Variablen
     if(w.phases)w.phases.forEach(function(o){if(o)add(o.hintVid);});   // Ablaufkette: Unterzeile je Schritt
     add(w.ilhBadgeVid);add(w.ilhSubVid);add(w.ilfVid);   // Info-Liste: Kopf- und Fusszeile

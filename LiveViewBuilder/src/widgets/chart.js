@@ -136,7 +136,9 @@
       h+='<div class="pgh">Wertepaare (JSON)</div>'
         +row('Variable (ID)','<input id="pChJsonVid" type="number" value="'+(w.chJsonVid||'')+'" style="width:90px" placeholder="aus"> <span style="font-size:11px;color:var(--muted)">gesetzt = Kategorien statt Zeitachse; liest jede Tabellen- oder Listenvariable</span>');
       if(w.chJsonVid){
-        h+=row('Spalte Beschriftung','<input id="pChJsonIdx" type="number" min="0" value="'+(w.chJsonIdx!=null?w.chJsonIdx:'')+'" style="width:70px" placeholder="auto"> <span style="font-size:11px;color:var(--muted)">leer = Spalte 0, bei reinen Wertelisten fortlaufend</span>')
+        h+=row('Darstellung','<select id="pChJsonMode"><option value="">Kategorien (Balken/Linie)</option><option value="polar"'+(w.chJsonMode==='polar'?' selected':'')+'>Polar: Richtung · Entfernung</option></select> <span style="font-size:11px;color:var(--muted)">Polar erwartet Zeilen [Grad, Entfernung, Alter in min]</span>');
+        if(w.chJsonMode==='polar')h+=row('Ausblenden nach (min)','<input id="pChPolAge" type="number" min="1" value="'+(w.chPolAge||'')+'" style="width:70px" placeholder="30"> <span style="font-size:11px;color:var(--muted)">ältere Punkte werden blasser; Radius = Max. der Y-Achse oder automatisch</span>');
+        if(w.chJsonMode!=='polar')h+=row('Spalte Beschriftung','<input id="pChJsonIdx" type="number" min="0" value="'+(w.chJsonIdx!=null?w.chJsonIdx:'')+'" style="width:70px" placeholder="auto"> <span style="font-size:11px;color:var(--muted)">leer = Spalte 0, bei reinen Wertelisten fortlaufend</span>')
           +row('Spalte Wert','<input id="pChJsonVal" type="number" min="0" value="'+(w.chJsonVal!=null?w.chJsonVal:'')+'" style="width:70px" placeholder="auto"> <span style="font-size:11px;color:var(--muted)">leer = erste Spalte, die sich als Zahl lesen lässt</span>')
           +row('Sortierung','<select id="pChJsonSort"><option value="">wie geliefert</option><option value="desc"'+(w.chJsonSort==='desc'?' selected':'')+'>größter zuerst</option><option value="asc"'+(w.chJsonSort==='asc'?' selected':'')+'>kleinster zuerst</option></select>')
           +row('Höchstzahl','<input id="pChJsonMax" type="number" min="1" max="60" value="'+(w.chJsonMax||'')+'" style="width:70px" placeholder="alle"> <span style="font-size:11px;color:var(--muted)">22 Balken auf einer halben Kachel sind keine Aussage mehr</span>');
@@ -369,6 +371,8 @@ if(V.cmp)h+='<div class="pgh">Vergleich (Zeitversatz)</div>'+row('Aktiv','<input
       // --- Bar Race ---
       function _chTblNeu(){delete _hist[w.id];fetchHist(w);commit();}
       if($('#pChJsonVid'))$('#pChJsonVid').onchange=function(){w.chJsonVid=parseInt(this.value)||undefined;renderProps();_chTblNeu();};
+      if($('#pChJsonMode'))$('#pChJsonMode').onchange=function(){w.chJsonMode=this.value||undefined;renderProps();_chTblNeu();};
+      if($('#pChPolAge'))$('#pChPolAge').oninput=function(){w.chPolAge=parseFloat(this.value)||undefined;if(_ec[w.id])renderChartData(w);commit();};
       if($('#pChJsonIdx'))$('#pChJsonIdx').onchange=function(){w.chJsonIdx=(this.value===''?undefined:parseInt(this.value));_chTblNeu();};
       if($('#pChJsonVal'))$('#pChJsonVal').onchange=function(){w.chJsonVal=(this.value===''?undefined:parseInt(this.value));_chTblNeu();};
       if($('#pChJsonSort'))$('#pChJsonSort').onchange=function(){w.chJsonSort=this.value||undefined;_chTblNeu();};

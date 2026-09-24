@@ -3695,6 +3695,7 @@
      Erscheint nur, wenn ein Zustand sie hergibt (das Widget schaltet display).
      Farbe kommt ueber --bc vom Widget, damit dieselbe Zeile alle drei Faelle traegt. */
   .hwband{display:flex;align-items:center;gap:clamp(4px,2.2cqmin,9px);margin-top:clamp(5px,2.4cqmin,10px);
+  .hwband.act{cursor:pointer}.hwband.act:hover{filter:brightness(1.12)}
           padding:clamp(4px,2cqmin,8px) clamp(6px,3cqmin,12px);border-radius:var(--r-s,9px);
           border:1px solid var(--bc,var(--line));background:color-mix(in oklab,var(--bc,var(--line)) 13%,transparent);
           color:var(--bc,var(--text));font-size:clamp(9px,3cqmin,12.5px);line-height:1.25;flex:0 0 auto;min-width:0}

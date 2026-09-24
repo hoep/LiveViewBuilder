@@ -182,6 +182,7 @@
       main=lvNebelText(fg);   // eine Quelle fuer alle Anzeigen (siehe 00-registry.js)
       var fs=_ln(w.vFogFsi); if(fs!=null&&fs>0) main+=' · <b>FSI '+_wtxt(fs)+'</b>';
     }
+    box.classList.toggle('act', box.getAttribute('data-k')==='storm'&&kind!==''&&!!w.wStormPop);   // klickbar -> Gewitter-Popup
     if(kind===''){ box.style.display='none'; return; }
     box.style.display='';
     box.style.setProperty('--bc', kind==='crit'?'var(--crit)':(kind==='warn'?'var(--warm)':(kind==='faint'?'var(--muted)':'var(--info)')));
@@ -290,6 +291,7 @@
       +fieldPick(w,'vRainRate','Regenrate mm/h')+fieldPick(w,'vRainDay','Regen heute mm')
       +fieldPick(w,'vFog','Nebel-Stufe 0-3')+fieldPick(w,'vFogFsi','Nebel FSI')
       +'<div class="hint" style="font-size:11px;color:var(--muted)">Vorrang: <b>Gewitter</b> vor <b>Regen</b> vor <b>Nebel</b> - es wird immer nur EINE Zeile gezeigt. Ohne Bindung bleibt sie weg.</div>'
+      +row('Gewitter-Popup','<select id="pWStormPop">'+viewOpts(w.wStormPop,'popup')+'</select> <span style="font-size:11px;color:var(--muted)">Klick auf die Gewitterzeile öffnet es</span>')
       +'<div class="hint" style="font-size:11px;color:var(--muted)">Leer = Wert aus dem JSON. Zustand-Variable liefert Text → Icon automatisch. <b>Regen</b>: ist die Variable wahr (true/1/&gt;0), wird die aktuelle Anzeige auf Regen gesetzt.</div>'
       +row('Datenquelle anzeigen','<input type="checkbox" id="pWShowSrc"'+((w.showSrc!==false)?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">kleiner Hinweis in der Ecke (z.&nbsp;B. Tempest)</span>');
   }
@@ -306,6 +308,12 @@
   // Zusatzzeile ("Band") unter dem Ist-Zustand: Gewitter, Regenrate oder Nebel - je nachdem,
   // was gerade zutrifft. Sie ist NUR da, wenn es etwas zu sagen gibt (sonst display:none),
   // damit die Karte bei ruhigem Wetter nicht mit einer leeren Zeile dasteht.
+  /** Klick auf die Gewitterzeile: eigenes Popup (wStormPop). Sonst gilt die Aktion des Widgets. */
+  function _wxStormClick(w,el,e){
+    var b=e.target.closest('[data-role=wband]');
+    if(b&&b.getAttribute('data-k')==='storm'&&w.wStormPop&&store.views[w.wStormPop]){openPopup(w.wStormPop,_aliasMap(w));return true;}
+    return false;
+  }
   var _wBand='<div class="hwband" data-role="wband" style="display:none"><span class="ic" data-role="wbic"></span>'
            + '<span class="tx" data-role="wbtx"></span><span class="sx" data-role="wbsx"></span></div>';
   var _wCurBlock='<div class="hwp2cur"><span class="hwp2ic" data-role="cico"></span><span class="hwp2ci"><span class="hwp2t" data-role="val">–</span><span class="hwp2sub"><span data-role="sub"></span></span><span class="hwmetrow"><span class="hwmet" data-role="wind"></span><span class="hwmet" data-role="hum"></span></span></span></div>';
@@ -348,6 +356,7 @@
   }
   function wWireFn(w){
     wJsonWire(w);
+    if($('#pWStormPop'))$('#pWStormPop').onchange=function(){w.wStormPop=this.value||undefined;commit();};
     if($('#pWStyle'))$('#pWStyle').onchange=function(){w.wstyle=(this.value==='extended')?'extended':undefined;if(w.wstyle==='extended')wEnsureExt(w);render();renderProps();applyWeather(w);commit();};
     if(wExt(w)){
       if($('#pHideCur'))$('#pHideCur').onchange=function(){w.hideCur=this.checked?undefined:true;render();applyWeather(w);commit();};
@@ -367,6 +376,6 @@
     }
   }
   // Ein Wetter-Widget mit Stil-Umschaltung (Standard/Erweitert)
-  defWidget('weather',{label:'Wetter', cat:'Wetter & Zeit', paletteIcon:'cloudsun', size:[240,130], defaults:function(w){w.label='';w.wfmt='auto';}, render:wRenderFn, props:wPropsFn, wire:wWireFn, mount:_wMount, live:_wLive});
+  defWidget('weather',{label:'Wetter', cat:'Wetter & Zeit', paletteIcon:'cloudsun', size:[240,130], defaults:function(w){w.label='';w.wfmt='auto';}, render:wRenderFn, props:wPropsFn, wire:wWireFn, mount:_wMount, live:_wLive, click:_wxStormClick});
   // Alt-Typ (bestehende „Wetter+"-Widgets weiterhin gültig; nicht mehr in der Palette)
-  defWidget('weatherpro',{label:'Wetter+', cat:'Wetter & Zeit', noPalette:true, paletteIcon:'cloudsun', size:[340,220], defaults:function(w){w.label='';w.wfmt='auto';wEnsureExt(w);}, render:wRenderFn, props:wPropsFn, wire:wWireFn, mount:_wMount, live:_wLive});
+  defWidget('weatherpro',{label:'Wetter+', cat:'Wetter & Zeit', noPalette:true, paletteIcon:'cloudsun', size:[340,220], defaults:function(w){w.label='';w.wfmt='auto';wEnsureExt(w);}, render:wRenderFn, props:wPropsFn, wire:wWireFn, mount:_wMount, live:_wLive, click:_wxStormClick});

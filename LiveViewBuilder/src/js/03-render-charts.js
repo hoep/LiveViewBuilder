@@ -759,7 +759,7 @@
   // "7 Tage", zeigte die Achse weiter Monate und es kam nichts an. Jetzt entscheidet beides
   // ueber dieselbe Funktion.
   function _chCalMode(w){var r=_chRange(w);return !!r.cal && r.unit==='month';}
-  function renderChartData(w){if(w.chJsonVid&&_hist[w.id]&&_hist[w.id].json){setJsonBars(w);return;}if(w.ctype==='treemap')setTreemap(w);else if(w.ctype==='daylight')setDaylight(w);else if(w.ctype==='heatmap')setHeatmap(w);else if(w.ctype==='barrace')setBarRace(w);else if(w.ctype==='spark'||w.type==='spark')setSpark(w);else if(w.ctype==='waterfall'||w.type==='waterfall')setWaterfall(w);else if(w.ctype==='pie'||w.ctype==='donut'||w.ctype==='rose')setPie(w);else if(w.type==='chart'&&_chCalMode(w))setCalBar(w);else setLine(w);}
+  function renderChartData(w){if(w.chJsonVid&&_hist[w.id]&&_hist[w.id].json){if(_hist[w.id].polar)setJsonPolar(w);else setJsonBars(w);return;}if(w.ctype==='treemap')setTreemap(w);else if(w.ctype==='daylight')setDaylight(w);else if(w.ctype==='heatmap')setHeatmap(w);else if(w.ctype==='barrace')setBarRace(w);else if(w.ctype==='spark'||w.type==='spark')setSpark(w);else if(w.ctype==='waterfall'||w.type==='waterfall')setWaterfall(w);else if(w.ctype==='pie'||w.ctype==='donut'||w.ctype==='rose')setPie(w);else if(w.type==='chart'&&_chCalMode(w))setCalBar(w);else setLine(w);}
   // ---- Bar Race (ctype 'barrace') — animierter Balken-Wettlauf ueber die Zeit ----------
   // Jede konfigurierte Serie ist ein "Laeufer". Frames = Zeit-Buckets der aggregierten
   // Historie (aus fetchHist). ECharts realtimeSort ordnet die Balken je Frame neu und
@@ -2193,6 +2193,36 @@
     }
     ec.setOption(opt,true);
   }
+  /**
+   * Punkte nach Richtung und Entfernung (JSON-Zeilen [Grad, Entfernung, Alter]) - etwa
+   * Blitze um das Haus. Norden oben, im Uhrzeigersinn; je aelter ein Punkt, desto blasser.
+   * Der Radius folgt dem weitesten Punkt (auf eine runde Zahl), oder ymax, wenn gesetzt.
+   */
+  function setJsonPolar(w){
+    var ec=_ec[w.id];if(!ec)return;
+    var pts=(_hist[w.id]&&_hist[w.id].polar)||[],unit=(w.yunit||'');
+    var acc=_chColor((_chSeries(w)[0]||{}).color,0);
+    var weit=pts.reduce(function(m,p){return Math.max(m,p[0]);},0);
+    // Drei gleiche Ringe mit runder Teilung (1-2-2,5-5-10): so ueberlappt keine Beschriftung.
+    var mx=(w.ymax!=null&&w.ymax!=='')?parseFloat(w.ymax):weit,roh=Math.max(mx,1)/3,mg=Math.pow(10,Math.floor(Math.log10(roh)));
+    var schritt=[1,2,2.5,5,10].map(function(f){return f*mg;}).filter(function(x){return x>=roh-1e-9;})[0];
+    mx=schritt*3;
+    var alt=parseFloat(w.chPolAge)||30;
+    var HIM={0:'N',90:'O',180:'S',270:'W'};
+    ec.setOption({backgroundColor:'transparent',animation:!!bcfg().chartAnim,title:_titleOpt(w),
+      polar:{center:['50%','52%'],radius:'80%'},
+      angleAxis:{type:'value',min:0,max:360,interval:90,startAngle:90,clockwise:true,
+        axisLine:{lineStyle:{color:cssv('--line')}},axisTick:{show:false},
+        axisLabel:{color:cssv('--muted'),fontSize:_ecF(w,'axis',10),formatter:function(v){return HIM[v]||'';}},
+        splitLine:{show:true,lineStyle:{color:cssv('--line-soft')}}},
+      radiusAxis:{type:'value',min:0,max:mx,interval:schritt,axisLine:{show:false},axisTick:{show:false},
+        axisLabel:{color:cssv('--faint'),fontSize:_ecF(w,'axis',9),formatter:function(v){return v?(_chNum(w,v)+(unit?' '+unit:'')):'';}},
+        splitLine:{lineStyle:{color:cssv('--line-soft'),type:'dashed'}}},
+      tooltip:{trigger:'item',formatter:function(p){var v=p.data.value;return _chNum(w,v[0])+(unit?' '+unit:'')+' · '+Math.round(v[1])+'°'+(p.data.age!=null?' · vor '+p.data.age+' min':'');}},
+      series:[{type:'scatter',coordinateSystem:'polar',symbolSize:_ecF(w,'label',7),
+        data:pts.map(function(p){return {value:[p[0],p[1]],age:p[2],
+          itemStyle:{color:acc,opacity:(p[2]==null?0.9:Math.max(0.22,1-p[2]/alt))}};})}]},true);
+  }
   function setCalBar(w){
     var ec=_ec[w.id];if(!ec)return;
     var m=(_hist[w.id]&&_hist[w.id].cal)||{cur:[],prev:[],curY:'',prevY:''};
@@ -2595,6 +2625,12 @@
       .then(function(r){return r.json();})
       .then(function(j){
         var rows=(j&&j.rows)||[];
+        // Polar: Zeilen [Richtung°, Entfernung, Alter in min] - keine Kategorien
+        if(w.chJsonMode==='polar'){
+          var pts=[];rows.forEach(function(r){var a=_chZahl((r||[])[0]),d=_chZahl((r||[])[1]),g=_chZahl((r||[])[2]);
+            if(!isNaN(a)&&!isNaN(d))pts.push([d,((a%360)+360)%360,isNaN(g)?null:g]);});
+          _hist[w.id]={polar:pts,json:true};if(_ec[w.id])renderChartData(w);return;
+        }
         if(!rows.length){fertig([],[]);return;}
         var iIdx=(w.chJsonIdx!=null&&w.chJsonIdx!=='')?parseInt(w.chJsonIdx,10):null;
         var iVal=(w.chJsonVal!=null&&w.chJsonVal!=='')?parseInt(w.chJsonVal,10):null;
