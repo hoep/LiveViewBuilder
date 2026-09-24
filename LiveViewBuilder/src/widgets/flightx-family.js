@@ -736,7 +736,11 @@
                es bei der aus Tempo und Hoehe GESCHAETZTEN Bauart, die vorher die einzige
                Angabe war. */
             + '<div><div class="flruf" style="color:' + col + '" title="' + esc(flKennungTitel(f)) + '">'
-            + esc(flNummer(f)) + '</div>'
+            + esc(flNummer(f))
+            // Notfall-Transpondercode: rote Plakette (7700 Notfall, 7600 Funkausfall, 7500 Entfuehrung)
+            + ({'7700': 1, '7600': 1, '7500': 1}[f.sq] ? '<span title="' + ({'7700': 'Notfall', '7600': 'Funkausfall', '7500': 'Entführung'}[f.sq])
+                + '" style="margin-left:6px;font:700 .72em/1 var(--fm,monospace);padding:2px 5px;border-radius:4px;background:var(--' + (f.sq === '7600' ? 'warn' : 'crit') + ');color:#fff;vertical-align:2px">' + f.sq + '</span>' : '')
+            + '</div>'
             + ((f.nr && f.ruf && f.nr !== f.ruf)
                 ? '<div class="flk" title="' + esc(flKennungTitel(f)) + '">'
                   + (flIstNummer(f) ? esc(f.ruf) : esc(f.ruf) + ' \u00b7 Betriebsrufzeichen') + '</div>'

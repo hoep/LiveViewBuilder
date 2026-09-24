@@ -33,6 +33,7 @@ if ($api === 'asset') {
     $files = ['echarts' => $DIR . '/assets/echarts.min.js',
               'dokudata' => $DIR . '/src/js/12-doku-data.js',
               'satjs' => $DIR . '/assets/satellite.min.js',
+              'welt' => $DIR . '/assets/welt.js',          // Laendergrenzen (Natural Earth 1:110m, gemeinfrei) fuer flightworld
               'app' => $DIR . '/assets/app.js',
               'run' => $DIR . '/assets/run.js'];
     if (!isset($files[$name]) || !is_file($files[$name])) {
@@ -381,6 +382,7 @@ if ($api === 'flights') {
         $t  = ($vv > 1e-9) ? max(0.0, -($dn * $vn + $de * $ve) / $vv) : 0.0;
         $flug[] = [
             'icao' => (string) $s[0], 'ruf' => trim((string) ($s[1] ?? '')), 'land' => (string) ($s[2] ?? ''),
+            'sq' => (string) ($s[14] ?? ''),                     // Transpondercode: 7700/7600/7500 = Notfall
             'lat' => (float) $s[6], 'lon' => (float) $s[5], 'alt' => round($hoehe),
             'kurs' => round($kurs, 1), 'tempo' => round($tempo), 'steig' => round((float) ($s[11] ?? 0), 1),
             'dn' => round($dn, 2), 'de' => round($de, 2), 'dist' => round($dist, 1),
