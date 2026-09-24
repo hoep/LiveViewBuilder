@@ -122,7 +122,8 @@
         + zellen.map(function (c) {
             if (c.gap) { return '<i class="rs-c gap"></i>'; }
             var d = _RS_ZUST[c.z] || _RS_ZUST[''];
-            return '<i class="rs-c ' + d.c + (c.hl ? ' hl' : '') + '" title="' + escL(c.tip || d.t) + '"></i>';
+            // Tooltip mehrzeilig: \n als echter Umbruch im title (escL machte daraus ein sichtbares <br>)
+            return '<i class="rs-c ' + d.c + (c.hl ? ' hl' : '') + '" title="' + esc(c.tip || d.t).replace(/\n/g, '&#10;') + '"></i>';
           }).join('')
         + '</span>'
         + '<span class="rs-v">' + escL(String(r[3] == null ? '' : r[3])) + '</span>'
