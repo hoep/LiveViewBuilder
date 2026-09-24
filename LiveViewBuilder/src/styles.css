@@ -1688,11 +1688,30 @@
   .hsct .scic{width:clamp(11px,4.5cqmin,20px);height:clamp(11px,4.5cqmin,20px);fill:none;stroke:var(--warm);stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
   .hsclen{color:var(--muted);font-size:var(--wf-lbl)}
   /* Skin-Wechsler-Widget */
-  .hskw{position:absolute;inset:0;display:flex;align-items:center;gap:clamp(4px,2.4cqmin,9px);padding:clamp(4px,2.4cqmin,9px);box-sizing:border-box}
-  .hskw select{flex:1;min-width:0;padding:clamp(3px,2cqmin,7px) clamp(5px,2.6cqmin,10px);border:1px solid var(--line);border-radius:var(--r-s);background:var(--surface-2);color:var(--text);font-size:var(--wf-lbl)}
-  .hskwb{width:clamp(28px,16cqi,44px);align-self:stretch;border:1px solid var(--line);background:var(--surface-2);color:var(--muted);border-radius:var(--r-s);cursor:pointer;display:flex;align-items:center;justify-content:center;flex:none}
-  .hskwb svg{width:clamp(13px,5cqmin,20px);height:clamp(13px,5cqmin,20px)}
-  .hskwb.on{background:color-mix(in oklab,var(--accent) 18%,var(--surface-2));border-color:var(--accent);color:var(--accent)}
+  /* Skin-Wechsler: Auswahl als Pille, Hell/Dunkel als Pille mit rundem Aktiv-Kreis */
+  .hskw{position:absolute;inset:0;display:flex;align-items:center;justify-content:flex-end;gap:clamp(6px,3cqmin,10px);padding:clamp(2px,1.4cqh,5px) 2px;box-sizing:border-box}
+  .hskw select{flex:1;min-width:0;height:min(100%,34px);padding:0 .9em;border-radius:999px;border:1px solid color-mix(in oklab,var(--text) 14%,transparent);
+    background:color-mix(in oklab,var(--text) 5%,transparent);color:var(--text);font-size:var(--wf-lbl)}
+  .hskwtt{flex:none;display:flex;align-items:center;gap:3px;height:min(100%,46px);padding:3px;box-sizing:border-box;border-radius:999px;
+    background:color-mix(in oklab,var(--text) 5%,transparent);border:1px solid color-mix(in oklab,var(--text) 14%,transparent)}
+  .hskwb{height:100%;aspect-ratio:1;padding:0;border:none;border-radius:50%;background:transparent;color:var(--muted);cursor:pointer;
+    display:flex;align-items:center;justify-content:center;transition:background .2s,color .2s,box-shadow .2s}
+  .hskwb:hover{color:var(--text)}
+  .hskwb svg{width:52%;height:52%}
+  .hskwb.on{background:color-mix(in oklab,var(--text) 11%,transparent);box-shadow:inset 0 0 0 1px color-mix(in oklab,var(--text) 15%,transparent);color:var(--text)}
+  /* Personen: ueberlappende Fotoreihe, da = Farbe, weg = Graustufe (bewusst noch gut erkennbar) */
+  .hpp{position:absolute;inset:0;display:flex;align-items:center;padding:0 3px;box-sizing:border-box;--pp-ring:var(--bg)}
+  .hpp-row{display:flex;align-items:center;height:calc(100% - 6px);padding-left:calc((100cqh - 6px) * var(--pp-ov) / 100)}
+  .hpp-p{position:relative;flex:none;height:100%;aspect-ratio:1;border-radius:50%;overflow:hidden;box-sizing:border-box;
+    margin-left:calc((100cqh - 6px) * var(--pp-ov) / -100);background:var(--surface-2);box-shadow:0 0 0 2px var(--pp-ring);
+    transition:transform .15s,filter .2s,opacity .2s}
+  .hpp-p img{width:100%;height:100%;object-fit:cover;display:block;pointer-events:none;transition:filter .2s,opacity .2s}
+  .hpp-ini{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:calc((100cqh - 6px) * .38);font-weight:600;color:var(--text)}
+  .hpp-p.off{background:color-mix(in oklab,var(--text) 7%,var(--surface))}
+  .hpp-p.off img{filter:grayscale(1) contrast(.95);opacity:.62}
+  .hpp-p.off .hpp-ini{color:var(--muted)}
+  .hpp-p.act{cursor:pointer}
+  .hpp.lift .hpp-p:hover{transform:translateY(-2px);z-index:2}
   /* Serien-Editor (Chart) */
   .serow{display:flex;align-items:center;gap:5px;margin-bottom:5px}
   .serow input[type=text],.serow input:not([type]){flex:1;min-width:0;padding:5px 7px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--text);font-size:11px}
@@ -5421,3 +5440,87 @@ header{height:56px;display:flex;align-items:center;gap:18px;padding:0 16px;flex:
 .calgd span{font-size:clamp(7px,1.9cqmin,10.5px);color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
 .calgd.heute b,.calgd.heute span{color:var(--accent)}
 .calgl{display:flex;flex-direction:column;gap:clamp(2px,1cqmin,5px);min-width:0}
+
+/* ===== Eigene Formular-Bausteine (Headless-Prinzip, Verhalten in js/14-hui.js) ======
+   Keine Systemdarstellung mehr - alles folgt dem Skin. Steht bewusst am Dateiende:
+   bei gleicher Spezifitaet gewinnt diese Regel gegen aeltere (etwa .prow input[type=checkbox]).
+   Ausnahme fuer ein einzelnes Element: Klasse hui-native. */
+select:not(.hui-native):not([multiple]){-webkit-appearance:none;appearance:none;cursor:pointer;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M3 4.5l3 3 3-3' fill='none' stroke='%238a979d' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")!important;background-repeat:no-repeat!important;background-position:right .55em center!important;
+  background-size:.85em!important;padding-right:1.9em!important}
+select.hui-open{border-color:color-mix(in oklab,var(--accent) 60%,var(--line))!important;box-shadow:var(--ring)}
+/* Auswahlliste und Farbfeld */
+.hui-pop{position:fixed;z-index:2147483000;box-sizing:border-box;padding:5px;border-radius:12px;background:var(--surface);
+  border:1px solid var(--line);box-shadow:0 14px 34px rgba(0,0,0,.34);color:var(--text);font:500 12.5px/1.3 var(--fu,system-ui,sans-serif);
+  text-transform:none;letter-spacing:normal;text-align:left}
+.hui-lb{overflow:auto;overscroll-behavior:contain;max-width:min(420px,calc(100vw - 16px))}
+.hui-opt{display:flex;align-items:center;gap:8px;padding:6px 12px 6px 8px;border-radius:8px;cursor:pointer;white-space:nowrap}
+.hui-opt span{overflow:hidden;text-overflow:ellipsis}
+.hui-opt svg{width:13px;height:13px;flex:none;color:var(--accent);visibility:hidden}
+.hui-opt.on svg{visibility:visible}
+.hui-opt.act{background:color-mix(in oklab,var(--text) 9%,transparent)}
+.hui-opt.dis{opacity:.4;cursor:default}
+.hui-grp{padding:8px 10px 3px;font-size:10.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--faint)}
+.hui-grp:first-child{padding-top:4px}
+.hui-cp{width:232px;padding:10px}
+.hui-sv{position:relative;height:140px;border-radius:8px;cursor:crosshair;touch-action:none;
+  background-image:linear-gradient(to top,#000,rgba(0,0,0,0)),linear-gradient(to right,#fff,rgba(255,255,255,0))}
+.hui-hue{position:relative;height:12px;margin-top:11px;border-radius:999px;cursor:pointer;touch-action:none;
+  background:linear-gradient(90deg,#f00,#ff0,#0f0,#0ff,#00f,#f0f,#f00)}
+.hui-k{position:absolute;width:12px;height:12px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.45);
+  transform:translate(-50%,-50%);pointer-events:none;box-sizing:border-box}
+.hui-hue .hui-k{top:50%}
+.hui-cprow{display:flex;gap:8px;align-items:center;margin-top:11px}
+.hui-cprow input{flex:1;min-width:0;box-sizing:border-box;font:500 12px var(--fm,monospace);padding:5px 8px;border-radius:7px;
+  border:1px solid var(--line);background:var(--surface-2);color:var(--text);outline:none}
+.hui-cprow input:focus{border-color:color-mix(in oklab,var(--accent) 60%,var(--line))}
+.hui-cpnow{width:26px;height:26px;flex:none;border-radius:7px;box-shadow:inset 0 0 0 1px rgba(127,127,127,.4)}
+.hui-sws{display:grid;grid-template-columns:repeat(8,1fr);gap:5px;margin-top:10px}
+.hui-sws:empty{display:none}
+.hui-sws button{all:unset;aspect-ratio:1;border-radius:6px;cursor:pointer;box-shadow:inset 0 0 0 1px rgba(127,127,127,.35)}
+.hui-sws button:hover{box-shadow:0 0 0 2px var(--text)}
+:where(input[type=color]:not(.hui-native)){-webkit-appearance:none;appearance:none;padding:2px;border:1px solid var(--line);
+  border-radius:7px;background:transparent;cursor:pointer;box-sizing:border-box}
+input[type=color]:not(.hui-native)::-webkit-color-swatch-wrapper{padding:0}
+input[type=color]:not(.hui-native)::-webkit-color-swatch{border:none;border-radius:5px}
+input[type=color]:not(.hui-native)::-moz-color-swatch{border:none;border-radius:5px}
+input[type=color].hui-open{box-shadow:var(--ring)}
+/* Zahlenfeld: Systempfeile aus, eigene rechts im Feld */
+input[type=number]{-moz-appearance:textfield;appearance:textfield}
+input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+.hui-num{position:relative;display:inline-block;vertical-align:middle;max-width:100%}
+.hui-num>input{box-sizing:border-box;padding-right:19px!important}
+.hui-step{position:absolute;top:2px;bottom:2px;right:2px;width:15px;display:flex;flex-direction:column;gap:1px;opacity:.55;transition:opacity .12s}
+.hui-num:hover .hui-step,.hui-num:focus-within .hui-step{opacity:1}
+.hui-step button{all:unset;flex:1;min-height:0;display:flex;align-items:center;justify-content:center;border-radius:4px;color:var(--muted);cursor:pointer}
+.hui-step button:hover{color:var(--text);background:color-mix(in oklab,var(--text) 10%,transparent)}
+.hui-step svg{width:9px;height:9px}
+.hui-num input:disabled~.hui-step,.hui-num input[readonly]~.hui-step{display:none}
+/* Kontrollkaestchen -> Schalter */
+input[type=checkbox]:not(.hui-native){-webkit-appearance:none;appearance:none;position:relative;flex:0 0 auto;box-sizing:border-box;
+  width:30px;min-width:30px;height:18px;margin:0 2px;padding:0;border-radius:999px;vertical-align:middle;cursor:pointer;
+  border:1px solid color-mix(in oklab,var(--text) 20%,transparent);background:color-mix(in oklab,var(--text) 8%,transparent);
+  transition:background .15s,border-color .15s}
+input[type=checkbox]:not(.hui-native)::before{content:"";position:absolute;top:2px;left:2px;width:12px;height:12px;border-radius:50%;
+  background:var(--muted);transition:transform .15s,background .15s}
+input[type=checkbox]:not(.hui-native):checked{background:color-mix(in oklab,var(--accent) 24%,transparent);border-color:color-mix(in oklab,var(--accent) 60%,transparent)}
+input[type=checkbox]:not(.hui-native):checked::before{transform:translateX(12px);background:var(--accent)}
+input[type=checkbox]:not(.hui-native):indeterminate::before{transform:translateX(6px)}
+input[type=checkbox]:not(.hui-native):disabled{opacity:.45;cursor:default}
+input[type=checkbox]:not(.hui-native):focus-visible{outline:none;box-shadow:var(--ring)}
+input[type=checkbox].hui-lg:not(.hui-native){--h:clamp(20px,6cqmin,26px);--w:calc(var(--h) * 1.7);width:var(--w);min-width:0;height:var(--h)}
+input[type=checkbox].hui-lg:not(.hui-native)::before{width:calc(var(--h) - 6px);height:calc(var(--h) - 6px)}
+input[type=checkbox].hui-lg:not(.hui-native):checked::before{transform:translateX(calc(var(--w) - var(--h)))}
+input[type=radio]:not(.hui-native){-webkit-appearance:none;appearance:none;box-sizing:border-box;width:16px;height:16px;margin:0 2px;border-radius:50%;
+  border:1px solid color-mix(in oklab,var(--text) 26%,transparent);background:color-mix(in oklab,var(--text) 6%,transparent);vertical-align:middle;cursor:pointer}
+input[type=radio]:not(.hui-native):checked{border-color:var(--accent);box-shadow:inset 0 0 0 4px var(--surface),inset 0 0 0 8px var(--accent)}
+/* Schieber (nur wo ein Widget keinen eigenen Stil mitbringt: :where = Spezifitaet 0) */
+:where(input[type=range]:not(.hui-native)){-webkit-appearance:none;appearance:none;height:18px;background:transparent;cursor:pointer}
+:where(input[type=range]:not(.hui-native))::-webkit-slider-runnable-track{height:4px;border-radius:999px;background:color-mix(in oklab,var(--text) 16%,transparent)}
+:where(input[type=range]:not(.hui-native))::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;margin-top:-5px;border-radius:50%;
+  background:var(--accent);box-shadow:0 0 0 2px var(--surface)}
+:where(input[type=range]:not(.hui-native))::-moz-range-track{height:4px;border-radius:999px;background:color-mix(in oklab,var(--text) 16%,transparent)}
+:where(input[type=range]:not(.hui-native))::-moz-range-thumb{width:14px;height:14px;border:none;border-radius:50%;background:var(--accent);box-shadow:0 0 0 2px var(--surface)}
+/* Zeitfeld: ohne Systemsymbol, Eingabe direkt im Feld */
+input[type=time]::-webkit-calendar-picker-indicator{display:none}
+input[type=time]{color-scheme:light dark}

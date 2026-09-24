@@ -36,7 +36,7 @@
     function spField(k,spec,val){
       var t=spec.type||'int', lbl=esc(spec.label||k);
       var wrap=function(inner){return '<label style="display:flex;flex-direction:column;gap:clamp(3px,1.6cqmin,6px);font-size:clamp(9px,2.8cqmin,12px);color:var(--muted)"><span>'+lbl+'</span>'+inner+'</label>';};
-      if(t==='bool')return wrap('<label style="display:inline-flex;align-items:center;gap:clamp(5px,2.4cqmin,10px);height:clamp(30px,9cqmin,40px);cursor:pointer"><input type="checkbox" data-spf="'+k+'"'+(val?' checked':'')+' style="width:clamp(16px,5cqmin,22px);height:clamp(16px,5cqmin,22px);accent-color:var(--accent)"><span style="color:var(--text);font-size:clamp(11px,3.4cqmin,14px)">'+(val?'an':'aus')+'</span></label>');
+      if(t==='bool')return wrap('<label style="display:inline-flex;align-items:center;gap:clamp(5px,2.4cqmin,10px);height:clamp(30px,9cqmin,40px);cursor:pointer"><input type="checkbox" data-spf="'+k+'"'+(val?' checked':'')+' class="hui-lg"><span style="color:var(--text);font-size:clamp(11px,3.4cqmin,14px)">'+(val?'an':'aus')+'</span></label>');
       if(t==='enum'){var o=(spec.options||[]).map(function(x){return '<option value="'+esc(x.value)+'"'+(String(val)===String(x.value)?' selected':'')+'>'+esc(x.label)+'</option>';}).join('');return wrap('<select data-spf="'+k+'" style="'+SP_INP+'">'+o+'</select>');}
       if(t==='time')return wrap('<input type="time" data-spf="'+k+'" value="'+esc(val||'')+'" style="'+SP_INP+'">');
       var step=(t==='float')?'0.1':'1';

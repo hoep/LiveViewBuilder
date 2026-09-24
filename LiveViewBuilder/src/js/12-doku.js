@@ -38,7 +38,7 @@
     ['HomeSuite – Licht-Automatik', ['lightband','autolist','autoedit','autocard','autotimeline']],
     ['HomeSuite – Navigation & Sonne', ['homesuite','roomnav','zonesync','shadesun','shadeprofiles','shadecal','shadedoors','shadesens','shadearm']],
     ['HomeSuite \u2013 Protokoll', ['log']],
-    ['Zustand & Listen',        ['assoc','hierarchy','statusgrid','statuslist','devlist','statusimage','table','statmatrix','objinfo','msglog','battlist','statelog','statetl','phaseband']],
+    ['Zustand & Listen',        ['assoc','hierarchy','statusgrid','statuslist','devlist','statusimage','persons','table','statmatrix','objinfo','msglog','battlist','statelog','statetl','phaseband']],
     ['Diagramme',               ['chart','heatmap','gauge','gaugepro','multiring','doubledonut','sankey','flow','flowline','windrose','tempbar']],
     ['Chart-Typen (Beispiele)', ['chartbar','chartbarstack','chartrace','chartscatter','chartspark','chartpie','chartdonut','chartrose','chartwf']],
     ['Wetter, Sonne & Termine', ['weather','weatherpro','meteogram','sun','suncard','raincard','rainintensity','rainradar','calendar','weekplan','weekstrip','clock']],

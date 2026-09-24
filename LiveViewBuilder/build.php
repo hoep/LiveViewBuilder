@@ -34,7 +34,7 @@ $core = [
     "00-registry.js", "01-boot-icons.js", "02-zoom-core.js", "03-render-charts.js",
     "04-props.js", "05-interaction.js", "06-live.js", "06-panel.js",
     "07-builders.js", "08-assoc.js", "08-roomsel.js", "08-sun.js", "09-io-init.js",
-    "10-chrome.js", "11-migrate.js", "12-doku-demo.js", "12-doku.js", "13-sidepanel.js",
+    "10-chrome.js", "11-migrate.js", "12-doku-demo.js", "12-doku.js", "13-sidepanel.js", "14-hui.js",
 ];
 // (Kein Kern-Ausschluss - siehe Kopfkommentar.)
 
