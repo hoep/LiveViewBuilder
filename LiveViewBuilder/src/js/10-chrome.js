@@ -24,25 +24,26 @@
   // wer eine Ansicht als w.comp fuehrt oder als Reiter eines regiontabs.
   function _isEmbeddedView(name){
     if(!name||name===store.home)return false;
-    var getragen=false;
-    for(var vn in store.views){
-      var ws=(store.views[vn].widgets)||[];
-      for(var i=0;i<ws.length;i++){
-        var w=ws[i];if(!w)continue;
-        // Wird die Seite irgendwo unmittelbar ANGESPRUNGEN, steht sie in der Laufzeit sehr
-        // wohl fuer sich und behaelt dort ihre Leiste - dann darf der Builder sie auch nicht
-        // wegnehmen. Betrifft im Bestand "Beschattung Profile" und "Klima Haus": beide sind
-        // Reiter IHRES Hubs und zugleich Kachelziel auf der Startseite.
-        if(w.navTo===name||w.longNav===name)return false;
-        if(vn===name)continue;                                     // Selbstbezug zaehlt nicht
-        if(w.type==='component'&&w.comp===name)getragen=true;
-        else if(w.type==='regiontabs'){
-          if(w.default===name)getragen=true;
-          else {var t=w.tabs||[];for(var k=0;k<t.length;k++)if(t[k]&&t[k].view===name){getragen=true;break;}}
-        }
+    // Traegt w (oder ein Kind eines Containers, w.kids) die Seite als Komponente oder Reiter?
+    // Ein Direktsprung (navTo/longNav) auf die Seite hebt das NICHT auf (bis 24.09.2026 tat
+    // er es): eine Komponenten-/Reiterseite zeigt im Builder nie die Leiste, die gehoert
+    // allein der Hauptseite.
+    function traegt(w){
+      if(!w)return false;
+      if(w.type==='component'&&w.comp===name)return true;
+      if(w.type==='regiontabs'){
+        if(w.default===name)return true;
+        var t=w.tabs||[];for(var k=0;k<t.length;k++)if(t[k]&&t[k].view===name)return true;
       }
+      var kids=w.kids||[];for(var m=0;m<kids.length;m++)if(traegt(kids[m]))return true;
+      return false;
     }
-    return getragen;
+    for(var vn in store.views){
+      if(vn===name)continue;                                       // Selbstbezug zaehlt nicht
+      var ws=(store.views[vn].widgets)||[];
+      for(var i=0;i<ws.length;i++)if(traegt(ws[i]))return true;
+    }
+    return false;
   }
   // NUR im Builder. Die Laufzeit bleibt unangetastet: dort wird eine getragene Seite gar nicht
   // erst angesteuert - sie erscheint ausschliesslich im Rahmen ihres Wirts, und store.current
