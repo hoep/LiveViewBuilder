@@ -58,7 +58,7 @@
         +((w.tbVal===false)?'':'<div class="htval" data-role="val">–</div>')
         +'<div class="htbarwrap">'+skala
         +'<div class="htbar">'
-        +(w.tbFree?'<span class="htfrei" data-role="frei"></span>':'')
+        +(w.tbFree?'<span class="htfrei" data-role="frei"'+((w.tbFreeCol&&typeof _skinColor==='function'&&_skinColor(w.tbFreeCol))?(' style="color:'+_skinColor(w.tbFreeCol)+'"'):'')+'></span>':'')
         +'<i class="htfill" data-role="fill"></i>'
         +'<i class="htsoll" data-role="soll" style="display:none"></i>'
         +'<i class="htwarn" data-role="warn" style="display:none"></i>'
@@ -76,6 +76,7 @@
         +row('Wert / Variable','<input id="pTbWarn" type="number" step="any" style="width:84px" value="'+(w.tbWarn!=null?w.tbWarn:'')+'" placeholder="z. B. 400"> <input id="pTbWarnVid" type="number" style="width:84px" value="'+(w.tbWarnVid||'')+'" placeholder="Var-ID">')
         +row('Einheit an Marken','<input id="pTbUnit" value="'+esc(w.tbUnit||'')+'" style="width:70px" placeholder="kg">')
         +row('Freiraum zeigen','<input type="checkbox" id="pTbFree"'+(w.tbFree?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">zeigt „fehlt: Max − Istwert“ im leeren Teil</span>')
+        +(w.tbFree?row('Farbe Freiraum',(function(){var SK=[['','Text des Widgets'],['accent','Akzent'],['ok','OK'],['warn','Warnung'],['crit','Kritisch'],['info','Info'],['muted','Gedämpft']];return '<span class="iconsw" data-role="tbfreesw">'+SK.map(function(c){var cur=(w.tbFreeCol||'')===c[0];var st=c[0]?('background:var(--'+c[0]+')'):'background:transparent;border-style:dashed;border-color:var(--muted)';return '<button type="button" class="iconswb'+(cur?' on':'')+'" data-skin="'+c[0]+'" title="'+esc(c[1])+'" style="'+st+'"></button>';}).join('')+'</span>';})()):'')
         +row('Skala zeigen','<input type="checkbox" id="pTbScale"'+((w.tbScale===false)?'':' checked')+'>')
         +row('Wert oben zeigen','<input type="checkbox" id="pTbVal"'+((w.tbVal===false)?'':' checked')+'>')
         +row('Warnschwelle beschriften','<input type="checkbox" id="pTbWLab"'+((w.tbWarnLab===false)?'':' checked')+'> <span style="font-size:11px;color:var(--muted)">aus, wenn der Wert schon daneben steht</span>')
@@ -91,7 +92,8 @@
       if($('#pTbWarn'))$('#pTbWarn').oninput=function(){w.tbWarn=this.value===''?undefined:parseFloat(this.value);render();};
       if($('#pTbWarnVid'))$('#pTbWarnVid').onchange=function(){w.tbWarnVid=parseInt(this.value)||undefined;render();commit();};
       if($('#pTbUnit'))$('#pTbUnit').oninput=function(){w.tbUnit=this.value||undefined;render();};
-      if($('#pTbFree'))$('#pTbFree').onchange=function(){w.tbFree=this.checked||undefined;render();commit();};
+      if($('#pTbFree'))$('#pTbFree').onchange=function(){w.tbFree=this.checked||undefined;render();renderProps();commit();};
+      $$('#props [data-role=tbfreesw] [data-skin]').forEach(function(b){b.onclick=function(){w.tbFreeCol=this.getAttribute('data-skin')||undefined;render();renderProps();commit();};}); // Farbe der Freiraum-Beschriftung (Skin)
       if($('#pTbScale'))$('#pTbScale').onchange=function(){w.tbScale=this.checked?undefined:false;render();commit();};
       if($('#pTbVal'))$('#pTbVal').onchange=function(){w.tbVal=this.checked?undefined:false;render();commit();};
       if($('#pTbWLab'))$('#pTbWLab').onchange=function(){w.tbWarnLab=this.checked?undefined:false;render();commit();};

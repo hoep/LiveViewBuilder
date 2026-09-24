@@ -1003,8 +1003,9 @@
   .htemp .htwarnlab{position:absolute;left:0;transform:translateY(50%);white-space:nowrap;
       font-family:var(--fm);font-size:var(--wf-cap);color:var(--warn);line-height:1;pointer-events:none}
   .htemp .htfrei{position:absolute;left:0;right:0;top:clamp(4px,6cqmin,12px);text-align:center;z-index:1;
-      font-family:var(--fm);font-size:var(--wf-cap);color:var(--muted);line-height:1.3;pointer-events:none}
-  .htemp .htfrei b{color:var(--text);font-weight:600}
+      font-family:var(--fm);font-size:var(--wf-cap);color:inherit;line-height:1.3;pointer-events:none}
+  /* eine Farbe fuer Wort und Menge: Textfarbe des Widgets (w.fg) bzw. des Skins, oder tbFreeCol */
+  .htemp .htfrei b{font-weight:600}
   .htemp .htzn{font-size:var(--wf-lbl);color:var(--muted);font-weight:600}
   /* Status-Grid */
   /* auto-fit statt starrer Zweispaltigkeit: schmale Kachel -> eine Spalte, breite -> mehr */
