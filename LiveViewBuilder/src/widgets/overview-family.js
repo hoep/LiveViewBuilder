@@ -64,6 +64,10 @@
       + '.ovp-d i{position:relative;width:10px;height:10px;border-radius:50%;background:var(--accent);margin-top:4px;box-shadow:0 0 0 3px var(--surface)}'
       + '.ovp-x{font-size:13px;min-width:0}.ovp-x small{display:block;color:var(--muted);font-size:11.5px}'
       + '.ovp-badge{font:600 10px Inter,system-ui,sans-serif;letter-spacing:.04em;text-transform:uppercase;color:var(--warn);border:1px solid var(--warn);border-radius:5px;padding:0 5px;margin-left:6px;white-space:nowrap;vertical-align:1px}'
+      // Warnstufen amtlicher Wetterwarnungen: gefuellt in der Warnfarbe, dunkle Schrift nur auf Gelb
+      + '.ovp-badge.b-gelb{background:#f2c744;border-color:#f2c744;color:#2a2410}'
+      + '.ovp-badge.b-orange{background:#f2903d;border-color:#f2903d;color:#fff}'
+      + '.ovp-badge.b-rot{background:#e5484d;border-color:#e5484d;color:#fff}'
       + '.ovp-tag{font-size:10.5px;color:var(--muted);border:1px solid var(--line);border-radius:5px;padding:0 5px;margin-left:6px;white-space:nowrap}'
       + '.ovp-e.past .ovp-t,.ovp-e.past .ovp-x{color:var(--muted)}.ovp-e.past .ovp-d i{background:var(--muted)}'
       + '.ovp-e.skip .ovp-x{color:var(--muted)}.ovp-e.skip .ovp-x b{text-decoration:line-through;font-weight:500}.ovp-e.skip .ovp-d i{background:var(--surface);border:2px solid var(--muted)}'
@@ -200,7 +204,7 @@
       if (!nowDone && x.t >= now) { h += '<div class="ovp-now"><b>' + _ovHm(now) + '</b><i></i></div>'; nowDone = true; }
       h += '<div class="ovp-e' + (x.t < now ? ' past' : '') + (x.kind === 'skip' ? ' skip' : '') + (x.kind === 'done' ? ' done' : '') + '">'
         + '<span class="ovp-t">' + _ovHm(x.t) + '</span><span class="ovp-d"><i></i></span>'
-        + '<span class="ovp-x"><b>' + esc(x.title) + '</b>' + (x.badge ? '<span class="ovp-badge">' + esc(x.badge) + '</span>' : '') + (multi ? '<span class="ovp-tag">' + esc(x.siteAbbr || _ovShort(x.siteName)) + '</span>' : '')
+        + '<span class="ovp-x"><b>' + esc(x.title) + '</b>' + (x.badge ? '<span class="ovp-badge' + ({gelb: ' b-gelb', orange: ' b-orange', rot: ' b-rot'}[x.badge] || '') + '">' + esc(x.badge) + '</span>' : '') + (multi ? '<span class="ovp-tag">' + esc(x.siteAbbr || _ovShort(x.siteName)) + '</span>' : '')
         + (x.detail ? '<small>' + esc(x.detail) + '</small>' : '') + '</span></div>';
     });
     if (!nowDone) { h += '<div class="ovp-now"><b>' + _ovHm(now) + '</b><i></i></div>'; }
