@@ -996,14 +996,15 @@
   /* Saeulenbreite waechst mit der Kachelbreite; Radius als 999px, damit die Kappe bei jeder Breite rund bleibt. */
   .htemp .htbar{position:relative;width:var(--htbar-w,clamp(18px,26cqi,44px));height:100%;border-radius:999px;background:var(--surface-2);border:1px solid var(--line);overflow:hidden}
   .htemp .htfill{position:absolute;left:0;right:0;bottom:0;width:auto;height:0;background:linear-gradient(180deg,var(--accent),var(--accent-2));transition:height .4s}
-  .htemp.warm .htfill{background:linear-gradient(180deg,var(--warm),#d98a1a)}
+  .htemp.warm .htfill{background:linear-gradient(180deg,var(--warm),color-mix(in oklab,var(--warm) 82%,#000))}
   .htemp .htsoll{position:absolute;left:-1px;right:-1px;width:auto;height:0;border-top:2px dashed var(--text);opacity:.7}
   .htemp .htwarn{position:absolute;left:-1px;right:-1px;width:auto;height:0;border-top:2px dashed var(--warn);opacity:.85}
   .htemp .htmk{position:relative;height:100%;flex:none;min-width:clamp(26px,20cqi,58px)}
   .htemp .htwarnlab{position:absolute;left:0;transform:translateY(50%);white-space:nowrap;
       font-family:var(--fm);font-size:var(--wf-cap);color:var(--warn);line-height:1;pointer-events:none}
   .htemp .htfrei{position:absolute;left:0;right:0;top:clamp(4px,6cqmin,12px);text-align:center;z-index:1;
-      font-family:var(--fm);font-size:var(--wf-cap);color:var(--faint);line-height:1.3;pointer-events:none}
+      font-family:var(--fm);font-size:var(--wf-cap);color:var(--muted);line-height:1.3;pointer-events:none}
+  .htemp .htfrei b{color:var(--text);font-weight:600}
   .htemp .htzn{font-size:var(--wf-lbl);color:var(--muted);font-weight:600}
   /* Status-Grid */
   /* auto-fit statt starrer Zweispaltigkeit: schmale Kachel -> eine Spalte, breite -> mehr */

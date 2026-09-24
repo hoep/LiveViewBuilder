@@ -44,7 +44,7 @@
     var fr=el.querySelector('[data-role=frei]');
     if(fr){var tmx=(w.max!=null?w.max:24);
       if(isNaN(nv)){fr.style.display='none';}
-      else{fr.style.display='';fr.innerHTML='frei<br>'+_tbTsd(Math.max(0,tmx-nv))+(w.tbUnit?(' '+w.tbUnit):'');}}
+      else{fr.style.display='';fr.innerHTML='fehlt<br><b>'+_tbTsd(Math.max(0,tmx-nv))+(w.tbUnit?(' '+w.tbUnit):'')+'</b>';}}
     _tbMarken(w,el);
   }
   defWidget('tempbar',{
@@ -75,7 +75,7 @@
         +'<div style="font-size:11px;color:var(--muted);margin:-2px 2px 5px">Gestrichelte Linie in der Säule, beschriftet an der Skala. Fester Wert oder Variable — nur diese Marke wird beschriftet, der Istwert steht oben.</div>'
         +row('Wert / Variable','<input id="pTbWarn" type="number" step="any" style="width:84px" value="'+(w.tbWarn!=null?w.tbWarn:'')+'" placeholder="z. B. 400"> <input id="pTbWarnVid" type="number" style="width:84px" value="'+(w.tbWarnVid||'')+'" placeholder="Var-ID">')
         +row('Einheit an Marken','<input id="pTbUnit" value="'+esc(w.tbUnit||'')+'" style="width:70px" placeholder="kg">')
-        +row('Freiraum zeigen','<input type="checkbox" id="pTbFree"'+(w.tbFree?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">Max − Istwert im leeren Teil</span>')
+        +row('Freiraum zeigen','<input type="checkbox" id="pTbFree"'+(w.tbFree?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">zeigt „fehlt: Max − Istwert“ im leeren Teil</span>')
         +row('Skala zeigen','<input type="checkbox" id="pTbScale"'+((w.tbScale===false)?'':' checked')+'>')
         +row('Wert oben zeigen','<input type="checkbox" id="pTbVal"'+((w.tbVal===false)?'':' checked')+'>')
         +row('Warnschwelle beschriften','<input type="checkbox" id="pTbWLab"'+((w.tbWarnLab===false)?'':' checked')+'> <span style="font-size:11px;color:var(--muted)">aus, wenn der Wert schon daneben steht</span>')
