@@ -20,6 +20,7 @@
     var CAL_FARBEN=['#2ee6b0','#c792ea','#5aa9ff','#f0a94a','#ff8a80','#a5d6a7','#ffd54f','#80deea'];
     var _calDaten={};     // widgetId -> {events, geladen, laedt}
     var _calStand={};     // widgetId -> {ansicht, anker}
+    var _calFenster={};   // widgetId -> {key, events, laedt, fehler}: nachgeladener Zeitraum beim Blaettern
 
     function calP2(n){ return String(n).padStart(2,'0'); }
     /** Zeitstempel robust: der Handler liefert Sekunden, manche ICS-Quellen Millisekunden. */
@@ -61,19 +62,52 @@
       fetch('?api=cal&ids='+encodeURIComponent(w.calIds)+'&days='+tage,{cache:'no-store'})
         .then(function(r){return r.json();})
         .then(function(j){
-          var roh=String(w.calIds||''), tr=(roh.indexOf(';')>=0)?';':',';
-          var ids=roh.split(tr).map(function(x){return x.trim();}).filter(Boolean);
-          d.events=((j&&j.events)||[]).map(function(e){
-            var iid=e.cal, idx=Math.max(0,ids.indexOf(String(iid)));
-            return {s:calZeit(e.start), e:calZeit(e.end||e.start), t:String(e.title||''),
-                    ad:!!e.allDay, iid:iid, c:calFarbe(w,iid,idx), k:calName(w,iid)};
-          }).sort(function(a,b){return a.s-b.s;});
+          d.events=calNorm(w,j);
           d.geladen=Date.now(); d.laedt=false; if(fertig)fertig();
         })
         .catch(function(){ d.laedt=false; d.fehler=true; if(fertig)fertig(); });
     }
+    function calNorm(w,j){
+      var roh=String(w.calIds||''), tr=(roh.indexOf(';')>=0)?';':',';
+      var ids=roh.split(tr).map(function(x){return x.trim();}).filter(Boolean);
+      return ((j&&j.events)||[]).map(function(e){
+        var iid=e.cal, idx=Math.max(0,ids.indexOf(String(iid)));
+        return {s:calZeit(e.start), e:calZeit(e.end||e.start), t:String(e.title||''),
+                ad:!!e.allDay, iid:iid, c:calFarbe(w,iid,idx), k:calName(w,iid)};
+      }).sort(function(a,b){return a.s-b.s;});
+    }
+    /** Zeitraum, den die aktuelle Ansicht zeigt: Monat = das ganze Raster (6 Wochen). */
+    function calBereich(w){
+      var st=calStand(w), a=new Date(st.anker); a.setHours(0,0,0,0);
+      if(st.ansicht==='tag'){ var b=new Date(a); b.setDate(a.getDate()+1); return [a,b]; }
+      if(st.ansicht==='woche'){ a.setDate(a.getDate()-((a.getDay()+6)%7)); var b2=new Date(a); b2.setDate(a.getDate()+7); return [a,b2]; }
+      var erster=new Date(a.getFullYear(),a.getMonth(),1), v=new Date(erster); v.setDate(1-((erster.getDay()+6)%7));
+      var b3=new Date(v); b3.setDate(v.getDate()+42); return [v,b3];
+    }
+    /**
+     * Termine fuer die aktuelle Ansicht. Liegt ihr Zeitraum im Standardfenster (heute bis
+     * heute + Zeitraum), reicht der normale Abruf. Sonst - etwa beim Blaettern in den
+     * uebernaechsten oder den vorigen Monat - wird genau dieser Zeitraum nachgeladen und
+     * danach neu gezeichnet. Bis dahin gelten die Termine, die schon da sind.
+     */
+    function calEvents(w){
+      var basis=(_calDaten[w.id]||{}).events||[], st=calStand(w);
+      if(st.ansicht==='agenda') return basis;
+      var r=calBereich(w), heute=_hzJetzt(); heute.setHours(0,0,0,0);
+      var ende=_hzJetzt().getTime()+Math.max(7,Math.min(60,parseInt(w.days)||45))*86400000;
+      if(r[0]>=heute&&r[1].getTime()<=ende) return basis;
+      var key=r[0].getTime()+'|'+r[1].getTime()+'|'+(w.calIds||''), F=_calFenster[w.id];
+      if(F&&F.key===key) return F.laedt?basis:F.events;
+      F=_calFenster[w.id]={key:key,events:[],laedt:true};
+      fetch('?api=cal&ids='+encodeURIComponent(w.calIds||'')+'&von='+Math.floor(r[0].getTime()/1000)+'&bis='+Math.floor(r[1].getTime()/1000),{cache:'no-store'})
+        .then(function(x){return x.json();})
+        .then(function(j){ if(_calFenster[w.id]!==F)return; F.events=calNorm(w,j); F.laedt=false; calZeichnen(w); })
+        .catch(function(){ if(_calFenster[w.id]!==F)return; F.laedt=false; F.fehler=true; calZeichnen(w); });
+      return basis;
+    }
+    function calLaedt(w){ var F=_calFenster[w.id]; return !!(F&&F.laedt); }
     function calTermineAm(w,d){
-      var ev=(_calDaten[w.id]||{}).events||[], k=calTagKey(d);
+      var ev=calEvents(w), k=calTagKey(d);
       return ev.filter(function(e){
         if(calTagKey(e.s)===k) return true;
         return e.s<=d && e.e>d && (e.e-e.s)>86400000;      // mehrtaegige mitnehmen
@@ -191,17 +225,23 @@
       }
       return h;
     }
+    // Die Liste rechts folgt dem geblaetterten Monat: im laufenden Monat "Kommende Termine"
+    // ab jetzt, in jedem anderen Monat dessen Termine vom Ersten bis zum Letzten.
     function vMonat(w){
-      var st=calStand(w), ev=(_calDaten[w.id]||{}).events||[];
-      var kommend=ev.filter(function(e){return e.e>=_hzJetzt();}).slice(0,12);
-      var imMonat=ev.filter(function(e){return e.s.getMonth()===st.anker.getMonth()&&e.s.getFullYear()===st.anker.getFullYear();});
-      return calKopf(w,CAL_MON[st.anker.getMonth()]+' '+st.anker.getFullYear(),
+      var st=calStand(w), ev=calEvents(w), jetzt=_hzJetzt();
+      var m=st.anker.getMonth(), y=st.anker.getFullYear();
+      var laufend=(m===jetzt.getMonth()&&y===jetzt.getFullYear());
+      var mA=new Date(y,m,1), mE=new Date(y,m+1,1);
+      var imMonat=ev.filter(function(e){return e.s<mE&&e.e>mA;});
+      var liste=laufend?ev.filter(function(e){return e.e>=jetzt;}).slice(0,12):imMonat;
+      var leer=calLaedt(w)?'Termine werden geladen …':(laufend?'Keine Termine im Zeitraum':'Keine Termine im '+CAL_MON[m]);
+      return calKopf(w,CAL_MON[m]+' '+y,
                      imMonat.length+(imMonat.length===1?' Termin':' Termine')+' in diesem Monat')
         +'<div class="calrumpf"><div class="caldash">'
         +'<div class="caldl"><div class="calmonat kompakt">'+calGitter(w,st.anker,true)+'</div>'+calLegende(w)+'</div>'
-        +'<div class="caldr"><div class="caldh">Kommende Termine</div>'
-        +'<div class="calliste">'+(kommend.length?kommend.map(function(e){return calEintrag(e,true);}).join('')
-            :'<div class="calleer">Keine Termine im Zeitraum</div>')+'</div></div>'
+        +'<div class="caldr"><div class="caldh">'+(laufend?'Kommende Termine':'Termine im '+CAL_MON[m])+'</div>'
+        +'<div class="calliste">'+(liste.length?liste.map(function(e){return calEintrag(e,true);}).join('')
+            :'<div class="calleer">'+leer+'</div>')+'</div></div>'
         +'</div></div>';
     }
     function vAgenda(w){
@@ -262,7 +302,7 @@
         calZeichnen(w);
         if(window.LVB&&LVB.panel&&LVB.panel.startPoll){
           LVB.panel.startPoll('calendar:'+w.id, 600000, function(){
-            var d=_calDaten[w.id]; if(d)d.geladen=0;
+            var d=_calDaten[w.id]; if(d)d.geladen=0; delete _calFenster[w.id];   // auch den nachgeladenen Zeitraum auffrischen
             calLaden(w,function(){ calZeichnen(w); });
           });
         }

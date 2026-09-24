@@ -4154,6 +4154,15 @@ if ($api === 'cal') {
     $now   = time();
     $from  = strtotime('today') - $rueck * 86400;
     $to    = $now + $days * 86400;
+    // Frei gewaehlter Zeitraum (von/bis als Unix-Sekunden): das Kalender-Widget laedt damit
+    // beim Blaettern den angezeigten Monat, die Woche oder den Tag nach - auch vergangene
+    // und weit entfernte. Hoechstens 62 Tage am Stueck, hoechstens zwei Jahre von heute weg.
+    $von = (int) ($_GET['von'] ?? 0);
+    $bis = (int) ($_GET['bis'] ?? 0);
+    if ($von > 0 && $bis > $von) {
+        $from = max($von, $now - 730 * 86400);
+        $to   = min($bis, $from + 62 * 86400, $now + 730 * 86400);
+    }
     $out   = [];
     // Nicht nur die ICS zwischenspeichern, sondern das ERGEBNIS. Das Parsen von
     // ein paar hundert KB mit Wiederholungsaufloesung kostet mehr Zeit als der
