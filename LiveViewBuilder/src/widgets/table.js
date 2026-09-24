@@ -463,7 +463,8 @@
     // 50 px Zeilenhoehe - bei einer Kennzahlen-Tabelle mit zwoelf Zeilen passt damit die
     // Haelfte nicht mehr in die Kachel. Dicht gesetzt sind es rund 26 px.
     var pady=w.tblDense?'clamp(3px,1.1cqmin,7px)':'';
-    var st=(padx?'--tblpadx:'+padx+';':'')+(pady?'--tblpady:'+pady+';':'');
+    var st=(padx?'--tblpadx:'+padx+';':'')+(pady?'--tblpady:'+pady+';':'')
+      +(w.tblFs>0?'--tblfs:'+parseFloat(w.tblFs)+'px;':'')+(w.tblFsT>0?'--tblfst:'+parseFloat(w.tblFsT)+'px;':'');   // eigene Schriftgroessen
     root.innerHTML='<div class="panel"'+(st?(' style="'+st+'"'):'')+'>'+ph+toolsHtml+bodyHtml+'</div>';
     _tblWireQ(w,root);
   }
@@ -495,7 +496,9 @@
       +row('Start-Ansicht','<select id="pTblView"><option value="table"'+((w.tblView||'table')==='table'?' selected':'')+'>Tabelle</option><option value="cards"'+(w.tblView==='cards'?' selected':'')+'>Karten</option></select>')
       +row('Umschalter ausblenden','<input type="checkbox" id="pTblNoSw"'+(w.hideToggle?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">feste Start-Ansicht</span>')
       +row('Status-Stil','<input type="checkbox" id="pTblSev"'+(w.sevStyle?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">Severity-Streifen + Status-Chip + Ladebalken (erkennt „Status"- und „%"-Spalte)</span>')
-      +row('Kompakte Zeilen','<input type="checkbox" id="pTblDense"'+(w.tblDense?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">enge Zeilen — mehr Zeilen ohne Scrollen</span>');
+      +row('Kompakte Zeilen','<input type="checkbox" id="pTblDense"'+(w.tblDense?' checked':'')+'> <span style="font-size:11px;color:var(--muted)">enge Zeilen — mehr Zeilen ohne Scrollen</span>')
+      +row('Schrift Zeilen','<input id="pTblFs" type="number" min="6" max="40" step="0.5" style="width:80px" value="'+(w.tblFs||'')+'" placeholder="automatisch"> px <span style="font-size:11px;color:var(--muted)">Spaltenkopf etwas kleiner</span>')
+      +row('Schrift Titel','<input id="pTblFsT" type="number" min="6" max="40" step="0.5" style="width:80px" value="'+(w.tblFsT||'')+'" placeholder="automatisch"> px');
       var head=(w._tblRows&&w._tblRows[0])||[];
       // ---- Suche ----
       s+='<div class="pgh">Suche</div>'
@@ -569,6 +572,8 @@
       if($('#pTblNoSw'))$('#pTblNoSw').onchange=function(){w.hideToggle=this.checked||undefined;_tblDraw(w);commit();};
       if($('#pTblSev'))$('#pTblSev').onchange=function(){w.sevStyle=this.checked||undefined;_tblDraw(w);commit();};
       if($('#pTblDense'))$('#pTblDense').onchange=function(){w.tblDense=this.checked||undefined;_tblDraw(w);commit();};
+      if($('#pTblFs'))$('#pTblFs').onchange=function(){w.tblFs=parseFloat(this.value)||undefined;_tblDraw(w);commit();};
+      if($('#pTblFsT'))$('#pTblFsT').onchange=function(){w.tblFsT=parseFloat(this.value)||undefined;_tblDraw(w);commit();};
       // Suche
       if($('#pTblQ'))$('#pTblQ').onchange=function(){w.tblQ=this.checked||undefined;_tblDraw(w);commit();};
       if($('#pTblQPh'))$('#pTblQPh').oninput=function(){w.tblQPh=this.value.trim()||undefined;_tblDraw(w);commit();};

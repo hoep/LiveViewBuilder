@@ -1834,12 +1834,12 @@
   .w.t-table{background:transparent;border:0;border-radius:0}
   .t-table .panel{height:100%;display:flex;flex-direction:column;border:1px solid var(--line);border-radius:16px;background:var(--surface);overflow:hidden;margin:0}
   .t-table .ph{display:flex;align-items:center;justify-content:space-between;gap:clamp(7px,3cqmin,16px);padding:clamp(9px,3cqmin,18px) clamp(11px,4cqmin,22px);border-bottom:1px solid var(--line);flex:0 0 auto}
-  .t-table .ph h3{font-size:clamp(12px,3.4cqmin,17px);font-weight:600;margin:0;color:var(--text);line-height:1.2}
+  .t-table .ph h3{font-size:var(--tblfst,clamp(12px,3.4cqmin,17px));font-weight:600;margin:0;color:var(--text);line-height:1.2}
   .t-table .ph-sub{font-size:clamp(9px,2.6cqmin,13px);color:var(--muted);margin-top:2px}
   .t-table .ph-right{display:flex;align-items:center;gap:clamp(7px,3cqmin,16px);flex-wrap:wrap;justify-content:flex-end}
   .t-table .tbl-scroll{flex:1;overflow:auto;-webkit-overflow-scrolling:touch}
-  .t-table table.tbl{width:100%;border-collapse:collapse;font-size:clamp(11px,3cqmin,15px)}
-  .t-table table.tbl thead th{text-align:left;font-family:var(--fm);font-size:clamp(9px,2.4cqmin,12px);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:500;padding:var(--tblpady,clamp(6px,2.4cqmin,12px)) var(--tblpadx,clamp(11px,4cqmin,22px));border-bottom:1px solid var(--line);white-space:nowrap;position:sticky;top:0;background:var(--surface);z-index:1}
+  .t-table table.tbl{width:100%;border-collapse:collapse;font-size:var(--tblfs,clamp(11px,3cqmin,15px))}
+  .t-table table.tbl thead th{text-align:left;font-family:var(--fm);font-size:calc(var(--tblfs,clamp(11px,3cqmin,15px)) * .8);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:500;padding:var(--tblpady,clamp(6px,2.4cqmin,12px)) var(--tblpadx,clamp(11px,4cqmin,22px));border-bottom:1px solid var(--line);white-space:nowrap;position:sticky;top:0;background:var(--surface);z-index:1}
   .t-table table.tbl tbody td{padding:var(--tblpady,clamp(8px,3cqmin,16px)) var(--tblpadx,clamp(11px,4cqmin,22px));border-bottom:1px solid var(--line);color:var(--text);vertical-align:top}
   .t-table table.tbl tbody tr:last-child td{border-bottom:0}
   .t-table table.tbl tbody tr:hover td{background:rgba(127,140,150,.06)}
@@ -3957,28 +3957,31 @@
 /* ---- runstrip: Laufstreifen ------------------------------------------- */
 /* Raster je Zeile: Bezeichner | Nebenlabel | Streifen | Kennzahl. Die beiden festen
    Breiten kommen als Variablen vom Widget, damit sich der Streifen den Rest teilt. */
-.rs{display:flex;flex-direction:column;height:100%;overflow:hidden}
+.rs{display:flex;flex-direction:column;height:100%;overflow:hidden;box-sizing:border-box;padding:clamp(6px,1.6cqmin,14px) clamp(8px,1.8cqi,18px)}
 .rs>[data-role=rsroot]{display:flex;flex-direction:column;height:100%;min-height:0}
-.rs-kopf{display:flex;align-items:center;gap:10px;flex:none;padding:0 2px 8px}
-.rs-tt{font-size:clamp(11px,2cqmin,13px);font-weight:700;letter-spacing:.06em;
-       text-transform:uppercase;color:var(--muted)}
+.rs-kopf{display:flex;align-items:center;gap:clamp(8px,1.4cqi,16px);flex:none;padding:0 2px clamp(4px,1.6cqh,12px);
+        --rst:var(--rsfst,clamp(11px,4.4cqh,19px))}
+.rs-tt{font-size:var(--rst);font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
 .rs-fl{flex:1}
-.rs-lg{display:inline-flex;align-items:center;gap:4px;font-size:clamp(8px,1.3cqmin,10px);
+.rs-lg{display:inline-flex;align-items:center;gap:.4em;font-size:calc(var(--rst) * .78);
        color:var(--muted);opacity:.85;white-space:nowrap}
-.rs-p{display:inline-block;width:9px;height:9px;border-radius:2px}
-.rs-tab{flex:1;min-height:0;display:flex;flex-direction:column;justify-content:space-evenly;
-        gap:clamp(1px,.4cqmin,4px)}
-.rs-zl{display:grid;grid-template-columns:var(--rslb) auto 1fr var(--rsval);
-       align-items:center;gap:clamp(4px,1cqmin,10px);min-height:0}
-.rs-nm{font-size:clamp(9px,1.6cqmin,11.5px);color:var(--text);
-       white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.rs-sub{font-size:clamp(8px,1.3cqmin,10px);color:var(--muted);opacity:.85;
-        white-space:nowrap;text-align:right}
+.rs-p{display:inline-block;width:.85em;height:.85em;border-radius:2px}
+/* EIN Raster fuer alle Zeilen (subgrid): Bezeichner | Nebenlabel | Streifen | Kennzahl.
+   Die Spalten richten sich nach dem breitesten Inhalt, ausser eine Breite ist gesetzt.
+   Die Zeilen teilen sich die Hoehe; Schrift aus der Zeilenhoehe (--rsrows), gedeckelt. */
+.rs-tab{flex:1;min-height:0;display:grid;
+        grid-template-columns:var(--rslb,max-content) var(--rssub,max-content) minmax(0,1fr) var(--rsval,max-content);
+        grid-auto-rows:minmax(0,1fr);column-gap:clamp(6px,1.2cqi,14px);row-gap:clamp(1px,.5cqh,6px);
+        --rsf:var(--rsfs,clamp(9px,calc(100cqh / (var(--rsrows,6) + 2) * .42),20px))}
+.rs-tab.hashead{grid-template-rows:auto}
+.rs-zl{display:grid;grid-column:1/-1;grid-template-columns:subgrid;align-items:center;min-height:0}
+.rs-nm{font-size:var(--rsf);color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rs-sub{font-size:calc(var(--rsf) * .82);color:var(--muted);opacity:.85;white-space:nowrap;text-align:right}
 /* Die Zellen teilen sich die Breite zu gleichen Teilen - dreissig Laeufe sollen wie
-   dreissig gleich wichtige Ereignisse aussehen, nicht wie eine Zeitachse. */
-.rs-str{display:flex;gap:clamp(1px,.28cqmin,3px);align-items:stretch;min-width:0;
-        height:clamp(9px,2.2cqmin,17px)}
-.rs-c{flex:1 1 0;min-width:0;border-radius:2px;background:var(--line)}
+   dreissig gleich wichtige Ereignisse aussehen, nicht wie eine Zeitachse. Hoehe: ein
+   Anteil der Zeile, damit sie mit der Kachel wachsen (oder fest ueber rsCellH). */
+.rs-str{display:flex;gap:clamp(1px,.28cqmin,3px);align-items:stretch;min-width:0;height:var(--rsch,74%)}
+.rs-c{flex:1 1 0;min-width:0;border-radius:clamp(2px,.4cqmin,4px);background:var(--line)}
 .rs-c.ok{background:var(--ok)}
 .rs-c.warn{background:var(--warn)}
 .rs-c.crit{background:var(--crit)}
@@ -3990,7 +3993,7 @@
 .rs-p.crit{background:var(--crit)}.rs-p.acc{background:var(--accent)}
 .rs-p.none{background:color-mix(in oklab,var(--muted) 22%,transparent)}
 .rs-v{font-family:ui-monospace,Menlo,monospace;font-variant-numeric:tabular-nums;
-      font-size:clamp(9px,1.5cqmin,11.5px);color:var(--muted);text-align:right;
+      font-size:calc(var(--rsf) * .9);color:var(--muted);text-align:right;
       white-space:nowrap;overflow:hidden}
 .rs-leer{flex:1;display:flex;align-items:center;justify-content:center;
          font-size:12px;color:var(--muted);opacity:.7}
@@ -4002,13 +4005,11 @@
 .rs-tab.solid .rs-c{border-radius:0}
 .rs-tab.solid .rs-c:first-child{border-radius:3px 0 0 3px}
 .rs-tab.solid .rs-c:last-child{border-radius:0 3px 3px 0}
-/* Kalender-Erweiterung (Belegung): feste Nebenlabel-Spalte, damit die Kopfzeile mit den
-   Spaltennummern ueber den Zellen steht; Luecken fuer kurze Monate; hervorgehobene Zelle
-   (heute) mit Rahmen statt eigener Farbe - der Zustand bleibt lesbar. */
-.rs-tab.fixsub .rs-zl{grid-template-columns:var(--rslb) var(--rssub) 1fr var(--rsval)}
-.rs-str{height:var(--rsch,clamp(9px,2.2cqmin,17px))}
+/* Kalender-Erweiterung (Belegung): Kopfzeile mit Spaltennummern (steht dank subgrid ueber
+   den Zellen), Luecken fuer kurze Monate, hervorgehobene Zelle (heute) mit Rahmen statt
+   eigener Farbe - der Zustand bleibt lesbar. */
 .rs-hd .rs-hs{height:auto}
-.rs-hn{flex:1 1 0;min-width:0;font:500 clamp(8px,1.2cqmin,10px)/1 ui-monospace,Menlo,monospace;
+.rs-hn{flex:1 1 0;min-width:0;font:500 calc(var(--rsf) * .72)/1 ui-monospace,Menlo,monospace;
        color:var(--faint,var(--muted));text-align:center;font-style:normal}
 .rs-c.gap{background:transparent}
 .rs-c.hl{outline:2px solid var(--text);outline-offset:1px;position:relative;z-index:1}

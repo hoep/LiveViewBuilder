@@ -88,7 +88,7 @@
         return '<span class="rs-lg"><i class="rs-p ' + _RS_ZUST[k].c + '"></i>' + escL(_RS_ZUST[k].t) + '</span>';
       }).join('');
     }
-    return '<div class="rs-kopf"><span class="rs-tt">' + escL(w.label || 'Verlauf') + '</span>'
+    return '<div class="rs-kopf"' + (w.rsFsT > 0 ? ' style="--rsfst:' + parseFloat(w.rsFsT) + 'px"' : '') + '><span class="rs-tt">' + escL(w.label || 'Verlauf') + '</span>'
       + '<span class="rs-fl"></span>' + (w.rsLegend === false ? '' : lg) + '</div>';
   }
   function _rsTab(w) {
@@ -97,12 +97,17 @@
       return '<div class="rs-leer">' + (w.varId ? 'Noch keine Aufzeichnung' : 'Variable wählen') + '</div>';
     }
     var n = (w.rsCols > 0) ? parseInt(w.rsCols) : 30;
-    var breit = (w.rsLbW || 132), rechts = (w.rsValW || 62), links = w.rsAlign === 'links';
-    var fix = w.rsHead || w.rsSubW > 0;
-    var h = '<div class="rs-tab' + (w.rsSolid ? ' solid' : '') + (fix ? ' fixsub' : '')
-          + '" style="--rslb:' + breit + 'px;--rsval:' + rechts + 'px'
-          + (fix ? ';--rssub:' + (w.rsSubW > 0 ? w.rsSubW : 64) + 'px' : '')
-          + (w.rsCellH > 0 ? ';--rsch:' + parseInt(w.rsCellH) + 'px' : '') + '">';
+    var links = w.rsAlign === 'links';
+    // Spalten passen sich dem Inhalt an (alle Zeilen teilen EIN Raster, subgrid), feste
+    // Breiten nur, wenn ausdruecklich gesetzt. Schrift und Zellen wachsen mit der Kachel:
+    // --rsrows sagt dem CSS, wie viele Zeilen sich die Hoehe teilen.
+    var st = '--rsrows:' + (rows.length - 1 + (w.rsHead ? 1 : 0));
+    if (w.rsLbW > 0) { st += ';--rslb:' + parseInt(w.rsLbW) + 'px'; }
+    if (w.rsValW > 0) { st += ';--rsval:' + parseInt(w.rsValW) + 'px'; }
+    if (w.rsSubW > 0) { st += ';--rssub:' + parseInt(w.rsSubW) + 'px'; }
+    if (w.rsCellH > 0) { st += ';--rsch:' + parseInt(w.rsCellH) + 'px'; }
+    if (w.rsFs > 0) { st += ';--rsfs:' + parseFloat(w.rsFs) + 'px'; }
+    var h = '<div class="rs-tab' + (w.rsSolid ? ' solid' : '') + (w.rsHead ? ' hashead' : '') + '" style="' + st + '">';
     if (w.rsHead) {
       var kopf = '';
       for (var k = 1; k <= n; k++) { kopf += '<i class="rs-hn">' + ((k === 1 || k % 5 === 0) ? k : '') + '</i>'; }
@@ -135,7 +140,7 @@
     cat: 'Anzeige',
     paletteIcon: 'wbars',
     size: [720, 260],
-    defaults: function (w) { w.label = 'Verlauf'; w.rsCols = 30; w.rsLbW = 132; w.rsValW = 62; },
+    defaults: function (w) { w.label = 'Verlauf'; w.rsCols = 30; },
     render: function (w) { return '<div class="panel rs"><div data-role="rsroot"></div></div>'; },
     mount: function (w) { _rsLoad(w, function () { _rsPaint(w); }); },
     props: function (w) {
@@ -147,8 +152,10 @@
         + row('Variable', '<input id="pRsVar" type="number" value="' + (w.varId || '') + '">')
         + '<div class="pgh">Darstellung</div>'
         + row('Zellen je Zeile', '<input id="pRsCols" type="number" min="4" max="120" value="' + (w.rsCols || 30) + '"> <span style="font-size:11px;color:var(--muted)">ältere fallen links heraus</span>')
-        + row('Breite Bezeichner', '<input id="pRsLbW" type="number" min="60" max="300" value="' + (w.rsLbW || 132) + '"> px')
-        + row('Breite Kennzahl', '<input id="pRsValW" type="number" min="0" max="200" value="' + (w.rsValW || 62) + '"> px')
+        + row('Schrift Zeilen', '<input id="pRsFs" type="number" min="6" max="40" step="0.5" value="' + (w.rsFs || '') + '" placeholder="automatisch"> px <span style="font-size:11px;color:var(--muted)">Bezeichner; Nebenlabel und Kennzahl etwas kleiner</span>')
+        + row('Schrift Titel', '<input id="pRsFsT" type="number" min="6" max="40" step="0.5" value="' + (w.rsFsT || '') + '" placeholder="automatisch"> px')
+        + row('Breite Bezeichner', '<input id="pRsLbW" type="number" min="0" max="300" value="' + (w.rsLbW || '') + '" placeholder="automatisch"> px')
+        + row('Breite Kennzahl', '<input id="pRsValW" type="number" min="0" max="200" value="' + (w.rsValW || '') + '" placeholder="automatisch"> px')
         + row('Legende im Kopf', '<input type="checkbox" id="pRsLg"' + ((w.rsLegend !== false) ? ' checked' : '') + '>')
         + row('Ausrichtung', '<select id="pRsAl"><option value="">rechtsbündig (neueste rechts)</option><option value="links"' + (w.rsAlign === 'links' ? ' selected' : '') + '>linksbündig (Kalender: Tag 1 links)</option></select>')
         + row('Kopfzeile Spaltennummern', '<input type="checkbox" id="pRsHd"' + (w.rsHead ? ' checked' : '') + '> <span style="font-size:11px;color:var(--muted)">1, 5, 10 … über den Zellen</span>')
@@ -162,8 +169,10 @@
       function nur() { _rsPaint(w); commit(); }
       if ($('#pRsVar'))  $('#pRsVar').onchange  = function () { w.varId = parseInt(this.value) || 0; neu(); };
       if ($('#pRsCols')) $('#pRsCols').onchange = function () { w.rsCols = parseInt(this.value) || 30; nur(); };
-      if ($('#pRsLbW'))  $('#pRsLbW').onchange  = function () { w.rsLbW = parseInt(this.value) || 132; nur(); };
-      if ($('#pRsValW')) $('#pRsValW').onchange = function () { w.rsValW = parseInt(this.value) || 0; nur(); };
+      if ($('#pRsLbW'))  $('#pRsLbW').onchange  = function () { w.rsLbW = parseInt(this.value) || undefined; nur(); };
+      if ($('#pRsValW')) $('#pRsValW').onchange = function () { w.rsValW = parseInt(this.value) || undefined; nur(); };
+      if ($('#pRsFs'))   $('#pRsFs').onchange   = function () { w.rsFs = parseFloat(this.value) || undefined; nur(); };
+      if ($('#pRsFsT'))  $('#pRsFsT').onchange  = function () { w.rsFsT = parseFloat(this.value) || undefined; nur(); };
       if ($('#pRsLg'))   $('#pRsLg').onchange   = function () { w.rsLegend = this.checked; nur(); };
       if ($('#pRsSol'))  $('#pRsSol').onchange  = function () { w.rsSolid = this.checked || undefined; nur(); };
       if ($('#pRsAl'))   $('#pRsAl').onchange   = function () { w.rsAlign = this.value || undefined; nur(); };
