@@ -1803,7 +1803,7 @@
     var fs=_ecF(w,'axname',9);
     // Titel senkrechter Achsen am oberen/unteren Ende stehen auf DERSELBEN Hoehe - links "kWh",
     // rechts "W". Sie teilen sich einen Streifen; aufaddiert frass er bei zwei Achsen doppelt.
-    var vt=0,vb=0;
+    var vt=0,vb=0,vw=0;
     function eintragen(c,vert,rechts){
       if(!c||(c.name==null)||String(c.name)==='')return;
       var loc=(c.nLoc==='start'||c.nLoc==='middle'||c.nLoc==='end')?c.nLoc:(vert?'end':'middle');
@@ -1815,7 +1815,7 @@
       if(vert){
         if(loc==='middle'){var b=Math.max(0,gap-24)+fs+6;if(rechts)s.r+=b;else s.l+=b;}
         else if(loc==='start')vb=Math.max(vb,fs+6);
-        else vt=Math.max(vt,fs+6);
+        else {vt=Math.max(vt,fs+6);vw=Math.max(vw,_txtW(String(c.name),fs,w));}
       } else {
         if(seite==='u')s.b+=Math.max(0,gap-16)+fs+4;else s.t+=fs+6;
       }
@@ -1832,15 +1832,19 @@
       else eintragen(a,true,(a&&a.side==='R'));});
     else if(((w.yunit||'')!=='')||((w.unit||'')!==''))s[liegend?'b':'t']+=fs+6;
     eintragen({name:w.xname,nLoc:w.xnLoc,nRot:w.xnRot,nGap:w.xnGap,nSide:w.xnSide},false,false);
-    s.t+=vt;s.b+=vb;
+    s.t+=vt;s.b+=vb;s.vt=vt;s.vw=vw;
     return s;
   }
   // ---- Reservierte Streifen: die EINZIGE Stelle, die Randbreiten kennt ------------------
   function _chStrips(w,legOn){
     var an=_axNameStrips(w),s={l:an.l,r:an.r,t:an.t,b:an.b};
     var tb=_titleBox(w);
-    if(tb.on&&!w.titleFloat){var tv=_ancV(_titleAnc(w));
-      if(tv==='o')s.t+=tb.h+4;else if(tv==='u')s.b+=tb.h+4;}
+    if(tb.on&&!w.titleFloat){var ta=_titleAnc(w),tv=_ancV(ta);
+      // Steht der Titel mittig oben, passen die Achsentitel oben links/rechts (kWh, W) in
+      // DIESELBE Zeile - vorausgesetzt, daneben ist Platz. Sonst je eine eigene Zeile.
+      var teilen=(tv==='o'&&_ancH(ta)==='m'&&an.vt>0&&(tb.w/2+an.vw+24)<=((w.w||300)/2));
+      if(teilen)s.t+=Math.max(0,tb.h+4-an.vt);
+      else if(tv==='o')s.t+=tb.h+4;else if(tv==='u')s.b+=tb.h+4;}
     var on=(legOn!=null)?legOn:!!w.legend,lb=_legBox(w,on);
     if(lb.on&&!w.legFloat){var a=_legAnc(w),lv=_ancV(a),lh=_ancH(a);
       if(lb.vert){if(lh==='l')s.l+=lb.w+6;else if(lh==='r')s.r+=lb.w+6;}
@@ -1871,11 +1875,37 @@
       if((a.style||'pin')==='line')return;                          // reine Linie hat keine Fahne
       if(a.kind==='max'||a.kind==='last'||a.kind==='first')need=true; // koennen ganz oben liegen
     });
-    if(!need)return 0;
-    // Die Fahne steht IN der Zeichenflaeche und darf in den Streifen der Achsentitel ragen -
-    // die stehen aussen ueber den Achsbeschriftungen, nicht ueber den Balken. Reserviert wird
-    // also nur, was darueber hinausgeht; vorher lag ein leerer Streifen zwischen Titel und kWh.
-    return Math.max(0,_annPinSize(w)+4-_axNameStrips(w).t);
+    // Kein pauschaler Vorrat mehr: ob eine Fahne oben anstoesst, haengt davon ab, wie viel
+    // Luft die Achse ueber dem Hoechstwert laesst (bei 2.411 W auf einer 3.000er-Achse reichlich).
+    // Das prueft _annFit nach dem Zeichnen und schafft nur den fehlenden Platz.
+    return 0;
+  }
+  /**
+   * Nach setOption: stoesst eine obere Fahne (Max/Erster/Letzter) an den Rand der Zeichenflaeche,
+   * wird die Flaeche um genau den fehlenden Betrag nach unten gerueckt - sonst bleibt alles.
+   */
+  function _annFit(w,ec){
+    if(!w||!ec||!(w.anns||[]).some(function(a){return a&&!a.off&&(a.style||'pin')!=='line'&&(a.kind==='max'||a.kind==='last'||a.kind==='first');}))return;
+    try{
+      var o=ec.getOption(),g=o.grid&&o.grid[0];if(!g)return;
+      var rect=ec.getModel().getComponent('grid',0).coordinateSystem.getRect();
+      var pin=_annPinSize(w)+4,fehlt=0;
+      (o.series||[]).forEach(function(sr,si){
+        var mp=sr.markPoint;if(!mp||!mp.data||!mp.data.length)return;
+        var pts=(sr.data||[]).map(function(d,i){var v=(d&&d.value!=null)?d.value:d;
+          return Array.isArray(v)?[v[0],parseFloat(v[1])]:[i,parseFloat(v)];}).filter(function(p){return !isNaN(p[1]);});
+        if(!pts.length)return;
+        mp.data.forEach(function(m){
+          var p=null;
+          if(m.type==='max')p=pts.reduce(function(a,b){return b[1]>a[1]?b:a;});
+          else if(m.coord)p=m.coord;
+          if(!p)return;
+          var px=ec.convertToPixel({seriesIndex:si},p);
+          if(px&&!isNaN(px[1]))fehlt=Math.max(fehlt,pin-(px[1]-rect.y));
+        });
+      });
+      if(fehlt>0.5)ec.setOption({grid:[{top:(parseFloat(g.top)||0)+Math.ceil(fehlt)}]});
+    }catch(_e){}
   }
   // Perioden-Navigation (‹ jetzt ›) liegt als HTML UEBER dem Diagramm, unten links.
   // Masse gespiegelt aus widgets/chart.js: Knopf clamp(20px,8cqmin,30px), Abstand clamp(4px,2cqmin,10px).
@@ -2057,7 +2087,7 @@
     _annApply(w,series);
     if(w.barHoriz&&(ct==='bar'||ct==='barstack'))_hbLine(opt,w);   // liegende Balken
     _segApply(w,opt);                                              // Farbsegmentierung nach Wert
-    ec.setOption(opt,true);
+    ec.setOption(opt,true);_annFit(w,ec);
     _blkBreite(w);                                                 // Balken einer gestuften Reihe: volle Blockbreite
   }
   // Balkenbreite einer gestuften Reihe als ANTEIL DES BLOCKS (w.stageBarPct, Vorgabe 60 %).
@@ -2199,7 +2229,7 @@
       _hbCat(opt);
       if(w.labels&&opt.xAxis&&opt.xAxis.axisLabel)opt.xAxis.axisLabel.show=false;
     }
-    ec.setOption(opt,true);
+    ec.setOption(opt,true);_annFit(w,ec);
   }
   /**
    * Punkte nach Richtung und Entfernung (JSON-Zeilen [Grad, Entfernung, Alter]) - etwa
@@ -2267,7 +2297,7 @@
         splitLine:{show:axc.yGrid,lineStyle:{color:cssv('--line-soft')}},splitNumber:(w.gridDivs>0?parseInt(w.gridDivs):null)},
       series:series};
     if(w.barHoriz)_hbCat(opt);   // liegende Balken
-    ec.setOption(opt,true);
+    ec.setOption(opt,true);_annFit(w,ec);
   }
   function fetchCalYear(w){
     var EMPTY=[null,null,null,null,null,null,null,null,null,null,null,null];
