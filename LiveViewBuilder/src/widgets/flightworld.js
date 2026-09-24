@@ -44,8 +44,16 @@
         + '.fw-hz{display:flex;justify-content:space-between;gap:10px;font-size:clamp(10px,1.8cqmin,12px);color:var(--muted);padding:3px 4px}'
         + '.fw-hz span:last-child{white-space:nowrap}'
         + '.fw-zl{position:absolute;inset:0;display:flex;align-items:center;gap:clamp(6px,1.4cqi,12px);padding:0 4px;flex-wrap:wrap}'
-        + '.fw-pl{font-size:clamp(10px,40cqh,13px);font-weight:600;padding:.35em .9em;border-radius:999px;background:color-mix(in oklab,var(--c) 20%,transparent);color:var(--c);white-space:nowrap}'
-        + '.fw-pl.null{opacity:.55}'
+        + '.fw-zi{display:inline-flex;align-items:center;gap:.5em;color:var(--muted);opacity:.55;white-space:nowrap}'
+        + '.fw-zi.an{color:var(--c);opacity:1}'
+        + '.fw-zs{position:relative;display:inline-flex;align-items:center;justify-content:center;height:min(88cqh,34px);aspect-ratio:1;border-radius:50%;'
+        + 'background:color-mix(in oklab,var(--text) 6%,transparent);box-shadow:inset 0 0 0 1px color-mix(in oklab,var(--text) 15%,transparent)}'
+        + '.fw-zi.an .fw-zs{background:color-mix(in oklab,var(--c) 18%,transparent);box-shadow:inset 0 0 0 1px color-mix(in oklab,var(--c) 45%,transparent)}'
+        + '.fw-zs svg{width:56%;height:56%}'
+        + '.fw-zb{position:absolute;top:-3px;right:-6px;min-width:16px;height:16px;padding:0 4px;box-sizing:border-box;border-radius:99px;background:var(--c);color:#fff;'
+        + 'font:700 10px/16px Inter,system-ui,sans-serif;text-align:center;box-shadow:0 0 0 2px var(--bg)}'
+        + '.fw-zt{display:flex;flex-direction:column;line-height:1.1;font:600 clamp(10px,36cqh,13px) var(--fm,monospace)}'
+        + '.fw-zt small{font:500 clamp(8px,28cqh,10.5px) Inter,system-ui,sans-serif;opacity:.8}'
         + '.fw-st{margin-left:auto;color:var(--muted);font-size:clamp(9px,34cqh,12px);white-space:nowrap}';
       document.head.appendChild(st);
     }
@@ -102,11 +110,21 @@
       }
       box.innerHTML = html + '</div>';
     }
+    // Zaehler als Symbole mit Abzeichen (wie die Glocke der Lage): bei 0 gedaempft ohne Zahl,
+    // sonst in der Codefarbe mit Zahl. Warndreieck 7700, Funk durchgestrichen 7600, Schloss 7500.
+    var FW_IC = {
+      '7700': '<path d="M12 3.5 2.5 20h19L12 3.5z"/><path d="M12 10v4.5M12 17.2v.3"/>',
+      '7600': '<path d="M5 12a7 7 0 0 1 2-4.9M19 12a7 7 0 0 0-2-4.9M8.3 12a3.7 3.7 0 0 1 1.1-2.6M15.7 12a3.7 3.7 0 0 0-1.1-2.6"/><circle cx="12" cy="12" r="1.2"/><path d="M12 13.5V21M4 4l16 16"/>',
+      '7500': '<rect x="5" y="10.5" width="14" height="10" rx="2"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/><path d="M12 14.5v2.5"/>'
+    };
     function fwZaehler(w, box, d) {
       var z = (d && d.zaehler) || {};
       box.innerHTML = '<div class="fw-zl">' + ['7700', '7600', '7500'].map(function (k) {
         var n = +z[k] || 0, c = FW_CODE[k];
-        return '<span class="fw-pl' + (n ? '' : ' null') + '" style="--c:var(--' + c.c + ')">' + k + ' · ' + n + ' ' + (n === 1 ? c.t : c.tp) + '</span>';
+        return '<span class="fw-zi' + (n ? ' an' : '') + '" style="--c:var(--' + c.c + ')" title="' + k + ' ' + c.t + ': ' + n + '">'
+          + '<span class="fw-zs"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' + FW_IC[k] + '</svg>'
+          + (n ? '<b class="fw-zb">' + (n > 99 ? '99+' : n) + '</b>' : '') + '</span>'
+          + '<span class="fw-zt">' + k + '<small>' + c.t + '</small></span></span>';
       }).join('') + '<span class="fw-st">' + (d ? esc((d.quelle || '') + ' · vor ' + fwAlter(d.stand) + (d.teilweise ? ' · unvollständig' : '')) : 'keine Daten') + '</span></div>';
     }
     function fwKarte(w, box, d) {
