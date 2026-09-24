@@ -27,7 +27,7 @@
   var UNIV_VALUE_TYPES=['value','kpi','bar','tempbar','chip','room','cval','sval','valuecard','calc','assoc','gauge','gaugepro','stepper'];
   function _uRefresh(w){render();if(w.type==='cval'&&typeof computeCounterVal==='function')computeCounterVal(w);else if(w.type==='sval'&&typeof computeAggVal==='function')computeAggVal(w);else if(w.varId&&_lastVals[w.varId])applyVal(w.varId,_lastVals[w.varId]);commit();}
   var UNIV_PRESUF_TYPES=['value','kpi','cval','sval','bar','tempbar','chip','valuecard','stepper'];
-  var UNIV_ICON_TYPES=['icon','value','switch','tile','button','light','chip','room','kpi','assoc','valuecard','bot'];
+  var UNIV_ICON_TYPES=['icon','value','switch','tile','button','light','chip','room','kpi','assoc','valuecard','bot','iconcount'];
   var UNIV_DEC_TYPES=['value','kpi','valuecard','bar','gauge','gaugepro','tempbar','dial','chip','cval','sval','delta','room','meterlist','marquee','raincard','rangebtn','assoc','chart','stepper'];
   var UNIV_LINEMODE_TYPES=['value','valuecard','bar','assoc','cval','sval','delta','tempbar'];
   function universalSection(w){
@@ -52,13 +52,16 @@
       h+='<div class="pgh">Textformat</div>'
         +row('Groß-/Kleinschreibung','<select id="pUTT"><option value=""'+(!w.textTransform?' selected':'')+'>unverändert</option><option value="uppercase"'+(w.textTransform==='uppercase'?' selected':'')+'>GROSS</option><option value="lowercase"'+(w.textTransform==='lowercase'?' selected':'')+'>klein</option><option value="capitalize"'+(w.textTransform==='capitalize'?' selected':'')+'>Erster groß</option></select>');
     }
-    if(UNIV_ICON_TYPES.indexOf(w.type)>=0&&(w.icon||['icon','tile','button','light'].indexOf(w.type)>=0)){
+    if(UNIV_ICON_TYPES.indexOf(w.type)>=0&&(w.icon||['icon','tile','button','light','iconcount'].indexOf(w.type)>=0)){
       h+='<div class="pgh">Icon &amp; Grafik</div>'
+        +row('Icon-Stil','<select id="pIcoStyle">'+[['','Standard'],['plain','Nur Symbol'],['soft','Feld'],['circle','Kreis'],['ring','Ring'],['filled','Voll'],['glass','Glas']].map(function(o){return '<option value="'+o[0]+'"'+((w.iconStyle||'')===o[0]?' selected':'')+'>'+o[1]+'</option>';}).join('')+'</select>')
+        +(w.iconStyle==='filled'?row('Symbolfarbe (Voll)',farbWahl('iconFg',w.iconFg)):'')
         +row('Icon-Größe (px)','<input id="pIcoSz" type="number" min="0" style="width:90px" value="'+(w.iconSize!=null?w.iconSize:'')+'" placeholder="Standard">')
-        +row('Icon-Hintergrund',skinSel(w.iconBg,'id="pIcoBg"'))
+        +row('Icon-Hintergrund',farbWahl('iconBg',w.iconBg))
         +row('Icon-Form','<select id="pIcoShape">'+[['','Standard'],['circle','Kreis'],['square','Quadrat'],['rounded','Abgerundet']].map(function(o){return '<option value="'+o[0]+'"'+((w.iconShape||'')===o[0]?' selected':'')+'>'+o[1]+'</option>';}).join('')+'</select>')
         +row('Icon-Eckenradius (px)','<input id="pIcoRad" type="number" min="0" style="width:90px" value="'+(w.iconRadius!=null?w.iconRadius:'')+'" placeholder="">')
-        +row('Icon-Rahmen (px)','<input id="pIcoBrd" type="number" min="0" style="width:70px" value="'+(w.iconBorder!=null?w.iconBorder:'')+'" placeholder="0"> '+skinSel(w.iconBorderColor,'id="pIcoBrdC"'))
+        +row('Icon-Rahmen (px)','<input id="pIcoBrd" type="number" min="0" style="width:70px" value="'+(w.iconBorder!=null?w.iconBorder:'')+'" placeholder="0">')
+        +row('Icon-Rahmenfarbe',farbWahl('iconBorderColor',w.iconBorderColor))
         +row('Icon-Schatten','<select id="pIcoShadow">'+[['','aus'],['soft','weich'],['strong','stark']].map(function(o){return '<option value="'+o[0]+'"'+((w.iconShadow||'')===o[0]?' selected':'')+'>'+o[1]+'</option>';}).join('')+'</select>')
         +row('Icon-Deckkraft (%)','<input id="pIcoOp" type="number" min="0" max="100" style="width:90px" value="'+(w.iconOpacity!=null?w.iconOpacity:'')+'" placeholder="100">')
         +row('Icon-Leuchten','<input type="checkbox" id="pIcoGlow"'+(w.iconGlow?' checked':'')+'>');
@@ -74,6 +77,7 @@
     if($('#pUNull'))$('#pUNull').oninput=function(){w.nullText=this.value||undefined;_uRefresh(w);};
     if($('#pIcoSz'))$('#pIcoSz').oninput=function(){w.iconSize=this.value===''?undefined:(parseInt(this.value)||undefined);render();commit();};
     if($('#pIcoBg'))$('#pIcoBg').onchange=function(){w.iconBg=this.value||undefined;render();commit();};
+    if($('#pIcoStyle'))$('#pIcoStyle').onchange=function(){w.iconStyle=this.value||undefined;render();renderProps();commit();};
     if($('#pIcoShape'))$('#pIcoShape').onchange=function(){w.iconShape=this.value||undefined;render();commit();};
     if($('#pIcoRad'))$('#pIcoRad').oninput=function(){w.iconRadius=this.value===''?undefined:(parseInt(this.value)||0);render();commit();};
     if($('#pIcoBrd'))$('#pIcoBrd').oninput=function(){w.iconBorder=this.value===''?undefined:(parseInt(this.value)||0);render();commit();};
@@ -151,7 +155,7 @@
         +row('Schriftgröße (px)','<input id="pFsz" type="number" min="0" value="'+(w.fsz||'')+'" placeholder="Standard">')
       ):'')
       +(['icon','iconcount','value','switch','bar','tile','button','light','chip','room','kpi','assoc','valuecard','bot','alarm'].indexOf(w.type)>=0?row('Icon (Fallback)','<span style="width:20px;height:20px;display:inline-flex;align-items:center;color:var(--accent)">'+(w.icon?iconSVG(w.icon):'')+'</span> <button class="btn" id="pIcon" style="padding:5px 8px">wählen</button>'+(w.icon?' <button class="btn" id="pIconX" style="padding:5px 8px" title="Icon entfernen"><svg class="i"><use href="#ic-minus"/></svg></button>':'')):'')
-      +(['icon','value','switch','bar','chip','room','kpi','valuecard'].indexOf(w.type)>=0&&w.icon?row('Icon-Farbe',(function(){var SK=[['','Standard'],['accent','Akzent'],['ok','OK'],['warn','Warnung'],['crit','Kritisch'],['info','Info'],['text','Neutral']];return '<span class="iconsw" data-role="iconsw">'+SK.map(function(c){var cur=(w.iconColor||'')===c[0];var st=c[0]?('background:var(--'+c[0]+')'):'background:transparent;border-style:dashed;border-color:var(--muted)';return '<button type="button" class="iconswb'+(cur?' on':'')+'" data-skin="'+c[0]+'" title="'+esc(c[1])+'" style="'+st+'"></button>';}).join('')+'</span>';})()):'')
+      +(['icon','value','switch','bar','chip','room','kpi','valuecard','tile','button','light'].indexOf(w.type)>=0&&(w.icon||w.type==='icon')?row('Icon-Farbe',farbWahl('iconColor',w.iconColor)):'')
       +(['icon','value','switch','bar','tile','button','light','chip','room','kpi','assoc','valuecard'].indexOf(w.type)>=0&&w.varId?'<div id="assocBox" class="assocbox"></div>':'')
       +universalSection(w)
       +(function(){try{var _p=(WIDGETS[w.type]&&WIDGETS[w.type].props)?WIDGETS[w.type].props(w):'';if(!_p||!String(_p).trim())return '';return '<div class="pgh">'+esc((TYPES[w.type]||w.type))+' — Optionen</div>'+_p;}catch(_e){console.error('props('+w.type+')',_e);return '<div class="hint" style="color:var(--crit);font-size:11px">Eigenschaften-Fehler bei „'+esc(w.type)+'" — siehe Konsole</div>';}})()
@@ -198,7 +202,14 @@
     if($('#pIcon'))$('#pIcon').onclick=function(){_assocPick=null;showTab('icons');toast('Icon links wählen — wird der Auswahl zugewiesen');};
     if($('#assocBox'))renderAssoc(w);
     if($('#pIconX'))$('#pIconX').onclick=function(){delete w.icon;render();renderProps();};
-    $$('#props [data-role=iconsw] [data-skin]').forEach(function(b){b.onclick=function(){w.iconColor=this.getAttribute('data-skin')||undefined;render();renderProps();commit();};}); // zentrale Icon-Farbe (Skin)
+    $$('#props [data-role=iconsw] [data-skin]').forEach(function(b){b.onclick=function(){w.iconColor=this.getAttribute('data-skin')||undefined;render();renderProps();commit();};});
+    // Einheitlicher Farbwaehler (farbWahl): Feld = Skin-Farbe oder Auto, Regenbogen = eigene Farbe
+    $$('#props [data-fw]').forEach(function(box){var key=box.getAttribute('data-fw');
+      $$('[data-fwv]',box).forEach(function(b){b.onclick=function(){setPath(w,key,this.getAttribute('data-fwv')||undefined);render();renderProps();commit();};});
+      var ci=box.querySelector('.fwzc');
+      if(ci){ci.oninput=function(){setPath(w,key,this.value);var o=box.querySelector('.own');if(o)o.style.background=this.value;render();};
+             ci.onchange=function(){setPath(w,key,this.value);render();renderProps();commit();};}
+    }); // zentrale Icon-Farbe (Skin)
     if($('#pFit'))$('#pFit').onchange=function(){w.fit=this.value||undefined;commit();renderProps();};
     if($('#pPrio'))$('#pPrio').onchange=function(){w.prio=parseInt(this.value)||2;commit();};
     if($('#pGrp'))$('#pGrp').oninput=function(){w.grp=this.value||undefined;commit();};
@@ -367,6 +378,18 @@
     var k=t.filter(function(x){return !_SKIN_STRUCT[x];}),i=k.indexOf('text');
     if(i>=0)k.splice(i+1,0,'text-inv'); else k.push('text-inv');
     return k.concat(_skinExtraKeys());}
+  /**
+   * Einheitlicher Farbwaehler: Auto, ALLE Skin-Farben (auch eigene, u-*) und eine frei
+   * gewaehlte Farbe. Gespeichert wird der Skin-Schluessel - er wechselt mit dem Skin - oder
+   * die Hex-Farbe, die fest bleibt. Verdrahtet zentral in wireProps ueber [data-fw].
+   */
+  function farbWahl(key,cur){cur=cur||'';var keys=skinColorKeys(),eigen=(cur!==''&&keys.indexOf(cur)<0);
+    var hex=(eigen&&/^#[0-9a-fA-F]{6}$/.test(cur))?cur:'#b388ff';
+    return '<span class="fwz" data-fw="'+esc(key)+'">'
+      +'<button type="button" class="fwzb auto'+(cur===''?' on':'')+'" data-fwv="" title="Auto"></button>'
+      +keys.map(function(k){return '<button type="button" class="fwzb'+(cur===k?' on':'')+'" data-fwv="'+k+'" title="'+esc(_skinLbl(k))+'" style="background:var(--'+k+')"></button>';}).join('')
+      +'<span class="fwzb own'+(eigen?' on':'')+'" title="eigene Farbe"'+(eigen?' style="background:'+esc(cur)+'"':'')+'><input type="color" class="fwzc" value="'+hex+'"></span>'
+      +'</span>';}
   function skinSel(cur,attrs){cur=cur||'';var keys=skinColorKeys(),known=(cur===''||keys.indexOf(cur)>=0);
     var op='<option value=""'+(cur===''?' selected':'')+'>Auto</option>'+keys.map(function(k){return '<option value="'+k+'"'+(cur===k?' selected':'')+' style="background:var(--'+k+');color:#08201c">'+_skinLbl(k)+'</option>';}).join('');
     if(cur&&!known)op='<option value="'+esc(cur)+'" selected style="background:'+esc(cur)+';color:#08201c">Eigene</option>'+op;

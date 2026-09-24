@@ -135,8 +135,12 @@
   // Universelle Icon-/Grafik-Gestaltung (Groesse, Hintergrund, Form, Rahmen, Schatten, Deckkraft, Glow).
   // Rein additiv: greift NUR, wenn mindestens eine Eigenschaft gesetzt ist -> bestehende Layouts unveraendert.
   // Konsum als Inline-Style direkt auf der Icon-Huelle (kein var()-Fallback-Risiko).
-  function _hasIconGfx(w){return w.iconSize!=null||w.iconBg||w.iconShape||w.iconRadius!=null||w.iconBorder!=null||w.iconShadow||w.iconOpacity!=null||w.iconGlow;}
+  function _hasIconGfx(w){return !!w.iconStyle||!!w.iconFg||w.iconSize!=null||w.iconBg||w.iconShape||w.iconRadius!=null||w.iconBorder!=null||w.iconShadow||w.iconOpacity!=null||w.iconGlow;}
   function _applyIconGfx(w,e){
+    // Fertige Stile (Nur Symbol, Feld, Kreis, Ring, Voll, Glas) - Farbe aus --wicon, bei Voll
+    // das Symbol in --wicon-fg (Vorgabe weiss). Die Feinregler darunter wirken zusaetzlich.
+    if(w.iconStyle){e.classList.add('ist','ist-'+w.iconStyle);}
+    if(w.iconFg){var fg=_cssColorOrEmpty(w.iconFg);if(fg)e.style.setProperty('--wicon-fg',fg);}
     if(w.iconSize!=null){e.style.fontSize=(+w.iconSize)+'px';var sv=e.querySelector('svg');if(sv){sv.style.width=(+w.iconSize)+'px';sv.style.height=(+w.iconSize)+'px';}}
     var shape=w.iconShape;
     if(w.iconBg){e.style.background=(_skinColor(w.iconBg)||w.iconBg);if(!shape)shape='rounded';}
@@ -157,8 +161,8 @@
   function _applyWidgetStyle(w,d){
     if(w.type==='value'&&w.valfs){var v=$('.v',d);if(v)v.style.fontSize=w.valfs+'px';}
     _applyPosOffsets(w,d); // Wert/Icon frei positionieren (valDX/valDY, icoDX/icoDY)
-    if(w.iconColor)d.style.setProperty('--wicon',_skinColor(w.iconColor)||w.iconColor); // zentrale Icon-Farbe
-    if(_hasIconGfx(w)){var _ie=d.querySelector('.iconwrap,.wvic,.swic,.htbadge,.htico,.hbicon,.hl2ic,.hchipic,.hricon,.hkbi,.hassoc-chip,.hvicon,[data-role=badge]');if(_ie)_applyIconGfx(w,_ie);} // universelle Icon-/Grafik-Gestaltung (opt-in)
+    if(w.iconColor){var _ic=_cssColorOrEmpty(w.iconColor);if(_ic)d.style.setProperty('--wicon',_ic);} // zentrale Icon-Farbe (Skin-Schluessel oder Hex)
+    if(_hasIconGfx(w)){var _ie=d.querySelector('.icc-i,.iconwrap,.wvic,.swic,.htbadge,.htico,.hbicon,.hl2ic,.hchipic,.hricon,.hkbi,.hassoc-chip,.hvicon,[data-role=badge]');if(_ie)_applyIconGfx(w,_ie);} // universelle Icon-/Grafik-Gestaltung (opt-in)
     if(w.textTransform)d.style.textTransform=w.textTransform; // universelle Groß-/Kleinschreibung (opt-in)
     if(w.ff){d.style.setProperty('--w-ff',w.ff);d.classList.add('tw-ff');}if(w.fwt){d.style.setProperty('--w-fwt',w.fwt);d.classList.add('tw-fwt');}if(w.fsty){d.style.setProperty('--w-fsty',w.fsty);d.classList.add('tw-fsty');}if(w.fsz){d.style.setProperty('--w-fsz',w.fsz+'px');d.classList.add('tw-fsz');} // Typografie: auf innere Elemente erzwingen
   }

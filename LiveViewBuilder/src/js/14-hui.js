@@ -155,8 +155,11 @@
     ziehen(sv,function(x,y){s=x;v=1-y;});
     ziehen(hue,function(x){h=Math.min(359.9,x*360);});
     hex.addEventListener('input',function(){var q=_huiHex2Rgb(hex.value);if(!q)return;var t=_huiRgb2Hsv(q[0],q[1],q[2]);h=t[0];s=t[1];v=t[2];zeigen(false);var c=_huiHsv2Hex(h,s,v);if(c!==inp.value){inp.value=c;_huiFire(inp,'input');}});
-    hex.addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();setzen(true);_huiClose();}});
-    pop.addEventListener('click',function(e){var b=e.target.closest('[data-hui-c]');if(!b)return;var q=_huiHex2Rgb(b.getAttribute('data-hui-c'));var t=_huiRgb2Hsv(q[0],q[1],q[2]);h=t[0];s=t[1];v=t[2];setzen(true);});
+    // Enter und Klick auf eine Vorgabe sind ausdrueckliche Wahl: IMMER uebernehmen, auch wenn
+    // die Farbe dieselbe ist wie vorher (sonst liess sich die Vorbelegung nicht waehlen).
+    function waehlen(){var c=zeigen();inp.value=c;start=c;_huiFire(inp,'input');_huiFire(inp,'change');}
+    hex.addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();waehlen();_huiClose();}});
+    pop.addEventListener('click',function(e){var b=e.target.closest('[data-hui-c]');if(!b)return;var q=_huiHex2Rgb(b.getAttribute('data-hui-c'));var t=_huiRgb2Hsv(q[0],q[1],q[2]);h=t[0];s=t[1];v=t[2];waehlen();});
     inp.classList.add('hui-open');
     _hui.cur={kind:'col',el:inp,pop:pop,onClose:function(){inp.classList.remove('hui-open');if(inp.value!==start&&inp.isConnected)_huiFire(inp,'change');}};
     zeigen();_huiPlace(pop,inp,false);

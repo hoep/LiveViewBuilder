@@ -5442,6 +5442,25 @@ header{height:56px;display:flex;align-items:center;gap:18px;padding:0 16px;flex:
 .calgd.heute b,.calgd.heute span{color:var(--accent)}
 .calgl{display:flex;flex-direction:column;gap:clamp(2px,1cqmin,5px);min-width:0}
 
+/* ===== Icon-Stile (w.iconStyle, gesetzt in _applyIconGfx) ===== */
+.ist{box-sizing:border-box;display:inline-flex!important;align-items:center;justify-content:center;color:var(--wicon,var(--accent))}
+.ist-plain{background:none!important;box-shadow:none!important}
+.ist-soft{border-radius:28%;background:color-mix(in oklab,var(--wicon,var(--accent)) 16%,var(--surface-2))}
+.ist-circle{border-radius:50%;background:color-mix(in oklab,var(--wicon,var(--accent)) 16%,var(--surface-2))}
+.ist-ring{border-radius:50%;background:none;box-shadow:inset 0 0 0 2px var(--wicon,var(--accent))}
+.ist-filled{border-radius:50%;background:var(--wicon,var(--accent));color:var(--wicon-fg,#fff)}
+.ist-glass{border-radius:50%;background:color-mix(in oklab,var(--text) 6%,transparent);box-shadow:inset 0 0 0 1px color-mix(in oklab,var(--text) 15%,transparent)}
+/* Icon-Widget: mit Stil eine runde/quadratische Form mittig, nicht kachelfuellend */
+.iconwrap.ist:not(.ist-plain){width:auto;height:88%;max-width:88%;aspect-ratio:1;margin:auto;padding:20%}
+/* ===== Einheitlicher Farbwaehler im Editor (farbWahl) ===== */
+.fwz{display:flex;flex-wrap:wrap;gap:5px;align-items:center}
+.fwzb{all:unset;position:relative;width:18px;height:18px;border-radius:6px;cursor:pointer;box-sizing:border-box;box-shadow:inset 0 0 0 1px rgba(127,127,127,.35)}
+.fwzb.on{box-shadow:0 0 0 2px var(--surface),0 0 0 3.5px var(--text)}
+.fwzb.auto{border:1px dashed var(--muted);box-shadow:none}
+.fwzb.auto.on{box-shadow:0 0 0 2px var(--surface),0 0 0 3.5px var(--text)}
+.fwzb.own{background:conic-gradient(#f44,#fd4,#4d6,#4de,#46f,#d4f,#f44)}
+.fwzb.own input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;margin:0;padding:0;border:none}
+
 /* ===== Eigene Formular-Bausteine (Headless-Prinzip, Verhalten in js/14-hui.js) ======
    Keine Systemdarstellung mehr - alles folgt dem Skin. Steht bewusst am Dateiende:
    bei gleicher Spezifitaet gewinnt diese Regel gegen aeltere (etwa .prow input[type=checkbox]).
