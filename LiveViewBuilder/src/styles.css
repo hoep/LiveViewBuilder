@@ -2038,6 +2038,12 @@
   .hp-wavg{flex:0 0 auto;align-self:center;font-size:clamp(8px,4cqmin,13px);color:var(--faint);min-width:clamp(30px,16cqmin,54px);text-align:right}
   .w.t-week .hp-main{display:grid;grid-template-rows:auto minmax(0,1fr) minmax(clamp(12px,4.5cqmin,16px),auto);align-content:stretch}
   .w.t-week .hp-week{min-height:0}
+  /* Sollkurve (Einzelwidget): die Kurve fuellt die ganze Hoehe. Die feste Obergrenze
+     (--hp-ploth, max. 260 px) gilt nur im komponierten Heizplan; hier blieb beim
+     Hoeherziehen unten Platz leer. */
+  .w.t-curve .hp-main{min-height:0}
+  .w.t-curve .hp-curvewrap{flex:1 1 auto;min-height:0}
+  .w.t-curve .hp-yax,.w.t-curve .hp-plot{height:auto;min-height:60px}
   .hp-scale{display:flex;align-items:center;flex:0 0 auto;gap:2px;font-size:clamp(8px,3.3cqmin,10px);color:var(--faint);margin-top:2px}
   .hp-scale i{width:14px;height:10px;border-radius:2px;display:inline-block}
   .hp-scale span:first-child{margin-right:4px}
