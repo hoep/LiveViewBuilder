@@ -1801,6 +1801,9 @@
     var s={l:0,r:0,t:0,b:0};
     if(!w)return s;
     var fs=_ecF(w,'axname',9);
+    // Titel senkrechter Achsen am oberen/unteren Ende stehen auf DERSELBEN Hoehe - links "kWh",
+    // rechts "W". Sie teilen sich einen Streifen; aufaddiert frass er bei zwei Achsen doppelt.
+    var vt=0,vb=0;
     function eintragen(c,vert,rechts){
       if(!c||(c.name==null)||String(c.name)==='')return;
       var loc=(c.nLoc==='start'||c.nLoc==='middle'||c.nLoc==='end')?c.nLoc:(vert?'end':'middle');
@@ -1811,8 +1814,8 @@
       if(!aussen)return;                       // innen = ueber der Zeichenflaeche, braucht nichts
       if(vert){
         if(loc==='middle'){var b=Math.max(0,gap-24)+fs+6;if(rechts)s.r+=b;else s.l+=b;}
-        else if(loc==='start')s.b+=fs+6;
-        else s.t+=fs+6;
+        else if(loc==='start')vb=Math.max(vb,fs+6);
+        else vt=Math.max(vt,fs+6);
       } else {
         if(seite==='u')s.b+=Math.max(0,gap-16)+fs+4;else s.t+=fs+6;
       }
@@ -1829,6 +1832,7 @@
       else eintragen(a,true,(a&&a.side==='R'));});
     else if(((w.yunit||'')!=='')||((w.unit||'')!==''))s[liegend?'b':'t']+=fs+6;
     eintragen({name:w.xname,nLoc:w.xnLoc,nRot:w.xnRot,nGap:w.xnGap,nSide:w.xnSide},false,false);
+    s.t+=vt;s.b+=vb;
     return s;
   }
   // ---- Reservierte Streifen: die EINZIGE Stelle, die Randbreiten kennt ------------------
@@ -1867,7 +1871,11 @@
       if((a.style||'pin')==='line')return;                          // reine Linie hat keine Fahne
       if(a.kind==='max'||a.kind==='last'||a.kind==='first')need=true; // koennen ganz oben liegen
     });
-    return need?(_annPinSize(w)+4):0;
+    if(!need)return 0;
+    // Die Fahne steht IN der Zeichenflaeche und darf in den Streifen der Achsentitel ragen -
+    // die stehen aussen ueber den Achsbeschriftungen, nicht ueber den Balken. Reserviert wird
+    // also nur, was darueber hinausgeht; vorher lag ein leerer Streifen zwischen Titel und kWh.
+    return Math.max(0,_annPinSize(w)+4-_axNameStrips(w).t);
   }
   // Perioden-Navigation (‹ jetzt ›) liegt als HTML UEBER dem Diagramm, unten links.
   // Masse gespiegelt aus widgets/chart.js: Knopf clamp(20px,8cqmin,30px), Abstand clamp(4px,2cqmin,10px).
